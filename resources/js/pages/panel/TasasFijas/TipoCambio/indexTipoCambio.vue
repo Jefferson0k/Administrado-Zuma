@@ -8,7 +8,8 @@
 
             <template v-else>
                 <div class="card">
-
+                    <AddTipoCambio @agregado="refrescar" />
+                    <ListTipoCambio :refresh="refreshKey" />
                 </div>
             </template>
         </div>
@@ -20,6 +21,8 @@ import { ref, onMounted } from 'vue';
 import AppLayout from '@/layout/AppLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import Espera from '@/components/Espera.vue';
+import ListTipoCambio from './Desarrollo/ListTipoCambio.vue';
+import AddTipoCambio from './Desarrollo/AddTipoCambio.vue';
 
 const refreshKey = ref(0);
 const isLoading = ref(true);
