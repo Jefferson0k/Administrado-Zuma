@@ -9,10 +9,11 @@ use Illuminate\Notifications\Notifiable;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Permission\Traits\HasRoles;
 use Spatie\Activitylog\LogOptions;
+use Laravel\Sanctum\HasApiTokens; 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable,HasRoles,LogsActivity;
+    use HasFactory, Notifiable,HasRoles,LogsActivity,HasApiTokens;
 
     /**
      * The attributes that are mass assignable.
@@ -62,5 +63,7 @@ class User extends Authenticatable
     public function isOnline(): bool    {
         return cache()->has('user-is-online-' . $this->id);
     }
-
+    public function invoices(){
+        return $this->hasMany(Invoice::class);
+    }
 }

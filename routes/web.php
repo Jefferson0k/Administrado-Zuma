@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\ConsultasDni;
+use App\Http\Controllers\Api\ConsultasRucController;
+use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\RolesController;
 use App\Http\Controllers\Api\UsuariosController;
 use App\Http\Controllers\Web\TasasFijas\CuentasBancariasWebController;
@@ -20,6 +22,7 @@ use Illuminate\Support\Facades\Auth;
 Route::get('/', function () {
     return Inertia::render('Welcome');
 })->name('home');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     #PARA QUE CUANDO SE CREA UN USUARIO O MODIFICA SU PASSWORD LO REDIRECCIONE PARA QUE PUEDA ACTUALIZAR
     Route::get('/dashboard', function () {
@@ -31,9 +34,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     #VISTAS DEL FRONTEND
     Route::get('/usuario', [UsuarioWebController::class,'index'])->name('index.view');
-    Route::get('/consulta/{dni}', [ConsultasDni::class, 'consultar'])->name('consultar.view');
     Route::get('/roles', [UsuarioWebController::class, 'roles'])->name('roles.view');
     
+    #RUTAS DE API
+    Route::prefix('api')->group(function () {
+        Route::get('/consultar-dni/{dni?}', [ConsultasDni::class, 'consultar'])->name('consultar.dni');
+        Route::get('/consultar-ruc/{ruc?}', [ConsultasRucController::class, 'consultar'])->name('consultar.ruc');
+    });
+
     #RUTAS DE WEB EN LA PARTE DE TASAS FIJAS
     Route::prefix('tasas-fijas')->group(function(){
         Route::get('/cuentas-bancarias', [CuentasBancariasWebController::class, 'views'])->name('cuentas-bancarias.views');
@@ -46,10 +54,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/retiros', [RetirosWebController::class, 'views'])->name('retiros.views');
         Route::get('/tipo-cambio', [TipoCambioWebController::class, 'views'])->name('tipo-cambio.views');
     });
+
     #RUTAS DE WEB EN LA PARTE DE PRESTAMOS
     Route::prefix('prestamos')->group(function(){
         
     });
+
     #USUARIOS -> BACKEND
     Route::prefix('usuarios')->group(function(){
         Route::get('/', [UsuariosController::class, 'index'])->name('usuarios.index');
@@ -67,6 +77,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/{id}', [RolesController::class, 'show'])->name('roles.show');
         Route::put('/{id}', [RolesController::class, 'update'])->name('roles.update');
         Route::delete('/{id}', [RolesController::class, 'destroy'])->name('roles.destroy');
+    });
+
+    #INVOICES => BACKEND
+    Route::prefix('invoices')->group(function () {
+        Route::get('/', [InvoiceController::class, 'index'])->name('invoices.index');
+        // Add other invoice routes here as needed
     });
 }); 
 
