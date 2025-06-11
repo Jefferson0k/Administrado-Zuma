@@ -10,3 +10,5 @@ class InvoiceSeeder extends Seeder{
         Invoice::factory()->count(1000)->create();
     }
 }
+
+
