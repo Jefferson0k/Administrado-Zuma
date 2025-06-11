@@ -7,14 +7,12 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
-class InvoiceFactory extends Factory
+class invoiceFactory extends Factory
 {
     protected $model = Invoice::class;
 
     public function definition(): array
     {
-        $user = User::inRandomOrder()->first(); // Puede ser null si no hay usuarios
-
         return [
             'id' => Str::ulid(),
             'invoice_code' => Str::uuid(),
@@ -25,9 +23,9 @@ class InvoiceFactory extends Factory
             'rate' => $this->faker->randomFloat(2, 1, 10),
             'due_date' => $this->faker->dateTimeBetween('+30 days', '+120 days')->format('Y-m-d'),
             'status' => $this->faker->randomElement(['active', 'inactive']),
-            'company_id' => null, // Por ahora, sin relación
-            'created_by' => $user?->id,
-            'updated_by' => $user?->id,
+            'company_id' => null,
+            'created_by' => 1,
+            'updated_by' => 1,
             'deleted_by' => null,
         ];
     }
