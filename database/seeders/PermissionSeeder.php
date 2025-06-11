@@ -26,17 +26,10 @@ class PermissionSeeder extends Seeder{
         Permission::create(['name' =>'editar permisos']);
         Permission::create(['name' =>'eliminar permisos']);
         Permission::create(['name' =>'ver permisos']);
-        #Tasas fijas
-        Permission::create(['name' => 'crear tasas fijas']);
-        Permission::create(['name' => 'editar tasas fijas']);
-        Permission::create(['name' => 'eliminar tasas fijas']);
-        Permission::create(['name' => 'ver tasas fijas']);
-        #Prestamos
-        Permission::create(['name' => 'crear prestamos']);
-        Permission::create(['name' => 'editar prestamos']);
-        Permission::create(['name' => 'eliminar prestamos']);
-        Permission::create(['name' => 'ver prestamos']);
-        #Factoring
-        Permission::create(['name' => 'ver factoring']);
+        #invoices
+        Permission::create(['name' => 'crear invoice']);
+        Permission::create(['name' => 'editar invoice']);
+        Permission::create(['name' => 'eliminar invoice']);
+        Permission::create(['name' => 'ver invoice']);
     }
 }

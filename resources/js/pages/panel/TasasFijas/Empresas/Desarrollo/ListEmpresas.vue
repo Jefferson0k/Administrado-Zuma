@@ -7,6 +7,7 @@ import Column from 'primevue/column';
 import InputText from 'primevue/inputtext';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
+import Tag from 'primevue/tag';
 
 const toast = useToast();
 const dt = ref();
@@ -27,7 +28,7 @@ const filters = ref({
         class="p-datatable-sm">
         <template #header>
             <div class="flex flex-wrap gap-2 items-center justify-between">
-                <h4 class="m-0">Empresas</h4>
+                <h4 class="m-0">Empresas <Tag severity="contrast" value="0"></Tag></h4>
                 <IconField>
                     <InputIcon>
                         <i class="pi pi-search" />

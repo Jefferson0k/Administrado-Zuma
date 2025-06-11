@@ -50,28 +50,28 @@ const model = computed(() => [
                     },
                     {
                         label: 'Depósitos',
-                        icon: 'pi pi-fw pi-wallet', // representa entrada de dinero
+                        icon: 'pi pi-fw pi-wallet',
                         to: '/tasas-fijas/depositos'
                     },
                     {
                         label: 'Pagos',
-                        icon: 'pi pi-fw pi-money-bill', // representa salida de dinero
+                        icon: 'pi pi-fw pi-money-bill',
                         to: '/tasas-fijas/pagos'
                     },
                     {
                         label: 'Retiros',
-                        icon: 'pi pi-fw pi-arrow-circle-down', // representa retiro / salida
+                        icon: 'pi pi-fw pi-arrow-circle-down',
                         to: '/tasas-fijas/retiros'
                     },
                     {
                         label: 'Tipo de cambio',
-                        icon: 'pi pi-fw pi-refresh', // representa conversión o cambio
+                        icon: 'pi pi-fw pi-refresh',
                         to: '/tasas-fijas/tipo-cambio'
                     },
                 ]
             },
             {
-                label: 'Préstamos',
+                label: 'Subasta de Hipotecas',
                 icon: 'pi pi-fw pi-credit-card',
                 items: [
                     {
