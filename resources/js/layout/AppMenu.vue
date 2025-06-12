@@ -75,20 +75,45 @@ const model = computed(() => [
                 icon: 'pi pi-fw pi-credit-card',
                 items: [
                     {
-                        label: 'Login',
-                        icon: 'pi pi-fw pi-sign-in',
-                        to: '/auth/login'
+                        label: 'Inversionista',
+                        icon: 'pi pi-fw pi-briefcase',
+                        to: '/subasta-hipotecas/inversionistas'
                     },
                     {
-                        label: 'Error',
-                        icon: 'pi pi-fw pi-times',
-                        to: '/auth/error'
+                        label: 'Propiedades',
+                        icon: 'pi pi-fw pi-home',
+                        to: '/subasta-hipotecas/propiedades'
                     },
                     {
-                        label: 'Access Denied',
-                        icon: 'pi pi-fw pi-lock',
-                        to: '/auth/access'
-                    }
+                        label: 'Cuentas bancarias',
+                        icon: 'pi pi-fw pi-wallet',
+                        to: '/subasta-hipotecas/cuentas-bancarias'
+                    },
+                    {
+                        label: 'Historico de pujas',
+                        icon: 'pi pi-fw pi-history',
+                        to: '/subasta-hipotecas/historicos'
+                    },
+                    {
+                        label: 'Depósitos',
+                        icon: 'pi pi-fw pi-wallet',
+                        to: '/subasta-hipotecas/depositos'
+                    },
+                    {
+                        label: 'Pagos',
+                        icon: 'pi pi-fw pi-credit-card',
+                        to: '/subasta-hipotecas/pagos'
+                    },
+                    {
+                        label: 'Retiros',
+                        icon: 'pi pi-fw pi-arrow-circle-down',
+                        to: '/subasta-hipotecas/retiros'
+                    },
+                    {
+                        label: 'Tipo de cambio',
+                        icon: 'pi pi-fw pi-refresh',
+                        to: '/subasta-hipotecas/tipo-cambio'
+                    },
                 ]
             },
             {
