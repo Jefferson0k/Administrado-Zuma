@@ -11,9 +11,11 @@
 
     <Dialog v-model:visible="AgregarDialog" :style="{ width: '450px' }" header="Registro de Facturas" :modal="true">
         <div class="flex flex-col gap-6">
-            <div>
-
+                        <div>
+                <label for="tipoCliente_id" class="block font-bold mb-3">Tipo de cliente <span
+                        class="text-red-500">*</span></label>
             </div>
+
         </div>
         <template #footer>
             <Button label="Cancelar" icon="pi pi-times" text @click="hideDialog" />
@@ -24,15 +26,9 @@
 
 <script setup>
 import { ref } from 'vue';
-import InputNumber from 'primevue/inputnumber';
-import axios from 'axios';
 import Toolbar from 'primevue/toolbar';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
-import InputText from 'primevue/inputtext';
-import Textarea from 'primevue/textarea';
-import Checkbox from 'primevue/checkbox';
-import Tag from 'primevue/tag';
 import { useToast } from 'primevue/usetoast';
 import { defineEmits } from 'vue';
 

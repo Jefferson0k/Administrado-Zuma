@@ -5,6 +5,13 @@ use App\Http\Controllers\Api\ConsultasRucController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\RolesController;
 use App\Http\Controllers\Api\UsuariosController;
+use App\Http\Controllers\Web\SubastaHipotecas\CuentasBancariasWebControler;
+use App\Http\Controllers\Web\SubastaHipotecas\DepositosWebControler;
+use App\Http\Controllers\Web\SubastaHipotecas\HistoricoWebController;
+use App\Http\Controllers\Web\SubastaHipotecas\PagosWebControler;
+use App\Http\Controllers\Web\SubastaHipotecas\PropiedadesWebControler;
+use App\Http\Controllers\Web\SubastaHipotecas\RetirosWebControler;
+use App\Http\Controllers\Web\SubastaHipotecas\TipoCambioWebControler;
 use App\Http\Controllers\Web\TasasFijas\CuentasBancariasWebController;
 use App\Http\Controllers\Web\TasasFijas\DepositosWebController;
 use App\Http\Controllers\Web\TasasFijas\EmpresasWebController;
@@ -55,9 +62,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/tipo-cambio', [TipoCambioWebController::class, 'views'])->name('tipo-cambio.views');
     });
 
-    #RUTAS DE WEB EN LA PARTE DE PRESTAMOS
-    Route::prefix('prestamos')->group(function(){
-        
+    #RUTAS DE WEB EN LA PARTE DE SUBASTA HIPOTECARIA
+    Route::prefix('subasta-hipotecas')->group(function(){
+        Route::get('/cuentas-bancarias', [CuentasBancariasWebControler::class, 'views'])->name('cuentas-bancarias.subasta.views');
+        Route::get('/depositos', [DepositosWebControler::class, 'views'])->name('depositos.views');
+        Route::get('/historicos', [HistoricoWebController::class, 'views'])->name('historicos.views');
+        Route::get('/inversionistas', [InversionistasWebController::class, 'views'])->name('inversionistas.views');
+        Route::get('/pagos', [PagosWebControler::class, 'views'])->name('pagos.views');
+        Route::get('/propiedades', [PropiedadesWebControler::class, 'views'])->name('propiedades.views');
+        Route::get('/retiros', [RetirosWebControler::class, 'views'])->name('retiros.views');
+        Route::get('/tipo-cambio', [TipoCambioWebControler::class, 'views'])->name('tipo-cambio.views');
     });
 
     #USUARIOS -> BACKEND
