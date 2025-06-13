@@ -27,6 +27,7 @@ class User extends Authenticatable
         'nacimiento',
         'email',
         'username',
+        'monto',
         'password',
         'status',
         'restablecimiento',

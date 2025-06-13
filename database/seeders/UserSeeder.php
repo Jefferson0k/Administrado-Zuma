@@ -23,9 +23,10 @@ class UserSeeder extends Seeder{
             'apellidos' => '0k',
             'nacimiento' => '2003-03-11',
             'email' => 'ok@gmail.com',
-            'username' => 'Jeferson',
+            'username' => 'jeferson',
             'password' => Hash::make('12345678'),
             'status' => true,
+            'monto'=> 100,
             'restablecimiento' => 1,
         ]);
 
@@ -38,10 +39,39 @@ class UserSeeder extends Seeder{
             'username' => 'lucia',
             'password' => Hash::make('12345678'),
             'status' => true,
+            'monto'=> 100,
+            'restablecimiento' => 1,
+        ]);
+
+        $admin_3 = User::create([
+            'name' => 'Antony',
+            'dni' => '0000002',
+            'apellidos' => '0k',
+            'nacimiento' => '2003-03-11',
+            'email' => 'ok2@gmail.com',
+            'username' => 'antony',
+            'password' => Hash::make('12345678'),
+            'status' => true,
+            'monto'=> 100,
+            'restablecimiento' => 1,
+        ]);
+
+        $admin_4 = User::create([
+            'name' => 'Alex',
+            'dni' => '0000003',
+            'apellidos' => '0k',
+            'nacimiento' => '2003-03-11',
+            'email' => 'ok3@gmail.com',
+            'username' => 'alex',
+            'password' => Hash::make('12345678'),
+            'status' => true,
+            'monto'=> 100,
             'restablecimiento' => 1,
         ]);
 
         $admin_1->assignRole($adminRole);
         $admin_2->assignRole($adminRole);
+        $admin_3->assignRole($adminRole);
+        $admin_4->assignRole($adminRole);
     }
 }
