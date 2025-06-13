@@ -5,12 +5,16 @@ use App\Http\Controllers\Api\ConsultasRucController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\RolesController;
 use App\Http\Controllers\Api\UsuariosController;
+use App\Http\Controllers\Panel\BidControllers;
+use App\Http\Controllers\Panel\InvestmentControllers;
+use App\Http\Controllers\Panel\PropertyControllers;
 use App\Http\Controllers\Web\SubastaHipotecas\CuentasBancariasWebControler;
 use App\Http\Controllers\Web\SubastaHipotecas\DepositosWebControler;
 use App\Http\Controllers\Web\SubastaHipotecas\HistoricoWebController;
 use App\Http\Controllers\Web\SubastaHipotecas\PagosWebControler;
 use App\Http\Controllers\Web\SubastaHipotecas\PropiedadesWebControler;
 use App\Http\Controllers\Web\SubastaHipotecas\RetirosWebControler;
+use App\Http\Controllers\Web\SubastasOnlineWebController;
 use App\Http\Controllers\Web\SubastaHipotecas\TipoCambioWebControler;
 use App\Http\Controllers\Web\TasasFijas\CuentasBancariasWebController;
 use App\Http\Controllers\Web\TasasFijas\DepositosWebController;
@@ -42,7 +46,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     #VISTAS DEL FRONTEND
     Route::get('/usuario', [UsuarioWebController::class,'index'])->name('index.view');
     Route::get('/roles', [UsuarioWebController::class, 'roles'])->name('roles.view');
-    
+    Route::get('/online', [SubastasOnlineWebController::class, 'views'])->name('online.view');
+
     #RUTAS DE API
     Route::prefix('api')->group(function () {
         Route::get('/consultar-dni/{dni?}', [ConsultasDni::class, 'consultar'])->name('consultar.dni');
@@ -97,6 +102,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('invoices')->group(function () {
         Route::get('/', [InvoiceController::class, 'index'])->name('invoices.index');
         // Add other invoice routes here as needed
+    });
+
+    #PROPERTY => BACKEND (SOLO ADMINISTRADOR MAS NO CLIENTE)
+    Route::prefix('property')->group(function () {
+        Route::get('/', [PropertyControllers::class, 'index'])->name('property.index');
+        Route::get('/{id}', [PropertyControllers::class, 'show'])->name('property.show');
+        Route::put('/{id}/estado', [PropertyControllers::class, 'update'])->name('property.update');
+    });
+
+    #Seccion de apis x mientas 
+    Route::prefix('api')->group(function () {
+        Route::get('/subastadas', [PropertyControllers::class, 'subastadas'])->name('property.subastadas');
+        Route::post('/bids', [BidControllers::class, 'index'])->name('bids.index');
+        Route::post('/investments', [InvestmentControllers::class, 'store'])->name('bids.index');
     });
 }); 
 
