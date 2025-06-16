@@ -45,16 +45,23 @@ class PropertyControllers extends Controller{
         $nuevoEstado = $request->estado;
 
         if ($nuevoEstado === 'en_subasta' && !$property->subasta) {
-            $ahora = Carbon::now();
-            $fin = $ahora->copy()->addMinutes(5);
-            $duracion = $fin->diffAsCarbonInterval($ahora);
+            $diaSubasta = $request->input('dia_subasta');
+            $horaInicio = $request->input('hora_inicio');
+            $horaFin    = $request->input('hora_fin');
+
+            $fechaInicio = Carbon::createFromFormat('Y-m-d H:i:s', "$diaSubasta $horaInicio");
+            $fechaFin    = Carbon::createFromFormat('Y-m-d H:i:s', "$diaSubasta $horaFin");
+
+            if ($fechaFin->lessThanOrEqualTo($fechaInicio)) {
+                return response()->json(['message' => 'La hora de fin debe ser mayor a la de inicio'], 422);
+            }
 
             $property->subasta()->create([
-                'monto_inicial' => 20.00,
-                'dia_subasta' => $ahora->toDateString(),
-                'hora_inicio' => $ahora->toTimeString(),
-                'hora_fin' => $fin->toTimeString(),
-                'tiempo_finalizacion' => $fin,
+                'monto_inicial' => $request->input('monto_inicial'),
+                'dia_subasta' => $diaSubasta,
+                'hora_inicio' => $horaInicio,
+                'hora_fin' => $horaFin,
+                'tiempo_finalizacion' => $fechaFin,
                 'estado' => 'activa',
             ]);
         }
@@ -72,12 +79,26 @@ class PropertyControllers extends Controller{
             $perPage = $request->input('per_page', 15);
             $search = $request->input('search', '');
 
+            $ahora = Carbon::now();
+
+            $propertyIdsConSubastasActivas = \App\Models\Auction::where('estado', 'activa')
+                ->where(function ($query) use ($ahora) {
+                    $query->where('dia_subasta', '>', $ahora->toDateString())
+                        ->orWhere(function ($q) use ($ahora) {
+                            $q->where('dia_subasta', '=', $ahora->toDateString())
+                            ->where('hora_fin', '>', $ahora->toTimeString());
+                        });
+                })
+                ->pluck('property_id');
+
             $query = app(Pipeline::class)
-                ->send(Property::where('estado', 'en_subasta'))
+                ->send(Property::where('estado', 'en_subasta')
+                    ->whereIn('id', $propertyIdsConSubastasActivas))
                 ->through([
                     new FilterBySearch($search),
                 ])
                 ->thenReturn();
+
             return PropertyOnliene::collection($query->paginate($perPage));
         } catch (\Throwable $th) {
             return response()->json([

@@ -9,3 +9,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/invoices', [InvoiceController::class, 'index']);
 });
+
+Route::post('/bids', [BidControllers::class, 'index'])->name(name: 'bids.index');
+Route::get('/inversiones/{property_id}', [InvestmentControllers::class, 'index']);
+Route::get('/subastadas', [PropertyControllers::class, 'subastadas'])->name('property.subastadas');

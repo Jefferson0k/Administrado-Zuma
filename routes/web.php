@@ -113,8 +113,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     #Seccion de apis x mientas 
     Route::prefix('api')->group(function () {
-        Route::get('/subastadas', [PropertyControllers::class, 'subastadas'])->name('property.subastadas');
-        Route::post('/bids', [BidControllers::class, 'index'])->name('bids.index');
+        #Route::post('/bids', [BidControllers::class, 'index'])->name(name: 'bids.index');
         Route::post('/investments', [InvestmentControllers::class, 'store'])->name('bids.index');
     });
 }); 

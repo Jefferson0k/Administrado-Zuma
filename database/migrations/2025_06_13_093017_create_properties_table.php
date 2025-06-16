@@ -14,7 +14,12 @@ return new class extends Migration{
             $table->string('foto')->nullable();
             $table->boolean('validado')->default(false);
             $table->date('fecha_inversion')->nullable();
-            $table->enum('estado', ['en_subasta', 'no_subastada'])->default('no_subastada');
+            $table->enum('estado', [
+                'no_subastada',    // Estado inicial
+                'en_subasta',      // Subasta activa
+                'subastada',       // Subasta exitosa con ganador
+                'desierta'         // Subasta vencida sin ofertas
+            ])->default('no_subastada');
             $table->timestamps();
         });
     }

@@ -53,7 +53,6 @@ const loadData = async () => {
     }
 };
 
-// Función para actualizar el estado de una propiedad
 const updatePropertyStatus = async (propertyId, isEnSubasta) => {
     try {
         const newStatus = isEnSubasta ? 'en_subasta' : 'no_subastada';
@@ -62,7 +61,6 @@ const updatePropertyStatus = async (propertyId, isEnSubasta) => {
             estado: newStatus
         });
 
-        // Actualizar el estado local
         const propertyIndex = products.value.findIndex(p => p.id === propertyId);
         if (propertyIndex !== -1) {
             products.value[propertyIndex].estado = newStatus;
@@ -82,7 +80,6 @@ const updatePropertyStatus = async (propertyId, isEnSubasta) => {
             life: 3000 
         });
         
-        // Recargar datos para mantener consistencia
         loadData();
     }
 };
@@ -170,10 +167,11 @@ const optionalColumns = ref([
                 />
             </template>
         </Column>
-        <Column :exportable="false" style="min-width: 5rem">
+        <Column :exportable="false" style="min-width: 8rem">
             <template #body="data">
-                <Button icon="pi pi-pencil" outlined rounded class="mr-2" />
-                <Button icon="pi pi-trash" outlined rounded severity="danger" />
+                <Button icon="pi pi-cog" outlined rounded class="mr-2" severity="info" @click="onConfigurar(data)" />
+                <Button icon="pi pi-pencil" outlined rounded class="mr-2" @click="onEditar(data)" />
+                <Button icon="pi pi-trash" outlined rounded severity="danger" @click="onEliminar(data)" />
             </template>
         </Column>
     </DataTable>
