@@ -13,6 +13,7 @@ import Button from 'primevue/button';
 import MultiSelect from 'primevue/multiselect';
 import Select from 'primevue/select';
 import Image from 'primevue/image';
+import ConfigPropiedades from './ConfigPropiedades.vue';
 
 const toast = useToast();
 const dt = ref();
@@ -169,10 +170,11 @@ const optionalColumns = ref([
         </Column>
         <Column :exportable="false" style="min-width: 8rem">
             <template #body="data">
-                <Button icon="pi pi-cog" outlined rounded class="mr-2" severity="info" @click="onConfigurar(data)" />
+                <Button icon="pi pi-cog" outlined rounded class="mr-2" severity="info"/>
                 <Button icon="pi pi-pencil" outlined rounded class="mr-2" @click="onEditar(data)" />
                 <Button icon="pi pi-trash" outlined rounded severity="danger" @click="onEliminar(data)" />
             </template>
         </Column>
     </DataTable>
+    <ConfigPropiedades/>
 </template>

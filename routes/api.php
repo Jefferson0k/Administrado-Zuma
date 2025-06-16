@@ -13,3 +13,5 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::post('/bids', [BidControllers::class, 'index'])->name(name: 'bids.index');
 Route::get('/inversiones/{property_id}', [InvestmentControllers::class, 'index']);
 Route::get('/subastadas', [PropertyControllers::class, 'subastadas'])->name('property.subastadas');
+Route::get('/historial/user', [InvestmentControllers::class, 'indexUser']);
+
