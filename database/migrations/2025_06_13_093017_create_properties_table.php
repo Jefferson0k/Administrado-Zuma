@@ -15,10 +15,10 @@ return new class extends Migration{
             $table->boolean('validado')->default(false);
             $table->date('fecha_inversion')->nullable();
             $table->enum('estado', [
-                'no_subastada',    // Estado inicial
-                'en_subasta',      // Subasta activa
-                'subastada',       // Subasta exitosa con ganador
-                'desierta'         // Subasta vencida sin ofertas
+                'no_subastada',
+                'en_subasta',
+                'subastada',
+                'desierta'
             ])->default('no_subastada');
             $table->timestamps();
         });

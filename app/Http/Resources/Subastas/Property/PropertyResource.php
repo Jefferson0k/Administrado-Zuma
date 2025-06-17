@@ -18,7 +18,13 @@ class PropertyResource extends JsonResource{
             'fecha_inversion' => $this->fecha_inversion
                 ? Carbon::parse($this->fecha_inversion)->format('d-m-Y')
                 : '00-00-0000',
-            'estado' => $this->estado,
+            'estado' => match($this->estado) {
+                'no_subastada' => 'No subastada',
+                'en_subasta' => 'En subasta',
+                'subastada' => 'Subastada con éxito',
+                'desierta' => 'Subasta desierta',
+                default => 'Estado desconocido',
+            },
             'foto' => $this->getFotoUrl(),
         ];
     }

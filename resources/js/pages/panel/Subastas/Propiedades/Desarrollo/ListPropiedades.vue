@@ -8,12 +8,12 @@ import Column from 'primevue/column';
 import InputText from 'primevue/inputtext';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
-import ToggleSwitch from 'primevue/toggleswitch';
 import Button from 'primevue/button';
 import MultiSelect from 'primevue/multiselect';
 import Select from 'primevue/select';
 import Image from 'primevue/image';
 import ConfigPropiedades from './ConfigPropiedades.vue';
+import Tag from 'primevue/tag';
 
 const toast = useToast();
 const dt = ref();
@@ -154,20 +154,13 @@ const optionalColumns = ref([
                 <span v-else>-</span>
             </template>
         </Column>
-        <Column field="validado" header="Validado" style="min-width: 8rem">
+        <Column field="validado" header="Validado" style="min-width: 8rem" sortable>
             <template #body="{ data }">
                 <span>{{ data.validado ? 'Sí' : 'No' }}</span>
             </template>
         </Column>
-        <Column field="fecha_inversion" header="Fecha de inversión" style="min-width: 12rem" />
-        <Column header="Subasta" style="min-width: 8rem">
-            <template #body="{ data }">
-                <ToggleSwitch 
-                    :modelValue="data.estado === 'en_subasta'" 
-                    @update:modelValue="(value) => updatePropertyStatus(data.id, value)"
-                />
-            </template>
-        </Column>
+        <Column field="fecha_inversion" header="Fecha de inversión" style="min-width: 8rem" sortable/>
+        <Column field="estado" header="Estado" style="min-width: 5rem" sortable/>
         <Column :exportable="false" style="min-width: 8rem">
             <template #body="data">
                 <Button icon="pi pi-cog" outlined rounded class="mr-2" severity="info"/>
