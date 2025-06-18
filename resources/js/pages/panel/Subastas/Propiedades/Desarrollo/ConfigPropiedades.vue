@@ -1,6 +1,5 @@
 <template>
-    <Button label="Configurar Subasta" @click="visible = true" />
-    <Dialog v-model:visible="visible" modal header="Configuración de subasta" :style="{ width: '450px' }">
+    <Dialog :visible="localVisible" @update:visible="handleVisibilityChange" modal header="Configuración de subasta" :style="{ width: '450px' }">
         <span class="text-surface-500 dark:text-surface-400 block mb-8">
             Después de la configuración no se podrán deshacer los cambios.
         </span>
@@ -78,8 +77,25 @@ import InputText from "primevue/inputtext";
 import InputNumber from "primevue/inputnumber";
 import Calendar from "primevue/calendar";
 
-const visible = ref(false);
+// Props y emits
+const props = defineProps({
+    visible: Boolean,
+    idPropiedad: Number
+});
+const emit = defineEmits(['update:visible']);
 
+// Visibilidad local del modal
+const localVisible = ref(props.visible);
+
+watch(() => props.visible, (val) => {
+    localVisible.value = val;
+});
+const handleVisibilityChange = (val) => {
+    localVisible.value = val;
+    emit('update:visible', val);
+};
+
+// Formulario
 const formData = ref({
     monto_inicial: null,
     dia_subasta: null,
@@ -88,11 +104,11 @@ const formData = ref({
 });
 
 const mensajeValidacion = ref('');
+const cargando = ref(false);
 
+// Duración
 const duracionCalculada = computed(() => {
-    if (!formData.value.hora_inicio || !formData.value.hora_fin) {
-        return '';
-    }
+    if (!formData.value.hora_inicio || !formData.value.hora_fin) return '';
 
     const inicio = new Date(formData.value.hora_inicio);
     const fin = new Date(formData.value.hora_fin);
@@ -111,10 +127,9 @@ const duracionCalculada = computed(() => {
     return `${horas}h ${minutos}m`;
 });
 
+// Fecha final calculada
 const fechaFinalizacion = computed(() => {
-    if (!formData.value.dia_subasta || !formData.value.hora_fin) {
-        return null;
-    }
+    if (!formData.value.dia_subasta || !formData.value.hora_fin) return null;
 
     const fecha = new Date(formData.value.dia_subasta);
     const hora = new Date(formData.value.hora_fin);
@@ -128,10 +143,7 @@ const fechaFinalizacion = computed(() => {
 });
 
 const fechaFinalizacionFormateada = computed(() => {
-    if (!fechaFinalizacion.value) {
-        return '';
-    }
-
+    if (!fechaFinalizacion.value) return '';
     return fechaFinalizacion.value.toLocaleString('es-ES', {
         year: 'numeric',
         month: '2-digit',
@@ -152,10 +164,9 @@ const formularioValido = computed(() => {
         !mensajeValidacion.value;
 });
 
-const cargando = ref(false);
-
+// Cancelar y reset
 const cancelar = () => {
-    visible.value = false;
+    handleVisibilityChange(false);
     resetForm();
 };
 
@@ -169,14 +180,18 @@ const resetForm = () => {
     mensajeValidacion.value = '';
 };
 
-watch(() => formData.value.hora_fin, () => {
-    if (formData.value.hora_inicio && formData.value.hora_fin) {
-        const inicio = new Date(formData.value.hora_inicio);
-        const fin = new Date(formData.value.hora_fin);
-
-        if (fin > inicio) {
-            mensajeValidacion.value = '';
-        }
+// Simula envío
+const submitForm = async () => {
+    cargando.value = true;
+    try {
+        // Aquí puedes enviar con formData y props.idPropiedad
+        console.log('ID de propiedad:', props.idPropiedad);
+        console.log('Datos:', formData.value);
+        handleVisibilityChange(false);
+    } catch (error) {
+        console.error(error);
+    } finally {
+        cargando.value = false;
     }
-});
+};
 </script>
