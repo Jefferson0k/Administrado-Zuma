@@ -4,50 +4,69 @@ namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Investment\InvestmentStoreRequest;
+use App\Http\Resources\Subastas\Investment\InvestmentResource;
+use App\Http\Resources\Subastas\Investment\RecordInvestmentResource;
 use App\Models\Investment;
+use App\Models\Property;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 
-class InvestmentControllers extends Controller{
-    public function store(InvestmentStoreRequest $request)
-    {
+class InvestmentControllers extends Controller {
+    public function store(InvestmentStoreRequest $request) {
         $user = Auth::user();
-
         if (!$user) {
             return response()->json(['message' => 'Usuario no autenticado.'], 401);
         }
-
-        $montoInvertir = $request->monto_invertido;
-
-        // Verificamos si tiene fondos suficientes
+        $montoInvertir = $request->monto_invertido;        
         if ($user->monto < $montoInvertir) {
             return response()->json([
                 'message' => 'Fondos insuficientes para realizar la inversión.',
             ], 422);
         }
-
-        // Verificamos que el monto sea mayor o igual al solicitado en la propiedad
-        $property = \App\Models\Property::findOrFail($request->property_id);
-
+        $property = Property::findOrFail($request->property_id);
         if ($montoInvertir < $property->monto) {
             return response()->json([
                 'message' => 'El monto a invertir debe ser igual o mayor al monto solicitado de la propiedad (S/ ' . $property->monto . ').',
             ], 422);
         }
+        $existingInvestment = Investment::where('user_id', $user->id)
+                                    ->where('property_id', $request->property_id)
+                                    ->first();
+        if ($existingInvestment) {
+            $existingInvestment->increment('monto_invertido', $montoInvertir);
+            $existingInvestment->update(['fecha_inversion' => now()]);
+            
+            $investment = $existingInvestment->fresh();
+            $message = 'Inversión actualizada exitosamente. Monto total: S/ ' . $investment->monto_invertido;
+        } else {
+            $investment = Investment::create([
+                'user_id' => $user->id,
+                'property_id' => $request->property_id,
+                'monto_invertido' => $montoInvertir,
+                'fecha_inversion' => now(),
+            ]);
+            
+            $message = 'Inversión registrada exitosamente.';
+        }
 
-        // Crear inversión
-        $investment = Investment::create([
-            'user_id' => $user->id,
-            'property_id' => $request->property_id,
-            'monto_invertido' => $montoInvertir,
-            'fecha_inversion' => now(),
-        ]);
-
-        // Descontar al usuario
         $user->decrement('monto', $montoInvertir);
-
         return response()->json([
-            'message' => 'Inversión registrada exitosamente.',
-            'investment' => $investment
+            'message' => $message,
+            'investment' => $investment->fresh()
         ], 201);
+    }
+    public function index($property_id){
+        $inversiones = Investment::with('usuario')
+            ->where('property_id', $property_id)
+            ->orderByDesc('monto_invertido')
+            ->paginate(5);
+        return InvestmentResource::collection($inversiones);
+    }
+    public function indexUser(Request $request){
+        $user = 1;
+        $inversiones = Investment::with('usuario')
+            ->where('user_id', $user)
+            ->paginate(5);
+        return RecordInvestmentResource::collection($inversiones);
     }
 }

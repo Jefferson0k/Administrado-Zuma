@@ -16,8 +16,11 @@ class DatabaseSeeder extends Seeder
             PermissionSeeder::class,
             RoleSeeder::class,
             UserSeeder::class,
-            //InvoiceSeeder::class,
             PropertySeeder::class,
+            CoopacSanCristobalSeeder::class,
+            PaymentFrequencySeeder::class,
+            #CoopacInclusivaSeeder::class,
+            #CoopacLosAndesSeeder::class,
         ]);
     }
 }

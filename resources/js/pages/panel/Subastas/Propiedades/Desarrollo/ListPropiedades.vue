@@ -8,11 +8,12 @@ import Column from 'primevue/column';
 import InputText from 'primevue/inputtext';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
-import ToggleSwitch from 'primevue/toggleswitch';
 import Button from 'primevue/button';
 import MultiSelect from 'primevue/multiselect';
 import Select from 'primevue/select';
 import Image from 'primevue/image';
+import ConfigPropiedades from './ConfigPropiedades.vue';
+import Tag from 'primevue/tag';
 
 const toast = useToast();
 const dt = ref();
@@ -24,6 +25,10 @@ const currentPage = ref(1);
 const perPage = ref(10);
 const search = ref('');
 const selectedColumns = ref([]);
+const dialogVisible = ref(false);
+const idPropiedadSeleccionada = ref(null);
+const showModal = ref(false);
+const selectedId = ref(null);
 
 const selectedEstado = ref(null);
 const selectedOpcions = ref([
@@ -53,7 +58,6 @@ const loadData = async () => {
     }
 };
 
-// Función para actualizar el estado de una propiedad
 const updatePropertyStatus = async (propertyId, isEnSubasta) => {
     try {
         const newStatus = isEnSubasta ? 'en_subasta' : 'no_subastada';
@@ -62,7 +66,6 @@ const updatePropertyStatus = async (propertyId, isEnSubasta) => {
             estado: newStatus
         });
 
-        // Actualizar el estado local
         const propertyIndex = products.value.findIndex(p => p.id === propertyId);
         if (propertyIndex !== -1) {
             products.value[propertyIndex].estado = newStatus;
@@ -82,7 +85,6 @@ const updatePropertyStatus = async (propertyId, isEnSubasta) => {
             life: 3000 
         });
         
-        // Recargar datos para mantener consistencia
         loadData();
     }
 };
@@ -111,6 +113,12 @@ const optionalColumns = ref([
     { field: 'descripcion', header: 'Descripcion' },
     { field: 'foto', header: 'Imagen' },
 ]);
+
+const abrirConfiguracion = (data) => {
+    selectedId.value = data.id;
+    showModal.value = true;
+};
+
 </script>
 
 <template>
@@ -144,8 +152,8 @@ const optionalColumns = ref([
         </template>
 
         <Column selectionMode="multiple" style="width: 3rem" :exportable="false" />
-        <Column field="nombre" header="Nombre" sortable style="min-width: 12rem" />
-        <Column field="distrito" header="Distrito" sortable style="min-width: 10rem" />
+        <Column field="nombre" header="Nombre" sortable style="min-width: 15rem" />
+        <Column field="distrito" header="Distrito" sortable style="min-width: 15rem" />
         <Column v-if="isColumnSelected('descripcion')" field="descripcion" header="Descripción" sortable
             style="min-width: 41rem">
         </Column>
@@ -156,25 +164,20 @@ const optionalColumns = ref([
                 <span v-else>-</span>
             </template>
         </Column>
-        <Column field="validado" header="Validado" style="min-width: 8rem">
+        <Column field="validado" header="Validado" style="min-width: 5rem" sortable>
             <template #body="{ data }">
                 <span>{{ data.validado ? 'Sí' : 'No' }}</span>
             </template>
         </Column>
-        <Column field="fecha_inversion" header="Fecha de inversión" style="min-width: 12rem" />
-        <Column header="Subasta" style="min-width: 8rem">
-            <template #body="{ data }">
-                <ToggleSwitch 
-                    :modelValue="data.estado === 'en_subasta'" 
-                    @update:modelValue="(value) => updatePropertyStatus(data.id, value)"
-                />
-            </template>
-        </Column>
-        <Column :exportable="false" style="min-width: 5rem">
+        <Column field="fecha_inversion" header="Fecha de inversión" style="min-width: 11rem" sortable/>
+        <Column field="estado" header="Estado" style="min-width: 5rem" sortable/>
+        <Column :exportable="false" style="min-width: 10rem">
             <template #body="data">
-                <Button icon="pi pi-pencil" outlined rounded class="mr-2" />
-                <Button icon="pi pi-trash" outlined rounded severity="danger" />
+                <Button icon="pi pi-cog" outlined rounded class="mr-2" severity="info" @click="abrirConfiguracion(data)" />
+                <Button icon="pi pi-pencil" outlined rounded class="mr-2" @click="onEditar(data)" />
+                <Button icon="pi pi-trash" outlined rounded severity="danger" @click="onEliminar(data)" />
             </template>
         </Column>
     </DataTable>
+    <ConfigPropiedades v-model:visible="showModal" :idPropiedad="selectedId" />
 </template>

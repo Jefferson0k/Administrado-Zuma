@@ -67,4 +67,10 @@ class User extends Authenticatable
     public function invoices(){
         return $this->hasMany(Invoice::class);
     }
+    public function investments(){
+        return $this->hasMany(Investment::class);
+    }
+    public function bids(){
+        return $this->hasMany(Bid::class);
+    }
 }
