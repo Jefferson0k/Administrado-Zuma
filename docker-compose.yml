@@ -1,22 +1,21 @@
-version: "3.8"
-
 services:
   app:
     build:
       context: ./docker/php
-    container_name: prestamo_app
+    container_name: laravel_app
     restart: always
     working_dir: /var/www
     volumes:
       - .:/var/www
     depends_on:
-      - postgres
+      mysql:
+        condition: service_healthy
     networks:
-      - prestamo
-
+      - laravel_red_2025
+  
   nginx:
     image: nginx:latest
-    container_name: prestamo_nginx
+    container_name: laravel_nginx
     restart: always
     ports:
       - "80:80"
@@ -26,62 +25,73 @@ services:
     depends_on:
       - app
     networks:
-      - prestamo
-
-  postgres:
-    image: postgres:16.8
-    container_name: prestamo_postgres
+      - laravel_red_2025
+  
+  mysql:
+    image: mysql:8.0
+    container_name: laravel_mysql
     restart: always
-    shm_size: 128mb
+    command: --default-authentication-plugin=mysql_native_password
     environment:
-      POSTGRES_USER: prestamo_user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: prestamo
+      MYSQL_DATABASE: laravel
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: laravel_user
+      MYSQL_PASSWORD: password
     ports:
-      - "5432:5432"
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
     networks:
-      - prestamo
+      - laravel_red_2025
 
-  adminer:
-    image: adminer:latest
-    container_name: prestamo_adminer
+
+  phpmyadmin:
+    image: phpmyadmin:5.2.1
+    container_name: laravel_phpmyadmin
     restart: always
     ports:
-      - "8080:8080"
+      - "8080:80"
     environment:
-      ADMINER_DEFAULT_SERVER: postgres
+      PMA_HOST: mysql
+      PMA_USER: root
+      PMA_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: root
     depends_on:
-      - postgres
+      mysql:
+        condition: service_healthy
     networks:
-      - prestamo
+      - laravel_red_2025
+  
   node:
-    image: node:22-alpine
-    container_name: prestamo_node
+    image: node:22
+    container_name: laravel_node
     working_dir: /var/www
     volumes:
       - .:/var/www
-    command: sh -c "npm install && npm run dev"
+    command: bash -c "npm install && npm run dev"
     ports:
       - "5173:5173"
     networks:
-      - prestamo
-
+      - laravel_red_2025
+  
   composer:
     build:
       context: ./docker/php
-    container_name: prestamo_composer
+    container_name: laravel_composer
     working_dir: /var/www
     volumes:
       - .:/var/www
     entrypoint: ["composer"]
     networks:
-      - prestamo
+      - laravel_red_2025
 
 networks:
-  prestamo:
-    driver: bridge
+  laravel_red_2025:
 
 volumes:
-  postgres_data:
+  mysql_data:
