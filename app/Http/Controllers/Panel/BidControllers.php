@@ -14,7 +14,7 @@ class BidControllers extends Controller{
         $bids = Bid::where('auction_id', $auction_id)
             ->with('usuario')
             ->orderBy('created_at', 'desc')
-            ->paginate($perPage);  
+            ->paginate($perPage);
         return BidResource::collection($bids);
     }
 }

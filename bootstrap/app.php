@@ -6,8 +6,8 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Illuminate\Http\Middleware\HandleCors;
 use Inertia\Inertia;
-use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -18,17 +18,19 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->encryptCookies(except: ['appearance']);
+        // Middleware global
+        $middleware->append([
+            HandleCors::class,
+        ]);
 
+        // Middleware web
         $middleware->web(append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);
-        
-        $middleware->api(prepend: [
-            EnsureFrontendRequestsAreStateful::class,
-        ]);
+
+        $middleware->api();
     })
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->render(function (HttpException $e) {

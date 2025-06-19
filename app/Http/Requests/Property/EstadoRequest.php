@@ -9,7 +9,7 @@ class EstadoRequest extends FormRequest{
     }
     public function rules(){
         return [
-            'estado' => 'required|in:en_subasta,no_subastada',
+            'estado' => 'required|in:programada,no_subastada',
             #'dia_subasta' => 'required_if:estado,en_subasta|date',
             #'hora_inicio' => 'required_if:estado,en_subasta|date_format:H:i:s',
             #'hora_fin' => 'required_if:estado,en_subasta|date_format:H:i:s',
@@ -19,7 +19,7 @@ class EstadoRequest extends FormRequest{
     public function messages(){
         return [
             'estado.required' => 'El estado es obligatorio.',
-            'estado.in' => 'El estado debe ser "en_subasta" o "no_subastada".',
+            'estado.in' => 'El estado debe ser "programada" o "no_subastada".',
 
             #'dia_subasta.required_if' => 'Debe especificar el día de la subasta.',
             #'dia_subasta.date' => 'El día de la subasta debe ser una fecha válida.',
