@@ -1,8 +1,10 @@
+version: '3.8'
+
 services:
   app:
     build:
       context: ./docker/php
-    container_name: laravel_app
+    container_name: admin_app
     restart: always
     working_dir: /var/www
     volumes:
@@ -12,10 +14,10 @@ services:
         condition: service_healthy
     networks:
       - laravel_red_2025
-  
+
   nginx:
     image: nginx:latest
-    container_name: laravel_nginx
+    container_name: admin_nginx
     restart: always
     ports:
       - "80:80"
@@ -26,21 +28,21 @@ services:
       - app
     networks:
       - laravel_red_2025
-  
+
   mysql:
     image: mysql:8.0
     container_name: laravel_mysql
     restart: always
     command: --default-authentication-plugin=mysql_native_password
     environment:
-      MYSQL_DATABASE: laravel
+      MYSQL_DATABASE: admin_zuma
       MYSQL_ROOT_PASSWORD: root
       MYSQL_USER: laravel_user
       MYSQL_PASSWORD: password
     ports:
       - "3306:3306"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -49,10 +51,9 @@ services:
     networks:
       - laravel_red_2025
 
-
   phpmyadmin:
     image: phpmyadmin:5.2.1
-    container_name: laravel_phpmyadmin
+    container_name: admin_phpmyadmin
     restart: always
     ports:
       - "8080:80"
@@ -66,10 +67,10 @@ services:
         condition: service_healthy
     networks:
       - laravel_red_2025
-  
+
   node:
     image: node:22
-    container_name: laravel_node
+    container_name: admin_node
     working_dir: /var/www
     volumes:
       - .:/var/www
@@ -78,15 +79,24 @@ services:
       - "5173:5173"
     networks:
       - laravel_red_2025
-  
+
   composer:
     build:
       context: ./docker/php
-    container_name: laravel_composer
+    container_name: admin_composer
     working_dir: /var/www
     volumes:
       - .:/var/www
     entrypoint: ["composer"]
+    networks:
+      - laravel_red_2025
+
+  redis:
+    image: redis:alpine
+    container_name: admin_redis
+    restart: always
+    ports:
+      - "6379:6379"
     networks:
       - laravel_red_2025
 

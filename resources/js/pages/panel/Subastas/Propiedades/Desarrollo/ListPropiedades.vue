@@ -13,7 +13,14 @@ import MultiSelect from 'primevue/multiselect';
 import Select from 'primevue/select';
 import Image from 'primevue/image';
 import ConfigPropiedades from './ConfigPropiedades.vue';
-import Tag from 'primevue/tag';
+
+// Declarar las props que este componente puede recibir
+const props = defineProps({
+  refresh: {
+    type: Number,
+    default: 0
+  }
+});
 
 const toast = useToast();
 const dt = ref();
@@ -25,15 +32,16 @@ const currentPage = ref(1);
 const perPage = ref(10);
 const search = ref('');
 const selectedColumns = ref([]);
-const dialogVisible = ref(false);
-const idPropiedadSeleccionada = ref(null);
 const showModal = ref(false);
 const selectedId = ref(null);
 
 const selectedEstado = ref(null);
 const selectedOpcions = ref([
     { name: 'En subasta', value: 'en_subasta' },
-    { name: 'No subastada', value: 'no_subastada' }
+    { name: 'Subasta programada', value: 'programada' },
+    { name: 'No subastada', value: 'no_subastada' },
+    { name: 'Subastada', value: 'subastada' },
+    { name: 'Desierta', value: 'desierta' },
 ]);
 
 let searchTimeout;
@@ -91,6 +99,11 @@ const updatePropertyStatus = async (propertyId, isEnSubasta) => {
 
 onMounted(loadData);
 
+// Observar cambios en la prop refresh para recargar datos
+watch(() => props.refresh, () => {
+    loadData();
+});
+
 watch([search, perPage, selectedEstado], () => {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
@@ -119,6 +132,14 @@ const abrirConfiguracion = (data) => {
     showModal.value = true;
 };
 
+// Funciones que parecen faltar
+const onEditar = (data) => {
+    console.log('Editar:', data);
+};
+
+const onEliminar = (data) => {
+    console.log('Eliminar:', data);
+};
 </script>
 
 <template>
@@ -165,19 +186,19 @@ const abrirConfiguracion = (data) => {
             </template>
         </Column>
         <Column field="validado" header="Validado" style="min-width: 5rem" sortable>
-            <template #body="{ data }">
-                <span>{{ data.validado ? 'Sí' : 'No' }}</span>
+            <template #body="slotProps">
+                <span>{{ slotProps.data.validado ? 'Sí' : 'No' }}</span>
             </template>
         </Column>
         <Column field="fecha_inversion" header="Fecha de inversión" style="min-width: 11rem" sortable/>
-        <Column field="estado" header="Estado" style="min-width: 5rem" sortable/>
+        <Column field="estado_nombre" header="Estado" style="min-width: 5rem" sortable/>
         <Column :exportable="false" style="min-width: 10rem">
-            <template #body="data">
-                <Button icon="pi pi-cog" outlined rounded class="mr-2" severity="info" @click="abrirConfiguracion(data)" />
-                <Button icon="pi pi-pencil" outlined rounded class="mr-2" @click="onEditar(data)" />
-                <Button icon="pi pi-trash" outlined rounded severity="danger" @click="onEliminar(data)" />
+            <template #body="slotProps">
+                <Button icon="pi pi-cog" outlined rounded class="mr-2" severity="info" @click="abrirConfiguracion(slotProps.data)" />
+                <Button icon="pi pi-pencil" outlined rounded class="mr-2" @click="onEditar(slotProps.data)" />
+                <Button icon="pi pi-trash" outlined rounded severity="danger" @click="onEliminar(slotProps.data)" />
             </template>
         </Column>
     </DataTable>
-    <ConfigPropiedades v-model:visible="showModal" :idPropiedad="selectedId" />
+    <ConfigPropiedades v-model:visible="showModal" :idPropiedad="selectedId" @configuracion-guardada="loadData" />
 </template>

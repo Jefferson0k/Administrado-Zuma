@@ -17,7 +17,7 @@ class InvestmentControllers extends Controller {
         if (!$user) {
             return response()->json(['message' => 'Usuario no autenticado.'], 401);
         }
-        $montoInvertir = $request->monto_invertido;        
+        $montoInvertir = $request->monto_invertido;
         if ($user->monto < $montoInvertir) {
             return response()->json([
                 'message' => 'Fondos insuficientes para realizar la inversión.',

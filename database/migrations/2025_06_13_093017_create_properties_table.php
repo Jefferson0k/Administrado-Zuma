@@ -16,11 +16,11 @@ return new class extends Migration {
             $table->date('fecha_inversion')->nullable();
 
             $table->enum('estado', [
-                'no_subastada',   // Aún no se ha hecho nada
-                'programada',     // Ya tiene fecha y hora de subasta
-                'en_subasta',     // Subasta activa
-                'subastada',      // Subasta terminada con ganador
-                'desierta'        // Subasta terminada sin participantes
+                'no_subastada',
+                'programada',
+                'en_subasta',
+                'subastada',
+                'desierta'
             ])->default('no_subastada');
 
             $table->timestamps();

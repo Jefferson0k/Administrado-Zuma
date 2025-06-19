@@ -2,31 +2,16 @@
 
 namespace App\Http\Resources\Subastas\Property;
 
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class PropertyResource extends JsonResource{
+class PropertyUpdateResource extends JsonResource{
     public function toArray(Request $request): array{
         return [
             'id' => $this->id,
             'nombre' => $this->nombre,
             'distrito' => $this->distrito,
-            'property_id' => $this->subasta->property_id ?? 'null',
             'descripcion' => $this->descripcion,
-            'validado' => $this->validado,
-            'fecha_inversion' => $this->fecha_inversion
-                ? Carbon::parse($this->fecha_inversion)->format('d-m-Y')
-                : '00-00-0000',
-            'estado' => $this->estado,
-            'estado_nombre' => match($this->estado) {
-                'no_subastada' => 'No subastada',
-                'programada'   => 'Subasta programada',
-                'en_subasta'   => 'En subasta',
-                'subastada'    => 'Subastada con éxito',
-                'desierta'     => 'Subasta desierta',
-                default        => 'Estado desconocido',
-            },
             'foto' => $this->getFotoUrl(),
         ];
     }

@@ -3,25 +3,127 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Email\UpdateCustomerEmailVerificationRequest;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
+use App\Models\Customer;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Auth\Events\Verified;
 
 class ProfileController extends Controller
 {
     /**
      * Show the user's profile settings page.
      */
+    public function profile(Request $request){
+        try {
+            $customer = Auth::guard('customer')->user();
+            return response()->json([
+                'success' => true,
+                'message' => null,
+                'data' => $customer,
+            ]);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'success' => false,
+                'message' => $th->getMessage(),
+                'data' => null,
+            ], 500);
+        }
+    }
+
     public function edit(Request $request): Response
     {
         return Inertia::render('settings/Profile', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => $request->session()->get('status'),
         ]);
+    }
+
+    public function resendEmailVerification(Request $request, string $id){
+        try {
+            $customer = Customer::find(htmlspecialchars($id));
+
+            if (!$customer) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cliente no encontrado.',
+                ], 404);
+            }
+
+            if ($customer->hasVerifiedEmail()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El correo ya está verificado.'
+                ], 307);
+            }
+
+            $customer->sendEmailVerificationNotification();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Se ha enviado un correo de verificación.',
+                'data' => $customer,
+            ], 200);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'success' => false,
+                'message' => $th->getMessage(),
+            ], 500);
+        }
+    }
+    public function emailVerification(UpdateCustomerEmailVerificationRequest $request, $id, $hash){
+        try {
+            $validatedData = $request->validated();
+
+            // Verifica que el usuario exista
+            $customer = Customer::find($id);
+            if (!$customer) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Usuario no encontrado.',
+                ], 404);
+            }
+
+            // Compara el hash de la URL con el generado desde el email
+            $expectedHash = sha1($customer->getEmailForVerification());
+
+            if (!hash_equals($expectedHash, $hash)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Enlace de verificación inválido.'
+                ], 400);
+            }
+
+            // Verifica si ya está confirmado el correo
+            if ($customer->hasVerifiedEmail()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Correo ya está verificado.'
+                ], 307);
+            }
+
+            // Marca como verificado
+            $customer->markEmailAsVerified();
+
+            // Dispara el evento
+            event(new Verified($customer));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Tu cuenta ha sido activada correctamente.',
+                'data' => $customer
+            ], 201);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'success' => false,
+                'message' => $th->getMessage(),
+            ], 500);
+        }
     }
 
     /**
