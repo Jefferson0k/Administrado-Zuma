@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('investments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('customer_id')->constrained()->onDelete('cascade');
             $table->foreignId('property_id')->constrained()->onDelete('cascade');
             $table->decimal('monto_invertido', 12, 2);
             $table->timestamp('fecha_inversion')->nullable();

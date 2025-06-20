@@ -20,7 +20,7 @@ class AuthServiceProvider extends ServiceProvider {
     ];
     
     public function boot(): void {
-        $this->registerPolicies();        
+        $this->registerPolicies();
         try {
             DB::connection()->getPdo();
             if (Schema::hasTable('permissions') && Schema::hasTable('roles')) {

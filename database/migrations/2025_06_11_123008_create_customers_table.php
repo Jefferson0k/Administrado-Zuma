@@ -23,6 +23,7 @@ return new class extends Migration
             $table->string('telephone');
             $table->string('document_front')->nullable();
             $table->string('document_back')->nullable();
+            $table->decimal('monto', 10, 2)->default(0)->comment('Monto disponible del usuario');
             $table->enum('status', ['not validated', 'validated'])->default('not validated');
             $table->timestamps();
         });
