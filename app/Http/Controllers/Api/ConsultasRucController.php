@@ -9,7 +9,7 @@ class ConsultasRucController extends Controller{
         if (empty($ruc)) {
             return response()->json(['error' => 'Debe proporcionar un RUC válido'], 400);
         }
-        $token = 'apis-token-15657.edTIEYMa2kp9wyYDzFLK9uHNS12JbD0R';
+        $token = 'apis-token-16070.UT9kwPt2uyN59f7R2f4QAFx5bKmyd2Yh';
         try {
             $response = Http::withToken($token)
                 ->get('https://api.apis.net.pe/v2/sunat/ruc/full', [
