@@ -50,7 +50,7 @@ class PropertyControllers extends Controller{
     public function update(Request $request, $id){
         try {
             $property = Property::findOrFail($id);
-            $nuevoEstado = 'programada';
+            $nuevoEstado = 'en_subasta';
             if (!$property->subasta) {
                 $diaSubasta = $request->input('dia_subasta');
                 $horaInicio = $request->input('hora_inicio');

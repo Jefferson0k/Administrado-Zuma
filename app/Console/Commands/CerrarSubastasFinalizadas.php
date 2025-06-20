@@ -5,7 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Auction;
 use App\Models\Investment;
 use App\Models\Bid;
-use App\Models\User;
+use App\Models\Customer;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Console\Scheduling\Schedule;
@@ -30,7 +30,6 @@ class CerrarSubastasFinalizadas extends Command
             ->get();
 
         foreach ($subastas as $subasta) {
-            // Usar transacción para asegurar consistencia
             DB::transaction(function () use ($subasta) {
                 $this->procesarSubasta($subasta);
             });
@@ -42,9 +41,7 @@ class CerrarSubastasFinalizadas extends Command
 
     private function procesarSubasta($subasta)
     {
-        // Obtener todas las inversiones de esta propiedad
         $inversiones = Investment::where('property_id', $subasta->property_id)->get();
-
         $totalInversiones = $inversiones->count();
         $this->info("Subasta {$subasta->id} (Propiedad {$subasta->property_id}) tiene {$totalInversiones} inversiones");
 
@@ -54,55 +51,47 @@ class CerrarSubastasFinalizadas extends Command
             return;
         }
 
-        // Encontrar la inversión ganadora (mayor monto)
         $inversionGanadora = $inversiones->sortByDesc('monto_invertido')->first();
-        $ganadorId = $inversionGanadora->user_id;
+        $ganadorId = $inversionGanadora->customer_id;
 
-        // Crear el bid ganador
         $bidGanador = Bid::create([
             'auction_id' => $subasta->id,
-            'user_id' => $ganadorId,
+            'customer_id' => $ganadorId,
             'monto' => $inversionGanadora->monto_invertido
         ]);
 
-        $this->info("Inversión ganadora: Monto {$inversionGanadora->monto_invertido}, Usuario {$ganadorId}");
+        $this->info("Inversión ganadora: Monto {$inversionGanadora->monto_invertido}, Cliente {$ganadorId}");
         $this->info("Registro creado en bids: ID {$bidGanador->id}");
 
-        // Devolver fondos SOLO a los usuarios que NO ganaron (perdedores)
-        $inversionesPerdedoras = $inversiones->where('user_id', '!=', $ganadorId);
-        
+        $inversionesPerdedoras = $inversiones->where('customer_id', '!=', $ganadorId);
+
         foreach ($inversionesPerdedoras as $inversion) {
-            $usuario = User::find($inversion->user_id);
-            
-            // Devolver el monto invertido al usuario perdedor
-            $usuario->increment('monto', $inversion->monto_invertido);
-            
-            $this->info("💰 DEVUELTO S/ {$inversion->monto_invertido} al usuario {$usuario->id} ({$usuario->name}) - PERDEDOR");
+            $cliente = Customer::find($inversion->customer_id);
+            $cliente->increment('monto', $inversion->monto_invertido);
+
+            $this->info("💰 DEVUELTO S/ {$inversion->monto_invertido} al cliente {$cliente->id} ({$cliente->name}) - PERDEDOR");
         }
 
-        // El ganador NO recibe devolución (ya tiene el dinero descontado desde que invirtió)
-        $this->info("🏆 GANADOR: Usuario {$ganadorId} - NO recibe devolución (dinero ya descontado: S/ {$inversionGanadora->monto_invertido})");
+        $this->info("🏆 GANADOR: Cliente {$ganadorId} - NO recibe devolución (dinero ya descontado: S/ {$inversionGanadora->monto_invertido})");
 
-        // Actualizar la subasta
         $subasta->update([
             'estado' => 'finalizada',
             'ganador_id' => $ganadorId
         ]);
 
         $this->info("Subasta {$subasta->id} cerrada exitosamente.");
-        $this->info("🏆 Ganador: Usuario {$ganadorId} (pierde S/ {$inversionGanadora->monto_invertido})");
-        $this->info("💰 Fondos devueltos a " . $inversionesPerdedoras->count() . " usuarios perdedores");
-        
-        // Opcional: Registrar estadísticas
+        $this->info("🏆 Ganador: Cliente {$ganadorId} (pierde S/ {$inversionGanadora->monto_invertido})");
+        $this->info("💰 Fondos devueltos a " . $inversionesPerdedoras->count() . " clientes perdedores");
+
         $this->registrarEstadisticas($subasta, $inversiones, $inversionGanadora);
     }
 
     private function registrarEstadisticas($subasta, $inversiones, $inversionGanadora)
     {
         $totalInvertido = $inversiones->sum('monto_invertido');
-        $totalDevuelto = $inversiones->where('user_id', '!=', $inversionGanadora->user_id)
+        $totalDevuelto = $inversiones->where('customer_id', '!=', $inversionGanadora->customer_id)
                                    ->sum('monto_invertido');
-        
+
         $this->info("=== ESTADÍSTICAS DE SUBASTA {$subasta->id} ===");
         $this->info("Total participantes: " . $inversiones->count());
         $this->info("Total invertido: S/ {$totalInvertido}");

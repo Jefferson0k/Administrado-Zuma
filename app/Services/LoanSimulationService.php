@@ -231,12 +231,7 @@ class LoanSimulationService
             ])
         ];
     }
-
-    /**
-     * Respuesta de error
-     */
-    private function errorResponse($message)
-    {
+    private function errorResponse($message){
         return [
             'success' => false,
             'message' => $message

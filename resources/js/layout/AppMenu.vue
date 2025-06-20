@@ -18,7 +18,7 @@ const model = computed(() => [
     label: 'Ambiente de pruebas',
         items: [
             {
-                label: 'Subastas online',
+                label: 'Simulacion',
                 icon: 'pi pi-fw pi-home',
                 to: '/online'
             }

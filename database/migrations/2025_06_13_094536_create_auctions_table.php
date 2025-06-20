@@ -20,7 +20,7 @@ return new class extends Migration
             $table->time('hora_fin');
             $table->dateTime('tiempo_finalizacion');
             $table->enum('estado', ['pendiente', 'activa', 'finalizada'])->default('pendiente');
-            $table->foreignId('ganador_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('ganador_id')->nullable()->constrained('customers')->nullOnDelete();
             $table->timestamps();
         });
 

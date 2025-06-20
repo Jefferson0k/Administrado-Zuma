@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('bids', function (Blueprint $table) {
             $table->id();
             $table->foreignId('auction_id')->constrained()->onDelete('cascade');
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('customer_id')->constrained()->onDelete('cascade');
             $table->decimal('monto', 12, 2);
             $table->timestamps();
         });
