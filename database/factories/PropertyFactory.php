@@ -15,7 +15,7 @@ class PropertyFactory extends Factory
             'nombre' => $this->faker->streetName,
             'distrito' => $this->faker->city,
             'descripcion' => $this->faker->paragraph,
-            'foto' => 'default.jpg', // puedes usar faker si quieres URL aleatoria
+            'foto' => 'imagen.jpeg',
             'validado' => $this->faker->boolean,
             'fecha_inversion' => $this->faker->optional()->date(),
             'estado' => 'no_subastada',
