@@ -12,7 +12,6 @@ class PropertyResource extends JsonResource{
             'id' => $this->id,
             'nombre' => $this->nombre,
             'distrito' => $this->distrito,
-            'property_id' => $this->subasta->property_id ?? 'null',
             'descripcion' => $this->descripcion,
             'validado' => $this->validado,
             'fecha_inversion' => $this->fecha_inversion
