@@ -110,9 +110,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/{id}', [PropertyControllers::class, 'show'])->name('property.show');
         Route::put('/{id}/estado', [PropertyControllers::class, 'update'])->name('property.update');
     });
-    Route::post('/calculate-investment', [InvestmentControllers::class, 'calculate']);
-
-    #Seccion de apis x mientas 
+    
+    #Seccion de apis x mientas
     Route::prefix('api')->group(function () {
         #Route::post('/bids', [BidControllers::class, 'index'])->name(name: 'bids.index');
     });

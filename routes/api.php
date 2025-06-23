@@ -41,12 +41,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::get('/subastadas', [PropertyControllers::class, 'subastadas'])->name('property.subastadas');
 
-    Route::prefix('loan-simulation')->group(function () {
-        Route::post('/simulate', [LoanSimulationController::class, 'simulate']);
-        Route::get('/options', [LoanSimulationController::class, 'getOptions']);
-        Route::get('/amount-ranges/{corporate_entity_id}', [LoanSimulationController::class, 'getAmountRanges']);
-        Route::get('/term-plans', [LoanSimulationController::class, 'getTermPlans']);
-    });
 
     Route::prefix('online')->group(function () {
         Route::get('/inversiones/{property_id}', [InvestmentControllers::class, 'index']);
@@ -54,3 +48,5 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/investments', [InvestmentControllers::class, 'store'])->name('bids.index');
     Route::get('/inversiones/usuario', [InvestmentControllers::class, 'indexUser']);
 });
+
+Route::post('/calculate', [InvestmentControllers::class, 'simulateByAmount']);
