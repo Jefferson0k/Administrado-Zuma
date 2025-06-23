@@ -28,12 +28,6 @@
             <Panel :header="`${coop.orden} - ${coop.cooperativa}`" toggleable :collapsed="true">
                 <!-- Iteramos por cada tipo de tasa de la cooperativa -->
                 <div v-for="(tipoTasa, tipoIndex) in coop.tipos_tasa" :key="tipoIndex" class="mb-6">
-                    <!-- Título del tipo de tasa -->
-                    <div class="mb-3">
-                        <h5 class="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
-                            {{ tipoTasa.tipo_tasa }}
-                        </h5>
-                    </div>
                     
                     <!-- Tabla para este tipo de tasa -->
                     <DataTable :value="tipoTasa.tasas" v-model:selection="selecciones[`${index}_${tipoIndex}`]" 
