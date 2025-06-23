@@ -18,6 +18,9 @@ class DatabaseSeeder extends Seeder
             CoopacSanCristobalSeeder::class,
             PaymentFrequencySeeder::class,
             CustomerSeeder::class,
+            CoopacSanMiguelSeeder::class,
+            CoopacInclusivaSeeder::class,
+            CoopacLosAndesSeeder::class,
             #CoopacInclusivaSeeder::class,
             #CoopacLosAndesSeeder::class,
         ]);
