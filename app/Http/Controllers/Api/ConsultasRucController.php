@@ -1,19 +1,21 @@
 <?php
 
 namespace App\Http\Controllers\Api;
+
 use Illuminate\Support\Facades\Http;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
+
 class ConsultasRucController extends Controller{
-    public function consultar($ruc = null): JsonResponse{
-        if (empty($ruc)) {
-            return response()->json(['error' => 'Debe proporcionar un RUC válido'], 400);
+    public function consultar(string $ruc = null): JsonResponse{
+        if (empty($ruc) || !preg_match('/^\d{11}$/', $ruc)) {
+            return response()->json(['error' => 'Debe proporcionar un RUC válido de 11 dígitos'], 400);
         }
-        $token = 'apis-token-16070.UT9kwPt2uyN59f7R2f4QAFx5bKmyd2Yh';
+        $token = env('CONSULTA_RUC_API_TOKEN');
         try {
             $response = Http::withToken($token)
                 ->get('https://api.apis.net.pe/v2/sunat/ruc/full', [
-                    'numero' => $ruc
+                    'numero' => $ruc,
                 ]);
             if ($response->successful()) {
                 return response()->json($response->json());
@@ -24,12 +26,12 @@ class ConsultasRucController extends Controller{
             return response()->json([
                 'error' => 'Error en la consulta al servicio externo',
                 'status' => $response->status(),
-                'body' => $response->body()
+                'body' => $response->body(),
             ], $response->status());
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Error al consultar el RUC',
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ], 500);
         }
     }
