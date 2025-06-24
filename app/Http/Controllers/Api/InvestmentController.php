@@ -43,37 +43,38 @@ class InvestmentController extends Controller
     /**
      * Generar cronograma para una tasa específica
      */
-    public function generateSchedule(Request $request): JsonResponse
-    {
-        $request->validate([
-            'rate_id' => 'required|integer|exists:fixed_term_rates,id',
-            'amount' => 'required|numeric|min:1',
-            'payment_frequency_id' => 'required|integer|exists:payment_frequencies,id',
-            'start_date' => 'nullable|date',
-            'tax_rate' => 'nullable|numeric|min:0|max:1'
+    public function generateSchedule(Request $request): JsonResponse 
+{
+    $request->validate([
+        'rate_id' => 'required|integer|exists:fixed_term_rates,id',
+        'amount' => 'required|numeric|min:1',
+        'payment_frequency_id' => 'required|integer|exists:payment_frequencies,id',
+        'generation_date' => 'nullable|date', // Fecha de generación del cronograma
+        'start_date' => 'nullable|date',      // Fecha real de inicio (firma)
+        'tax_rate' => 'nullable|numeric|min:0|max:1'
+    ]);
+
+    try {
+        $schedule = $this->simulatorService->generatePaymentSchedule(
+            $request->rate_id,
+            $request->amount,
+            $request->payment_frequency_id,
+            $request->generation_date,
+            $request->start_date,
+            $request->tax_rate ?? 0.05
+        );
+                     
+        return response()->json([
+            'success' => true,
+            'data' => $schedule
         ]);
-
-        try {
-            $schedule = $this->simulatorService->generatePaymentSchedule(
-                $request->rate_id,
-                $request->amount,
-                $request->payment_frequency_id,
-                $request->start_date,
-                $request->tax_rate ?? 0.05
-            );
-            
-            return response()->json([
-                'success' => true,
-                'data' => $schedule
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 400);
-        }
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 400);
     }
-
+}
     /**
      * Obtener frecuencias de pago disponibles
      */
