@@ -13,7 +13,7 @@ class FixedTermRate extends Model{
         'term_plan_id',
         'rate_type_id',
         'valor',
-        'estado',   
+        'estado',
     ];
     public function corporateEntity(){
         return $this->belongsTo(CorporateEntity::class);

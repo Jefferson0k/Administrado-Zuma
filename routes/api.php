@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\InvestmentController;
+use App\Http\Controllers\Api\SimuladorController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\CustomerSessionController;
 use App\Http\Controllers\Auth\RegisteredCustomerController;
@@ -50,3 +52,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
 });
 
 Route::post('/calculate', [InvestmentControllers::class, 'simulateByAmount']);
+
+Route::prefix('investments')->group(function () {
+    Route::post('/simulate-by-amount', [InvestmentController::class, 'simulateByAmount']);
+    Route::post('/generate-schedule', [InvestmentController::class, 'generateSchedule']);
+    Route::post('/complete-simulation', [InvestmentController::class, 'completeSimulation']);
+    Route::post('/compare-rates', [InvestmentController::class, 'compareRates']);
+    Route::post('/export-schedule', [InvestmentController::class, 'exportSchedule']);
+    Route::get('/payment-frequencies', [InvestmentController::class, 'getPaymentFrequencies']);
+});

@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\FixedTermRate;
+use App\Models\PaymentFrequency;
+use Carbon\Carbon;
 
 class InvestmentSimulatorService
 {
@@ -40,7 +42,9 @@ class InvestmentSimulatorService
                 
                 $tasas = $ratesPorTipo->map(function ($rate) use ($amount) {
                     $tasaRow = [
-                        'plazo_dias' => $rate->termPlan->dias_maximos
+                        'id' => $rate->id,
+                        'plazo_dias' => $rate->termPlan->dias_maximos,
+                        'rate_model' => $rate // Guardamos el modelo completo para el cronograma
                     ];
 
                     if ($rate->valor_trea !== null && $rate->valor_trem !== null) {
@@ -81,13 +85,13 @@ class InvestmentSimulatorService
                 $tasasPorTipo[] = [
                     'tipo_tasa' => $tipoTasa->nombre,
                     'tipo_columnas' => $this->detectarColumnas($tasas->first()),
-                    'tasas' => $tasas->map(fn($tasa) => collect($tasa)->except('orden_tasa'))
+                    'tasas' => $tasas->map(fn($tasa) => collect($tasa)->except(['orden_tasa', 'rate_model']))
                 ];
             }
 
             $resultado[] = [
                 'cooperativa' => $cooperativa->nombre,
-                'tipos_tasa' => $tasasPorTipo, // Array de tipos de tasa
+                'tipos_tasa' => $tasasPorTipo,
                 'mejor_tasa' => $mejorTasaGeneral
             ];
         }
@@ -102,6 +106,263 @@ class InvestmentSimulatorService
         }
 
         return $resultado;
+    }
+
+    /**
+     * Generar cronograma de pagos para una tasa específica
+     */
+    public function generatePaymentSchedule(
+        int $rateId, 
+        float $amount, 
+        int $paymentFrequencyId, 
+        string $startDate = null,
+        float $taxRate = 0.05 // 5% impuesto 2da categoría por defecto
+    ): array {
+        
+        $rate = FixedTermRate::with(['termPlan', 'corporateEntity', 'rateType'])
+            ->findOrFail($rateId);
+            
+        $paymentFrequency = PaymentFrequency::findOrFail($paymentFrequencyId);
+        
+        $startDate = $startDate ? Carbon::parse($startDate) : Carbon::now();
+        $plazoTotal = $rate->termPlan->dias_maximos;
+        
+        // Determinar la TEA a usar
+        $tea = $this->getTEAFromRate($rate);
+        
+        if (!$tea) {
+            throw new \Exception('No se pudo determinar la TEA para esta tasa');
+        }
+        
+        // Generar cronograma
+        $cronograma = $this->buildSchedule(
+            $amount, 
+            $tea / 100, // Convertir a decimal
+            $plazoTotal, 
+            $paymentFrequency->dias, 
+            $startDate, 
+            $taxRate
+        );
+        
+        // Calcular resumen
+        $resumen = $this->calculateSummary($cronograma, $amount, $tea / 100);
+        
+        return [
+            'cooperativa' => $rate->corporateEntity->nombre,
+            'tipo_tasa' => $rate->rateType->nombre,
+            'tea_aplicada' => $tea,
+            'monto_invertido' => $amount,
+            'plazo_dias' => $plazoTotal,
+            'frecuencia_pago' => $paymentFrequency->nombre,
+            'impuesto_tasa' => $taxRate * 100,
+            'fecha_inicio' => $startDate->format('Y-m-d'),
+            'resumen' => $resumen,
+            'cronograma' => $cronograma
+        ];
+    }
+
+    /**
+     * Extraer TEA del modelo de tasa
+     */
+    private function getTEAFromRate(FixedTermRate $rate): ?float
+    {
+        if ($rate->valor !== null) {
+            return $rate->valor; // TEA directa
+        }
+        
+        if ($rate->valor_trea !== null) {
+            return $rate->valor_trea; // TREA
+        }
+        
+        if ($rate->valor_tem !== null) {
+            // Convertir TEM a TEA: TEA = (1 + TEM)^12 - 1
+            return (pow(1 + ($rate->valor_tem / 100), 12) - 1) * 100;
+        }
+        
+        if ($rate->valor_trem !== null) {
+            // Si solo hay TREM, usamos esa (aunque no es lo ideal)
+            return $rate->valor_trem;
+        }
+        
+        return null;
+    }
+
+    /**
+     * Construir el cronograma de pagos
+     */
+    private function buildSchedule(
+        float $capital, 
+        float $tea, 
+        int $plazoTotal, 
+        int $frecuenciaDias, 
+        Carbon $fechaInicio, 
+        float $impuestoTasa
+    ): array {
+        
+        $cronograma = [];
+        $saldoCapital = $capital;
+        $diasAcumulados = 0;
+        $mes = 0;
+        
+        // Fila inicial
+        $cronograma[] = [
+            'mes' => $mes,
+            'fecha_cronograma' => $fechaInicio->format('d/m/Y'),
+            'fecha_pago' => null,
+            'dias_periodo' => null,
+            'monto_base' => $capital,
+            'interes_bruto' => 0,
+            'impuesto_2da' => 0,
+            'interes_neto' => 0,
+            'devolucion_capital' => 0,
+            'saldo_capital' => $capital,
+            'total_a_depositar' => 0,
+            'es_pago' => false,
+            'es_final' => false
+        ];
+        
+        while ($diasAcumulados < $plazoTotal) {
+            $mes++;
+            $diasPeriodo = min($frecuenciaDias, $plazoTotal - $diasAcumulados);
+            $diasAcumulados += $diasPeriodo;
+            
+            $fechaCronograma = $fechaInicio->copy()->addDays($diasAcumulados);
+            $fechaPago = $fechaCronograma->copy();
+            
+            $esPeriodoPago = ($diasAcumulados % $frecuenciaDias === 0) || ($diasAcumulados >= $plazoTotal);
+            $esUltimoPago = $diasAcumulados >= $plazoTotal;
+            
+            if ($esPeriodoPago) {
+                // Calcular tasa para el período
+                $tasaPeriodo = pow(1 + $tea, $diasPeriodo / 360) - 1;
+                $interesBruto = $saldoCapital * $tasaPeriodo;
+                $impuesto2da = $interesBruto * $impuestoTasa;
+                $interesNeto = $interesBruto - $impuesto2da;
+                
+                $devolucionCapital = $esUltimoPago ? $capital : 0;
+                $totalDepositar = $interesNeto + $devolucionCapital;
+                
+                $cronograma[] = [
+                    'mes' => $mes,
+                    'fecha_cronograma' => $fechaCronograma->format('d/m/Y'),
+                    'fecha_pago' => $fechaPago->format('d/m/Y'),
+                    'dias_periodo' => $diasPeriodo,
+                    'monto_base' => $saldoCapital,
+                    'interes_bruto' => $interesBruto,
+                    'impuesto_2da' => $impuesto2da,
+                    'interes_neto' => $interesNeto,
+                    'devolucion_capital' => $devolucionCapital,
+                    'saldo_capital' => $esUltimoPago ? 0 : $capital,
+                    'total_a_depositar' => $totalDepositar,
+                    'es_pago' => true,
+                    'es_final' => $esUltimoPago
+                ];
+                
+                if (!$esUltimoPago) {
+                    // Reiniciar el saldo para el siguiente período
+                    $saldoCapital = $capital;
+                }
+            } else {
+                // Capitalización sin pago
+                $tasaPeriodo = pow(1 + $tea, $diasPeriodo / 360) - 1;
+                $saldoCapital = $saldoCapital * (1 + $tasaPeriodo);
+                
+                $cronograma[] = [
+                    'mes' => $mes,
+                    'fecha_cronograma' => $fechaCronograma->format('d/m/Y'),
+                    'fecha_pago' => $fechaPago->format('d/m/Y'),
+                    'dias_periodo' => null,
+                    'monto_base' => $saldoCapital,
+                    'interes_bruto' => 0,
+                    'impuesto_2da' => 0,
+                    'interes_neto' => 0,
+                    'devolucion_capital' => 0,
+                    'saldo_capital' => $saldoCapital,
+                    'total_a_depositar' => 0,
+                    'es_pago' => false,
+                    'es_final' => false
+                ];
+            }
+        }
+        
+        return $cronograma;
+    }
+
+    /**
+     * Calcular resumen financiero
+     */
+    private function calculateSummary(array $cronograma, float $capitalInicial, float $tea): array
+    {
+        $totalInteresBruto = 0;
+        $totalImpuesto = 0;
+        $totalInteresNeto = 0;
+        
+        foreach ($cronograma as $fila) {
+            if ($fila['es_pago']) {
+                $totalInteresBruto += $fila['interes_bruto'];
+                $totalImpuesto += $fila['impuesto_2da'];
+                $totalInteresNeto += $fila['interes_neto'];
+            }
+        }
+        
+        // Calcular tasas derivadas
+        $tem = pow(1 + $tea, 1/12) - 1;
+        $tet = pow(1 + $tea, 1/4) - 1;
+        $rentabilidadNeta = ($totalInteresNeto / $capitalInicial) * 100;
+        
+        return [
+            'tem' => $tem * 100,
+            'tet' => $tet * 100,
+            'total_interes_bruto' => $totalInteresBruto,
+            'total_impuesto' => $totalImpuesto,
+            'total_interes_neto' => $totalInteresNeto,
+            'total_a_recibir' => $capitalInicial + $totalInteresNeto,
+            'rentabilidad_neta' => $rentabilidadNeta
+        ];
+    }
+
+    /**
+     * Obtener frecuencias de pago disponibles
+     */
+    public function getPaymentFrequencies(): array
+    {
+        return PaymentFrequency::orderBy('dias')->get(['id', 'nombre', 'dias'])->toArray();
+    }
+
+    /**
+     * Simulación completa con múltiples frecuencias
+     */
+    public function completeSimulation(int $rateId, float $amount): array
+    {
+        $frequencies = PaymentFrequency::all();
+        $simulations = [];
+        
+        foreach ($frequencies as $frequency) {
+            try {
+                $simulation = $this->generatePaymentSchedule(
+                    $rateId, 
+                    $amount, 
+                    $frequency->id
+                );
+                
+                $simulations[] = [
+                    'frecuencia' => $frequency->nombre,
+                    'frecuencia_dias' => $frequency->dias,
+                    'rentabilidad_neta' => $simulation['resumen']['rentabilidad_neta'],
+                    'total_interes_neto' => $simulation['resumen']['total_interes_neto'],
+                    'total_a_recibir' => $simulation['resumen']['total_a_recibir'],
+                    'simulation_data' => $simulation
+                ];
+            } catch (\Exception $e) {
+                // Si hay error con alguna frecuencia, continuamos con las demás
+                continue;
+            }
+        }
+        
+        // Ordenar por mejor rentabilidad
+        usort($simulations, fn($a, $b) => $b['rentabilidad_neta'] <=> $a['rentabilidad_neta']);
+        
+        return $simulations;
     }
 
     private function detectarColumnas($tasa)
