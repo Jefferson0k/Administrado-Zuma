@@ -7,6 +7,7 @@ use App\Http\Controllers\Panel\CalculadoraController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\CustomerSessionController;
 use App\Http\Controllers\Auth\RegisteredCustomerController;
+use App\Http\Controllers\Panel\GeneracionCronogramaController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Panel\PropertyControllers;
 use App\Http\Controllers\Panel\InvestmentControllers;
@@ -66,3 +67,4 @@ Route::prefix('investments')->group(function () {
 
 Route::get('/Tipo-Cambio-Sbs', [TipoCambioSbs::class, 'TipoCambioSbs']);
 Route::post('/calculadora', [CalculadoraController::class, 'calcular']);
+Route::post('/cronograma-pagos', [GeneracionCronogramaController::class, 'generatePaymentSchedule']);
