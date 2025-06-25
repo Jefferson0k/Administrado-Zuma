@@ -18,6 +18,9 @@ use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class PropertyControllers extends Controller{
+    public function store(){
+        
+    }
     public function index(Request $request){
         try {
             $perPage = $request->input('per_page', 10);

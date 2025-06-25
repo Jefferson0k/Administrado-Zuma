@@ -9,7 +9,7 @@ class Property extends Model{
     protected $table = 'properties';
     protected $fillable = [
         'nombre', 'distrito', 'descripcion', 'foto',
-        'validado', 'fecha_inversion', 'estado',
+        'validado', 'fecha_inversion', 'estado', 'valor',
     ];
     public function inversiones() {
         return $this->hasMany(Investment::class);

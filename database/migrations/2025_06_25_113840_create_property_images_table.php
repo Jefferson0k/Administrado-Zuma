@@ -6,16 +6,14 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
     public function up(): void {
-        Schema::create('term_plans', function (Blueprint $table) {
+        Schema::create('property_images', function (Blueprint $table) {
             $table->id();
-            $table->string('nombre');
-            $table->integer('dias_minimos')->default(0);
-            $table->integer('dias_maximos')->nullable();
+            $table->foreignId('property_id')->constrained()->onDelete('cascade');
+            $table->string('imagen');
             $table->timestamps();
         });
     }
-
     public function down(): void {
-        Schema::dropIfExists('term_plans');
+        Schema::dropIfExists('property_images');
     }
 };

@@ -21,8 +21,13 @@ const model = computed(() => [
                 label: 'Simulacion',
                 icon: 'pi pi-fw pi-home',
                 to: '/online'
+            },
+            {
+                label: 'Calculadora',
+                icon: 'pi pi-fw pi-home',
+                to: '/Ambiente-Pruebas'
             }
-        ]
+        ],
     },
     {
         label: 'Productos',

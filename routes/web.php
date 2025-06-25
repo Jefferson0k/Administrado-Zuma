@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\RolesController;
 use App\Http\Controllers\Api\UsuariosController;
 use App\Http\Controllers\Panel\BidControllers;
+use App\Http\Controllers\Panel\CalculadoraController;
 use App\Http\Controllers\Panel\InvestmentControllers;
 use App\Http\Controllers\Panel\PropertyControllers;
 use App\Http\Controllers\Web\SubastaHipotecas\CuentasBancariasWebControler;
@@ -47,6 +48,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/usuario', [UsuarioWebController::class,'index'])->name('index.view');
     Route::get('/roles', [UsuarioWebController::class, 'roles'])->name('roles.view');
     Route::get('/online', [SubastasOnlineWebController::class, 'views'])->name('online.view');
+    Route::get('/Ambiente-Pruebas', [SubastasOnlineWebController::class, 'viewsTC']);
 
     #RUTAS DE API
     Route::prefix('api')->group(function () {
@@ -114,6 +116,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     #Seccion de apis x mientas
     Route::prefix('api')->group(function () {
         #Route::post('/bids', [BidControllers::class, 'index'])->name(name: 'bids.index');
+    });
+
+    #ESTA ES UNA CALCULADORA SOLO SIMULACION NO SUMA NI RESTA
+    Route::prefix('Calculadora')->group(function () {
+        Route::get('/', [CalculadoraController::class,'calcular']);
     });
 }); 
 

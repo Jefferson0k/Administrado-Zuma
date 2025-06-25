@@ -10,7 +10,7 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('corporate_entity_id')->constrained()->onDelete('cascade');
             $table->decimal('desde', 12, 2)->default(0);
-            $table->decimal('hasta', 12, 2)->nullable(); // NULL = sin límite superior
+            $table->decimal('hasta', 12, 2)->nullable();
             $table->enum('moneda', ['PEN', 'USD'])->default('PEN');
             $table->timestamps();
         });
