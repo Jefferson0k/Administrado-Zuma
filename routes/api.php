@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\InvestmentController;
 use App\Http\Controllers\Api\SimuladorController;
+use App\Http\Controllers\Api\TipoCambioSbs;
+use App\Http\Controllers\Panel\CalculadoraController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\CustomerSessionController;
 use App\Http\Controllers\Auth\RegisteredCustomerController;
@@ -61,3 +63,6 @@ Route::prefix('investments')->group(function () {
     Route::post('/export-schedule', [InvestmentController::class, 'exportSchedule']);
     Route::get('/payment-frequencies', [InvestmentController::class, 'getPaymentFrequencies']);
 });
+
+Route::get('/Tipo-Cambio-Sbs', [TipoCambioSbs::class, 'TipoCambioSbs']);
+Route::post('/calculadora', [CalculadoraController::class, 'calcular']);

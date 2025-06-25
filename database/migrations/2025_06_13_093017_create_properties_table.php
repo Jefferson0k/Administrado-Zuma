@@ -11,10 +11,9 @@ return new class extends Migration {
             $table->string('nombre');
             $table->string('distrito');
             $table->text('descripcion')->nullable();
-            $table->string('foto')->nullable();
             $table->boolean('validado')->default(false);
             $table->date('fecha_inversion')->nullable();
-
+            $table->decimal('valor', 15, 2)->nullable();
             $table->enum('estado', [
                 'no_subastada',
                 'programada',
@@ -26,7 +25,6 @@ return new class extends Migration {
             $table->timestamps();
         });
     }
-
     public function down(): void {
         Schema::dropIfExists('properties');
     }

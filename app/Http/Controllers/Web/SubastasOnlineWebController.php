@@ -9,4 +9,8 @@ class SubastasOnlineWebController extends Controller{
         //Gate::authorize('viewAny', User::class);
         return Inertia::render('panel/Onlien/indexCuentasBancarias');
     }
+    public function viewsTC(): Response{
+        //Gate::authorize('viewAny', User::class);
+        return Inertia::render('panel/TC/index');
+    }
 }

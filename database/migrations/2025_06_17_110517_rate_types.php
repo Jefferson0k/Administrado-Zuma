@@ -8,7 +8,7 @@ return new class extends Migration {
     public function up(): void {
         Schema::create('rate_types', function (Blueprint $table) {
             $table->id();
-            $table->string('nombre'); // Ej: TREA, TREM Mensual, TREM Anual
+            $table->string('nombre');
             $table->string('descripcion')->nullable();
             $table->timestamps();
         });
