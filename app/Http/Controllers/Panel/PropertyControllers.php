@@ -62,6 +62,7 @@ class PropertyControllers extends Controller{
         }
         return new PropertyShowResource($property);
     }
+    
     public function update(PropertyUpdateRequest $request, $id){
         try {
             $property = Property::findOrFail($id);

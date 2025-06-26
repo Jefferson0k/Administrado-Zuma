@@ -24,8 +24,10 @@ class Property extends Model{
     public function term(){
         return $this->belongsTo(Deadlines::class);
     }
-
     public function investments(){
         return $this->hasMany(Investment::class);
+    }
+    public function plazo(){
+        return $this->belongsTo(Deadlines::class, 'deadlines_id');
     }
 }

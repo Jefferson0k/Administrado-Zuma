@@ -57,9 +57,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::get('/currencies', [CurrencyControllers::class, 'index']);
     Route::get('/deadlines', [DeadlinesControllers::class, 'index']);
-    Route::get('/property/{id}/show', [PropertyControllers::class, 'showCustumer']);
 });
 Route::post('/calculate', [InvestmentControllers::class, 'simulateByAmount']);
+    Route::get('/property/{id}/show', [PropertyControllers::class, 'showCustumer']);
 
 Route::prefix('investments')->group(function () {
     Route::post('/simulate-by-amount', [InvestmentController::class, 'simulateByAmount']);
