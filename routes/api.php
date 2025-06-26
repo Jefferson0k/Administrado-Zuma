@@ -62,12 +62,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 Route::post('/calculate', [InvestmentControllers::class, 'simulateByAmount']);
 
 Route::prefix('investments')->group(function () {
-    Route::post('/simulate-by-amount', [InvestmentController::class, 'simulateByAmount']);
-    Route::post('/generate-schedule', [InvestmentController::class, 'generateSchedule']);
-    Route::post('/complete-simulation', [InvestmentController::class, 'completeSimulation']);
-    Route::post('/compare-rates', [InvestmentController::class, 'compareRates']);
-    Route::post('/export-schedule', [InvestmentController::class, 'exportSchedule']);
-    Route::get('/payment-frequencies', [InvestmentController::class, 'getPaymentFrequencies']);
+    Route::post('/simulation/generate', [InvestmentController::class, 'generate']);
 });
 
 Route::get('/Tipo-Cambio-Sbs', [TipoCambioSbs::class, 'TipoCambioSbs']);
