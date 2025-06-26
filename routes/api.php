@@ -1,13 +1,14 @@
 <?php
 
+use App\Http\Controllers\Api\CreditSimulationController;
 use App\Http\Controllers\Api\InvestmentController;
-use App\Http\Controllers\Api\SimuladorController;
 use App\Http\Controllers\Api\TipoCambioSbs;
 use App\Http\Controllers\Panel\CalculadoraController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\CustomerSessionController;
 use App\Http\Controllers\Auth\RegisteredCustomerController;
-use App\Http\Controllers\Panel\GeneracionCronogramaController;
+use App\Http\Controllers\Panel\CurrencyControllers;
+use App\Http\Controllers\Panel\DeadlinesControllers;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Panel\PropertyControllers;
 use App\Http\Controllers\Panel\InvestmentControllers;
@@ -50,10 +51,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::prefix('online')->group(function () {
         Route::get('/inversiones/{property_id}', [InvestmentControllers::class, 'index']);
     });
+
     Route::post('/investments', [InvestmentControllers::class, 'store'])->name('bids.index');
     Route::get('/inversiones/usuario', [InvestmentControllers::class, 'indexUser']);
-});
 
+    Route::get('/currencies', [CurrencyControllers::class, 'index']);
+    Route::get('/deadlines', [DeadlinesControllers::class, 'index']);
+    Route::get('/property/{id}/show', [PropertyControllers::class, 'showCustumer']);
+});
 Route::post('/calculate', [InvestmentControllers::class, 'simulateByAmount']);
 
 Route::prefix('investments')->group(function () {
@@ -67,4 +72,4 @@ Route::prefix('investments')->group(function () {
 
 Route::get('/Tipo-Cambio-Sbs', [TipoCambioSbs::class, 'TipoCambioSbs']);
 Route::post('/calculadora', [CalculadoraController::class, 'calcular']);
-Route::post('/cronograma-pagos', [GeneracionCronogramaController::class, 'generatePaymentSchedule']);
+Route::post('simulation/generate', [CreditSimulationController::class, 'generateSimulation']);

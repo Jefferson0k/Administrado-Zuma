@@ -13,7 +13,11 @@ class PropertyResource extends JsonResource{
             'nombre' => $this->nombre,
             'distrito' => $this->distrito,
             'descripcion' => $this->descripcion,
+            'valor_estimado' => $this->valor_estimado,
+            'tea' => $this->tea,
             'validado' => $this->validado,
+            'Moneda' =>$this->currency->codigo,
+            'financiado' => 'S/N',
             'fecha_inversion' => $this->fecha_inversion
                 ? Carbon::parse($this->fecha_inversion)->format('d-m-Y')
                 : '00-00-0000',

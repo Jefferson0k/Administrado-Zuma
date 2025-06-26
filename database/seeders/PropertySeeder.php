@@ -4,29 +4,24 @@ namespace Database\Seeders;
 
 use App\Models\Property;
 use App\Models\Currency;
+use App\Models\Deadlines;
 use Illuminate\Database\Seeder;
 
 class PropertySeeder extends Seeder{
     public function run(): void{
-        $currency = Currency::firstOrCreate(
-            ['codigo' => 'USD'],
-            [
-                'nombre' => 'Dólar',
-                'simbolo' => '$'
-            ]
-        );
-        Property::create([
-            'nombre'           => 'Departamento Miraflores',
-            'distrito'         => 'Miraflores',
-            'descripcion'      => 'Departamento moderno con vista al mar',
-            'validado'         => true,
-            'fecha_inversion'  => now()->addMonths(2),
-            'valor_estimado'   => 150000,
-            'valor_subasta'    => null,
-            'currency_id'      => $currency->id,
-            'tea'              => 12.0000,
-            'tem'              => 0.9489,
-            'estado'           => 'no_subastada',
-        ]);
+        $currency = Currency::first();
+        $deadline = Deadlines::first();
+
+        if (!$currency || !$deadline) {
+            $this->command->warn('⚠️ No se encontraron monedas o plazos. Seeder abortado.');
+            return;
+        }
+
+        Property::factory()
+            ->count(20)
+            ->create([
+                'currency_id' => $currency->id,
+                'deadlines_id' => $deadline->id
+            ]);
     }
 }

@@ -9,7 +9,7 @@ class Property extends Model{
     protected $table = 'properties';
     protected $fillable = [
         'nombre', 'distrito', 'descripcion', 'validado', 'fecha_inversion',
-        'valor_estimado', 'valor_subasta', 'currency_id', 'deadlines_id ',
+        'valor_estimado', 'valor_subasta', 'currency_id', 'deadlines_id',
         'tea', 'tem', 'estado'
     ];
     public function inversiones() {

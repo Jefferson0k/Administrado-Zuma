@@ -10,8 +10,7 @@ class Deadlines extends Model{
     protected $table = 'deadlines';
     protected $fillable = [
         'nombre',
-        'codigo',
-        'simbolo',
+        'duracion_meses'
     ];
     public function properties(){
         return $this->hasMany(Property::class);
