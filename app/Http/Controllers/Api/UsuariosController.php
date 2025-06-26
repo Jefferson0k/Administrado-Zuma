@@ -114,5 +114,4 @@ class UsuariosController extends Controller{
             'message' => 'Usuario eliminado correctamente'
         ]);
     }
-
 }

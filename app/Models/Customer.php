@@ -15,17 +15,9 @@ class Customer extends Authenticatable implements MustVerifyEmail
     protected $table = 'customers';
 
     protected $fillable = [
-        'name',
-        'first_last_name',
-        'second_last_name',
-        'alias',
-        'document',
-        'email',
-        'password',
-        'telephone',
-        'document_front',
-        'document_back',
-        'status',
+        'name', 'first_last_name', 'second_last_name', 'alias',
+        'document', 'email', 'password', 'telephone',
+        'document_front', 'document_back', 'monto', 'status'
     ];
 
     protected $hidden = [

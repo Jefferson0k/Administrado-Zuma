@@ -16,6 +16,10 @@ class PropertyOnliene extends JsonResource{
             'foto' => $this->getFotoUrl(),
             'monto' => $this->subasta->monto_inicial,
             'finalizacion' => $this->subasta->tiempo_finalizacion,
+            'tea' => $this->tea,
+            'tem' => $this->tem,
+            'valor_subasta' => $this->valor_subasta,
+            'Moneda' =>$this->currency->codigo,
         ];
     }
     private function getFotoUrl(): string{

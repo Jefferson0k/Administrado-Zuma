@@ -3,6 +3,12 @@
         :style="{ width: '600px' }">
         <form @submit.prevent="submitForm" class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="col-span-1">
+                <label for="plazo" class="block font-bold mb-2">Plazo del crédito <span class="text-red-500">*</span></label>
+                <Select v-model="formData.deadlines_id" :options="plazos" optionLabel="nombre" optionValue="id"
+                    placeholder="Seleccione un plazo" class="w-full" />
+            </div>
+
+            <div class="col-span-1">
                 <label for="monto_inicial" class="block font-bold mb-2">Rango minimo para la subasta <span
                         class="text-red-500">*</span></label>
                 <InputNumber id="monto_inicial" v-model="formData.monto_inicial" mode="currency" currency="PEN" :min="0"
@@ -58,9 +64,9 @@ import axios from 'axios';
 import { useToast } from 'primevue/usetoast';
 import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
-import InputText from "primevue/inputtext";
 import InputNumber from "primevue/inputnumber";
 import Calendar from "primevue/calendar";
+import Select from "primevue/select";
 
 const props = defineProps({
     visible: Boolean,
@@ -73,6 +79,7 @@ const toast = useToast();
 const localVisible = ref(props.visible);
 const cargando = ref(false);
 const mensajeValidacion = ref('');
+const plazos = ref([]);
 
 const formData = ref({
     estado: 'programada',
@@ -88,6 +95,23 @@ watch(() => props.visible, async (val) => {
         await cargarDatosPropiedad();
     }
 });
+
+watch(() => props.visible, async (val) => {
+    localVisible.value = val;
+    if (val && props.idPropiedad) {
+        await cargarDatosPropiedad();
+        await cargarPlazos();
+    }
+});
+
+const cargarPlazos = async () => {
+    try {
+        const response = await axios.get('/deadlines');
+        plazos.value = response.data.data;
+    } catch (e) {
+        toast.add({ severity: 'warn', summary: 'Error', detail: 'No se pudieron cargar los plazos', life: 3000 });
+    }
+};
 
 const handleVisibilityChange = (val) => {
     localVisible.value = val;
@@ -156,9 +180,11 @@ const formularioValido = computed(() => {
         formData.value.dia_subasta &&
         formData.value.hora_inicio &&
         formData.value.hora_fin &&
+        formData.value.deadlines_id &&
         duracionCalculada.value !== '' &&
         !mensajeValidacion.value;
 });
+
 
 const cancelar = () => {
     handleVisibilityChange(false);
@@ -196,8 +222,10 @@ const submitForm = async () => {
             monto_inicial: formData.value.monto_inicial,
             dia_subasta: formatearFecha(formData.value.dia_subasta),
             hora_inicio: formatearHora(formData.value.hora_inicio),
-            hora_fin: formatearHora(formData.value.hora_fin)
+            hora_fin: formatearHora(formData.value.hora_fin),
+            deadlines_id: formData.value.deadlines_id
         };
+
 
         const response = await axios.put(`/property/${props.idPropiedad}/estado`, payload);
 

@@ -7,6 +7,8 @@ use App\Http\Controllers\Api\RolesController;
 use App\Http\Controllers\Api\UsuariosController;
 use App\Http\Controllers\Panel\BidControllers;
 use App\Http\Controllers\Panel\CalculadoraController;
+use App\Http\Controllers\Panel\CurrencyControllers;
+use App\Http\Controllers\Panel\DeadlinesControllers;
 use App\Http\Controllers\Panel\InvestmentControllers;
 use App\Http\Controllers\Panel\PropertyControllers;
 use App\Http\Controllers\Web\SubastaHipotecas\CuentasBancariasWebControler;
@@ -49,6 +51,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/roles', [UsuarioWebController::class, 'roles'])->name('roles.view');
     Route::get('/online', [SubastasOnlineWebController::class, 'views'])->name('online.view');
     Route::get('/Ambiente-Pruebas', [SubastasOnlineWebController::class, 'viewsTC']);
+    Route::get('/moneda', [CurrencyControllers::class, 'index']);
 
     #RUTAS DE API
     Route::prefix('api')->group(function () {
@@ -122,6 +125,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('Calculadora')->group(function () {
         Route::get('/', [CalculadoraController::class,'calcular']);
     });
+    Route::get('/deadlines', [DeadlinesControllers::class, 'index']);
 }); 
 
 require __DIR__.'/settings.php';
