@@ -8,11 +8,15 @@ return new class extends Migration {
     public function up(): void {
         Schema::create('properties', function (Blueprint $table) {
             $table->id();
+            
+            $table->string('departamento');
+            $table->string('provincia');
+            $table->string('distrito');
+            $table->string('direccion');
+
             $table->string('nombre');
             $table->string('distrito');
             $table->text('descripcion')->nullable();
-            $table->boolean('validado')->default(false);
-            $table->date('fecha_inversion')->nullable();
 
             $table->decimal('valor_estimado', 15, 2)->nullable();
             $table->decimal('valor_subasta', 15, 2)->nullable();
@@ -24,8 +28,8 @@ return new class extends Migration {
             $table->decimal('tem', 6, 4)->nullable();
 
             $table->enum('estado', [
-                'no_subastada', 'programada', 'en_subasta', 'subastada', 'desierta'
-            ])->default('no_subastada');
+                'en_subasta', 'subastada', 'programada', 'desactivada', 'activa'
+            ])->default('activa');
 
             $table->timestamps();
         });

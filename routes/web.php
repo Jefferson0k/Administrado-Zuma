@@ -112,6 +112,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     #PROPERTY => BACKEND (SOLO ADMINISTRADOR MAS NO CLIENTE)
     Route::prefix('property')->group(function () {
         Route::get('/', [PropertyControllers::class, 'index'])->name('property.index');
+        Route::post('/', [PropertyControllers::class, 'store'])->name('property.store');
         Route::get('/{id}', [PropertyControllers::class, 'show'])->name('property.show');
         Route::put('/{id}/estado', [PropertyControllers::class, 'update'])->name('property.update');
     });
@@ -127,6 +128,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
     Route::get('/deadlines', [DeadlinesControllers::class, 'index']);
 }); 
+    Route::get('/currencies', [CurrencyControllers::class, 'index']);
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
