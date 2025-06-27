@@ -8,7 +8,7 @@ class Property extends Model{
     use HasFactory;
     protected $table = 'properties';
     protected $fillable = [
-        'nombre', 'distrito', 'descripcion','valor_estimado', 'valor_subasta', 
+        'nombre', 'distrito', 'descripcion','valor_estimado', 'valor_subasta',
         'currency_id', 'deadlines_id', 'tea', 'tem', 'estado','departamento','provincia',
         'distrito','direccion',
     ];

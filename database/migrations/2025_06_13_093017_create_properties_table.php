@@ -9,13 +9,12 @@ return new class extends Migration {
         Schema::create('properties', function (Blueprint $table) {
             $table->id();
             
-            $table->string('departamento');
-            $table->string('provincia');
-            $table->string('distrito');
-            $table->string('direccion');
+            $table->string('departamento')->nullable();
+            $table->string('provincia')->nullable();
+            $table->string('distrito')->nullable();
+            $table->string('direccion')->nullable();
 
             $table->string('nombre');
-            $table->string('distrito');
             $table->text('descripcion')->nullable();
 
             $table->decimal('valor_estimado', 15, 2)->nullable();

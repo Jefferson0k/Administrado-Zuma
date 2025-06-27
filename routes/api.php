@@ -41,6 +41,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::prefix('property')->group(function () {
         Route::get('/', [PropertyControllers::class, 'index'])->name('property.index');
+        Route::get('/active/sow', [PropertyControllers::class, 'indexSubastaTotoal'])->name('property.indexSubastaTotoal');
         Route::get('/{id}', [PropertyControllers::class, 'show'])->name('property.show');
         Route::put('/{id}/estado', [PropertyControllers::class, 'update'])->name('property.update');
     });

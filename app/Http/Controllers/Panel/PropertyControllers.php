@@ -57,6 +57,28 @@ class PropertyControllers extends Controller{
             ], 500);
         }
     }
+    public function indexSubastaTotoal(Request $request){
+        try {
+            $perPage = $request->input('per_page', 10);
+            $search = $request->input('search', '');
+            $currencyId = $request->input('currency_id');
+
+            $query = app(Pipeline::class)
+                ->send(Property::where('estado', 'activa'))
+                ->through([
+                    new FilterBySearch($search),
+                    new FilterByCurrency($currencyId),
+                ])
+                ->thenReturn();
+
+            return PropertyResource::collection($query->paginate($perPage));
+        } catch (\Throwable $th) {
+            return response()->json([
+                'message' => 'Error al cargar los datos',
+                'error' => $th->getMessage(),
+            ], 500);
+        }
+    }
     public function show($id){
         $property = Property::with('subasta')->find($id);
         if (!$property) {
