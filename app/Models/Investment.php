@@ -18,9 +18,6 @@ class Investment extends Model{
     public function property(){
         return $this->belongsTo(Property::class);
     }
-    public function term(){
-        return $this->belongsTo(Term::class);
-    }
     public function paymentSchedules(){
         return $this->hasMany(PaymentSchedule::class);
     }

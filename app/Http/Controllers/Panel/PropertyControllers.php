@@ -3,13 +3,14 @@
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Property\EstadoRequest;
 use App\Http\Requests\Property\PropertyUpdateRequest;
+use App\Http\Requests\Property\StorePropertyRequest;
 use App\Http\Resources\Subastas\Property\PropertyOnliene;
 use App\Http\Resources\Subastas\Property\PropertyResource;
 use App\Http\Resources\Subastas\Property\PropertyShowResource;
 use App\Http\Resources\Subastas\Property\PropertyUpdateResource;
 use App\Models\Auction;
+use App\Models\Imagenes;
 use App\Models\Property;
 use App\Pipelines\FilterByCurrency;
 use App\Pipelines\FilterByEstado;
@@ -17,12 +18,20 @@ use Illuminate\Http\Request;
 use Illuminate\Pipeline\Pipeline;
 use App\Pipelines\FilterBySearch;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Log;
-use Inertia\Inertia;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 
 class PropertyControllers extends Controller{
-    public function store(){
-        
+    public function store(StorePropertyRequest $request){
+        $data = $request->validated();
+        $property = Property::create($data);
+        if ($request->hasFile('imagenes')) {
+            $this->handleImagenesUpload($request, $property->id);
+        }
+        return response()->json([
+            'message' => 'Propiedad registrada exitosamente.',
+            'property' => $property->load('images'),
+        ], 201);
     }
     public function index(Request $request){
         try {
@@ -146,6 +155,18 @@ class PropertyControllers extends Controller{
                 'message' => 'Error al cargar las propiedades en subasta',
                 'error' => $th->getMessage(),
             ], 500);
+        }
+    }
+    private function handleImagenesUpload(StorePropertyRequest $request, int $propertyId): void{
+        $directory = public_path("Propiedades/{$propertyId}");
+        File::ensureDirectoryExists($directory, 0755, true);
+        foreach ($request->file('imagenes') as $file) {
+            $filename = Str::uuid() . '.' . $file->getClientOriginalExtension();
+            $file->move($directory, $filename);
+            Imagenes::create([
+                'property_id' => $propertyId,
+                'imagen' => $filename,
+            ]);
         }
     }
 }

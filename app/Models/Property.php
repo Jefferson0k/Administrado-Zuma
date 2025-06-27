@@ -8,9 +8,9 @@ class Property extends Model{
     use HasFactory;
     protected $table = 'properties';
     protected $fillable = [
-        'nombre', 'distrito', 'descripcion', 'validado', 'fecha_inversion',
-        'valor_estimado', 'valor_subasta', 'currency_id', 'deadlines_id',
-        'tea', 'tem', 'estado'
+        'nombre', 'distrito', 'descripcion','valor_estimado', 'valor_subasta', 
+        'currency_id', 'deadlines_id', 'tea', 'tem', 'estado','departamento','provincia',
+        'distrito','direccion',
     ];
     public function inversiones() {
         return $this->hasMany(Investment::class);
@@ -24,8 +24,13 @@ class Property extends Model{
     public function term(){
         return $this->belongsTo(Deadlines::class);
     }
-
     public function investments(){
         return $this->hasMany(Investment::class);
+    }
+    public function plazo(){
+        return $this->belongsTo(Deadlines::class, 'deadlines_id');
+    }
+    public function images(){
+        return $this->hasMany(Imagenes::class);
     }
 }
