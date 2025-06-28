@@ -14,7 +14,6 @@ import Select from 'primevue/select';
 import Image from 'primevue/image';
 import ConfigPropiedades from './ConfigPropiedades.vue';
 
-// Declarar las props que este componente puede recibir
 const props = defineProps({
   refresh: {
     type: Number,
@@ -66,37 +65,6 @@ const loadData = async () => {
     }
 };
 
-const updatePropertyStatus = async (propertyId, isEnSubasta) => {
-    try {
-        const newStatus = isEnSubasta ? 'en_subasta' : 'no_subastada';
-        
-        await axios.put(`/property/${propertyId}/estado`, {
-            estado: newStatus
-        });
-
-        const propertyIndex = products.value.findIndex(p => p.id === propertyId);
-        if (propertyIndex !== -1) {
-            products.value[propertyIndex].estado = newStatus;
-        }
-
-        toast.add({ 
-            severity: 'success', 
-            summary: 'Éxito', 
-            detail: `Estado actualizado a: ${isEnSubasta ? 'En subasta' : 'No subastada'}`, 
-            life: 3000 
-        });
-    } catch (error) {
-        toast.add({ 
-            severity: 'error', 
-            summary: 'Error', 
-            detail: 'No se pudo actualizar el estado de la propiedad', 
-            life: 3000 
-        });
-        
-        loadData();
-    }
-};
-
 onMounted(loadData);
 
 // Observar cambios en la prop refresh para recargar datos
@@ -123,8 +91,17 @@ const isColumnSelected = (fieldName) => {
 };
 
 const optionalColumns = ref([
-    { field: 'descripcion', header: 'Descripcion' },
+    { field: 'descripcion', header: 'Descripción' },
     { field: 'foto', header: 'Imagen' },
+    { field: 'valor_estimado', header: 'Valor Estimado' },
+    { field: 'valor_subasta', header: 'Valor Subasta' },
+    { field: 'dias', header: 'Días' },
+    { field: 'tea', header: 'TEA' },
+    { field: 'tem', header: 'TEM' },
+    { field: 'moneda', header: 'Moneda' },
+    { field: 'direccion', header: 'Dirección' },
+    { field: 'departamento', header: 'Departamento' },
+    { field: 'provincia', header: 'Provincia' },
 ]);
 
 const abrirConfiguracion = (data) => {
@@ -139,6 +116,22 @@ const onEditar = (data) => {
 
 const onEliminar = (data) => {
     console.log('Eliminar:', data);
+};
+
+// Función para formatear valores monetarios
+const formatCurrency = (value, currency = 'USD') => {
+    if (!value || value === 0) return '-';
+    return new Intl.NumberFormat('es-PE', {
+        style: 'currency',
+        currency: currency,
+        minimumFractionDigits: 2
+    }).format(value);
+};
+
+// Función para formatear porcentajes
+const formatPercentage = (value) => {
+    if (!value) return '-';
+    return `${parseFloat(value).toFixed(4)}%`;
 };
 </script>
 
@@ -174,10 +167,13 @@ const onEliminar = (data) => {
 
         <Column selectionMode="multiple" style="width: 3rem" :exportable="false" />
         <Column field="nombre" header="Nombre" sortable style="min-width: 15rem" />
-        <Column field="distrito" header="Distrito" sortable style="min-width: 15rem" />
+        <Column field="distrito" header="Distrito" sortable style="min-width: 12rem" />
+        
+        <!-- Columnas opcionales -->
         <Column v-if="isColumnSelected('descripcion')" field="descripcion" header="Descripción" sortable
-            style="min-width: 41rem">
+            style="min-width: 25rem">
         </Column>
+        
         <Column v-if="isColumnSelected('foto')" header="Imagen">
             <template #body="slotProps">
                 <Image v-if="slotProps.data.foto" :src="slotProps.data.foto" class="rounded" alt="Foto" preview
@@ -185,13 +181,57 @@ const onEliminar = (data) => {
                 <span v-else>-</span>
             </template>
         </Column>
-        <Column field="validado" header="Validado" style="min-width: 5rem" sortable>
+
+        <Column v-if="isColumnSelected('valor_estimado')" field="valor_estimado" header="Valor Estimado" sortable style="min-width: 12rem">
             <template #body="slotProps">
-                <span>{{ slotProps.data.validado ? 'Sí' : 'No' }}</span>
+                <span>{{ formatCurrency(slotProps.data.valor_estimado, slotProps.data.Moneda) }}</span>
             </template>
         </Column>
-        <Column field="fecha_inversion" header="Fecha de inversión" style="min-width: 11rem" sortable/>
-        <Column field="estado_nombre" header="Estado" style="min-width: 5rem" sortable/>
+
+        <Column v-if="isColumnSelected('valor_subasta')" field="valor_subasta" header="Valor Subasta" sortable style="min-width: 12rem">
+            <template #body="slotProps">
+                <span>{{ formatCurrency(slotProps.data.valor_subasta, slotProps.data.Moneda) }}</span>
+            </template>
+        </Column>
+
+        <Column v-if="isColumnSelected('dias')" field="dias" header="Días" sortable style="min-width: 8rem">
+        </Column>
+
+        <Column v-if="isColumnSelected('tea')" field="tea" header="TEA" sortable style="min-width: 10rem">
+            <template #body="slotProps">
+                <span>{{ formatPercentage(slotProps.data.tea) }}</span>
+            </template>
+        </Column>
+
+        <Column v-if="isColumnSelected('tem')" field="tem" header="TEM" sortable style="min-width: 10rem">
+            <template #body="slotProps">
+                <span>{{ formatPercentage(slotProps.data.tem) }}</span>
+            </template>
+        </Column>
+
+        <Column v-if="isColumnSelected('moneda')" field="Moneda" header="Moneda" sortable style="min-width: 8rem">
+        </Column>
+
+        <Column v-if="isColumnSelected('direccion')" field="direccion" header="Dirección" sortable style="min-width: 20rem">
+            <template #body="slotProps">
+                <span>{{ slotProps.data.direccion || '-' }}</span>
+            </template>
+        </Column>
+
+        <Column v-if="isColumnSelected('departamento')" field="departamento" header="Departamento" sortable style="min-width: 12rem">
+            <template #body="slotProps">
+                <span>{{ slotProps.data.departamento || '-' }}</span>
+            </template>
+        </Column>
+
+        <Column v-if="isColumnSelected('provincia')" field="provincia" header="Provincia" sortable style="min-width: 12rem">
+            <template #body="slotProps">
+                <span>{{ slotProps.data.provincia || '-' }}</span>
+            </template>
+        </Column>
+
+        <Column field="estado_nombre" header="Estado" style="min-width: 8rem" sortable/>
+        
         <Column :exportable="false" style="min-width: 10rem">
             <template #body="slotProps">
                 <Button icon="pi pi-cog" outlined rounded class="mr-2" severity="info" @click="abrirConfiguracion(slotProps.data)" />
