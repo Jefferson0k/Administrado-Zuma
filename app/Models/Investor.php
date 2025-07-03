@@ -6,30 +6,30 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Laravel\Sanctum\HasApiTokens;
 
-class Customer extends Authenticatable implements MustVerifyEmail
-{
-    use HasApiTokens, HasFactory, Notifiable;
-
-    protected $table = 'customers';
-
+class Investor extends Authenticatable implements MustVerifyEmail{
+    use HasApiTokens, HasFactory, Notifiable, HasUlids;
+    protected $table = 'investors';
+    protected $keyType = 'string';
+    public $incrementing = false;
     protected $fillable = [
         'name', 'first_last_name', 'second_last_name', 'alias',
         'document', 'email', 'password', 'telephone',
         'document_front', 'document_back', 'monto', 'status'
     ];
-
     protected $hidden = [
         'password',
         'remember_token',
     ];
-
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
     public function investments(){
         return $this->hasMany(Investment::class);
     }
-
+    public function balances(){
+        return $this->hasMany(Balance::class);
+    }
 }

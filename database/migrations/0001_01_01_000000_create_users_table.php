@@ -14,17 +14,12 @@ return new class extends Migration
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('dni', 8)->unique();
-            $table->string('apellidos');
-            $table->date('nacimiento');
             $table->string('email')->unique();
-            $table->string('username')->unique();
-            $table->boolean('status')->default(true)->comment('0: Inactivo, 1: Activo');
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->decimal('monto', 10, 2)->default(0)->comment('Monto disponible del usuario');
-            $table->integer('restablecimiento');
             $table->rememberToken();
+            $table->foreignId('current_team_id')->nullable();
+            $table->string('profile_photo_path', 2048)->nullable();
             $table->timestamps();
         });
 

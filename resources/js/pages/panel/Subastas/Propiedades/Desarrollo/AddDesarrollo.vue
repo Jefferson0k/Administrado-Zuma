@@ -19,17 +19,42 @@
         <div class="flex gap-4">
           <div class="w-1/2">
             <label class="font-bold mb-1">Departamento <span class="text-red-500">*</span></label>
-            <InputText v-model="form.departamento" class="w-full" />
+            <Select
+              v-model="form.departamento"
+              :options="departamentos"
+              optionLabel="ubigeo_name"
+              dataKey="ubigeo_id"
+              placeholder="Seleccione departamento"
+              class="w-full"
+              @change="onDepartamentoChange"
+            />
           </div>
           <div class="w-1/2">
             <label class="font-bold mb-1">Provincia <span class="text-red-500">*</span></label>
-            <InputText v-model="form.provincia" class="w-full" />
+            <Select
+              v-model="form.provincia"
+              :options="provincias"
+              optionLabel="ubigeo_name"
+              dataKey="ubigeo_id"
+              placeholder="Seleccione provincia"
+              class="w-full"
+              :disabled="!form.departamento"
+              @change="onProvinciaChange"
+            />
           </div>
         </div>
 
         <div>
           <label class="font-bold mb-1">Distrito <span class="text-red-500">*</span></label>
-          <InputText v-model="form.distrito" class="w-full" />
+          <Select
+            v-model="form.distrito"
+            :options="distritos"
+            optionLabel="ubigeo_name"
+            dataKey="ubigeo_id"
+            placeholder="Seleccione distrito"
+            class="w-full"
+            :disabled="!form.provincia"
+          />
         </div>
 
         <div>
@@ -87,7 +112,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
@@ -102,15 +127,14 @@ import Select from 'primevue/select'
 
 const toast = useToast()
 const emit = defineEmits(['agregado'])
-
 const modalVisible = ref(false)
 const submitted = ref(false)
 
 const form = ref({
   nombre: '',
-  departamento: '',
-  provincia: '',
-  distrito: '',
+  departamento: null,
+  provincia: null,
+  distrito: null,
   direccion: '',
   descripcion: '',
   valor_estimado: null,
@@ -128,6 +152,31 @@ const estados = [
 const archivos = ref<File[]>([])
 const totalSize = ref(0)
 const totalSizePercent = ref(0)
+
+const departamentos = ref<any[]>([])
+const provincias = ref<any[]>([])
+const distritos = ref<any[]>([])
+
+onMounted(async () => {
+  try {
+    const { data } = await axios.get('https://novalink.oswa.workers.dev/api/v1/peru/ubigeo')
+    departamentos.value = data
+  } catch (err) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'Error al cargar departamentos', life: 3000 })
+  }
+})
+
+const onDepartamentoChange = () => {
+  form.value.provincia = null
+  form.value.distrito = null
+  provincias.value = form.value.departamento?.provinces || []
+  distritos.value = []
+}
+
+const onProvinciaChange = () => {
+  form.value.distrito = null
+  distritos.value = form.value.provincia?.districts || []
+}
 
 const onSelectedFiles = (event: any) => {
   archivos.value = [...event.files]
@@ -154,7 +203,8 @@ const saveProperty = () => {
 
   const formData = new FormData()
   for (const key in form.value) {
-    formData.append(key, form.value[key as keyof typeof form.value])
+    const val = form.value[key as keyof typeof form.value]
+    formData.append(key, typeof val === 'object' && val?.ubigeo_name ? val.ubigeo_name : val)
   }
 
   archivos.value.forEach((file) => {

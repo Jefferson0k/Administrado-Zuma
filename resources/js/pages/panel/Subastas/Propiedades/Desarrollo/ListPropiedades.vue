@@ -167,6 +167,18 @@ const formatPercentage = (value) => {
 
         <Column selectionMode="multiple" style="width: 3rem" :exportable="false" />
         <Column field="nombre" header="Nombre" sortable style="min-width: 15rem" />
+
+        <Column v-if="isColumnSelected('departamento')" field="departamento" header="Departamento" sortable style="min-width: 12rem">
+            <template #body="slotProps">
+                <span>{{ slotProps.data.departamento || '-' }}</span>
+            </template>
+        </Column>
+
+        <Column v-if="isColumnSelected('provincia')" field="provincia" header="Provincia" sortable style="min-width: 12rem">
+            <template #body="slotProps">
+                <span>{{ slotProps.data.provincia || '-' }}</span>
+            </template>
+        </Column>
         <Column field="distrito" header="Distrito" sortable style="min-width: 12rem" />
         
         <!-- Columnas opcionales -->
@@ -215,18 +227,6 @@ const formatPercentage = (value) => {
         <Column v-if="isColumnSelected('direccion')" field="direccion" header="Dirección" sortable style="min-width: 20rem">
             <template #body="slotProps">
                 <span>{{ slotProps.data.direccion || '-' }}</span>
-            </template>
-        </Column>
-
-        <Column v-if="isColumnSelected('departamento')" field="departamento" header="Departamento" sortable style="min-width: 12rem">
-            <template #body="slotProps">
-                <span>{{ slotProps.data.departamento || '-' }}</span>
-            </template>
-        </Column>
-
-        <Column v-if="isColumnSelected('provincia')" field="provincia" header="Provincia" sortable style="min-width: 12rem">
-            <template #body="slotProps">
-                <span>{{ slotProps.data.provincia || '-' }}</span>
             </template>
         </Column>
 

@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\ConsultasRucController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\RolesController;
 use App\Http\Controllers\Api\UsuariosController;
+use App\Http\Controllers\OCRController;
 use App\Http\Controllers\Panel\CalculadoraController;
 use App\Http\Controllers\Panel\CurrencyControllers;
 use App\Http\Controllers\Panel\DeadlinesControllers;
@@ -38,10 +39,7 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     #PARA QUE CUANDO SE CREA UN USUARIO O MODIFICA SU PASSWORD LO REDIRECCIONE PARA QUE PUEDA ACTUALIZAR
     Route::get('/dashboard', function () {
-        $user = Auth::user();
-        return Inertia::render('Dashboard', [
-            'mustReset' => $user->restablecimiento == 0,
-        ]);
+        return Inertia::render('Dashboard');
     })->name('dashboard');
 
     #VISTAS DEL FRONTEND
@@ -126,7 +124,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
     Route::get('/deadlines', [DeadlinesControllers::class, 'index']);
 }); 
-    Route::get('/currencies', [CurrencyControllers::class, 'index']);
-
+Route::get('/currencies', [CurrencyControllers::class, 'index']);
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

@@ -35,12 +35,12 @@ class PropertyResource extends JsonResource{
     }
     private function getFotoUrl(): string{
         if (empty($this->foto)) {
-            return asset('Propiedades/Casas/no-image.png');
+            return asset('Propiedades/no-image.png');
         }
-        $ruta = public_path("Propiedades/Casas/{$this->foto}");
+        $ruta = public_path("Propiedades/{$this->foto}");
         if (!file_exists($ruta)) {
-            return asset('Propiedades/Casas/no-image.png');
+            return asset('Propiedades/no-image.png');
         }
-        return asset("Propiedades/Casas/{$this->foto}");
+        return asset("Propiedades/{$this->foto}");
     }
 }

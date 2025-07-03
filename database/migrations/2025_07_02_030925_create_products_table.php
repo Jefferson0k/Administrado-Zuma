@@ -11,8 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('customers', function (Blueprint $table) {
-            $table->timestamp('email_verified_at')->nullable();
+        Schema::create('products', function (Blueprint $table) {
+            $table->id();
+            $table->string('nombre'); // hipoteca, tasa fija, etc.
+            $table->string('descripcion')->nullable();
+            $table->timestamps();
         });
     }
 
@@ -21,8 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('customers', function (Blueprint $table) {
-            $table->dropColumn('email_verified_at');
-        });
+        Schema::dropIfExists('products');
     }
 };

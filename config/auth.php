@@ -46,9 +46,9 @@ return [
             'provider' => 'users',
         ],
 
-        'customer' => [
+        'investor' => [
             'driver' => 'sanctum',
-            'provider' => 'customers',
+            'provider' => 'investors',
         ],
     ],
 
@@ -75,9 +75,9 @@ return [
             'model' => env('AUTH_MODEL', App\Models\User::class),
         ],
 
-        'customers' => [
+        'investors' => [
             'driver' => 'eloquent',
-            'model' => App\Models\Customer::class,
+            'model' => App\Models\Investor::class,
         ],
     ],
 

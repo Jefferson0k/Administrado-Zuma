@@ -13,7 +13,9 @@ return new class extends Migration
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
-            $table->foreignUlid('invoice_id')->constrained('invoices');
+            $table->foreignUlid('invoice_id')
+            ->nullable()
+            ->constrained('invoices');
             $table->enum('pay_type', ['total', 'partial'])->default('total');
             $table->bigInteger('amount_to_be_paid')->default(0);
             $table->datetime('pay_date');

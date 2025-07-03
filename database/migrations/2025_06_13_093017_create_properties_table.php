@@ -27,7 +27,7 @@ return new class extends Migration {
             $table->decimal('tem', 6, 4)->nullable();
 
             $table->enum('estado', [
-                'en_subasta', 'subastada', 'programada', 'desactivada', 'activa'
+                'en_subasta', 'subastada', 'programada', 'desactivada', 'activa', 'adquirido'
             ])->default('activa');
 
             $table->timestamps();

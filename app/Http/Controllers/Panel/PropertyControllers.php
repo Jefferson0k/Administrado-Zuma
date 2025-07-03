@@ -10,14 +10,19 @@ use App\Http\Resources\Subastas\Property\PropertyResource;
 use App\Http\Resources\Subastas\Property\PropertyShowResource;
 use App\Http\Resources\Subastas\Property\PropertyUpdateResource;
 use App\Models\Auction;
+use App\Models\Deadlines;
 use App\Models\Imagenes;
+use App\Models\MortgagePaymentSchedule;
+use App\Models\PaymentSchedule;
 use App\Models\Property;
+use App\Models\PropertyInvestor;
 use App\Pipelines\FilterByCurrency;
 use App\Pipelines\FilterByEstado;
 use Illuminate\Http\Request;
 use Illuminate\Pipeline\Pipeline;
 use App\Pipelines\FilterBySearch;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
@@ -98,6 +103,8 @@ class PropertyControllers extends Controller{
             $property = Property::findOrFail($id);
             $nuevoEstado = 'en_subasta';
 
+            $property->valor_subasta = $request->monto_inicial;
+
             $diaSubasta = $request->dia_subasta;
             $horaInicio = $request->hora_inicio;
             $horaFin = $request->hora_fin;
@@ -117,7 +124,6 @@ class PropertyControllers extends Controller{
                 ], 422);
             }
 
-            // Si no existe subasta, la crea
             if (!$property->subasta) {
                 $property->subasta()->create([
                     'monto_inicial' => $property->valor_subasta,
@@ -129,14 +135,23 @@ class PropertyControllers extends Controller{
                 ]);
             }
 
-            // Se actualiza el estado y el plazo
             $property->estado = $nuevoEstado;
             $property->deadlines_id = $request->deadlines_id;
             $property->save();
 
+            $propertyInvestor = PropertyInvestor::create([
+                'property_id' => $property->id,
+                'investor_id' => null,
+                'amount' => $property->valor_estimado,
+                'status' => 'pendiente',
+            ]);
+
+            $this->generatePaymentSchedule($propertyInvestor->id, $property);
+
             return response()->json([
-                'message' => 'Estado actualizado correctamente.',
+                'message' => 'Estado actualizado correctamente y cronograma generado.',
                 'property' => $property,
+                'property_investor_id' => $propertyInvestor->id,
             ]);
 
         } catch (\Exception $e) {
@@ -144,6 +159,53 @@ class PropertyControllers extends Controller{
                 'message' => 'Error interno del servidor',
                 'error' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    private function generatePaymentSchedule($propertyInvestorId, $property){
+        $deadline = Deadlines::find($property->deadlines_id);
+        
+        if (!$deadline) {
+            throw new \Exception('No se encontró el plazo especificado');
+        }
+
+        $capital = $property->valor_estimado;
+        $tem = $property->tem;
+        $temConIgv = $tem * 1.18;
+        $temDecimal = $temConIgv / 100;
+        $n = $deadline->duracion_meses;
+
+        $cuotaMensual = $capital * ($temDecimal * pow(1 + $temDecimal, $n)) / 
+                        (pow(1 + $temDecimal, $n) - 1);
+
+        $saldo = $capital;
+        $fechaVencimiento = Carbon::now()->addMonth();
+
+        for ($i = 1; $i <= $n; $i++) {
+            $intereses = $saldo * $temDecimal;
+            $capitalAmortizado = $cuotaMensual - $intereses;
+            $saldoFinal = $saldo - $capitalAmortizado;
+            
+            $igv = $intereses * 0.18;
+            $cuotaNeta = $cuotaMensual;
+            $totalCuota = $cuotaNeta + $igv;
+
+            PaymentSchedule::create([
+                'property_investor_id' => $propertyInvestorId,
+                'cuota' => $i,
+                'vencimiento' => $fechaVencimiento->format('Y-m-d'),
+                'saldo_inicial' => round($saldo, 2),
+                'capital' => round($capitalAmortizado, 2),
+                'intereses' => round($intereses, 2),
+                'cuota_neta' => round($cuotaNeta, 2),
+                'igv' => round($igv, 2),
+                'total_cuota' => round($totalCuota, 2),
+                'saldo_final' => round($saldoFinal, 2),
+                'estado' => 'pendiente',
+            ]);
+
+            $saldo = $saldoFinal;
+            $fechaVencimiento->addMonth();
         }
     }
     public function subastadas(Request $request){
