@@ -51,31 +51,33 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
 
     Route::get('/subastadas', [PropertyControllers::class, 'subastadas'])->name('property.subastadas');
-
     Route::post('/investments', [InvestmentControllers::class, 'store'])->name('bids.index');
     Route::get('/inversiones/usuario', [InvestmentControllers::class, 'indexUser']);
-
     Route::get('/currencies', [CurrencyControllers::class, 'index']);
     Route::get('/deadlines', [DeadlinesControllers::class, 'index']);
     Route::get('/property/{id}/show', [PropertyControllers::class, 'showCustumer']);
     Route::post('/extract-text', [OCRController::class, 'extractText']);
     Route::post('/extract-dni', [OCRDniController::class, 'extractText']);
     Route::post('/invest-property', [PropertyInvestorController::class, 'store']);
+
     Route::prefix('investor')->group(function () {
         Route::get('/inversion', [PropertyInvestorController::class, 'inversion']);
         Route::get('/ranking', [PropertyInvestorController::class, 'ranquiSubastas']);
     });
+
     Route::get('/payment-schedules/{propertyInvestorId}', [PaymentScheduleController::class, 'index']);
+    Route::post('/calculate', [InvestmentControllers::class, 'simulateByAmount']);
 });
 
-Route::post('/calculate', [InvestmentControllers::class, 'simulateByAmount']);
 Route::prefix('investments')->group(function () {
     Route::post('/simulation/generate', [InvestmentController::class, 'generate']);
 });
+Route::post('simulation/generate', [CreditSimulationController::class, 'generateSimulation']);
+
+Route::post('/calculadora', [CalculadoraController::class, 'calcular']);
+
+Route::prefix('online')->group(function () {
+     Route::get('/inversiones/{property_id}', [InvestmentControllers::class, 'index']);
+});
 
 Route::get('/Tipo-Cambio-Sbs', [TipoCambioSbs::class, 'TipoCambioSbs']);
-Route::post('/calculadora', [CalculadoraController::class, 'calcular']);
-Route::post('simulation/generate', [CreditSimulationController::class, 'generateSimulation']);
-Route::prefix('online')->group(function () {
-        Route::get('/inversiones/{property_id}', [InvestmentControllers::class, 'index']);
-    });
