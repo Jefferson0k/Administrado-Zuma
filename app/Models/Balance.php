@@ -11,7 +11,6 @@ class Balance extends Model{
     protected $primaryKey = 'id';
     public $incrementing = false;
     protected $keyType = 'string';
-
     protected $fillable = [
         'amount',
         'invested_amount',

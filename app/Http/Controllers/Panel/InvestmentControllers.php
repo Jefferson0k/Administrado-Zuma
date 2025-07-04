@@ -2,76 +2,92 @@
 
 namespace App\Http\Controllers\Panel;
 
+use App\Enums\MovementStatus;
+use App\Enums\MovementType;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Investment\InvestmentStoreRequest;
 use App\Http\Resources\Subastas\Investment\InvestmentResource;
 use App\Http\Resources\Subastas\Investment\RecordInvestmentResource;
-use App\Models\Balance;
 use App\Models\Investment;
-use App\Models\Property;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
-
+use App\Models\Auction;
+use App\Models\Movement;
+use App\Models\Balance;
+use App\Models\Bid;
+use Illuminate\Support\Facades\DB;
 class InvestmentControllers extends Controller {
-    public function store(InvestmentStoreRequest $request){
-        $investor = Auth::guard('investor')->user();
-        if (!$investor) {
-            return response()->json(['message' => 'Usuario no autenticado.'], 401);
+    public function store(Request $request){
+        $request->validate([
+            'auction_id' => 'required|exists:auctions,id',
+            'amount' => 'required|numeric|min:0.01',
+        ]);
+
+        $investor = auth()->user();
+        $auction = Auction::with('property')->findOrFail($request->auction_id);
+
+        $currencyMap = [
+            1 => 'PEN',
+            2 => 'USD',
+        ];
+        $currencyName = $currencyMap[$auction->property->currency_id] ?? null;
+
+        if (!$currencyName) {
+            return response()->json(['message' => 'Moneda no válida.'], 400);
         }
 
-        $montoInvertir = $request->monto_invertido;
-        $property = Property::findOrFail($request->property_id);
+        $amount = $request->amount;
 
-        $currencyId = (int) $property->currency_id;
+        $balance = $investor->balances()->where('currency', $currencyName)->first();
 
-        $balance = Balance::where('investor_id', $investor->id)
-                        ->where('currency', $currencyId)
-                        ->first();
-
-        if (!$balance) {
+        if (!$balance || $balance->amount < $amount) {
             return response()->json([
-                'message' => 'No tienes un balance registrado en esta moneda.',
-            ], 422);
+                'message' => 'Saldo insuficiente para invertir en esta subasta.',
+            ], 400);
         }
 
-        if ($balance->amount < $montoInvertir) {
-            return response()->json([
-                'message' => 'Fondos insuficientes. Tienes: ' . $balance->amount . ' y necesitas: ' . $montoInvertir,
-            ], 422);
-        }
+        DB::beginTransaction();
 
-        if ($montoInvertir < $property->valor_subasta) {
-            return response()->json([
-                'message' => 'El monto a invertir debe ser igual o mayor al monto solicitado de la propiedad (S/ ' . $property->valor_subasta . ').',
-            ], 422);
-        }
+        try {
+            $balance->amount -= $amount;
+            $balance->invested_amount += $amount;
 
-        $existingInvestment = Investment::where('investor_id', $investor->id)
-                                        ->where('property_id', $property->id)
-                                        ->first();
+            $balance->save();
 
-        if ($existingInvestment) {
-            $existingInvestment->increment('monto_invertido', $montoInvertir);
-            $existingInvestment->update(['fecha_inversion' => now()]);
-            $investment = $existingInvestment->fresh();
-            $message = 'Inversión actualizada exitosamente. Monto total: S/ ' . $investment->monto_invertido;
-        } else {
-            $investment = Investment::create([
+            Movement::create([
                 'investor_id' => $investor->id,
-                'property_id' => $property->id,
-                'monto_invertido' => $montoInvertir,
-                'fecha_inversion' => now(),
+                'type' => MovementType::INVESTMENT,
+                'status' => MovementStatus::CONFIRMED,
+                'confirm_status' => MovementStatus::CONFIRMED,
+                'amount' => $amount,
+                'currency' => $currencyName,
+                'description' => 'Inversión en subasta de hipotecas',
             ]);
-            $message = 'Inversión registrada exitosamente.';
+
+            $existingBid = Bid::where('auction_id', $auction->id)
+                            ->where('investors_id', $investor->id)
+                            ->first();
+
+            if ($existingBid) {
+                $existingBid->monto += $amount;
+                $existingBid->save();
+            } else {
+                Bid::create([
+                    'auction_id' => $auction->id,
+                    'investors_id' => $investor->id,
+                    'monto' => $amount,
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json(['message' => 'Inversión registrada exitosamente.'], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error al registrar la inversión.',
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-        $balance->decrement('amount', $montoInvertir);
-        $balance->increment('invested_amount', $montoInvertir);
-
-        return response()->json([
-            'message' => $message,
-            'investment' => $investment->fresh()
-        ], 201);
     }
     public function index($property_id){
         $inversiones = Investment::with('investors')

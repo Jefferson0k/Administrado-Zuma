@@ -12,4 +12,7 @@ class Bid extends Model{
     public function subasta() {
         return $this->belongsTo(Auction::class, 'auction_id');
     }
+    public function inerson() {
+        return $this->belongsTo(Investor::class, 'investors_id');
+    }
 }

@@ -23,4 +23,8 @@ class Auction extends Model{
     public function ganador() {
         return $this->belongsTo(Investor::class, 'ganador_id');
     }
+    public function property(){
+        return $this->belongsTo(Property::class, 'property_id');
+    }
+
 }

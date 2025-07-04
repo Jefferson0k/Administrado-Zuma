@@ -65,7 +65,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/ranking', [PropertyInvestorController::class, 'ranquiSubastas']);
     });
 
-    Route::get('/payment-schedules/{propertyInvestorId}', [PaymentScheduleController::class, 'index']);
+    Route::get('/propiedad/{id}/cronograma', [PaymentScheduleController::class, 'getCronogramaPorPropiedad']);
     Route::post('/calculate', [InvestmentControllers::class, 'simulateByAmount']);
 });
 

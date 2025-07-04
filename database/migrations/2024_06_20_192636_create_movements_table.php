@@ -30,13 +30,15 @@ return new class extends Migration
                 MovementStatus::VALID->value,
                 MovementStatus::INVALID->value,
                 MovementStatus::PENDING->value,
-                MovementStatus::REJECTED->value
+                MovementStatus::REJECTED->value,
+                MovementStatus::CONFIRMED->value
             ])->default(MovementStatus::PENDING->value);
             $table->enum('confirm_status', [
                 MovementStatus::VALID->value,
                 MovementStatus::INVALID->value,
                 MovementStatus::PENDING->value,
-                MovementStatus::REJECTED->value
+                MovementStatus::REJECTED->value,
+                MovementStatus::CONFIRMED->value
             ])->default(MovementStatus::PENDING->value);
             $table->string('description')->nullable();
             $table->foreignUlid('investor_id')->constrained();

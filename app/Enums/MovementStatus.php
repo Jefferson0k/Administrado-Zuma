@@ -8,4 +8,5 @@ enum MovementStatus: string
   case INVALID = "invalid";
   case PENDING = "pending";
   case REJECTED = "rejected";
+  case CONFIRMED = "confirmed";
 }

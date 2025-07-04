@@ -67,7 +67,13 @@ class User extends Authenticatable
         return $this->hasMany(Bid::class);
     }
     public function investor(){
-        return $this->hasOne(Investor::class);
+        return $this->hasOne(Investor::class, 'user_id');
     }
+
+    public function inversionista()
+    {
+        return $this->hasOne(Investor::class, 'user_id');
+    }
+
 
 }

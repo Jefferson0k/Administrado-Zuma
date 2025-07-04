@@ -12,7 +12,6 @@ use App\Http\Resources\Subastas\Property\PropertyUpdateResource;
 use App\Models\Auction;
 use App\Models\Deadlines;
 use App\Models\Imagenes;
-use App\Models\MortgagePaymentSchedule;
 use App\Models\PaymentSchedule;
 use App\Models\Property;
 use App\Models\PropertyInvestor;
@@ -22,7 +21,6 @@ use Illuminate\Http\Request;
 use Illuminate\Pipeline\Pipeline;
 use App\Pipelines\FilterBySearch;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
@@ -212,28 +210,32 @@ class PropertyControllers extends Controller{
         try {
             $perPage = $request->input('per_page', 15);
             $search = $request->input('search', '');
-
+            $ordenMonto = $request->input('orden_monto', 'desc'); // 'asc' o 'desc'
             $ahora = Carbon::now();
-
+            
             $propertyIdsConSubastasActivas = Auction::where('estado', 'activa')
                 ->where(function ($query) use ($ahora) {
                     $query->where('dia_subasta', '>', $ahora->toDateString())
                         ->orWhere(function ($q) use ($ahora) {
                             $q->where('dia_subasta', '=', $ahora->toDateString())
-                            ->where('hora_fin', '>', $ahora->toTimeString());
+                                ->where('hora_fin', '>', $ahora->toTimeString());
                         });
                 })
                 ->pluck('property_id');
-
+            
             $query = app(Pipeline::class)
                 ->send(Property::where('estado', 'en_subasta')
-                    ->whereIn('id', $propertyIdsConSubastasActivas))
+                    ->whereIn('id', $propertyIdsConSubastasActivas)
+                    ->with(['subasta', 'currency', 'plazo'])
+                )
                 ->through([
                     new FilterBySearch($search),
                 ])
-                ->thenReturn();
-
-            return PropertyOnliene::collection($query->paginate($perPage));
+                ->thenReturn();            
+            $collection = PropertyOnliene::collection($query->paginate($perPage));
+            $collection->additional(['orden_monto' => $ordenMonto]);
+            return $collection;
+            
         } catch (\Throwable $th) {
             return response()->json([
                 'message' => 'Error al cargar las propiedades en subasta',
