@@ -70,7 +70,14 @@
         <div class="flex gap-4">
           <div class="w-1/2">
             <label class="font-bold mb-1">Moneda <span class="text-red-500">*</span></label>
-            <InputNumber v-model="form.currency_id" class="w-full" />
+            <Select
+              v-model="form.currency_id"
+              :options="monedas"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Selecciona moneda"
+              class="w-full"
+            />
           </div>
           <div class="w-1/2">
             <label class="font-bold mb-1">Valor estimado <span class="text-red-500">*</span></label>
@@ -81,25 +88,52 @@
         <div class="flex gap-4">
           <div class="w-1/2">
             <label class="font-bold mb-1">TEA (%) <span class="text-red-500">*</span></label>
-            <InputNumber v-model="form.tea" class="w-full" />
+            <InputNumber
+              v-model="form.tea"
+              class="w-full"
+              :minFractionDigits="2"
+              :maxFractionDigits="2"
+              :step="0.01"
+              :useGrouping="false"
+            />
           </div>
           <div class="w-1/2">
             <label class="font-bold mb-1">TEM (%) <span class="text-red-500">*</span></label>
-            <InputNumber v-model="form.tem" class="w-full" />
+            <InputNumber
+              v-model="form.tem"
+              class="w-full"
+              :minFractionDigits="2"
+              :maxFractionDigits="2"
+              :step="0.01"
+              :useGrouping="false"
+            />
           </div>
         </div>
 
         <div>
           <label class="font-bold mb-1">Estado</label>
-          <Select v-model="form.estado" :options="estados" optionLabel="label" optionValue="value"
-            placeholder="Seleccionar estado" class="w-full" />
+          <Select
+            v-model="form.estado"
+            :options="estados"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Seleccionar estado"
+            class="w-full"
+          />
         </div>
 
         <div>
           <label class="block font-bold mb-1">Imágenes</label>
-          <FileUpload name="imagenes[]" :multiple="true" accept="image/*" :maxFileSize="1000000" customUpload
-            :auto="false" @select="onSelectedFiles" @upload="onTemplatedUpload">
-          </FileUpload>
+          <FileUpload
+            name="imagenes[]"
+            :multiple="true"
+            accept="image/*"
+            :maxFileSize="1000000"
+            customUpload
+            :auto="false"
+            @select="onSelectedFiles"
+            @upload="onTemplatedUpload"
+          />
         </div>
       </div>
     </form>
@@ -149,6 +183,11 @@ const estados = [
   { label: 'Desactivada', value: 'desactivada' }
 ]
 
+const monedas = [
+  { label: 'PEN (S/)', value: 1 },
+  { label: 'USD ($)', value: 2 }
+]
+
 const archivos = ref<File[]>([])
 const totalSize = ref(0)
 const totalSizePercent = ref(0)
@@ -185,13 +224,17 @@ const onSelectedFiles = (event: any) => {
 }
 
 const onTemplatedUpload = () => {
-  toast.add({ severity: 'info', summary: 'Success', detail: 'File Uploaded', life: 3000 })
+  toast.add({ severity: 'info', summary: 'Éxito', detail: 'Archivo subido', life: 3000 })
 }
 
 const saveProperty = () => {
   submitted.value = true
 
-  if (!form.value.nombre || !form.value.departamento || !form.value.provincia || !form.value.distrito || !form.value.direccion || !form.value.valor_estimado || !form.value.currency_id || !form.value.tea || !form.value.tem) {
+  if (
+    !form.value.nombre || !form.value.departamento || !form.value.provincia || !form.value.distrito ||
+    !form.value.direccion || !form.value.valor_estimado || !form.value.currency_id ||
+    form.value.tea === null || form.value.tem === null
+  ) {
     toast.add({
       severity: 'warn',
       summary: 'Validación',
@@ -214,7 +257,7 @@ const saveProperty = () => {
   axios.post('/property', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }).then(() => {
-    toast.add({ severity: 'success', summary: 'Exito', detail: 'Propiedad registrada correctamente', life: 3000 })
+    toast.add({ severity: 'success', summary: 'Éxito', detail: 'Propiedad registrada correctamente', life: 3000 })
     modalVisible.value = false
     emit('agregado')
   }).catch((error) => {

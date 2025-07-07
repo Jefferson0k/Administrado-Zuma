@@ -15,21 +15,6 @@ const model = computed(() => [
         ]
     },
     {
-    label: 'Ambiente de pruebas',
-        items: [
-            {
-                label: 'Simulacion',
-                icon: 'pi pi-fw pi-home',
-                to: '/online'
-            },
-            {
-                label: 'Calculadora',
-                icon: 'pi pi-fw pi-home',
-                to: '/Ambiente-Pruebas'
-            }
-        ],
-    },
-    {
         label: 'Productos',
         icon: 'pi pi-fw pi-box',
         to: '/pages',
@@ -39,19 +24,19 @@ const model = computed(() => [
                 icon: 'pi pi-fw pi-percentage',
                 items: [
                     {
-                        label: 'Coperativas',
+                        label: 'Entindades',
                         icon: 'pi pi-fw pi-building',
                         to: '/tasas-fijas/empresas'
+                    },
+                    {
+                        label: 'Depositos',
+                        icon: 'pi pi-fw pi-arrow-circle-down',
+                        to: '/tasas-fijas/retiros'
                     },
                     {
                         label: 'Pagos',
                         icon: 'pi pi-fw pi-money-bill',
                         to: '/tasas-fijas/pagos'
-                    },
-                    {
-                        label: 'Retiros',
-                        icon: 'pi pi-fw pi-arrow-circle-down',
-                        to: '/tasas-fijas/retiros'
                     },
                 ]
             },
@@ -70,19 +55,9 @@ const model = computed(() => [
                         to: '/subasta-hipotecas/historicos'
                     },
                     {
-                        label: 'Depósitos',
-                        icon: 'pi pi-fw pi-wallet',
-                        to: '/subasta-hipotecas/depositos'
-                    },
-                    {
                         label: 'Pagos',
                         icon: 'pi pi-fw pi-credit-card',
                         to: '/subasta-hipotecas/pagos'
-                    },
-                    {
-                        label: 'Retiros',
-                        icon: 'pi pi-fw pi-arrow-circle-down',
-                        to: '/subasta-hipotecas/retiros'
                     },
                 ]
             },

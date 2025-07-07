@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\RolesController;
 use App\Http\Controllers\Api\UsuariosController;
 use App\Http\Controllers\OCRController;
 use App\Http\Controllers\Panel\CalculadoraController;
+use App\Http\Controllers\Panel\CorporateEntityController;
 use App\Http\Controllers\Panel\CurrencyControllers;
 use App\Http\Controllers\Panel\DeadlinesControllers;
 use App\Http\Controllers\Panel\PropertyControllers;
@@ -122,6 +123,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('Calculadora')->group(function () {
         Route::get('/', [CalculadoraController::class,'calcular']);
     });
+
+    Route::prefix('coperativa')->group(function(){
+        Route::get('/', [CorporateEntityController::class, 'index'])->name('usuarios.index');
+    });
+
     Route::get('/deadlines', [DeadlinesControllers::class, 'index']);
 }); 
 Route::get('/currencies', [CurrencyControllers::class, 'index']);

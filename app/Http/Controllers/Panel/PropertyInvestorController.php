@@ -132,9 +132,10 @@ class PropertyInvestorController extends Controller{
             $saldoInicial = $saldoFinal;
         }
     }
-   public function inversion(){
+    public function inversion(){
         $investor = Auth::guard('investor')->user();
-        $ultimaInversion = PropertyInvestor::with('property')
+
+        $ultimaInversion = PropertyInvestor::with(['property.currency', 'property.plazo', 'paymentSchedules'])
             ->where('investor_id', $investor->id)
             ->latest()
             ->first();
@@ -143,13 +144,17 @@ class PropertyInvestorController extends Controller{
         }
         return response()->json(new InversionResource($ultimaInversion));
     }
-   public function ranquiSubastas(){
+    public function ranquiSubastas(){
         $ranking = PropertyInvestor::with('property')
+            ->whereHas('property', function ($query) {
+                $query->where('estado', 'subastada');
+            })
             ->select('property_id', 'amount')
             ->orderByDesc('amount')
             ->limit(6)
             ->get();
         return response()->json(PropertyInvestorResource::collection($ranking));
     }
+
 }
 
