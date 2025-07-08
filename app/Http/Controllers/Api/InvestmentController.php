@@ -7,20 +7,12 @@ use Illuminate\Http\Request;
 use App\Services\InvestmentSimulatorService;
 use Illuminate\Http\JsonResponse;
 
-class InvestmentController extends Controller
-{
+class InvestmentController extends Controller{
     protected $simulatorService;
-
-    public function __construct(InvestmentSimulatorService $simulatorService)
-    {
+    public function __construct(InvestmentSimulatorService $simulatorService){
         $this->simulatorService = $simulatorService;
     }
-
-    /**
-     * Simular inversiones por monto - método existente
-     */
-    public function simulateByAmount(Request $request): JsonResponse
-    {
+    public function simulateByAmount(Request $request): JsonResponse{
         $request->validate([
             'amount' => 'required|numeric|min:1'
         ]);
@@ -39,47 +31,38 @@ class InvestmentController extends Controller
             ], 400);
         }
     }
-
-    /**
-     * Generar cronograma para una tasa específica
-     */
-    public function generateSchedule(Request $request): JsonResponse 
-{
-    $request->validate([
-        'rate_id' => 'required|integer|exists:fixed_term_rates,id',
-        'amount' => 'required|numeric|min:1',
-        'payment_frequency_id' => 'required|integer|exists:payment_frequencies,id',
-        'generation_date' => 'nullable|date', // Fecha de generación del cronograma
-        'start_date' => 'nullable|date',      // Fecha real de inicio (firma)
-        'tax_rate' => 'nullable|numeric|min:0|max:1'
-    ]);
-
-    try {
-        $schedule = $this->simulatorService->generatePaymentSchedule(
-            $request->rate_id,
-            $request->amount,
-            $request->payment_frequency_id,
-            $request->generation_date,
-            $request->start_date,
-            $request->tax_rate ?? 0.05
-        );
-                     
-        return response()->json([
-            'success' => true,
-            'data' => $schedule
+    public function generateSchedule(Request $request): JsonResponse {
+        $request->validate([
+            'rate_id' => 'required|integer|exists:fixed_term_rates,id',
+            'amount' => 'required|numeric|min:1',
+            'payment_frequency_id' => 'required|integer|exists:payment_frequencies,id',
+            'generation_date' => 'nullable|date',
+            'start_date' => 'nullable|date',
+            'tax_rate' => 'nullable|numeric|min:0|max:1'
         ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => $e->getMessage()
-        ], 400);
+
+        try {
+            $schedule = $this->simulatorService->generatePaymentSchedule(
+                $request->rate_id,
+                $request->amount,
+                $request->payment_frequency_id,
+                $request->generation_date,
+                $request->start_date,
+                $request->tax_rate ?? 0.05
+            );
+                        
+            return response()->json([
+                'success' => true,
+                'data' => $schedule
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
+        }
     }
-}
-    /**
-     * Obtener frecuencias de pago disponibles
-     */
-    public function getPaymentFrequencies(): JsonResponse
-    {
+    public function getPaymentFrequencies(): JsonResponse{
         try {
             $frequencies = $this->simulatorService->getPaymentFrequencies();
             
@@ -94,12 +77,7 @@ class InvestmentController extends Controller
             ], 400);
         }
     }
-
-    /**
-     * Simulación completa con todas las frecuencias
-     */
-    public function completeSimulation(Request $request): JsonResponse
-    {
+    public function completeSimulation(Request $request): JsonResponse{
         $request->validate([
             'rate_id' => 'required|integer|exists:fixed_term_rates,id',
             'amount' => 'required|numeric|min:1'
@@ -122,12 +100,7 @@ class InvestmentController extends Controller
             ], 400);
         }
     }
-
-    /**
-     * Comparar múltiples tasas con cronogramas
-     */
-    public function compareRates(Request $request): JsonResponse
-    {
+    public function compareRates(Request $request): JsonResponse{
         $request->validate([
             'rate_ids' => 'required|array|min:2|max:5',
             'rate_ids.*' => 'integer|exists:fixed_term_rates,id',
@@ -157,7 +130,6 @@ class InvestmentController extends Controller
                 ];
             }
             
-            // Ordenar por mejor rentabilidad
             usort($comparisons, fn($a, $b) => $b['rentabilidad_neta'] <=> $a['rentabilidad_neta']);
             
             return response()->json([
@@ -174,12 +146,7 @@ class InvestmentController extends Controller
             ], 400);
         }
     }
-
-    /**
-     * Exportar cronograma a Excel/PDF (preparado para implementar)
-     */
-    public function exportSchedule(Request $request): JsonResponse
-    {
+    public function exportSchedule(Request $request): JsonResponse{
         $request->validate([
             'rate_id' => 'required|integer|exists:fixed_term_rates,id',
             'amount' => 'required|numeric|min:1',
@@ -193,10 +160,6 @@ class InvestmentController extends Controller
                 $request->amount,
                 $request->payment_frequency_id
             );
-            
-            // Aquí implementarías la lógica de exportación
-            // Por ejemplo, usando Laravel Excel o DomPDF
-            
             return response()->json([
                 'success' => true,
                 'message' => 'Exportación preparada',

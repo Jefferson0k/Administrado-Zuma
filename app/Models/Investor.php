@@ -33,4 +33,7 @@ class Investor extends Authenticatable implements MustVerifyEmail{
     public function balances(){
         return $this->hasMany(Balance::class);
     }
+    public function investment(){
+        return $this->hasMany(FixedTermInvestment::class);
+    }
 }

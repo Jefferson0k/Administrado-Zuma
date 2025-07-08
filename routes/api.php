@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\CreditSimulationController;
+use App\Http\Controllers\Api\FixedTermInvestmentControllers;
 use App\Http\Controllers\Api\InvestmentController;
 use App\Http\Controllers\Api\TipoCambioSbs;
 use App\Http\Controllers\Panel\CalculadoraController;
@@ -75,6 +76,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/compare-rates', [InvestmentController::class, 'compareRates']);
         Route::post('/export-schedule', [InvestmentController::class, 'exportSchedule']);
         Route::get('/payment-frequencies', [InvestmentController::class, 'getPaymentFrequencies']);
+    });
+
+    Route::prefix('panel')->group(function () {
+        Route::post('/fixed-term-investments', [FixedTermInvestmentControllers::class, 'store']);
+        Route::post('/fixed-term-investments/cronograma', [FixedTermInvestmentControllers::class, 'storeCronograma']);
+        Route::get('/fixed-term-investments', [FixedTermInvestmentControllers::class, 'index']);
+        Route::get('/fixed-term-investments/{id}', [FixedTermInvestmentControllers::class, 'show']);
     });
 });
 
