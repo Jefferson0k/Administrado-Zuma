@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\Tasas\FixedTermInvestment\FixedTermInvestmentResource;
+use App\Http\Resources\Tasas\FixedTermInvestment\TopFixedInvestorResource;
 use App\Models\FixedTermInvestment;
 use App\Models\FixedTermSchedule;
 use App\Services\InvestmentSimulatorService;
@@ -226,5 +228,30 @@ class FixedTermInvestmentControllers extends Controller{
                 'message' => 'Error al obtener la inversión: ' . $e->getMessage()
             ], 500);
         }
+    }
+    public function last(){
+        $lastInvestment = auth()->user()
+            ->investment()
+            ->with(['rate', 'frequency', 'termPlan'])
+            ->latest()
+            ->first();
+        if (!$lastInvestment) {
+            return response()->json(['message' => 'No se encontró inversión'], 404);
+        }
+        return new FixedTermInvestmentResource($lastInvestment);
+    }
+    public function top(){
+        $top = FixedTermInvestment::select(
+                'investor_id',
+                DB::raw('SUM(amount) as total_invested')
+            )
+            ->where('status', 'activo')
+            ->groupBy('investor_id')
+            ->orderByDesc('total_invested')
+            ->limit(6)
+            ->with('investor:id,name,first_last_name,second_last_name')
+            ->get();
+
+        return TopFixedInvestorResource::collection($top);
     }
 }

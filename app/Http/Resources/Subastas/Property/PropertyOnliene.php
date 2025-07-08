@@ -1,20 +1,19 @@
 <?php
+
 namespace App\Http\Resources\Subastas\Property;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use App\Models\Bid;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 
-class PropertyOnliene extends JsonResource
-{
-    public function toArray(Request $request): array
-    {
-        // Obtener inversionistas que están pujando en esta subasta
+class PropertyOnliene extends JsonResource{
+    public function toArray(Request $request): array{
         $inversionistas = [];
         if ($this->subasta) {
             $inversionistas = Bid::where('auction_id', $this->subasta->id)
-                ->with('inerson') // Relación con el inversionista
+                ->with('inerson')
                 ->select('investors_id', DB::raw('MAX(monto) as monto_maximo'), DB::raw('MAX(created_at) as fecha_ultima_puja'))
                 ->groupBy('investors_id')
                 ->orderBy('monto_maximo', 'desc')
@@ -36,7 +35,7 @@ class PropertyOnliene extends JsonResource
             'distrito' => $this->distrito,
             'property_id' => $this->subasta->property_id,
             'descripcion' => $this->descripcion,
-            'foto' => $this->getFotoUrl(),
+            'foto' => $this->getImagenes(),
             'monto' => $this->subasta->monto_inicial,
             'tipo' => $this->currency_id,
             'finalizacion' => $this->subasta->tiempo_finalizacion,
@@ -46,27 +45,24 @@ class PropertyOnliene extends JsonResource
             'Moneda' => $this->currency->codigo,
             'deadlines_id' => $this->plazo->nombre,
             'Simbolo' => $this->plazo->simbolo,
-            
-            // NUEVA INFORMACIÓN DE INVERSIONISTAS
             'inversionistas_pujando' => $inversionistas,
             'total_inversionistas' => count($inversionistas),
             'monto_actual_mayor' => $inversionistas->isNotEmpty() ? $inversionistas->first()['monto'] : $this->subasta->monto_inicial,
-
-            //Id de Action
             'subasta_id' => $this->subasta->id ?? null,
         ];
     }
-
-    private function getFotoUrl(): string{
-        if (empty($this->foto)) {
-            return asset('Propiedades/no-image.png');
+    private function getImagenes(): array{
+        $rutaCarpeta = public_path("Propiedades/{$this->id}");
+        $imagenes = [];
+        if (File::exists($rutaCarpeta)) {
+            $archivos = File::files($rutaCarpeta);
+            foreach ($archivos as $archivo) {
+                $imagenes[] = asset("Propiedades/{$this->id}/" . $archivo->getFilename());
+            }
         }
-        
-        $ruta = public_path("Propiedades/{$this->foto}");
-        if (!file_exists($ruta)) {
-            return asset('Propiedades/no-image.png');
+        if (empty($imagenes)) {
+            $imagenes[] = asset('Propiedades/no-image.png');
         }
-        
-        return asset("Propiedades/{$this->foto}");
+        return $imagenes;
     }
 }

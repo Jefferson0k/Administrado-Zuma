@@ -33,4 +33,5 @@ class Property extends Model{
     public function images(){
         return $this->hasMany(Imagenes::class);
     }
+    
 }

@@ -84,6 +84,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/fixed-term-investments', [FixedTermInvestmentControllers::class, 'index']);
         Route::get('/fixed-term-investments/{id}', [FixedTermInvestmentControllers::class, 'show']);
     });
+
+    Route::prefix('tasas-fijas')->group(function () {
+        Route::get('/last', [FixedTermInvestmentControllers::class, 'last']);
+        Route::get('/top', [FixedTermInvestmentControllers::class, 'top']);
+    });
 });
 
 Route::prefix('investments')->group(function () {
