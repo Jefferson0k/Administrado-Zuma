@@ -23,8 +23,8 @@ return new class extends Migration {
             $table->foreignId('currency_id')->constrained('currencies');
             $table->foreignId('deadlines_id')->nullable()->constrained('deadlines');
 
-            $table->decimal('tea', 6, 2)->nullable();
-            $table->decimal('tem', 6, 2)->nullable();
+            $table->decimal('tea', 6, 4)->nullable();
+            $table->decimal('tem', 6, 4)->nullable();
 
             $table->enum('estado', [
                 'en_subasta', 'subastada', 'programada', 'desactivada', 'activa', 'adquirido'

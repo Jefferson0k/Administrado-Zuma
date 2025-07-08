@@ -92,8 +92,8 @@
               v-model="form.tea"
               class="w-full"
               :minFractionDigits="2"
-              :maxFractionDigits="2"
-              :step="0.01"
+              :maxFractionDigits="4"
+              :step="0.0001"
               :useGrouping="false"
             />
           </div>
@@ -103,8 +103,8 @@
               v-model="form.tem"
               class="w-full"
               :minFractionDigits="2"
-              :maxFractionDigits="2"
-              :step="0.01"
+              :maxFractionDigits="4"
+              :step="0.0001"
               :useGrouping="false"
             />
           </div>
