@@ -12,7 +12,7 @@ class DatabaseSeeder extends Seeder{
             UserSeeder::class,
             CurrencySeeder::class,
             TermSeeder::class,
-            PropertySeeder::class,
+            #PropertySeeder::class,
             CoopacSanCristobalSeeder::class,
             PaymentFrequencySeeder::class,
             CoopacSanMiguelSeeder::class,

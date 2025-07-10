@@ -7,8 +7,7 @@
     </template>
   </Toolbar>
 
-  <!-- Modal de nueva propiedad -->
-  <Dialog v-model:visible="modalVisible" header="Nueva Propiedad" :modal="true" :style="{ width: '450px' }">
+  <Dialog v-model:visible="modalVisible" header="Registro del inmueble" :modal="true" :style="{ width: '450px' }">
     <form @submit.prevent="saveProperty" class="p-fluid">
       <div class="flex flex-col gap-4">
         <div>
@@ -19,42 +18,21 @@
         <div class="flex gap-4">
           <div class="w-1/2">
             <label class="font-bold mb-1">Departamento <span class="text-red-500">*</span></label>
-            <Select
-              v-model="form.departamento"
-              :options="departamentos"
-              optionLabel="ubigeo_name"
-              dataKey="ubigeo_id"
-              placeholder="Seleccione departamento"
-              class="w-full"
-              @change="onDepartamentoChange"
-            />
+            <Select v-model="form.departamento" :options="departamentos" optionLabel="ubigeo_name" dataKey="ubigeo_id"
+              placeholder="Seleccione departamento" class="w-full" @change="onDepartamentoChange" />
           </div>
           <div class="w-1/2">
             <label class="font-bold mb-1">Provincia <span class="text-red-500">*</span></label>
-            <Select
-              v-model="form.provincia"
-              :options="provincias"
-              optionLabel="ubigeo_name"
-              dataKey="ubigeo_id"
-              placeholder="Seleccione provincia"
-              class="w-full"
-              :disabled="!form.departamento"
-              @change="onProvinciaChange"
-            />
+            <Select v-model="form.provincia" :options="provincias" optionLabel="ubigeo_name" dataKey="ubigeo_id"
+              placeholder="Seleccione provincia" class="w-full" :disabled="!form.departamento"
+              @change="onProvinciaChange" />
           </div>
         </div>
 
         <div>
           <label class="font-bold mb-1">Distrito <span class="text-red-500">*</span></label>
-          <Select
-            v-model="form.distrito"
-            :options="distritos"
-            optionLabel="ubigeo_name"
-            dataKey="ubigeo_id"
-            placeholder="Seleccione distrito"
-            class="w-full"
-            :disabled="!form.provincia"
-          />
+          <Select v-model="form.distrito" :options="distritos" optionLabel="ubigeo_name" dataKey="ubigeo_id"
+            placeholder="Seleccione distrito" class="w-full" :disabled="!form.provincia" />
         </div>
 
         <div>
@@ -70,77 +48,49 @@
         <div class="flex gap-4">
           <div class="w-1/2">
             <label class="font-bold mb-1">Moneda <span class="text-red-500">*</span></label>
-            <Select
-              v-model="form.currency_id"
-              :options="monedas"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Selecciona moneda"
-              class="w-full"
-            />
+            <Select v-model="form.currency_id" :options="monedas" optionLabel="label" optionValue="value"
+              placeholder="Selecciona moneda" class="w-full" />
           </div>
           <div class="w-1/2">
-            <label class="font-bold mb-1">Valor estimado <span class="text-red-500">*</span></label>
-            <InputNumber v-model="form.valor_estimado" class="w-full" :useGrouping="false" />
+            <label class="font-bold mb-1">Monto requerido <span class="text-red-500">*</span></label>
+            <InputNumber v-model="form.valor_requerido" class="w-full" :useGrouping="true" :locale="'es-PE'" />
           </div>
+        </div>
+
+        <div>
+          <label class="font-bold mb-1">Valor de la propiedad <span class="text-red-500">*</span></label>
+          <InputNumber v-model="form.valor_estimado" class="w-full" :useGrouping="true" :locale="'es-PE'" />
         </div>
 
         <div class="flex gap-4">
           <div class="w-1/2">
             <label class="font-bold mb-1">TEA (%) <span class="text-red-500">*</span></label>
-            <InputNumber
-              v-model="form.tea"
-              class="w-full"
-              :minFractionDigits="2"
-              :maxFractionDigits="4"
-              :step="0.0001"
-              :useGrouping="false"
-            />
+            <InputNumber v-model="form.tea" class="w-full" :minFractionDigits="2" :maxFractionDigits="4"
+              :useGrouping="false" />
           </div>
           <div class="w-1/2">
             <label class="font-bold mb-1">TEM (%) <span class="text-red-500">*</span></label>
-            <InputNumber
-              v-model="form.tem"
-              class="w-full"
-              :minFractionDigits="2"
-              :maxFractionDigits="4"
-              :step="0.0001"
-              :useGrouping="false"
-            />
+            <InputNumber v-model="form.tem" class="w-full" :minFractionDigits="2" :maxFractionDigits="4"
+              :useGrouping="false" />
           </div>
         </div>
 
         <div>
-          <label class="font-bold mb-1">Estado</label>
-          <Select
-            v-model="form.estado"
-            :options="estados"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Seleccionar estado"
-            class="w-full"
-          />
+          <label class="font-bold mb-1">Riesgo <span class="text-red-500">*</span></label>
+          <Select v-model="form.riesgo" :options="riesgos" optionLabel="label" optionValue="value"
+            placeholder="Seleccionar riesgo" class="w-full" />
         </div>
-
         <div>
           <label class="block font-bold mb-1">Imágenes</label>
-          <FileUpload
-            name="imagenes[]"
-            :multiple="true"
-            accept="image/*"
-            :maxFileSize="1000000"
-            customUpload
-            :auto="false"
-            @select="onSelectedFiles"
-            @upload="onTemplatedUpload"
-          />
+          <FileUpload name="imagenes[]" :multiple="true" accept="image/*" :maxFileSize="1000000" customUpload
+            :auto="false" @select="onSelectedFiles" @upload="onTemplatedUpload" />
         </div>
       </div>
     </form>
 
     <template #footer>
-      <Button label="Cancelar" icon="pi pi-times" text @click="modalVisible = false" />
-      <Button label="Guardar" icon="pi pi-check" @click="saveProperty" />
+      <Button label="Cancelar" icon="pi pi-times" severity="secondary" text @click="modalVisible = false" />
+      <Button label="Guardar" icon="pi pi-check" severity="contrast" @click="saveProperty" />
     </template>
   </Dialog>
 </template>
@@ -172,9 +122,11 @@ const form = ref({
   direccion: '',
   descripcion: '',
   valor_estimado: null,
+  valor_requerido: null,
   currency_id: null,
   tea: null,
   tem: null,
+  riesgo: null,
   estado: ''
 })
 
@@ -186,6 +138,14 @@ const estados = [
 const monedas = [
   { label: 'PEN (S/)', value: 1 },
   { label: 'USD ($)', value: 2 }
+]
+
+const riesgos = [
+  { label: 'A+', value: 'A+' },
+  { label: 'A', value: 'A' },
+  { label: 'B', value: 'B' },
+  { label: 'C', value: 'C' },
+  { label: 'D', value: 'D' }
 ]
 
 const archivos = ref<File[]>([])
@@ -231,14 +191,22 @@ const saveProperty = () => {
   submitted.value = true
 
   if (
-    !form.value.nombre || !form.value.departamento || !form.value.provincia || !form.value.distrito ||
-    !form.value.direccion || !form.value.valor_estimado || !form.value.currency_id ||
-    form.value.tea === null || form.value.tem === null
+    !form.value.nombre ||
+    !form.value.departamento ||
+    !form.value.provincia ||
+    !form.value.distrito ||
+    !form.value.direccion ||
+    !form.value.currency_id ||
+    !form.value.valor_requerido ||
+    !form.value.valor_estimado ||
+    form.value.tea === null ||
+    form.value.tem === null ||
+    !form.value.riesgo
   ) {
     toast.add({
       severity: 'warn',
       summary: 'Validación',
-      detail: 'Por favor completa todos los campos obligatorios',
+      detail: 'Por favor completa todos los campos obligatorios.',
       life: 3000
     })
     return
@@ -257,14 +225,14 @@ const saveProperty = () => {
   axios.post('/property', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }).then(() => {
-    toast.add({ severity: 'success', summary: 'Éxito', detail: 'Propiedad registrada correctamente', life: 3000 })
+    toast.add({ severity: 'success', summary: 'Éxito', detail: 'Propiedad registrada correctamente.', life: 3000 })
     modalVisible.value = false
     emit('agregado')
   }).catch((error) => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: error.response?.data?.message || 'Error al guardar',
+      detail: error.response?.data?.message || 'Error al guardar la propiedad.',
       life: 3000
     })
   })

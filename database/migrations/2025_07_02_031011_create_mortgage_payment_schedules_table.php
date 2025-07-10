@@ -13,14 +13,15 @@ return new class extends Migration
     {
         Schema::create('mortgage_payment_schedules', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('property_id')->constrained();
+            $table->foreignUlid('property_id')->constrained();
             $table->foreignId('mortgage_investment_id')->nullable()->constrained();
-            $table->integer('installment_number'); // Número de cuota
+            $table->integer('installment_number');
             $table->date('due_date');
             $table->decimal('amount', 12, 2);
             $table->boolean('paid')->default(false);
             $table->timestamps();
         });
+
 
     }
 

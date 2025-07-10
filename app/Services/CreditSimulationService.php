@@ -6,16 +6,13 @@ use App\Models\Property;
 use App\Models\Deadlines;
 use Carbon\Carbon;
 
-class CreditSimulationService
-{
-    public function generate(Property $property, Deadlines $deadline, int $page = 1, int $perPage = 10): array
-    {
+class CreditSimulationService{
+    public function generate(Property $property, Deadlines $deadline, int $page = 1, int $perPage = 10): array{
         $capital = floatval($property->valor_estimado);
         $plazoMeses = $deadline->duracion_meses;
         $moneda = $property->currency_id == 1 ? 'Soles' : 'Dólares';
         $simbolo = $property->currency_id == 1 ? 'PEN' : 'USD';
 
-        // Tasa efectiva mensual sin IGV
         $tem_sin_igv = floatval($property->tem) / 100;
         $fechaDesembolso = Carbon::now()->format('d/m/Y');
         $fechaInicio = Carbon::now()->addMonth()->day(15);
@@ -23,25 +20,18 @@ class CreditSimulationService
         $pagos = [];
 
         for ($cuota = 1; $cuota <= $plazoMeses; $cuota++) {
-            // Interés sin IGV (único que se usa)
             $interesSinIGV = $saldoInicial * $tem_sin_igv;
 
-            // IGV = 0
             $igv = 0.00;
 
-            // Capital pagado
             $capitalPago = $this->calcularCapitalPago($capital, $tem_sin_igv, $plazoMeses, $cuota);
 
-            // Cuota neta
             $cuotaNeta = $capitalPago + $interesSinIGV;
 
-            // Total cuota (igual a cuota neta, ya que IGV = 0)
             $cuotaTotal = $cuotaNeta;
 
-            // Saldo final
             $saldoFinal = $saldoInicial - $capitalPago;
 
-            // Corrección redondeo en última cuota
             if ($cuota === $plazoMeses && abs($saldoFinal) < 0.01) {
                 $capitalPago = $saldoInicial;
                 $interesSinIGV = $capitalPago * $tem_sin_igv;
@@ -67,7 +57,6 @@ class CreditSimulationService
             $saldoInicial = $saldoFinal;
         }
 
-        // Paginación
         $total = count($pagos);
         $offset = ($page - 1) * $perPage;
         $paginatedPagos = array_slice($pagos, $offset, $perPage);
@@ -95,9 +84,7 @@ class CreditSimulationService
             ]
         ];
     }
-
-    private function calcularCapitalPago(float $capital, float $tem, int $plazo, int $periodo): float
-    {
+    private function calcularCapitalPago(float $capital, float $tem, int $plazo, int $periodo): float{
         $factor = pow(1 + $tem, $plazo);
         $cuota = $capital * ($tem * $factor) / ($factor - 1);
 

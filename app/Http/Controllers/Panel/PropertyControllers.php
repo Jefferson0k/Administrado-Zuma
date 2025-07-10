@@ -36,6 +36,48 @@ class PropertyControllers extends Controller{
             'property' => $property->load('images'),
         ], 201);
     }
+    public function showProperty(string $id){
+        $property = Property::with(['currency', 'plazo', 'images'])->findOrFail($id);
+        return response()->json($property);
+    }
+    public function updateProperty(StorePropertyRequest $request, string $id){
+        $property = Property::findOrFail($id);
+        $property->update($request->validated());        
+        if ($request->has('imagenes_eliminar')) {
+            $imagenesAEliminar = $request->input('imagenes_eliminar');
+            
+            foreach ($imagenesAEliminar as $imagenId) {
+                $image = $property->images()->find($imagenId);
+                if ($image) {
+                    $imagePath = public_path("Propiedades/{$property->id}/{$image->imagen}");
+                    if (File::exists($imagePath)) {
+                        File::delete($imagePath);
+                    }
+                    $image->delete();
+                }
+            }
+        }
+        if ($request->hasFile('imagenes')) {
+            $this->handleImagenesUpload($request, $property->id);
+        }
+        return response()->json(['message' => 'Propiedad actualizada correctamente.'], 200);
+    }
+    public function delete(string $id){
+        $property = Property::findOrFail($id);
+        foreach ($property->images as $image) {
+            $imagePath = public_path("Propiedades/{$property->id}/{$image->imagen}");
+            if (File::exists($imagePath)) {
+                File::delete($imagePath);
+            }
+            $image->delete();
+        }
+        $directory = public_path("Propiedades/{$property->id}");
+        if (File::isDirectory($directory)) {
+            File::deleteDirectory($directory);
+        }
+        $property->delete();
+        return response()->json(['message' => 'Propiedad eliminada correctamente.'], 200);
+    }
     public function index(Request $request){
         try {
             $perPage = $request->input('per_page', 10);
@@ -159,7 +201,6 @@ class PropertyControllers extends Controller{
             ], 500);
         }
     }
-
     private function generatePaymentSchedule($propertyInvestorId, $property){
         $deadline = Deadlines::find($property->deadlines_id);
         
@@ -243,7 +284,7 @@ class PropertyControllers extends Controller{
             ], 500);
         }
     }
-    private function handleImagenesUpload(StorePropertyRequest $request, int $propertyId): void{
+    private function handleImagenesUpload(StorePropertyRequest $request, string $propertyId): void {
         $directory = public_path("Propiedades/{$propertyId}");
         File::ensureDirectoryExists($directory, 0755, true);
         foreach ($request->file('imagenes') as $file) {

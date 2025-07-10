@@ -13,6 +13,8 @@ import MultiSelect from 'primevue/multiselect';
 import Select from 'primevue/select';
 import Image from 'primevue/image';
 import ConfigPropiedades from './ConfigPropiedades.vue';
+import UpdatePropiedades from './UpdatePropiedades.vue';
+import DeletePropiedades from './DeletePropiedades.vue';
 
 const props = defineProps({
   refresh: {
@@ -32,6 +34,8 @@ const perPage = ref(10);
 const search = ref('');
 const selectedColumns = ref([]);
 const showModal = ref(false);
+const showUpdateModal = ref(false);
+const showDeleteModal = ref(false);
 const selectedId = ref(null);
 
 const selectedEstado = ref(null);
@@ -67,7 +71,6 @@ const loadData = async () => {
 
 onMounted(loadData);
 
-// Observar cambios en la prop refresh para recargar datos
 watch(() => props.refresh, () => {
     loadData();
 });
@@ -109,13 +112,14 @@ const abrirConfiguracion = (data) => {
     showModal.value = true;
 };
 
-// Funciones que parecen faltar
 const onEditar = (data) => {
-    console.log('Editar:', data);
+    selectedId.value = data.id;
+    showUpdateModal.value = true;
 };
 
 const onEliminar = (data) => {
-    console.log('Eliminar:', data);
+    selectedId.value = data.id;
+    showDeleteModal.value = true;
 };
 
 // Función para formatear valores monetarios
@@ -132,6 +136,15 @@ const formatCurrency = (value, currency = 'USD') => {
 const formatPercentage = (value) => {
     if (!value) return '-';
     return `${parseFloat(value).toFixed(4)}%`;
+};
+
+// Handlers para los eventos de los modales
+const onPropiedadActualizada = () => {
+    loadData();
+};
+
+const onPropiedadEliminada = () => {
+    loadData();
 };
 </script>
 
@@ -240,5 +253,9 @@ const formatPercentage = (value) => {
             </template>
         </Column>
     </DataTable>
+    
+    <!-- Modales -->
     <ConfigPropiedades v-model:visible="showModal" :idPropiedad="selectedId" @configuracion-guardada="loadData" />
+    <UpdatePropiedades v-model:visible="showUpdateModal" :idPropiedad="selectedId" @propiedad-actualizada="onPropiedadActualizada" />
+    <DeletePropiedades v-model:visible="showDeleteModal" :idPropiedad="selectedId" @propiedad-eliminada="onPropiedadEliminada" />
 </template>

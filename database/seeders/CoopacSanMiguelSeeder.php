@@ -13,7 +13,6 @@ class CoopacSanMiguelSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. Crear entidad
         $entidad = CorporateEntity::create([
             'nombre' => 'COOPAC SAN MIGUEL',
             'ruc' => '20500000002',
@@ -24,10 +23,8 @@ class CoopacSanMiguelSeeder extends Seeder
             'estado' => 'activo',
         ]);
 
-        // 2. Tipo de tasa
         $tea = RateType::firstOrCreate(['nombre' => 'TEA'], ['descripcion' => 'Tasa Efectiva Anual']);
 
-        // 3. Crear rangos de monto según imagen
         $rangos = [
             [10000, 25000],
             [25001, 50000],
@@ -47,7 +44,6 @@ class CoopacSanMiguelSeeder extends Seeder
             ]);
         }
 
-        // 4. Crear plazos
         $plazos = [
             90 => '90',
             180 => '180',
@@ -62,7 +58,6 @@ class CoopacSanMiguelSeeder extends Seeder
             );
         }
 
-        // 5. Tasas según imagen
         $tasas = [
             [9.25, 9.00, 8.75],
             [9.50, 9.25, 9.00],

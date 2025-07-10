@@ -24,14 +24,29 @@ const model = computed(() => [
                 icon: 'pi pi-fw pi-percentage',
                 items: [
                     {
-                        label: 'Entindades',
+                        label: 'Tipo tarifa',
+                        icon: 'pi pi-fw pi-sliders-h',
+                        to: '/tasas-fijas/tipos'
+                    },
+                    {
+                        label: 'Frecuencia',
+                        icon: 'pi pi-fw pi-money-bill',
+                        to: '/Frecuencia/Pagos'
+                    },
+                    {
+                        label: 'Planes',
+                        icon: 'pi pi-fw pi-sliders-h',
+                        to: '/tasas-fijas/planes'
+                    },
+                    {
+                        label: 'Entidades',
                         icon: 'pi pi-fw pi-building',
                         to: '/tasas-fijas/empresas'
                     },
                     {
-                        label: 'Depositos',
+                        label: 'Depósitos',
                         icon: 'pi pi-fw pi-arrow-circle-down',
-                        to: '/tasas-fijas/retiros'
+                        to: '/tasas-fijas/depositos'
                     },
                     {
                         label: 'Pagos',
@@ -66,7 +81,7 @@ const model = computed(() => [
                 icon: 'pi pi-fw pi-external-link',
                 url: 'https://fondeoadmin.apros.global/',
                 target: '_blank'
-            }
+            },
         ]
     },
     {
