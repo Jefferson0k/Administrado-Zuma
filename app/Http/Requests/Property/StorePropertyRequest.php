@@ -20,14 +20,8 @@ class StorePropertyRequest extends FormRequest{
             'valor_estimado'  => 'required|numeric|min:0',
             'valor_subasta'   => 'nullable|numeric|min:0',
             'valor_requerido' => 'required|numeric|min:0',
-
             'currency_id'     => 'required|exists:currencies,id',
             'deadlines_id'    => 'nullable|exists:deadlines,id',
-
-            'tea'             => 'required|numeric|min:0',
-            'tem'             => 'required|numeric|min:0',
-
-            'riesgo'          => 'required|in:A+,A,B,C,D,-',
 
             'imagenes'        => 'nullable|array',
             'imagenes.*'      => 'nullable|image|max:2048',

@@ -60,12 +60,28 @@ const model = computed(() => [
                 icon: 'pi pi-fw pi-credit-card',
                 items: [
                     {
-                        label: 'Propiedades',
-                        icon: 'pi pi-fw pi-home',
-                        to: '/subasta-hipotecas/propiedades'
+                        label: 'Registros',
+                        icon: 'pi pi-fw pi-folder-open',
+                        items: [
+                            {
+                                label: 'Registro de inmueble',
+                                icon: 'pi pi-fw pi-home',
+                                to: '/subasta-hipotecas/propiedades'
+                            },
+                            {
+                                label: 'Reglas',
+                                icon: 'pi pi-fw pi-cog',
+                                to: '/subasta-hipotecas/reglas'
+                            },
+                            {
+                                label: 'Información del inversionista',
+                                icon: 'pi pi-fw pi-user',
+                                to: '/subasta-hipotecas/inversionista'
+                            },
+                        ]
                     },
                     {
-                        label: 'Historico de pujas',
+                        label: 'Histórico de pujas',
                         icon: 'pi pi-fw pi-history',
                         to: '/subasta-hipotecas/historicos'
                     },

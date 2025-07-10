@@ -12,14 +12,18 @@ use App\Http\Controllers\Panel\CurrencyControllers;
 use App\Http\Controllers\Panel\DeadlinesControllers;
 use App\Http\Controllers\Panel\FixedTermRateController;
 use App\Http\Controllers\Panel\PaymentFrequencyController;
+use App\Http\Controllers\Panel\PaymentScheduleController;
+use App\Http\Controllers\Panel\PreviuController;
 use App\Http\Controllers\Panel\PropertyControllers;
 use App\Http\Controllers\Panel\RateTypeController;
 use App\Http\Controllers\Panel\TermPlanController;
 use App\Http\Controllers\Web\SubastaHipotecas\CuentasBancariasWebControler;
 use App\Http\Controllers\Web\SubastaHipotecas\DepositosWebControler;
 use App\Http\Controllers\Web\SubastaHipotecas\HistoricoWebController;
+use App\Http\Controllers\Web\SubastaHipotecas\InversionistasWebController;
 use App\Http\Controllers\Web\SubastaHipotecas\PagosWebControler;
 use App\Http\Controllers\Web\SubastaHipotecas\PropiedadesWebControler;
+use App\Http\Controllers\Web\SubastaHipotecas\ReglasWebController;
 use App\Http\Controllers\Web\SubastaHipotecas\RetirosWebControler;
 use App\Http\Controllers\Web\SubastasOnlineWebController;
 use App\Http\Controllers\Web\SubastaHipotecas\TipoCambioWebControler;
@@ -75,6 +79,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/propiedades', [PropiedadesWebControler::class, 'views'])->name('propiedades.views');
         Route::get('/retiros', [RetirosWebControler::class, 'views'])->name('retiros.views');
         Route::get('/tipo-cambio', [TipoCambioWebControler::class, 'views'])->name('tipo-cambio.views');
+        Route::get('/reglas', [ReglasWebController::class, 'views'])->name('tipo-cambio.views');
+        Route::get('/inversionista', [InversionistasWebController::class, 'views'])->name('tipo-cambio.views');
     });
 
     #USUARIOS -> BACKEND
@@ -105,14 +111,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     #PROPERTY => BACKEND (SOLO ADMINISTRADOR MAS NO CLIENTE)
     Route::prefix('property')->group(function () {
         Route::get('/', [PropertyControllers::class, 'index'])->name('property.index');
+        Route::get('/reglas', [PropertyControllers::class, 'listReglas'])->name('property.listReglas');
         Route::post('/', [PropertyControllers::class, 'store'])->name('property.store');
         Route::get('/{id}', [PropertyControllers::class, 'show'])->name('property.show');
         Route::put('/{id}/estado', [PropertyControllers::class, 'update'])->name('property.update');
         Route::get('/{id}/show', [PropertyControllers::class, 'showProperty'])->name('property.show');
         Route::put('/{id}/actualizar', [PropertyControllers::class, 'updateProperty'])->name('property.update');
         Route::delete('/{id}', [PropertyControllers::class, 'delete'])->name('property.delete');
+        Route::get('/reglas/{id}/show', [PropertyControllers::class, 'showReglas']);
     });
     
+    Route::get('/propiedad/{id}/cronograma', [PaymentScheduleController::class, 'getCronogramaPorPropiedad']);    
     #Seccion de apis x mientas
     Route::prefix('api')->group(function () {
         #Route::post('/bids', [BidControllers::class, 'index'])->name(name: 'bids.index');
@@ -152,6 +161,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
     
     Route::get('/fixed-term-matrix/{empresaId}', [FixedTermRateController::class, 'matrix']);
+
+    Route::get('/propiedades/pendientes', [PropertyControllers::class, 'listProperties']);
+    
+    Route::prefix('simulacion')->group(function () {
+        Route::post('/preview-americano', [PreviuController::class, 'previewManual']);
+        Route::post('/preview-frances', [PreviuController::class, 'previewFrances']);
+    });
+
 });
 Route::get('/currencies', [CurrencyControllers::class, 'index']);
 

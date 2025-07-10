@@ -62,24 +62,6 @@
           <InputNumber v-model="form.valor_estimado" class="w-full" :useGrouping="true" :locale="'es-PE'" />
         </div>
 
-        <div class="flex gap-4">
-          <div class="w-1/2">
-            <label class="font-bold mb-1">TEA (%) <span class="text-red-500">*</span></label>
-            <InputNumber v-model="form.tea" class="w-full" :minFractionDigits="2" :maxFractionDigits="4"
-              :useGrouping="false" />
-          </div>
-          <div class="w-1/2">
-            <label class="font-bold mb-1">TEM (%) <span class="text-red-500">*</span></label>
-            <InputNumber v-model="form.tem" class="w-full" :minFractionDigits="2" :maxFractionDigits="4"
-              :useGrouping="false" />
-          </div>
-        </div>
-
-        <div>
-          <label class="font-bold mb-1">Riesgo <span class="text-red-500">*</span></label>
-          <Select v-model="form.riesgo" :options="riesgos" optionLabel="label" optionValue="value"
-            placeholder="Seleccionar riesgo" class="w-full" />
-        </div>
         <div>
           <label class="block font-bold mb-1">Imágenes</label>
           <FileUpload name="imagenes[]" :multiple="true" accept="image/*" :maxFileSize="1000000" customUpload
@@ -124,29 +106,13 @@ const form = ref({
   valor_estimado: null,
   valor_requerido: null,
   currency_id: null,
-  tea: null,
-  tem: null,
-  riesgo: null,
-  estado: ''
 })
-
-const estados = [
-  { label: 'Activa', value: 'activa' },
-  { label: 'Desactivada', value: 'desactivada' }
-]
 
 const monedas = [
   { label: 'PEN (S/)', value: 1 },
   { label: 'USD ($)', value: 2 }
 ]
 
-const riesgos = [
-  { label: 'A+', value: 'A+' },
-  { label: 'A', value: 'A' },
-  { label: 'B', value: 'B' },
-  { label: 'C', value: 'C' },
-  { label: 'D', value: 'D' }
-]
 
 const archivos = ref<File[]>([])
 const totalSize = ref(0)
@@ -198,10 +164,7 @@ const saveProperty = () => {
     !form.value.direccion ||
     !form.value.currency_id ||
     !form.value.valor_requerido ||
-    !form.value.valor_estimado ||
-    form.value.tea === null ||
-    form.value.tem === null ||
-    !form.value.riesgo
+    !form.value.valor_estimado
   ) {
     toast.add({
       severity: 'warn',

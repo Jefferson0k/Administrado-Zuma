@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Property\PropertyUpdateRequest;
 use App\Http\Requests\Property\StorePropertyRequest;
 use App\Http\Resources\Subastas\Property\PropertyOnliene;
+use App\Http\Resources\Subastas\Property\PropertyReglaResource;
+use App\Http\Resources\Subastas\Property\PropertyReglasResource;
 use App\Http\Resources\Subastas\Property\PropertyResource;
 use App\Http\Resources\Subastas\Property\PropertyShowResource;
 use App\Http\Resources\Subastas\Property\PropertyUpdateResource;
@@ -20,7 +22,12 @@ use App\Pipelines\FilterByEstado;
 use Illuminate\Http\Request;
 use Illuminate\Pipeline\Pipeline;
 use App\Pipelines\FilterBySearch;
+use App\Services\CreditSimulationAmericanoService;
+use App\Services\CreditSimulationService;
 use Carbon\Carbon;
+use Exception;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
@@ -138,47 +145,23 @@ class PropertyControllers extends Controller{
         }
         return new PropertyShowResource($property);
     }
+    
     public function update(PropertyUpdateRequest $request, $id){
+        DB::beginTransaction();
         try {
             $property = Property::findOrFail($id);
-            $nuevoEstado = 'en_subasta';
-
-            $property->valor_subasta = $request->monto_inicial;
-
-            $diaSubasta = $request->dia_subasta;
-            $horaInicio = $request->hora_inicio;
-            $horaFin = $request->hora_fin;
-
-            $fechaInicio = Carbon::createFromFormat('Y-m-d H:i:s', "$diaSubasta $horaInicio");
-            $fechaFin = Carbon::createFromFormat('Y-m-d H:i:s', "$diaSubasta $horaFin");
-
-            if ($fechaFin->lessThanOrEqualTo($fechaInicio)) {
-                return response()->json([
-                    'message' => 'La hora de fin debe ser mayor a la de inicio'
-                ], 422);
-            }
-
-            if ($property->valor_subasta <= 0) {
-                return response()->json([
-                    'message' => 'El valor de subasta debe ser mayor a cero antes de iniciar una subasta.'
-                ], 422);
-            }
-
-            if (!$property->subasta) {
-                $property->subasta()->create([
-                    'monto_inicial' => $property->valor_subasta,
-                    'dia_subasta' => $diaSubasta,
-                    'hora_inicio' => $horaInicio,
-                    'hora_fin' => $horaFin,
-                    'tiempo_finalizacion' => $fechaFin,
-                    'estado' => 'activa',
-                ]);
-            }
-
-            $property->estado = $nuevoEstado;
+            $property->estado = $request->estado;
+            $property->tea = $request->tea;
+            $property->tem = $request->tem;
             $property->deadlines_id = $request->deadlines_id;
+            $property->riesgo = $request->riesgo;
+            $property->tipo_cronograma = $request->tipo_cronograma;
             $property->save();
-
+            $oldInvestors = PropertyInvestor::where('property_id', $property->id)->get();
+            foreach ($oldInvestors as $inv) {
+                PaymentSchedule::where('property_investor_id', $inv->id)->delete();
+                $inv->delete();
+            }
             $propertyInvestor = PropertyInvestor::create([
                 'property_id' => $property->id,
                 'investor_id' => null,
@@ -186,67 +169,50 @@ class PropertyControllers extends Controller{
                 'status' => 'pendiente',
             ]);
 
-            $this->generatePaymentSchedule($propertyInvestor->id, $property);
-
+            $this->generatePaymentScheduleByType($propertyInvestor->id, $property);
+            DB::commit();
             return response()->json([
-                'message' => 'Estado actualizado correctamente y cronograma generado.',
+                'message' => 'Estado actualizado correctamente y cronograma regenerado.',
                 'property' => $property,
                 'property_investor_id' => $propertyInvestor->id,
             ]);
-
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'message' => 'Error interno del servidor',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
-    private function generatePaymentSchedule($propertyInvestorId, $property){
+    private function generatePaymentScheduleByType($propertyInvestorId, $property){
         $deadline = Deadlines::find($property->deadlines_id);
-        
         if (!$deadline) {
-            throw new \Exception('No se encontró el plazo especificado');
+            throw new Exception('No se encontró el plazo especificado');
         }
-
-        $capital = $property->valor_estimado;
-        $tem = $property->tem;
-        $temConIgv = $tem * 1.18;
-        $temDecimal = $temConIgv / 100;
-        $n = $deadline->duracion_meses;
-
-        $cuotaMensual = $capital * ($temDecimal * pow(1 + $temDecimal, $n)) / 
-                        (pow(1 + $temDecimal, $n) - 1);
-
-        $saldo = $capital;
-        $fechaVencimiento = Carbon::now()->addMonth();
-
-        for ($i = 1; $i <= $n; $i++) {
-            $intereses = $saldo * $temDecimal;
-            $capitalAmortizado = $cuotaMensual - $intereses;
-            $saldoFinal = $saldo - $capitalAmortizado;
-            
-            $igv = $intereses * 0.18;
-            $cuotaNeta = $cuotaMensual;
-            $totalCuota = $cuotaNeta + $igv;
-
+        if ($property->tipo_cronograma === 'americano') {
+            $service = new CreditSimulationAmericanoService();
+        } else {
+            $service = new CreditSimulationService();
+        }
+        $simulation = $service->generate($property, $deadline, 1, $deadline->duracion_meses);
+        $pagos = $simulation['cronograma_final']['pagos'];
+        foreach ($pagos as $pago) {
             PaymentSchedule::create([
                 'property_investor_id' => $propertyInvestorId,
-                'cuota' => $i,
-                'vencimiento' => $fechaVencimiento->format('Y-m-d'),
-                'saldo_inicial' => round($saldo, 2),
-                'capital' => round($capitalAmortizado, 2),
-                'intereses' => round($intereses, 2),
-                'cuota_neta' => round($cuotaNeta, 2),
-                'igv' => round($igv, 2),
-                'total_cuota' => round($totalCuota, 2),
-                'saldo_final' => round($saldoFinal, 2),
+                'cuota' => $pago['cuota'],
+                'vencimiento' => Carbon::createFromFormat('d/m/Y', $pago['vcmto'])->format('Y-m-d'),
+                'saldo_inicial' => (float) str_replace(',', '', $pago['saldo_inicial']),
+                'capital' => (float) str_replace(',', '', $pago['capital']),
+                'intereses' => (float) str_replace(',', '', $pago['interes']),
+                'cuota_neta' => (float) str_replace(',', '', $pago['cuota_neta']),
+                'igv' => (float) str_replace(',', '', $pago['igv']),
+                'total_cuota' => (float) str_replace(',', '', $pago['total_cuota']),
+                'saldo_final' => (float) str_replace(',', '', $pago['saldo_final']),
                 'estado' => 'pendiente',
             ]);
-
-            $saldo = $saldoFinal;
-            $fechaVencimiento->addMonth();
         }
     }
+
     public function subastadas(Request $request){
         try {
             $perPage = $request->input('per_page', 15);
@@ -295,5 +261,77 @@ class PropertyControllers extends Controller{
                 'imagen' => $filename,
             ]);
         }
+    }
+    public function listProperties(Request $request): JsonResponse{
+        try {
+            $perPage = $request->input('per_page', 10);
+            $search = $request->input('search');
+
+            $query = Property::query()
+                ->where('estado', 'pendiente')
+                ->when($search, function ($query) use ($search) {
+                    return $query->where(function ($q) use ($search) {
+                        $q->where('nombre', 'LIKE', "%{$search}%")
+                        ->orWhere('id', 'LIKE', "%{$search}%")
+                        ->orWhere('departamento', 'LIKE', "%{$search}%")
+                        ->orWhere('provincia', 'LIKE', "%{$search}%")
+                        ->orWhere('distrito', 'LIKE', "%{$search}%");
+                    });
+                })
+                ->with(['currency', 'plazo']);
+
+            $properties = $query->paginate($perPage);
+
+            return response()->json([
+                'data' => $properties->map(function ($property) {
+                    return [
+                        'id' => $property->id,
+                        'nombre' => $property->nombre,
+                        'departamento' => $property->departamento,
+                        'provincia' => $property->provincia,
+                        'distrito' => $property->distrito,
+                        'direccion' => $property->direccion,
+                        'descripcion' => $property->descripcion,
+                        'estado' => $property->estado,
+                        'valor_estimado' => $property->valor_estimado,
+                    ];
+                }),
+                'pagination' => [
+                    'total' => $properties->total(),
+                    'current_page' => $properties->currentPage(),
+                    'per_page' => $properties->perPage(),
+                    'last_page' => $properties->lastPage(),
+                    'from' => $properties->firstItem(),
+                    'to' => $properties->lastItem(),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Error al listar propiedades',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+    public function listReglas(Request $request){
+        $query = Property::whereIn('estado', ['activa', 'desactivada']);
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('nombre', 'like', '%' . $search . '%')
+                ->orWhere('tipo_cronograma', 'like', '%' . $search . '%')
+                ->orWhere('riesgo', 'like', '%' . $search . '%');
+            });
+        }
+
+        $propiedades = $query->with('plazo')->paginate(15);
+
+        return PropertyReglasResource::collection($propiedades);
+    }
+    public function showReglas($id){
+        $regla = Property::find($id);
+        if (!$regla) {
+            return response()->json(['message' => 'Propiedad no encontrada'], 404);
+        }
+        return new PropertyReglaResource($regla);
     }
 }

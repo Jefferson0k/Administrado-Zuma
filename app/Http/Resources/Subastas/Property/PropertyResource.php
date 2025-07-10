@@ -6,8 +6,10 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\File;
 
-class PropertyResource extends JsonResource{
-    public function toArray(Request $request): array{
+class PropertyResource extends JsonResource
+{
+    public function toArray(Request $request): array
+    {
         return [
             'id' => $this->id,
             'nombre' => $this->nombre,
@@ -22,18 +24,23 @@ class PropertyResource extends JsonResource{
             'tea' => $this->tea,
             'tem' => $this->tem,
             'Moneda' => $this->currency->codigo,
+            'estado' => $this->estado,
             'estado_nombre' => match ($this->estado) {
-                'en_subasta' => 'En subastada',
+                'en_subasta' => 'En subasta',
                 'activa' => 'Activa',
                 'subastada' => 'Subastada',
                 'programada' => 'Programada',
                 'desactivada' => 'Desactivada',
+                'adquirido' => 'Adquirido',
+                'pendiente' => 'Pendiente',
                 default => 'Estado desconocido',
             },
             'foto' => $this->getImagenes(),
         ];
     }
-    private function getImagenes(): array{
+
+    private function getImagenes(): array
+    {
         $rutaCarpeta = public_path("Propiedades/{$this->id}");
         $imagenes = [];
 

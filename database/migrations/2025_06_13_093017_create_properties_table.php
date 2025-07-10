@@ -32,8 +32,8 @@ return new class extends Migration {
             $table->enum('riesgo', ['A+', 'A', 'B', 'C', 'D','-'])->default('-');
 
             $table->enum('estado', [
-                'en_subasta', 'subastada', 'programada', 'desactivada', 'activa', 'adquirido'
-            ])->default('activa');
+                'en_subasta', 'subastada', 'programada', 'desactivada', 'activa', 'adquirido', 'pendiente'
+            ])->default('pendiente');
 
             $table->timestamps();
         });

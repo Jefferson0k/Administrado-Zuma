@@ -16,6 +16,8 @@ import ConfigPropiedades from './ConfigPropiedades.vue';
 import UpdatePropiedades from './UpdatePropiedades.vue';
 import DeletePropiedades from './DeletePropiedades.vue';
 
+import Tag from 'primevue/tag';
+
 const props = defineProps({
   refresh: {
     type: Number,
@@ -39,12 +41,14 @@ const showDeleteModal = ref(false);
 const selectedId = ref(null);
 
 const selectedEstado = ref(null);
+// Estados actualizados según tu enum de la base de datos
 const selectedOpcions = ref([
     { name: 'En subasta', value: 'en_subasta' },
-    { name: 'Subasta programada', value: 'programada' },
-    { name: 'No subastada', value: 'no_subastada' },
     { name: 'Subastada', value: 'subastada' },
-    { name: 'Desierta', value: 'desierta' },
+    { name: 'Programada', value: 'programada' },
+    { name: 'Desactivada', value: 'desactivada' },
+    { name: 'Activa', value: 'activa' },
+    { name: 'Adquirido', value: 'adquirido' },
 ]);
 
 let searchTimeout;
@@ -107,10 +111,6 @@ const optionalColumns = ref([
     { field: 'provincia', header: 'Provincia' },
 ]);
 
-const abrirConfiguracion = (data) => {
-    selectedId.value = data.id;
-    showModal.value = true;
-};
 
 const onEditar = (data) => {
     selectedId.value = data.id;
@@ -138,7 +138,28 @@ const formatPercentage = (value) => {
     return `${parseFloat(value).toFixed(4)}%`;
 };
 
-// Handlers para los eventos de los modales
+// Función para obtener el color del estado
+const getEstadoSeverity = (estado) => {
+    switch (estado) {
+        case 'en_subasta':
+            return 'info';
+        case 'activa':
+            return 'success';
+        case 'subastada':
+            return 'warn';
+        case 'programada':
+            return 'info';
+        case 'desactivada':
+            return 'danger';
+        case 'adquirido':
+            return 'success';
+        case 'pendiente':
+            return 'warn';
+        default:
+            return 'secondary';
+    }
+};
+
 const onPropiedadActualizada = () => {
     loadData();
 };
@@ -146,6 +167,25 @@ const onPropiedadActualizada = () => {
 const onPropiedadEliminada = () => {
     loadData();
 };
+const copiarId = async (id) => {
+    try {
+        await navigator.clipboard.writeText(id);
+        toast.add({
+            severity: 'success',
+            summary: 'ID copiado',
+            detail: `ID ${id} copiado al portapapeles`,
+            life: 3000,
+        });
+    } catch (err) {
+        toast.add({
+            severity: 'error',
+            summary: 'Error al copiar',
+            detail: 'No se pudo copiar el ID',
+            life: 3000,
+        });
+    }
+};
+
 </script>
 
 <template>
@@ -201,9 +241,21 @@ const onPropiedadEliminada = () => {
         
         <Column v-if="isColumnSelected('foto')" header="Imagen">
             <template #body="slotProps">
-                <Image v-if="slotProps.data.foto" :src="slotProps.data.foto" class="rounded" alt="Foto" preview
-                    width="50" style="width: 64px" />
-                <span v-else>-</span>
+                <div v-if="slotProps.data.foto && slotProps.data.foto.length > 0" class="flex gap-1">
+                    <Image v-for="(imagen, index) in slotProps.data.foto.slice(0, 3)" 
+                           :key="index" 
+                           :src="imagen" 
+                           class="rounded" 
+                           alt="Foto" 
+                           preview
+                           width="40" 
+                           height="40" 
+                           style="object-fit: cover" />
+                    <span v-if="slotProps.data.foto.length > 3" class="text-sm text-gray-500 self-center">
+                        +{{ slotProps.data.foto.length - 3 }}
+                    </span>
+                </div>
+                <span v-else>Sin imágenes</span>
             </template>
         </Column>
 
@@ -220,6 +272,9 @@ const onPropiedadEliminada = () => {
         </Column>
 
         <Column v-if="isColumnSelected('dias')" field="dias" header="Días" sortable style="min-width: 8rem">
+            <template #body="slotProps">
+                <span>{{ slotProps.data.dias || '-' }}</span>
+            </template>
         </Column>
 
         <Column v-if="isColumnSelected('tea')" field="tea" header="TEA" sortable style="min-width: 10rem">
@@ -235,6 +290,9 @@ const onPropiedadEliminada = () => {
         </Column>
 
         <Column v-if="isColumnSelected('moneda')" field="Moneda" header="Moneda" sortable style="min-width: 8rem">
+            <template #body="slotProps">
+                <span>{{ slotProps.data.Moneda || '-' }}</span>
+            </template>
         </Column>
 
         <Column v-if="isColumnSelected('direccion')" field="direccion" header="Dirección" sortable style="min-width: 20rem">
@@ -243,15 +301,20 @@ const onPropiedadEliminada = () => {
             </template>
         </Column>
 
-        <Column field="estado_nombre" header="Estado" style="min-width: 8rem" sortable/>
-        
-        <Column :exportable="false" style="min-width: 10rem">
+        <Column field="estado_nombre" header="Estado" style="min-width: 10rem" sortable>
             <template #body="slotProps">
-                <Button icon="pi pi-cog" outlined rounded class="mr-2" severity="info" @click="abrirConfiguracion(slotProps.data)" />
-                <Button icon="pi pi-pencil" outlined rounded class="mr-2" @click="onEditar(slotProps.data)" />
-                <Button icon="pi pi-trash" outlined rounded severity="danger" @click="onEliminar(slotProps.data)" />
+                <Tag :value="slotProps.data.estado_nombre" :severity="getEstadoSeverity(slotProps.data.estado)" />
             </template>
         </Column>
+        
+        <Column :exportable="false" style="min-width: 12rem">
+            <template #body="slotProps">
+                <Button icon="pi pi-pencil" outlined rounded class="mr-2" @click="onEditar(slotProps.data)" />
+                <Button icon="pi pi-trash" outlined rounded severity="danger" class="mr-2" @click="onEliminar(slotProps.data)" />
+                <Button icon="pi pi-copy" outlined rounded severity="info" @click="copiarId(slotProps.data.id)" />
+            </template>
+        </Column>
+
     </DataTable>
     
     <!-- Modales -->

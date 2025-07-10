@@ -58,26 +58,6 @@
                     <label class="font-bold mb-1">Valor de la propiedad <span class="text-red-500">*</span></label>
                     <InputNumber v-model="form.valor_estimado" class="w-full" :useGrouping="true" :locale="'es-PE'" />
                 </div>
-
-                <div class="flex gap-4">
-                    <div class="w-1/2">
-                        <label class="font-bold mb-1">TEA (%) <span class="text-red-500">*</span></label>
-                        <InputNumber v-model="form.tea" class="w-full" :minFractionDigits="2" :maxFractionDigits="4"
-                            :useGrouping="false" />
-                    </div>
-                    <div class="w-1/2">
-                        <label class="font-bold mb-1">TEM (%) <span class="text-red-500">*</span></label>
-                        <InputNumber v-model="form.tem" class="w-full" :minFractionDigits="2" :maxFractionDigits="4"
-                            :useGrouping="false" />
-                    </div>
-                </div>
-
-                <div>
-                    <label class="font-bold mb-1">Riesgo <span class="text-red-500">*</span></label>
-                    <Select v-model="form.riesgo" :options="riesgos" optionLabel="label" optionValue="value"
-                        placeholder="Seleccionar riesgo" class="w-full" />
-                </div>
-
                 <!-- Imágenes actuales -->
                 <div v-if="imagenesActuales.length > 0">
                     <label class="font-bold mb-2 block">Imágenes actuales</label>
@@ -154,6 +134,7 @@ const form = reactive({
     valor_estimado: null,
     valor_requerido: null,
     currency_id: null,
+    estado: '',
     tea: null,
     tem: null,
     riesgo: null
@@ -164,19 +145,10 @@ const monedas = [
     { label: 'USD ($)', value: 2 }
 ];
 
-const riesgos = [
-    { label: 'A+', value: 'A+' },
-    { label: 'A', value: 'A' },
-    { label: 'B', value: 'B' },
-    { label: 'C', value: 'C' },
-    { label: 'D', value: 'D' }
-];
-
 const departamentos = ref([]);
 const provincias = ref([]);
 const distritos = ref([]);
 
-// Cargar departamentos al montar el componente
 onMounted(async () => {
     try {
         const { data } = await axios.get('https://novalink.oswa.workers.dev/api/v1/peru/ubigeo');
@@ -220,21 +192,16 @@ const cargarPropiedad = async () => {
         const response = await axios.get(`/property/${props.idPropiedad}/show`);
         const property = response.data;
         
-        // Llenar el formulario con los datos
         form.nombre = property.nombre || '';
         form.direccion = property.direccion || '';
         form.descripcion = property.descripcion || '';
         form.valor_estimado = property.valor_estimado;
         form.valor_requerido = property.valor_requerido;
         form.currency_id = property.currency_id;
-        form.tea = property.tea;
-        form.tem = property.tem;
-        form.riesgo = property.riesgo;
+        form.estado = property.estado || '';
         
-        // Buscar y establecer ubicación
         await buscarUbicacion(property.departamento, property.provincia, property.distrito);
         
-        // Procesar imágenes
         imagenesActuales.value = property.images ? property.images.map(img => ({
             id: img.id,
             imagen: img.imagen,
@@ -256,7 +223,6 @@ const cargarPropiedad = async () => {
 
 const buscarUbicacion = async (departamento, provincia, distrito) => {
     try {
-        // Buscar departamento
         const deptEncontrado = departamentos.value.find(dept => 
             dept.ubigeo_name.toLowerCase() === departamento.toLowerCase()
         );
@@ -265,7 +231,6 @@ const buscarUbicacion = async (departamento, provincia, distrito) => {
             form.departamento = deptEncontrado;
             provincias.value = deptEncontrado.provinces || [];
             
-            // Buscar provincia
             const provEncontrada = provincias.value.find(prov => 
                 prov.ubigeo_name.toLowerCase() === provincia.toLowerCase()
             );
@@ -274,7 +239,6 @@ const buscarUbicacion = async (departamento, provincia, distrito) => {
                 form.provincia = provEncontrada;
                 distritos.value = provEncontrada.districts || [];
                 
-                // Buscar distrito
                 const distEncontrado = distritos.value.find(dist => 
                     dist.ubigeo_name.toLowerCase() === distrito.toLowerCase()
                 );
@@ -301,19 +265,15 @@ const eliminarImagen = (imagen) => {
 const actualizarPropiedad = async () => {
     if (!props.idPropiedad) return;
 
-    // Validación básica
     if (
         !form.nombre ||
-        !form.departamento?.ubigeo_id ||
-        !form.provincia?.ubigeo_id ||
-        !form.distrito?.ubigeo_id ||
+        !form.departamento ||
+        !form.provincia ||
+        !form.distrito ||
         !form.direccion ||
         !form.currency_id ||
         !form.valor_requerido ||
-        !form.valor_estimado ||
-        form.tea === null ||
-        form.tem === null ||
-        !form.riesgo
+        !form.valor_estimado
     ) {
         toast.add({
             severity: 'warn',
@@ -329,32 +289,24 @@ const actualizarPropiedad = async () => {
 
         const formData = new FormData();
 
-        // Agregar campos uno por uno
+        // Enviar los nombres de los lugares, no los IDs (igual que en el registro)
         formData.append('nombre', form.nombre);
-        formData.append('departamento', form.departamento.ubigeo_id);
-        formData.append('provincia', form.provincia.ubigeo_id);
-        formData.append('distrito', form.distrito.ubigeo_id);
+        formData.append('departamento', form.departamento.ubigeo_name);
+        formData.append('provincia', form.provincia.ubigeo_name);
+        formData.append('distrito', form.distrito.ubigeo_name);
         formData.append('direccion', form.direccion);
         formData.append('descripcion', form.descripcion || '');
         formData.append('valor_estimado', form.valor_estimado);
         formData.append('valor_requerido', form.valor_requerido);
         formData.append('currency_id', form.currency_id);
-        formData.append('tea', form.tea);
-        formData.append('tem', form.tem);
-        formData.append('riesgo', form.riesgo);
 
-        // Agregar imágenes nuevas
         archivos.value.forEach((file) => {
             formData.append('imagenes[]', file);
         });
 
-        // Agregar IDs de imágenes a eliminar
         imagenesAEliminar.value.forEach(id => {
             formData.append('imagenes_eliminar[]', id);
         });
-
-        // (Opcional) Verifica lo que se envía en consola
-        // console.log([...formData.entries()]);
 
         await axios.post(`/property/${props.idPropiedad}/actualizar?_method=PUT`, formData, {
             headers: {
@@ -386,7 +338,13 @@ const actualizarPropiedad = async () => {
 
 const resetForm = () => {
     Object.keys(form).forEach(key => {
-        form[key] = key === 'departamento' || key === 'provincia' || key === 'distrito' ? null : '';
+        if (key === 'departamento' || key === 'provincia' || key === 'distrito') {
+            form[key] = null;
+        } else if (key === 'valor_estimado' || key === 'valor_requerido' || key === 'currency_id' || key === 'tea' || key === 'tem' || key === 'riesgo') {
+            form[key] = null;
+        } else {
+            form[key] = '';
+        }
     });
     archivos.value = [];
     imagenesActuales.value = [];

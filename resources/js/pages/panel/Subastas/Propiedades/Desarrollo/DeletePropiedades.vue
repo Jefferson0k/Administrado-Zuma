@@ -27,7 +27,7 @@
         </div>
 
         <template #footer>
-            <Button label="Cancelar" icon="pi pi-times" @click="cerrarModal" text />
+            <Button label="Cancelar" icon="pi pi-times" severity="secondary" @click="cerrarModal" text />
             <Button label="Eliminar" icon="pi pi-trash" severity="danger" @click="eliminarPropiedad"
                 :loading="loading" />
         </template>
