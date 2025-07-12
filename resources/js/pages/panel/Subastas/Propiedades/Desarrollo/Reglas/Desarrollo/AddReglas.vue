@@ -79,7 +79,7 @@
 
         <template #footer>
             <Button label="Cancelar" icon="pi pi-times" severity="secondary" text @click="visible = false" />
-            <Button label="Actualizar" icon="pi pi-check" severity="contrast" @click="actualizarPropiedad" />
+            <Button label="Guardar" icon="pi pi-check" severity="contrast" @click="actualizarPropiedad" />
         </template>
     </Dialog>
 
@@ -121,14 +121,20 @@ const plazos = ref([])
 
 const parametrosCronograma = computed(() => {
     const plazoSeleccionado = plazos.value.find(p => p.id === deadlines_id.value)
+    
+    const propiedadData = propiedades.value.find(p => p.value === propiedadSeleccionada.value)
+    const valorRequerido = propiedadData ? parseFloat(propiedadData.valor_requerido) : 0
+    
     return {
         tea: tea.value,
         tem: tem.value,
         cronograma: cronograma.value,
         deadlines_id: deadlines_id.value,
-        duracion_meses: plazoSeleccionado ? plazoSeleccionado.duracion_meses : 0
+        duracion_meses: plazoSeleccionado ? plazoSeleccionado.duracion_meses : 0,
+        valor_requerido: valorRequerido  // ← AGREGAR ESTA LÍNEA
     }
 })
+
 
 const previsualizarCronograma = async () => {
     if (!propiedadSeleccionada.value) {
@@ -161,7 +167,7 @@ const previsualizarCronograma = async () => {
     } catch (error) {
         propiedadSeleccionadaData.value = {
             ...propiedadData,
-            valor_estimado: propiedadData.valor_estimado || 0
+            valor_requerido: propiedadData.valor_requerido || 0
         }
         
         cronogramaVisible.value = true
@@ -253,7 +259,7 @@ const buscarPropiedades = debounce(async (texto) => {
             sublabel: `${propiedad.distrito} | ${propiedad.direccion}`,
             value: propiedad.id,
             estado: propiedad.estado,
-            valor_estimado: propiedad.valor_estimado
+            valor_requerido: propiedad.valor_requerido
         }))
     } catch (error) {
         toast.add({

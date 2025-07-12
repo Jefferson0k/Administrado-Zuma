@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
-
+use Illuminate\Support\Facades\File;
 class Property extends Model{
     use HasFactory;
     protected $table = 'properties';
@@ -51,5 +51,32 @@ class Property extends Model{
     }
     public function images(){
         return $this->hasMany(Imagenes::class);
+    }
+    public function loanDetail(){
+        return $this->hasOne(PropertyLoanDetail::class, 'property_id');
+    }
+    public function getImagenes(): array{
+        $rutaCarpeta = public_path("Propiedades/{$this->id}");
+        $imagenes = [];
+        if (File::exists($rutaCarpeta)) {
+            $archivos = File::files($rutaCarpeta);
+            foreach ($archivos as $archivo) {
+                $imagenes[] = asset("Propiedades/{$this->id}/" . $archivo->getFilename());
+            }
+        }
+        if (empty($imagenes)) {
+            $imagenes[] = asset('Propiedades/no-image.png');
+        }
+        return $imagenes;
+    }
+    public function paymentSchedules(){
+        return $this->hasManyThrough(
+            PaymentSchedule::class,      // Modelo destino
+            PropertyInvestor::class,     // Modelo intermedio
+            'property_id',               // Foreign key en PropertyInvestor
+            'property_investor_id',      // Foreign key en PaymentSchedule
+            'id',                        // Clave local en Property
+            'id'                         // Clave local en PropertyInvestor
+        );
     }
 }

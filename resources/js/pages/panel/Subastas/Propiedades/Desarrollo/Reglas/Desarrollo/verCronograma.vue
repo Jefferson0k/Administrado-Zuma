@@ -122,8 +122,12 @@ const generarCronograma = async () => {
             ? '/simulacion/preview-frances'
             : '/simulacion/preview-americano'
 
+        // Usar el valor_requerido de los parámetros (que ahora sí se pasa)
+        const valorRequerido = props.parametros.valor_requerido || 
+                              parseFloat(props.propiedadData.valor_requerido) || 0
+
         const payload = {
-            valor_estimado: props.propiedadData.valor_estimado,
+            valor_requerido: valorRequerido,  // ← CAMBIAR ESTA LÍNEA
             tem: props.parametros.tem,
             tea: props.parametros.tea,
             plazo: props.parametros.duracion_meses,

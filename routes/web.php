@@ -9,12 +9,14 @@ use App\Http\Controllers\Panel\AmountRangeController;
 use App\Http\Controllers\Panel\CalculadoraController;
 use App\Http\Controllers\Panel\CorporateEntityController;
 use App\Http\Controllers\Panel\CurrencyControllers;
+use App\Http\Controllers\Panel\CustomerController;
 use App\Http\Controllers\Panel\DeadlinesControllers;
 use App\Http\Controllers\Panel\FixedTermRateController;
 use App\Http\Controllers\Panel\PaymentFrequencyController;
 use App\Http\Controllers\Panel\PaymentScheduleController;
 use App\Http\Controllers\Panel\PreviuController;
 use App\Http\Controllers\Panel\PropertyControllers;
+use App\Http\Controllers\Panel\PropertyLoanDetailController;
 use App\Http\Controllers\Panel\RateTypeController;
 use App\Http\Controllers\Panel\TermPlanController;
 use App\Http\Controllers\Web\SubastaHipotecas\CuentasBancariasWebControler;
@@ -162,14 +164,27 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     Route::get('/fixed-term-matrix/{empresaId}', [FixedTermRateController::class, 'matrix']);
 
+    #BUSCADPRES
     Route::get('/propiedades/pendientes', [PropertyControllers::class, 'listProperties']);
-    
+    Route::get('/propiedades/activas', [PropertyControllers::class, 'listPropertiesActivas']);
+    Route::get('/clientes/activos', [CustomerController::class, 'listCustomersActivos']);
+
     Route::prefix('simulacion')->group(function () {
         Route::post('/preview-americano', [PreviuController::class, 'previewManual']);
         Route::post('/preview-frances', [PreviuController::class, 'previewFrances']);
     });
 
+    Route::prefix('property-loan-details')->group(function () {
+        Route::get('/', [PropertyLoanDetailController::class, 'index']);
+        Route::post('/', [PropertyLoanDetailController::class, 'store']);
+        Route::get('/{id}', [PropertyLoanDetailController::class, 'show']);
+        Route::put('/{id}', [PropertyLoanDetailController::class, 'update']);
+        Route::delete('/{id}', [PropertyLoanDetailController::class, 'destroy']);
+    });
+    
+    Route::post('/properties/{id}/activacion', [PropertyLoanDetailController::class, 'activacion']);
 });
+
 Route::get('/currencies', [CurrencyControllers::class, 'index']);
 
 require __DIR__.'/settings.php';

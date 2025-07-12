@@ -23,5 +23,7 @@ class PropertyInvestor extends Model{
     public function paymentSchedules(){
         return $this->hasMany(PaymentSchedule::class);
     }
-
+    public function loanDetails(){
+        return $this->hasMany(PropertyLoanDetail::class, 'id_property_investor');
+    }
 }

@@ -165,7 +165,7 @@ class PropertyControllers extends Controller{
             $propertyInvestor = PropertyInvestor::create([
                 'property_id' => $property->id,
                 'investor_id' => null,
-                'amount' => $property->valor_estimado,
+                'amount' => $property->valor_requerido,
                 'status' => 'pendiente',
             ]);
 
@@ -269,6 +269,56 @@ class PropertyControllers extends Controller{
 
             $query = Property::query()
                 ->where('estado', 'pendiente')
+                ->when($search, function ($query) use ($search) {
+                    return $query->where(function ($q) use ($search) {
+                        $q->where('nombre', 'LIKE', "%{$search}%")
+                        ->orWhere('id', 'LIKE', "%{$search}%")
+                        ->orWhere('departamento', 'LIKE', "%{$search}%")
+                        ->orWhere('provincia', 'LIKE', "%{$search}%")
+                        ->orWhere('distrito', 'LIKE', "%{$search}%");
+                    });
+                })
+                ->with(['currency', 'plazo']);
+
+            $properties = $query->paginate($perPage);
+
+            return response()->json([
+                'data' => $properties->map(function ($property) {
+                    return [
+                        'id' => $property->id,
+                        'nombre' => $property->nombre,
+                        'departamento' => $property->departamento,
+                        'provincia' => $property->provincia,
+                        'distrito' => $property->distrito,
+                        'direccion' => $property->direccion,
+                        'descripcion' => $property->descripcion,
+                        'estado' => $property->estado,
+                        'valor_requerido' => $property->valor_requerido,
+                    ];
+                }),
+                'pagination' => [
+                    'total' => $properties->total(),
+                    'current_page' => $properties->currentPage(),
+                    'per_page' => $properties->perPage(),
+                    'last_page' => $properties->lastPage(),
+                    'from' => $properties->firstItem(),
+                    'to' => $properties->lastItem(),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Error al listar propiedades',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+    public function listPropertiesActivas(Request $request): JsonResponse{
+        try {
+            $perPage = $request->input('per_page', 10);
+            $search = $request->input('search');
+
+            $query = Property::query()
+                ->where('estado', 'activa')
                 ->when($search, function ($query) use ($search) {
                     return $query->where(function ($q) use ($search) {
                         $q->where('nombre', 'LIKE', "%{$search}%")

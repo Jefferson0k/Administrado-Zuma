@@ -6,34 +6,30 @@ use App\Models\Property;
 use App\Models\Deadlines;
 use Carbon\Carbon;
 
-class CreditSimulationAmericanoService {
-    public function generate(Property $property, Deadlines $deadline, int $page = 1, int $perPage = 10): array {
-        $capital = floatval($property->valor_estimado);
+class CreditSimulationAmericanoService
+{
+    public function generate(Property $property, Deadlines $deadline, int $page = 1, int $perPage = 10): array
+    {
+        $capital = floatval($property->valor_requerido);
         $plazoMeses = $deadline->duracion_meses;
         $moneda = $property->currency_id == 1 ? 'Soles' : 'Dólares';
         $simbolo = $property->currency_id == 1 ? 'PEN' : 'USD';
-
         $tem_sin_igv = floatval($property->tem) / 100;
         $fechaDesembolso = Carbon::now()->format('d/m/Y');
         $fechaInicio = Carbon::now()->addMonth()->day(15);
         $pagos = [];
-
         for ($cuota = 1; $cuota <= $plazoMeses; $cuota++) {
             // Interés constante sobre el capital original
             $interesSinIGV = $capital * $tem_sin_igv;
             $igv = 0.00;
-
             // Solo se paga capital en la última cuota
             $capitalPago = ($cuota === $plazoMeses) ? $capital : 0.00;
             $cuotaNeta = $interesSinIGV + $capitalPago;
             $cuotaTotal = $cuotaNeta;
-
             $saldoInicial = $capital;
             $saldoFinal = ($cuota === $plazoMeses) ? 0.00 : $capital;
-
             // Fecha de vencimiento
             $fechaVcmto = $fechaInicio->copy()->addMonths($cuota - 1)->format('d/m/Y');
-
             $pagos[] = [
                 'cuota' => $cuota,
                 'vcmto' => $fechaVcmto,
@@ -46,12 +42,10 @@ class CreditSimulationAmericanoService {
                 'saldo_final' => number_format($saldoFinal, 2, '.', ''),
             ];
         }
-
         // Paginación
         $total = count($pagos);
         $offset = ($page - 1) * $perPage;
         $paginatedPagos = array_slice($pagos, $offset, $perPage);
-
         return [
             'cliente' => 'CLIENTE SIMULACION',
             'monto_solicitado' => number_format($capital, 2, '.', ''),

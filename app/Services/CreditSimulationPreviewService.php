@@ -7,22 +7,19 @@ use Carbon\Carbon;
 class CreditSimulationPreviewService
 {
     public function generate(
-        float $valorEstimado,   // Capital solicitado
-        float $tem,             // Tasa efectiva mensual (%)
-        float $tea,             // Tasa efectiva anual (%)
-        int $plazoMeses,        // Plazo en meses
-        int $currencyId = 1     // 1 = Soles, otro = Dólares
+        float $valor_requerido, // Capital solicitado
+        float $tem, // Tasa efectiva mensual (%)
+        float $tea, // Tasa efectiva anual (%)
+        int $plazoMeses, // Plazo en meses
+        int $currencyId = 1 // 1 = Soles, otro = Dólares
     ): array {
-        $capital = $valorEstimado;
+        $capital = $valor_requerido;
         $tem_sin_igv = $tem / 100;
-
         $moneda = $currencyId === 1 ? 'Soles' : 'Dólares';
         $simbolo = $currencyId === 1 ? 'PEN' : 'USD';
-
         $fechaDesembolso = Carbon::now()->format('d/m/Y');
         $fechaInicio = Carbon::now()->addMonth()->day(15);
         $pagos = [];
-
         for ($cuota = 1; $cuota <= $plazoMeses; $cuota++) {
             $interesSinIGV = $capital * $tem_sin_igv;
             $igv = 0.00;
@@ -32,7 +29,6 @@ class CreditSimulationPreviewService
             $saldoInicial = $capital;
             $saldoFinal = ($cuota === $plazoMeses) ? 0.00 : $capital;
             $fechaVcmto = $fechaInicio->copy()->addMonths($cuota - 1)->format('d/m/Y');
-
             $pagos[] = [
                 'cuota' => $cuota,
                 'vcmto' => $fechaVcmto,
@@ -45,7 +41,6 @@ class CreditSimulationPreviewService
                 'saldo_final' => number_format($saldoFinal, 2, '.', ''),
             ];
         }
-
         return [
             'cliente' => 'SIMULACIÓN PREVIA',
             'monto_solicitado' => number_format($capital, 2, '.', ''),

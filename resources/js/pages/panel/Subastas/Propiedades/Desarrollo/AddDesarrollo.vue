@@ -52,14 +52,14 @@
               placeholder="Selecciona moneda" class="w-full" />
           </div>
           <div class="w-1/2">
-            <label class="font-bold mb-1">Monto requerido <span class="text-red-500">*</span></label>
-            <InputNumber v-model="form.valor_requerido" class="w-full" :useGrouping="true" :locale="'es-PE'" />
+            <label class="font-bold mb-1">Valor de la propiedad <span class="text-red-500">*</span></label>
+            <InputNumber v-model="form.valor_estimado" class="w-full" :useGrouping="true" :locale="'es-PE'" />
           </div>
         </div>
 
         <div>
-          <label class="font-bold mb-1">Valor de la propiedad <span class="text-red-500">*</span></label>
-          <InputNumber v-model="form.valor_estimado" class="w-full" :useGrouping="true" :locale="'es-PE'" />
+          <label class="font-bold mb-1">Monto requerido <span class="text-red-500">*</span></label>
+          <InputNumber v-model="form.valor_requerido" class="w-full" :useGrouping="true" :locale="'es-PE'" />
         </div>
 
         <div>

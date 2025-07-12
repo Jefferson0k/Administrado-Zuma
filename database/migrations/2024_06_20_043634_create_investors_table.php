@@ -9,8 +9,7 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
-    {
+    public function up(): void{
         Schema::create('investors', function (Blueprint $table) {
             $table->ulid('id')->primary();
             $table->string('name');
@@ -24,9 +23,11 @@ return new class extends Migration
             $table->string('document_front')->nullable();
             $table->string('document_back')->nullable();
             $table->enum('status', ['not validated', 'validated'])->default('not validated');
+            $table->enum('type', ['inversionista', 'cliente', 'mixto'])->default('inversionista');
             $table->timestamps();
         });
     }
+
 
     /**
      * Reverse the migrations.

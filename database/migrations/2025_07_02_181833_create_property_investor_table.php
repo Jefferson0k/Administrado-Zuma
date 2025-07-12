@@ -12,8 +12,9 @@ return new class extends Migration{
             $table->foreignUlid('investor_id')->nullable()->constrained()->onDelete('cascade');
             $table->decimal('amount', 12, 2)->nullable();
             $table->string('status')->default('pendiente');
+            $table->enum('role', ['cliente', 'inversionista', 'mixto'])->default('inversionista');
             $table->timestamps();
-            $table->unique(['property_id', 'investor_id']);
+            $table->unique(['property_id', 'investor_id', 'role']);
         });
     }
     public function down(): void{
