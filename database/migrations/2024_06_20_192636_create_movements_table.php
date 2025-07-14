@@ -41,9 +41,14 @@ return new class extends Migration
                 MovementStatus::CONFIRMED->value
             ])->default(MovementStatus::PENDING->value);
             $table->string('description')->nullable();
-            $table->foreignUlid('investor_id')->constrained();
+
+            $table->enum('origin', ['cliente', 'inversionista', 'zuma'])->default('zuma'); // ✅ nuevo
+            $table->foreignUlid('investor_id')->nullable()->constrained();
+            $table->foreignUlid('related_movement_id')->nullable()->constrained('movements'); // ✅ nuevo
+
             $table->timestamps();
         });
+
     }
 
     /**

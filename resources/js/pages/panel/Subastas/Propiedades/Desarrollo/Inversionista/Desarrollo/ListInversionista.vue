@@ -118,7 +118,7 @@ onMounted(getData);
         <Column field="propiedad" header="Propiedad" />
         <Column field="requerido" header="Valor Requerido" />
         <Column field="cronograma" header="Tipo Cronograma" />
-        <Column field="dias" header="Plazo" />
+        <Column field="plazo" header="Plazo" />
         <Column field="riesgo" header="Riesgo">
             <template #body="{ data }">
                 <Tag :value="data.riesgo" :severity="getRiesgoSeverity(data.riesgo)" />

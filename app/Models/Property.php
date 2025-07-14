@@ -22,16 +22,11 @@ class Property extends Model{
         'valor_subasta',
         'valor_requerido',
         'currency_id',
-        'deadlines_id',
-        'tea',
-        'tem',
         'estado',
-        'tipo_cronograma',
-        'riesgo',
     ];
     protected static function boot(){
         parent::boot();
-        static::creating(function ($model) {
+        static::creating(function ($model): void {
             if (!$model->getKey()) {
                 $model->{$model->getKeyName()} = (string) Str::ulid();
             }
@@ -42,9 +37,6 @@ class Property extends Model{
     }
     public function currency(){
         return $this->belongsTo(Currency::class);
-    }
-    public function plazo(){
-        return $this->belongsTo(Deadlines::class, 'deadlines_id');
     }
     public function investments(){
         return $this->hasMany(Investment::class);
@@ -71,12 +63,23 @@ class Property extends Model{
     }
     public function paymentSchedules(){
         return $this->hasManyThrough(
-            PaymentSchedule::class,      // Modelo destino
-            PropertyInvestor::class,     // Modelo intermedio
-            'property_id',               // Foreign key en PropertyInvestor
-            'property_investor_id',      // Foreign key en PaymentSchedule
-            'id',                        // Clave local en Property
-            'id'                         // Clave local en PropertyInvestor
+            PaymentSchedule::class,
+            PropertyInvestor::class,
+            'property_id',
+            'property_investor_id',
+            'id',
+            'id'
         );
     }
+    public function configuraciones() {
+        return $this->hasMany(PropertyConfiguracion::class);
+    }
+    public function ultimaConfiguracion() {
+        return $this->hasOne(PropertyConfiguracion::class)->latestOfMany();
+    }
+    public function property_configuraciones()
+    {
+        return $this->hasMany(PropertyConfiguracion::class, 'property_id');
+    }
+
 }

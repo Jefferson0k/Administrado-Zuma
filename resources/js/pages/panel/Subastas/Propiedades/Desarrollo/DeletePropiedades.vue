@@ -42,15 +42,13 @@ import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
 
 const props = defineProps({
-    visible: {
-        type: Boolean,
-        default: false
-    },
-    idPropiedad: {
-        type: [String, Number],
-        default: null
-    }
+  visible: Boolean,
+  idPropiedad: {
+    type: [String, Number], // ACEPTA STRING Y NÚMERO
+    default: null
+  }
 });
+
 
 const emit = defineEmits(['update:visible', 'propiedad-eliminada']);
 

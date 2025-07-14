@@ -8,10 +8,10 @@ use App\Models\PaymentSchedule;
 use App\Models\PropertyInvestor;
 
 class PaymentScheduleController extends Controller {
-    public function getCronogramaPorPropiedad($propertyId){
-        $cronogramas = PaymentSchedule::whereHas('propertyInvestor', function ($query) use ($propertyId) {
-            $query->where('property_id', $propertyId);
-        })->paginate(10);
+    public function getCronogramaPorPropiedad($propertyInvestorId){
+        $cronogramas = PaymentSchedule::where('property_investor_id', $propertyInvestorId)
+            ->paginate(10);
         return PaymentScheduleResource::collection($cronogramas);
     }
+
 }

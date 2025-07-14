@@ -9,86 +9,128 @@
             <Button label="Exportar" icon="pi pi-upload" severity="secondary" @click="showToast" />
         </template>
     </Toolbar>
-
-    <Dialog v-model:visible="visible" modal header="Reglas del inmueble" :style="{ width: '450px' }">
+    <Dialog v-model:visible="visible" modal header="Reglas del inmueble" :style="{ width: '950px' }">
         <div class="flex flex-col gap-4">
-            <!-- Propiedad -->
+            <!-- Propiedad (fila completa) -->
             <div>
-                <label class="font-bold mb-1">Propiedad <span class="text-red-500">*</span></label>
+                <label class="block font-semibold mb-2">Propiedad <span class="text-red-500">*</span></label>
                 <Select v-model="propiedadSeleccionada" :options="propiedades" :style="{ width: '100%' }" editable
                     optionLabel="label" optionValue="value" showClear placeholder="Buscar propiedad..."
                     @update:modelValue="onInputChange">
                     <template #value="{ value }">
-                        <span>
-                            {{ getPropiedadLabel(value) }}
-                        </span>
+                        <span>{{ getPropiedadLabel(value) }}</span>
                     </template>
                     <template #option="{ option }">
-                        <div class="flex justify-between items-center">
+                        <div class="flex justify-between items-center py-2">
                             <div>
                                 <strong>{{ option.label }}</strong>
-                                <div class="text-sm text-gray-500">{{ option.sublabel }}</div>
+                                <div class="text-sm">{{ option.sublabel }}</div>
                             </div>
                             <Tag v-if="option.estado" :value="option.estado"
                                 :severity="getEstadoSeverity(option.estado)" class="ml-3" />
                         </div>
                     </template>
-                    <template #empty>Propiedad no encontrada.</template>
+                    <template #empty>
+                        <div class="text-center py-2">Propiedad no encontrada</div>
+                    </template>
                 </Select>
-            </div>
-            <div>
-                <label class="font-bold mb-1">TEA <span class="text-red-500">*</span></label>
-                <input type="number" v-model="tea" class="p-inputtext p-component w-full" placeholder="Ej. 12.5" />
             </div>
 
-            <!-- TEM -->
-            <div>
-                <label class="font-bold mb-1">TEM <span class="text-red-500">*</span></label>
-                <input type="number" v-model="tem" class="p-inputtext p-component w-full" placeholder="Ej. 1.05" />
+            <!-- Primera fila de 3 columnas -->
+            <div class="grid grid-cols-3 gap-4">
+                <!-- TEA -->
+                <div>
+                    <label class="block font-semibold mb-2">
+                        TEA (%) <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <input type="number" v-model="tea" class="p-inputtext p-component w-full pr-8"
+                            placeholder="Ej. 12.5" step="0.01" min="0" max="100" />
+                        <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
+                    </div>
+                </div>
+
+                <!-- TEM -->
+                <div>
+                    <label class="block font-semibold mb-2">
+                        TEM (%) <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <input type="number" v-model="tem" class="p-inputtext p-component w-full pr-8"
+                            placeholder="Ej. 1.05" step="0.01" min="0" max="20" />
+                        <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
+                    </div>
+                </div>
+
+                <!-- Tipo Cronograma -->
+                <div>
+                    <label class="block font-semibold mb-2">
+                        Tipo Cronograma <span class="text-red-500">*</span>
+                    </label>
+                    <Select v-model="cronograma" :options="cronogramaOpciones" optionLabel="label" optionValue="value"
+                        placeholder="Seleccionar tipo..." class="w-full" />
+                </div>
             </div>
-            <!-- Tipo Cronograma -->
-            <div>
-                <label class="font-bold mb-1">Tipo Cronograma <span class="text-red-500">*</span></label>
-                <Select v-model="cronograma" :options="cronogramaOpciones" optionLabel="label" optionValue="value"
-                    placeholder="Seleccionar tipo..." class="w-full" />
+
+            <!-- Segunda fila de 2 columnas -->
+            <div class="grid grid-cols-2 gap-4">
+                <!-- Plazo -->
+                <div>
+                    <label class="block font-semibold mb-2">
+                        Plazo del crédito <span class="text-red-500">*</span>
+                    </label>
+                    <Select v-model="deadlines_id" :options="plazos" optionLabel="nombre" optionValue="id"
+                        placeholder="Seleccione un plazo" class="w-full" />
+                </div>
+
+                <!-- Tipo de usuario -->
+                <div>
+                    <label class="block font-semibold mb-2">
+                        Tipo de usuario <span class="text-red-500">*</span>
+                    </label>
+                    <Select v-model="tipoUsuario" :options="tipoUsuarioOpciones" optionLabel="label" optionValue="value"
+                        placeholder="Seleccione un tipo..." class="w-full" />
+                </div>
             </div>
-            <!-- Plazo del crédito -->
-            <div>
-                <label for="plazo" class="block font-bold mb-2">Cronograma <span class="text-red-500">*</span></label>
-                <Select v-model="deadlines_id" :options="plazos" optionLabel="nombre" optionValue="id"
-                    placeholder="Seleccione un plazo" class="w-full" />
-            </div>
-            <div>
-                <Button label="Previsualizar cronograma" icon="pi pi-eye" severity="info"
-                    :disabled="!canPreviewCronograma" @click="previsualizarCronograma" fluid />
-            </div>
-            <!-- Riesgo -->
-            <div>
-                <label class="font-bold mb-1">Riesgo <span class="text-red-500">*</span></label>
-                <Select v-model="riesgo" :options="riesgos" optionLabel="label" optionValue="value"
-                    placeholder="Seleccionar riesgo..." class="w-full">
-                    <template #value="{ value }">
-                        <Tag v-if="value" :value="value" :severity="getRiesgoSeverity(value)" class="px-2 py-1" />
-                    </template>
-                    <template #option="{ option }">
-                        <Tag :value="option.label" :severity="getRiesgoSeverity(option.value)" class="px-2 py-1" />
-                    </template>
-                </Select>
+
+            <!-- Tercera fila: Riesgo y Botón -->
+            <div class="grid grid-cols-2 gap-4">
+                <!-- Riesgo -->
+                <div>
+                    <label class="block font-semibold mb-2">
+                        Riesgo <span class="text-red-500">*</span>
+                    </label>
+                    <Select v-model="riesgo" :options="riesgos" optionLabel="label" optionValue="value"
+                        placeholder="Seleccionar riesgo..." class="w-full">
+                        <template #value="{ value }">
+                            <Tag v-if="value" :value="value" :severity="getRiesgoSeverity(value)" class="px-2 py-1" />
+                        </template>
+                        <template #option="{ option }">
+                            <Tag :value="option.label" :severity="getRiesgoSeverity(option.value)" class="px-2 py-1" />
+                        </template>
+                    </Select>
+                </div>
+
+                <!-- Botón Previsualizar -->
+                <div class="flex items-end">
+                    <Button label="Previsualizar cronograma" icon="pi pi-eye" severity="info"
+                        :disabled="!canPreviewCronograma" @click="previsualizarCronograma" class="w-full" />
+                </div>
             </div>
         </div>
 
         <template #footer>
-            <Button label="Cancelar" icon="pi pi-times" severity="secondary" text @click="visible = false" />
-            <Button label="Guardar" icon="pi pi-check" severity="contrast" @click="actualizarPropiedad" />
+            <div class="flex justify-end gap-2">
+                <Button label="Cancelar" icon="pi pi-times" severity="secondary" text
+                    @click="() => { visible = false; resetForm() }" />
+
+                <Button label="Guardar" icon="pi pi-check" severity="contrast" @click="actualizarPropiedad" />
+            </div>
         </template>
     </Dialog>
-
     <!-- Componente para ver cronograma -->
-    <VerCronograma 
-        v-model:visible="cronogramaVisible" 
-        :propiedad-data="propiedadSeleccionadaData"
-        :parametros="parametrosCronograma"
-    />
+    <VerCronograma v-model:visible="cronogramaVisible" :propiedad-data="propiedadSeleccionadaData"
+        :parametros="parametrosCronograma" />
 </template>
 
 <script setup lang="ts">
@@ -118,23 +160,39 @@ const cronograma = ref(null)
 const deadlines_id = ref(null)
 const riesgo = ref(null)
 const plazos = ref([])
+const tipoUsuario = ref(null)
+const estado = ref(null) // Nuevo campo para el estado
+
+
+const resetForm = () => {
+    propiedadSeleccionada.value = null
+    tea.value = ''
+    tem.value = ''
+    cronograma.value = null
+    deadlines_id.value = null
+    riesgo.value = null
+    tipoUsuario.value = null
+    estado.value = null
+    propiedadSeleccionadaData.value = null
+    propiedades.value = []
+}
+
 
 const parametrosCronograma = computed(() => {
     const plazoSeleccionado = plazos.value.find(p => p.id === deadlines_id.value)
-    
+
     const propiedadData = propiedades.value.find(p => p.value === propiedadSeleccionada.value)
     const valorRequerido = propiedadData ? parseFloat(propiedadData.valor_requerido) : 0
-    
+
     return {
         tea: tea.value,
         tem: tem.value,
         cronograma: cronograma.value,
         deadlines_id: deadlines_id.value,
         duracion_meses: plazoSeleccionado ? plazoSeleccionado.duracion_meses : 0,
-        valor_requerido: valorRequerido  // ← AGREGAR ESTA LÍNEA
+        valor_requerido: valorRequerido
     }
 })
-
 
 const previsualizarCronograma = async () => {
     if (!propiedadSeleccionada.value) {
@@ -161,15 +219,15 @@ const previsualizarCronograma = async () => {
     try {
         const response = await axios.get(`/property/${propiedadSeleccionada.value}`)
         propiedadSeleccionadaData.value = response.data.data
-        
+
         cronogramaVisible.value = true
-        
+
     } catch (error) {
         propiedadSeleccionadaData.value = {
             ...propiedadData,
             valor_requerido: propiedadData.valor_requerido || 0
         }
-        
+
         cronogramaVisible.value = true
     }
 }
@@ -195,6 +253,11 @@ const riesgos = [
     { label: 'D', value: 'D' }
 ]
 
+const tipoUsuarioOpciones = [
+    { label: 'Inversionista', value: 1 },
+    { label: 'Cliente', value: 2 }
+]
+
 const showToast = () => {
     toast.add({
         severity: 'info',
@@ -205,6 +268,7 @@ const showToast = () => {
 }
 
 const openDialog = () => {
+    resetForm()
     cargarPlazos()
     visible.value = true
 }
@@ -292,6 +356,16 @@ const actualizarPropiedad = async () => {
         return
     }
 
+    if (!tea.value || !tem.value || !deadlines_id.value || !riesgo.value || !cronograma.value || !tipoUsuario.value) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Validación',
+            detail: 'Todos los campos son requeridos',
+            life: 3000
+        })
+        return
+    }
+
     try {
         const response = await axios.put(`/property/${propiedadSeleccionada.value}/estado`, {
             tea: tea.value,
@@ -299,7 +373,8 @@ const actualizarPropiedad = async () => {
             deadlines_id: deadlines_id.value,
             riesgo: riesgo.value,
             tipo_cronograma: cronograma.value,
-            estado: 'activa',
+            //estado_property: estado.value,
+            estado_configuracion: tipoUsuario.value,
         })
 
         toast.add({
@@ -310,6 +385,7 @@ const actualizarPropiedad = async () => {
         })
 
         visible.value = false
+        resetForm()
 
     } catch (error) {
         const errores = error.response?.data?.errors

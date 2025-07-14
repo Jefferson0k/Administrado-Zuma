@@ -8,32 +8,30 @@ return new class extends Migration {
     public function up(): void {
         Schema::create('properties', function (Blueprint $table) {
             $table->ulid('id')->primary();
-
             $table->string('departamento')->nullable();
             $table->string('provincia')->nullable();
             $table->string('distrito')->nullable();
             $table->string('direccion')->nullable();
-
             $table->string('nombre');
             $table->text('descripcion')->nullable();
-
             $table->decimal('valor_estimado', 15, 2)->nullable();
             $table->decimal('valor_subasta', 15, 2)->nullable();
             $table->decimal('valor_requerido', 15, 2);
-
             $table->foreignId('currency_id')->constrained('currencies');
-            $table->foreignId('deadlines_id')->nullable()->constrained('deadlines');
-
-            $table->decimal('tea', 6, 4)->nullable();
-            $table->decimal('tem', 6, 4)->nullable();
-
-            $table->enum('tipo_cronograma', ['frances', 'americano', '-'])->default('-');
-
-            $table->enum('riesgo', ['A+', 'A', 'B', 'C', 'D','-'])->default('-');
 
             $table->enum('estado', [
-                'en_subasta', 'subastada', 'programada', 'desactivada', 'activa', 'adquirido', 'pendiente'
+                'en_subasta',     // En proceso de subasta
+                'subastada',      // Subasta finalizada
+                'programada',     // En espera de iniciar subasta
+                'desactivada',    // No visible ni activa
+                'activa',         // Activa para mostrar
+                'adquirido',      // Ya fue comprado
+                'pendiente',      // Registro en espera
+                'completo'        // Ya tiene configuración de inversionista y cliente
             ])->default('pendiente');
+
+            // 👉 Aquí agregas la nueva columna
+            $table->unsignedTinyInteger('config_total')->default(0);
 
             $table->timestamps();
         });

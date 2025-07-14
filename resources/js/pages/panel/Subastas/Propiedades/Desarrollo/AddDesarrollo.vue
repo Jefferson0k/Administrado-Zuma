@@ -64,14 +64,14 @@
 
         <div>
           <label class="block font-bold mb-1">Imágenes</label>
-          <FileUpload name="imagenes[]" :multiple="true" accept="image/*" :maxFileSize="1000000" customUpload
+          <FileUpload ref="fileUpload" name="imagenes[]" :multiple="true" accept="image/*" :maxFileSize="1000000" customUpload
             :auto="false" @select="onSelectedFiles" @upload="onTemplatedUpload" />
         </div>
       </div>
     </form>
 
     <template #footer>
-      <Button label="Cancelar" icon="pi pi-times" severity="secondary" text @click="modalVisible = false" />
+      <Button label="Cancelar" icon="pi pi-times" severity="secondary" text @click="cancelForm" />
       <Button label="Guardar" icon="pi pi-check" severity="contrast" @click="saveProperty" />
     </template>
   </Dialog>
@@ -95,8 +95,9 @@ const toast = useToast()
 const emit = defineEmits(['agregado'])
 const modalVisible = ref(false)
 const submitted = ref(false)
+const fileUpload = ref()
 
-const form = ref({
+const initialForm = {
   nombre: '',
   departamento: null,
   provincia: null,
@@ -106,13 +107,14 @@ const form = ref({
   valor_estimado: null,
   valor_requerido: null,
   currency_id: null,
-})
+}
+
+const form = ref({...initialForm})
 
 const monedas = [
   { label: 'PEN (S/)', value: 1 },
   { label: 'USD ($)', value: 2 }
 ]
-
 
 const archivos = ref<File[]>([])
 const totalSize = ref(0)
@@ -130,6 +132,33 @@ onMounted(async () => {
     toast.add({ severity: 'error', summary: 'Error', detail: 'Error al cargar departamentos', life: 3000 })
   }
 })
+
+const resetForm = () => {
+  // Resetear el formulario
+  form.value = {...initialForm}
+  
+  // Limpiar arrays de ubicación
+  provincias.value = []
+  distritos.value = []
+  
+  // Limpiar archivos
+  archivos.value = []
+  totalSize.value = 0
+  totalSizePercent.value = 0
+  
+  // Limpiar el componente FileUpload
+  if (fileUpload.value) {
+    fileUpload.value.clear()
+  }
+  
+  // Resetear estado de validación
+  submitted.value = false
+}
+
+const cancelForm = () => {
+  resetForm()
+  modalVisible.value = false
+}
 
 const onDepartamentoChange = () => {
   form.value.provincia = null
@@ -189,6 +218,7 @@ const saveProperty = () => {
     headers: { 'Content-Type': 'multipart/form-data' }
   }).then(() => {
     toast.add({ severity: 'success', summary: 'Éxito', detail: 'Propiedad registrada correctamente.', life: 3000 })
+    resetForm() // Limpiar formulario después del éxito
     modalVisible.value = false
     emit('agregado')
   }).catch((error) => {

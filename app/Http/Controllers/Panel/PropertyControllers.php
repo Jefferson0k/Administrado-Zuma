@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Panel;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Property\PropertyUpdateRequest;
 use App\Http\Requests\Property\StorePropertyRequest;
+use App\Http\Resources\Subastas\Property\PropertyConfiguracionResource;
 use App\Http\Resources\Subastas\Property\PropertyOnliene;
 use App\Http\Resources\Subastas\Property\PropertyReglaResource;
 use App\Http\Resources\Subastas\Property\PropertyReglasResource;
@@ -16,6 +17,7 @@ use App\Models\Deadlines;
 use App\Models\Imagenes;
 use App\Models\PaymentSchedule;
 use App\Models\Property;
+use App\Models\PropertyConfiguracion;
 use App\Models\PropertyInvestor;
 use App\Pipelines\FilterByCurrency;
 use App\Pipelines\FilterByEstado;
@@ -44,7 +46,7 @@ class PropertyControllers extends Controller{
         ], 201);
     }
     public function showProperty(string $id){
-        $property = Property::with(['currency', 'plazo', 'images'])->findOrFail($id);
+        $property = Property::with(['currency', 'images'])->findOrFail($id);
         return response()->json($property);
     }
     public function updateProperty(StorePropertyRequest $request, string $id){
@@ -145,57 +147,123 @@ class PropertyControllers extends Controller{
         }
         return new PropertyShowResource($property);
     }
-    
     public function update(PropertyUpdateRequest $request, $id){
         DB::beginTransaction();
+
         try {
             $property = Property::findOrFail($id);
-            $property->estado = $request->estado;
-            $property->tea = $request->tea;
-            $property->tem = $request->tem;
-            $property->deadlines_id = $request->deadlines_id;
-            $property->riesgo = $request->riesgo;
-            $property->tipo_cronograma = $request->tipo_cronograma;
-            $property->save();
-            $oldInvestors = PropertyInvestor::where('property_id', $property->id)->get();
-            foreach ($oldInvestors as $inv) {
-                PaymentSchedule::where('property_investor_id', $inv->id)->delete();
-                $inv->delete();
-            }
-            $propertyInvestor = PropertyInvestor::create([
-                'property_id' => $property->id,
-                'investor_id' => null,
-                'amount' => $property->valor_requerido,
-                'status' => 'pendiente',
-            ]);
 
-            $this->generatePaymentScheduleByType($propertyInvestor->id, $property);
+            // Buscar configuración por estado (1 o 2)
+            $existingConfig = PropertyConfiguracion::where('property_id', $property->id)
+                ->where('estado', $request->estado_configuracion)
+                ->latest()
+                ->first();
+
+            if (!$existingConfig) {
+                // Crear nueva configuración
+                $config = PropertyConfiguracion::create([
+                    'property_id' => $property->id,
+                    'deadlines_id' => $request->deadlines_id,
+                    'tea' => $request->tea,
+                    'tem' => $request->tem,
+                    'tipo_cronograma' => $request->tipo_cronograma,
+                    'riesgo' => $request->riesgo,
+                    'estado' => $request->estado_configuracion,
+                ]);
+
+                // Sumar 1 al contador de configuraciones
+                $property->increment('config_total');
+            } else {
+                // Actualizar configuración existente
+                $existingConfig->update([
+                    'deadlines_id' => $request->deadlines_id,
+                    'tea' => $request->tea,
+                    'tem' => $request->tem,
+                    'tipo_cronograma' => $request->tipo_cronograma,
+                    'riesgo' => $request->riesgo,
+                ]);
+
+                $config = $existingConfig;
+            }
+
+            $config->load(['plazo', 'property']);
+
+            // Crear o actualizar PropertyInvestor
+            $existingInvestor = PropertyInvestor::where('property_id', $property->id)
+                ->where('config_id', $config->id)
+                ->first();
+
+            if ($existingInvestor) {
+                $existingInvestor->update([
+                    'amount' => $property->valor_requerido,
+                    'status' => 'pendiente',
+                ]);
+
+                PaymentSchedule::where('property_investor_id', $existingInvestor->id)->delete();
+                $propertyInvestor = $existingInvestor;
+            } else {
+                $propertyInvestor = PropertyInvestor::create([
+                    'property_id' => $property->id,
+                    'investor_id' => null,
+                    'config_id' => $config->id,
+                    'amount' => $property->valor_requerido,
+                    'status' => 'pendiente',
+                ]);
+            }
+
+            // Generar cronograma
+            $this->generatePaymentScheduleByType($propertyInvestor->id, $config);
+
+            // Si ya tiene 2 configuraciones distintas, cambiar estado a activa
+            if ($property->config_total >= 2 && $property->estado !== 'activa') {
+                $property->estado = 'activa';
+                $property->save();
+            }
+
             DB::commit();
+
             return response()->json([
-                'message' => 'Estado actualizado correctamente y cronograma regenerado.',
+                'message' => 'Configuración registrada correctamente.',
                 'property' => $property,
                 'property_investor_id' => $propertyInvestor->id,
             ]);
+
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'message' => 'Error interno del servidor',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
-    private function generatePaymentScheduleByType($propertyInvestorId, $property){
-        $deadline = Deadlines::find($property->deadlines_id);
+
+    private function generatePaymentScheduleByType($propertyInvestorId, $config)
+    {
+        $deadline = $config->plazo;
+
         if (!$deadline) {
-            throw new Exception('No se encontró el plazo especificado');
+            throw new \Exception('No se encontró configuración o plazo asociado a la propiedad.');
         }
+
+        $property = $config->property;
+
+        // Asignar temporalmente los valores de configuración
+        $property->tem = $config->tem;
+        $property->tea = $config->tea;
+        $property->tipo_cronograma = $config->tipo_cronograma;
+
+        // Escoger el servicio correcto
         if ($property->tipo_cronograma === 'americano') {
             $service = new CreditSimulationAmericanoService();
         } else {
             $service = new CreditSimulationService();
         }
+
         $simulation = $service->generate($property, $deadline, 1, $deadline->duracion_meses);
         $pagos = $simulation['cronograma_final']['pagos'];
+
+        // Crear cronograma
         foreach ($pagos as $pago) {
             PaymentSchedule::create([
                 'property_investor_id' => $propertyInvestorId,
@@ -212,7 +280,6 @@ class PropertyControllers extends Controller{
             ]);
         }
     }
-
     public function subastadas(Request $request){
         try {
             $perPage = $request->input('per_page', 15);
@@ -278,7 +345,7 @@ class PropertyControllers extends Controller{
                         ->orWhere('distrito', 'LIKE', "%{$search}%");
                     });
                 })
-                ->with(['currency', 'plazo']);
+                ->with(['currency']);
 
             $properties = $query->paginate($perPage);
 
@@ -328,7 +395,7 @@ class PropertyControllers extends Controller{
                         ->orWhere('distrito', 'LIKE', "%{$search}%");
                     });
                 })
-                ->with(['currency', 'plazo']);
+                ->with(['currency']);
 
             $properties = $query->paginate($perPage);
 
@@ -363,24 +430,18 @@ class PropertyControllers extends Controller{
         }
     }
     public function listReglas(Request $request){
-        $query = Property::whereIn('estado', ['activa', 'desactivada']);
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('nombre', 'like', '%' . $search . '%')
-                ->orWhere('tipo_cronograma', 'like', '%' . $search . '%')
-                ->orWhere('riesgo', 'like', '%' . $search . '%');
-            });
-        }
-
-        $propiedades = $query->with('plazo')->paginate(15);
-
-        return PropertyReglasResource::collection($propiedades);
+        $perPage = $request->get('per_page', 10);
+        $estado = $request->get('estado', 1);
+        $configuraciones = PropertyConfiguracion::with(['property', 'plazo'])
+            ->where('estado', $estado)
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage);
+        return PropertyConfiguracionResource::collection($configuraciones);
     }
     public function showReglas($id){
-        $regla = Property::find($id);
+        $regla = PropertyConfiguracion::find($id);
         if (!$regla) {
-            return response()->json(['message' => 'Propiedad no encontrada'], 404);
+            return response()->json(['message' => 'Configuración no encontrada'], 404);
         }
         return new PropertyReglaResource($regla);
     }

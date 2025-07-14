@@ -7,6 +7,12 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class PropertyLoanDetailResource extends JsonResource{
     public function toArray(Request $request): array{
+        // Obtener la configuración activa relacionada con la propiedad
+        $config = $this->property->configuraciones()
+            ->with('plazo')
+            ->latest()
+            ->first();
+
         return [
             'id' => $this->id,
             'customer_id' => $this->customer_id,
@@ -18,13 +24,12 @@ class PropertyLoanDetailResource extends JsonResource{
             'perfil_riesgo' => $this->perfil_riesgo,
 
             'Property' => $this->property->nombre,
-            'Plazo' => $this->property->plazo->nombre,
-            'Esquema' => 'Cuota fija',
+            'Plazo' => $config?->plazo?->nombre ?? '-',
+            'Esquema' => $config?->tipo_cronograma ?? 'Cuota fija',
             'Monto' => $this->property->valor_requerido,
-            'riesgo' => $this->property->riesgo,
-
-            'tea' => $this->property->tea,
-            'tem' => $this->property->tem,
+            'riesgo' => $config?->riesgo,
+            'tea' => $config?->tea,
+            'tem' => $config?->tem,
 
             'imagenes' => $this->property->getImagenes(),
 
@@ -38,6 +43,7 @@ class PropertyLoanDetailResource extends JsonResource{
                 'total_cuota' => $item->total_cuota,
                 'saldo_final' => $item->saldo_final,
             ]),
+
             'logo' => url('/imagenes/logo-zuma.svg'),
         ];
     }

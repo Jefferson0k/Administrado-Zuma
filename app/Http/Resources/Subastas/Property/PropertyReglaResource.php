@@ -13,8 +13,11 @@ class PropertyReglaResource extends JsonResource{
             'tem' => $this->tem,
             'tipo_cronograma' => $this->tipo_cronograma,
             'deadlines_id' =>$this->deadlines_id,
-            'estado' => $this->estado,
+            'estado_configuracion' => $this->estado,
             'riesgo' => $this->riesgo,
+            'estado'=> $this->property->estado,
+            'nombreProperty' => $this->property->nombre,
+            'idProperty' => $this->property->id,
         ];
     }
 }

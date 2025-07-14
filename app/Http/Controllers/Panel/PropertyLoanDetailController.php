@@ -15,9 +15,10 @@ use Illuminate\Support\Facades\Log;
 class PropertyLoanDetailController extends Controller{
     public function index(Request $request){
         $perPage = $request->input('per_page', 10);
-        $loanDetails = PropertyLoanDetail::with('customer')
-            ->latest()
-            ->paginate($perPage);
+        $loanDetails = PropertyLoanDetail::with([
+            'customer',
+            'property.ultimaConfiguracion.plazo'
+        ])->latest()->paginate($perPage);
         return PropertyLoanDetailListResource::collection($loanDetails);
     }
     public function store(StorePropertyLoanDetailRequests $request){
@@ -36,7 +37,6 @@ class PropertyLoanDetailController extends Controller{
         $loanDetail = PropertyLoanDetail::with([
             'customer',
             'property.images',
-            'property.plazo',
             'property.paymentSchedules',
         ])->findOrFail($id);
 

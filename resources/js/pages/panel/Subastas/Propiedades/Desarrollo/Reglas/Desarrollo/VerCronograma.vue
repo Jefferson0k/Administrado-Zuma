@@ -103,11 +103,11 @@ watch(visible, (val) => {
 })
 
 const cargarCronograma = async (page = 1) => {
-    if (!props.propiedad?.id) return
+    if (!props.propiedad?.property_id) return
 
     loading.value = true
     try {
-        const response = await axios.get(`/propiedad/${props.propiedad.id}/cronograma`, {
+        const response = await axios.get(`/propiedad/${props.propiedad.property_id}/cronograma`, {
             params: { page }
         })
 

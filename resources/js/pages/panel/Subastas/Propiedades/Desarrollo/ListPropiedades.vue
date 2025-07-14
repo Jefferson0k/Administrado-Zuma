@@ -12,6 +12,7 @@ import Button from 'primevue/button';
 import MultiSelect from 'primevue/multiselect';
 import Select from 'primevue/select';
 import Image from 'primevue/image';
+import Menu from 'primevue/menu';
 import ConfigPropiedades from './ConfigPropiedades.vue';
 import UpdatePropiedades from './UpdatePropiedades.vue';
 import DeletePropiedades from './DeletePropiedades.vue';
@@ -39,6 +40,8 @@ const showModal = ref(false);
 const showUpdateModal = ref(false);
 const showDeleteModal = ref(false);
 const selectedId = ref(null);
+const menu = ref();
+const menuItems = ref([]);
 
 const selectedEstado = ref(null);
 // Estados actualizados según tu enum de la base de datos
@@ -100,17 +103,8 @@ const isColumnSelected = (fieldName) => {
 const optionalColumns = ref([
     { field: 'descripcion', header: 'Descripción' },
     { field: 'foto', header: 'Imagen' },
-    { field: 'valor_estimado', header: 'Valor Estimado' },
     { field: 'valor_subasta', header: 'Valor Subasta' },
-    { field: 'dias', header: 'Días' },
-    { field: 'tea', header: 'TEA' },
-    { field: 'tem', header: 'TEM' },
-    { field: 'moneda', header: 'Moneda' },
-    { field: 'direccion', header: 'Dirección' },
-    { field: 'departamento', header: 'Departamento' },
-    { field: 'provincia', header: 'Provincia' },
 ]);
-
 
 const onEditar = (data) => {
     selectedId.value = data.id;
@@ -130,12 +124,6 @@ const formatCurrency = (value, currency = 'USD') => {
         currency: currency,
         minimumFractionDigits: 2
     }).format(value);
-};
-
-// Función para formatear porcentajes
-const formatPercentage = (value) => {
-    if (!value) return '-';
-    return `${parseFloat(value).toFixed(4)}%`;
 };
 
 // Función para obtener el color del estado
@@ -167,6 +155,7 @@ const onPropiedadActualizada = () => {
 const onPropiedadEliminada = () => {
     loadData();
 };
+
 const copiarId = async (id) => {
     try {
         await navigator.clipboard.writeText(id);
@@ -184,6 +173,29 @@ const copiarId = async (id) => {
             life: 3000,
         });
     }
+};
+
+// Función para mostrar el menú contextual
+const showContextMenu = (event, data) => {
+    menuItems.value = [
+        {
+            label: 'Editar',
+            icon: 'pi pi-pencil',
+            command: () => onEditar(data)
+        },
+        {
+            label: 'Eliminar',
+            icon: 'pi pi-trash',
+            command: () => onEliminar(data)
+        },
+        {
+            label: 'Copiar ID',
+            icon: 'pi pi-copy',
+            command: () => copiarId(data.id)
+        }
+    ];
+    
+    menu.value.show(event);
 };
 
 </script>
@@ -221,19 +233,25 @@ const copiarId = async (id) => {
         <Column selectionMode="multiple" style="width: 3rem" :exportable="false" />
         <Column field="nombre" header="Nombre" sortable style="min-width: 15rem" />
 
-        <Column v-if="isColumnSelected('departamento')" field="departamento" header="Departamento" sortable style="min-width: 12rem">
+        <Column field="departamento" header="Departamento" sortable style="min-width: 12rem">
             <template #body="slotProps">
                 <span>{{ slotProps.data.departamento || '-' }}</span>
             </template>
         </Column>
 
-        <Column v-if="isColumnSelected('provincia')" field="provincia" header="Provincia" sortable style="min-width: 12rem">
+        <Column field="provincia" header="Provincia" sortable style="min-width: 12rem">
             <template #body="slotProps">
                 <span>{{ slotProps.data.provincia || '-' }}</span>
             </template>
         </Column>
         <Column field="distrito" header="Distrito" sortable style="min-width: 12rem" />
         
+        <Column v-if="isColumnSelected('direccion')" field="direccion" header="Dirección" sortable style="min-width: 20rem">
+            <template #body="slotProps">
+                <span>{{ slotProps.data.direccion || '-' }}</span>
+            </template>
+        </Column>
+
         <!-- Columnas opcionales -->
         <Column v-if="isColumnSelected('descripcion')" field="descripcion" header="Descripción" sortable
             style="min-width: 25rem">
@@ -259,63 +277,52 @@ const copiarId = async (id) => {
             </template>
         </Column>
 
-        <Column v-if="isColumnSelected('valor_estimado')" field="valor_estimado" header="Valor Estimado" sortable style="min-width: 12rem">
-            <template #body="slotProps">
-                <span>{{ formatCurrency(slotProps.data.valor_estimado, slotProps.data.Moneda) }}</span>
-            </template>
-        </Column>
-
-        <Column v-if="isColumnSelected('valor_subasta')" field="valor_subasta" header="Valor Subasta" sortable style="min-width: 12rem">
-            <template #body="slotProps">
-                <span>{{ formatCurrency(slotProps.data.valor_subasta, slotProps.data.Moneda) }}</span>
-            </template>
-        </Column>
-
-        <Column v-if="isColumnSelected('dias')" field="dias" header="Días" sortable style="min-width: 8rem">
-            <template #body="slotProps">
-                <span>{{ slotProps.data.dias || '-' }}</span>
-            </template>
-        </Column>
-
-        <Column v-if="isColumnSelected('tea')" field="tea" header="TEA" sortable style="min-width: 10rem">
-            <template #body="slotProps">
-                <span>{{ formatPercentage(slotProps.data.tea) }}</span>
-            </template>
-        </Column>
-
-        <Column v-if="isColumnSelected('tem')" field="tem" header="TEM" sortable style="min-width: 10rem">
-            <template #body="slotProps">
-                <span>{{ formatPercentage(slotProps.data.tem) }}</span>
-            </template>
-        </Column>
-
-        <Column v-if="isColumnSelected('moneda')" field="Moneda" header="Moneda" sortable style="min-width: 8rem">
+        <Column field="Moneda" header="Moneda" sortable style="min-width: 5rem">
             <template #body="slotProps">
                 <span>{{ slotProps.data.Moneda || '-' }}</span>
             </template>
         </Column>
 
-        <Column v-if="isColumnSelected('direccion')" field="direccion" header="Dirección" sortable style="min-width: 20rem">
+        <Column field="valor_estimado" header="Valor Estimado" sortable style="min-width: 10rem">
             <template #body="slotProps">
-                <span>{{ slotProps.data.direccion || '-' }}</span>
+                <span>{{ formatCurrency(slotProps.data.valor_estimado, slotProps.data.Moneda) }}</span>
             </template>
         </Column>
 
-        <Column field="estado_nombre" header="Estado" style="min-width: 10rem" sortable>
+        <Column field="valor_requerido" header="Valor requerido" sortable style="min-width: 10rem">
+            <template #body="slotProps">
+                <span>{{ formatCurrency(slotProps.data.valor_requerido, slotProps.data.Moneda) }}</span>
+            </template>
+        </Column>
+        
+        <Column v-if="isColumnSelected('valor_subasta')" field="valor_subasta" header="Valor Subasta" sortable style="min-width: 10rem">
+            <template #body="slotProps">
+                <span>{{ formatCurrency(slotProps.data.valor_subasta, slotProps.data.Moneda) }}</span>
+            </template>
+        </Column>
+
+        <Column field="estado_nombre" header="Estado" style="min-width: 5rem" sortable>
             <template #body="slotProps">
                 <Tag :value="slotProps.data.estado_nombre" :severity="getEstadoSeverity(slotProps.data.estado)" />
             </template>
         </Column>
         
-        <Column :exportable="false" style="min-width: 12rem">
+        <Column header="">
             <template #body="slotProps">
-                <Button icon="pi pi-pencil" outlined rounded class="mr-2" @click="onEditar(slotProps.data)" />
-                <Button icon="pi pi-trash" outlined rounded severity="danger" class="mr-2" @click="onEliminar(slotProps.data)" />
-                <Button icon="pi pi-copy" outlined rounded severity="info" @click="copiarId(slotProps.data.id)" />
+                <Button 
+                    icon="pi pi-ellipsis-v" 
+                    text 
+                    rounded 
+                    aria-label="Más opciones"
+                    @click="showContextMenu($event, slotProps.data)" 
+                />
             </template>
         </Column>
 
     </DataTable>
+    
+    <!-- Menú contextual -->
+    <Menu ref="menu" :model="menuItems" popup />
     
     <!-- Modales -->
     <ConfigPropiedades v-model:visible="showModal" :idPropiedad="selectedId" @configuracion-guardada="loadData" />
