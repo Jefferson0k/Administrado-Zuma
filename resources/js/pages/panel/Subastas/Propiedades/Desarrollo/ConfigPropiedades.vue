@@ -69,8 +69,11 @@ import Calendar from "primevue/calendar";
 import Select from "primevue/select";
 
 const props = defineProps({
-    visible: Boolean,
-    idPropiedad: Number
+  visible: Boolean,
+  idPropiedad: {
+    type: [String, Number], // ACEPTA STRING Y NÚMERO
+    default: null
+  }
 });
 
 const emit = defineEmits(['update:visible', 'configuracion-guardada']);

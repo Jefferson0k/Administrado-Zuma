@@ -10,10 +10,12 @@ class CorporateEntityResource extends JsonResource{
             'nombre' => $this->nombre,
             'ruc' => $this->ruc,
             'direccion' => $this->direccion,
-            'telefono'=> $this->telefono,
-            'email'=> $this->email,
-            'tipo_entidad'=> $this->tipo_entidad,
-            'estado'=> $this->estado,
+            'telefono' => $this->telefono,
+            'email' => $this->email,
+            'tipo_entidad' => $this->tipo_entidad,
+            'estado' => $this->estado,
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
         ];
     }
 }

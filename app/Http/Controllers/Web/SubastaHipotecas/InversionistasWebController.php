@@ -7,6 +7,6 @@ use Inertia\Response;
 class InversionistasWebController extends Controller{
     public function views(): Response{
         //Gate::authorize('viewAny', User::class);
-        return Inertia::render('panel/Subastas/Inversionistas/indexInversionistas');
+        return Inertia::render('panel/Subastas/Propiedades/Desarrollo/Inversionista/indexInversionista');
     }
 }

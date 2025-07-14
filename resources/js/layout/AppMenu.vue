@@ -15,21 +15,6 @@ const model = computed(() => [
         ]
     },
     {
-    label: 'Ambiente de pruebas',
-        items: [
-            {
-                label: 'Simulacion',
-                icon: 'pi pi-fw pi-home',
-                to: '/online'
-            },
-            {
-                label: 'Calculadora',
-                icon: 'pi pi-fw pi-home',
-                to: '/Ambiente-Pruebas'
-            }
-        ],
-    },
-    {
         label: 'Productos',
         icon: 'pi pi-fw pi-box',
         to: '/pages',
@@ -39,49 +24,34 @@ const model = computed(() => [
                 icon: 'pi pi-fw pi-percentage',
                 items: [
                     {
-                        label: 'Inversionista',
-                        icon: 'pi pi-fw pi-briefcase',
-                        to: '/tasas-fijas/inversionistas'
+                        label: 'Tipo tarifa',
+                        icon: 'pi pi-fw pi-sliders-h',
+                        to: '/tasas-fijas/tipos'
                     },
                     {
-                        label: 'Empresa',
+                        label: 'Frecuencia',
+                        icon: 'pi pi-fw pi-money-bill',
+                        to: '/Frecuencia/Pagos'
+                    },
+                    {
+                        label: 'Planes',
+                        icon: 'pi pi-fw pi-sliders-h',
+                        to: '/tasas-fijas/planes'
+                    },
+                    {
+                        label: 'Entidades',
                         icon: 'pi pi-fw pi-building',
                         to: '/tasas-fijas/empresas'
                     },
                     {
-                        label: 'Facturas',
-                        icon: 'pi pi-fw pi-file',
-                        to: '/tasas-fijas/facturas'
-                    },
-                    {
-                        label: 'Cuentas bancarias',
-                        icon: 'pi pi-fw pi-wallet',
-                        to: '/tasas-fijas/cuentas-bancarias'
-                    },
-                    {
-                        label: 'Inversiones',
-                        icon: 'pi pi-fw pi-chart-line',
-                        to: '/tasas-fijas/inversiones'
-                    },
-                    {
                         label: 'Depósitos',
-                        icon: 'pi pi-fw pi-wallet',
+                        icon: 'pi pi-fw pi-arrow-circle-down',
                         to: '/tasas-fijas/depositos'
                     },
                     {
                         label: 'Pagos',
                         icon: 'pi pi-fw pi-money-bill',
                         to: '/tasas-fijas/pagos'
-                    },
-                    {
-                        label: 'Retiros',
-                        icon: 'pi pi-fw pi-arrow-circle-down',
-                        to: '/tasas-fijas/retiros'
-                    },
-                    {
-                        label: 'Tipo de cambio',
-                        icon: 'pi pi-fw pi-refresh',
-                        to: '/tasas-fijas/tipo-cambio'
                     },
                 ]
             },
@@ -90,44 +60,35 @@ const model = computed(() => [
                 icon: 'pi pi-fw pi-credit-card',
                 items: [
                     {
-                        label: 'Inversionista',
-                        icon: 'pi pi-fw pi-briefcase',
-                        to: '/subasta-hipotecas/inversionistas'
+                        label: 'Registros',
+                        icon: 'pi pi-fw pi-folder-open',
+                        items: [
+                            {
+                                label: 'Registro de inmueble',
+                                icon: 'pi pi-fw pi-home',
+                                to: '/subasta-hipotecas/propiedades'
+                            },
+                            {
+                                label: 'Reglas',
+                                icon: 'pi pi-fw pi-cog',
+                                to: '/subasta-hipotecas/reglas'
+                            },
+                            {
+                                label: 'Información del inversionista',
+                                icon: 'pi pi-fw pi-user',
+                                to: '/subasta-hipotecas/inversionista'
+                            },
+                        ]
                     },
                     {
-                        label: 'Propiedades',
-                        icon: 'pi pi-fw pi-home',
-                        to: '/subasta-hipotecas/propiedades'
-                    },
-                    {
-                        label: 'Cuentas bancarias',
-                        icon: 'pi pi-fw pi-wallet',
-                        to: '/subasta-hipotecas/cuentas-bancarias'
-                    },
-                    {
-                        label: 'Historico de pujas',
+                        label: 'Histórico de pujas',
                         icon: 'pi pi-fw pi-history',
                         to: '/subasta-hipotecas/historicos'
-                    },
-                    {
-                        label: 'Depósitos',
-                        icon: 'pi pi-fw pi-wallet',
-                        to: '/subasta-hipotecas/depositos'
                     },
                     {
                         label: 'Pagos',
                         icon: 'pi pi-fw pi-credit-card',
                         to: '/subasta-hipotecas/pagos'
-                    },
-                    {
-                        label: 'Retiros',
-                        icon: 'pi pi-fw pi-arrow-circle-down',
-                        to: '/subasta-hipotecas/retiros'
-                    },
-                    {
-                        label: 'Tipo de cambio',
-                        icon: 'pi pi-fw pi-refresh',
-                        to: '/subasta-hipotecas/tipo-cambio'
                     },
                 ]
             },
@@ -136,7 +97,7 @@ const model = computed(() => [
                 icon: 'pi pi-fw pi-external-link',
                 url: 'https://fondeoadmin.apros.global/',
                 target: '_blank'
-            }
+            },
         ]
     },
     {

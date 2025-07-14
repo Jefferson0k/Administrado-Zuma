@@ -22,15 +22,8 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
-        'dni',
-        'apellidos',
-        'nacimiento',
-        'email',
-        'username',
-        'monto',
-        'password',
-        'status',
-        'restablecimiento',
+		'email',
+		'password',
     ];
 
     /**
@@ -73,4 +66,14 @@ class User extends Authenticatable
     public function bids(){
         return $this->hasMany(Bid::class);
     }
+    public function investor(){
+        return $this->hasOne(Investor::class, 'user_id');
+    }
+
+    public function inversionista()
+    {
+        return $this->hasOne(Investor::class, 'user_id');
+    }
+
+
 }

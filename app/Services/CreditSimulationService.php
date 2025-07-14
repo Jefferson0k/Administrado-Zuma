@@ -10,52 +10,30 @@ class CreditSimulationService
 {
     public function generate(Property $property, Deadlines $deadline, int $page = 1, int $perPage = 10): array
     {
-        $capital = floatval($property->valor_estimado);
+        $capital = floatval($property->valor_requerido);
         $plazoMeses = $deadline->duracion_meses;
         $moneda = $property->currency_id == 1 ? 'Soles' : 'Dólares';
         $simbolo = $property->currency_id == 1 ? 'PEN' : 'USD';
-
-        // Tasas
-        $tem_sin_igv = floatval($property->tem) / 100;       // 1.8088%
-        $tem_con_igv = $tem_sin_igv * 1.18;                  // 2.1343%
+        $tem_sin_igv = floatval($property->tem) / 100;
         $fechaDesembolso = Carbon::now()->format('d/m/Y');
         $fechaInicio = Carbon::now()->addMonth()->day(15);
         $saldoInicial = $capital;
         $pagos = [];
-
         for ($cuota = 1; $cuota <= $plazoMeses; $cuota++) {
-            // Interés con IGV
-            $interesConIGV = $saldoInicial * $tem_con_igv;
-
-            // Interés sin IGV
-            $interesSinIGV = $interesConIGV / 1.18;
-
-            // IGV del interés
-            $igv = $interesConIGV - $interesSinIGV;
-
-            // Capital pagado
-            $cuotaNeta = $interesSinIGV + $this->calcularCapitalPago($capital, $tem_con_igv, $plazoMeses, $cuota); // variable
-            $capitalPago = $cuotaNeta - $interesSinIGV;
-
-            // Total cuota
-            $cuotaTotal = $capitalPago + $interesConIGV;
-
-            // Saldo final
+            $interesSinIGV = $saldoInicial * $tem_sin_igv;
+            $igv = 0.00;
+            $capitalPago = $this->calcularCapitalPago($capital, $tem_sin_igv, $plazoMeses, $cuota);
+            $cuotaNeta = $capitalPago + $interesSinIGV;
+            $cuotaTotal = $cuotaNeta;
             $saldoFinal = $saldoInicial - $capitalPago;
-
-            // Corrección redondeo en última cuota
             if ($cuota === $plazoMeses && abs($saldoFinal) < 0.01) {
                 $capitalPago = $saldoInicial;
-                $interesConIGV = $capitalPago * $tem_con_igv;
-                $interesSinIGV = $interesConIGV / 1.18;
-                $igv = $interesConIGV - $interesSinIGV;
-                $cuotaTotal = $capitalPago + $interesConIGV;
+                $interesSinIGV = $capitalPago * $tem_sin_igv;
                 $cuotaNeta = $capitalPago + $interesSinIGV;
+                $cuotaTotal = $cuotaNeta;
                 $saldoFinal = 0.00;
             }
-
             $fechaVcmto = $fechaInicio->copy()->addMonths($cuota - 1)->format('d/m/Y');
-
             $pagos[] = [
                 'cuota' => $cuota,
                 'vcmto' => $fechaVcmto,
@@ -63,19 +41,15 @@ class CreditSimulationService
                 'capital' => number_format($capitalPago, 2, '.', ''),
                 'interes' => number_format($interesSinIGV, 2, '.', ''),
                 'cuota_neta' => number_format($cuotaNeta, 2, '.', ''),
-                'igv' => number_format($igv, 2, '.', ''),
+                'igv' => number_format(0, 2, '.', ''),
                 'total_cuota' => number_format($cuotaTotal, 2, '.', ''),
                 'saldo_final' => number_format($saldoFinal, 2, '.', ''),
             ];
-
             $saldoInicial = $saldoFinal;
         }
-
-        // Paginación
         $total = count($pagos);
         $offset = ($page - 1) * $perPage;
         $paginatedPagos = array_slice($pagos, $offset, $perPage);
-
         return [
             'cliente' => 'CLIENTE SIMULACION',
             'monto_solicitado' => number_format($capital, 2, '.', ''),
@@ -99,22 +73,17 @@ class CreditSimulationService
             ]
         ];
     }
-
-    private function calcularCapitalPago(float $capital, float $temConIGV, int $plazo, int $periodo): float
+    private function calcularCapitalPago(float $capital, float $tem, int $plazo, int $periodo): float
     {
-        // Cálculo de cuota total (con IGV embebido en TEM)
-        $factor = pow(1 + $temConIGV, $plazo);
-        $cuota = $capital * ($temConIGV * $factor) / ($factor - 1);
-
-        // Para el periodo específico se recalcula el saldo y capital amortizado
+        $factor = pow(1 + $tem, $plazo);
+        $cuota = $capital * ($tem * $factor) / ($factor - 1);
         $saldo = $capital;
         for ($i = 1; $i < $periodo; $i++) {
-            $interes = $saldo * $temConIGV;
+            $interes = $saldo * $tem;
             $capitalPago = $cuota - $interes;
             $saldo -= $capitalPago;
         }
-
-        $interes = $saldo * $temConIGV;
+        $interes = $saldo * $tem;
         return $cuota - $interes;
     }
 }

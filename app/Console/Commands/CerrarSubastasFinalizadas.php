@@ -3,18 +3,22 @@
 namespace App\Console\Commands;
 
 use App\Models\Auction;
-use App\Models\Investment;
 use App\Models\Bid;
-use App\Models\Customer;
+use App\Models\Balance;
+use App\Models\Movement;
+use App\Models\Property;
+use App\Models\PropertyInvestor;
+use App\Models\Investor;
+use App\Enums\MovementStatus;
+use App\Enums\MovementType;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
-use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\DB;
 
 class CerrarSubastasFinalizadas extends Command
 {
     protected $signature = 'subastas:cerrar';
-    protected $description = 'Cierra subastas vencidas, asigna ganador y devuelve fondos a perdedores';
+    protected $description = 'Cierra subastas vencidas, asigna ganador, devuelve fondos a perdedores, actualiza estados y registra movimientos.';
 
     public function handle()
     {
@@ -26,8 +30,7 @@ class CerrarSubastasFinalizadas extends Command
                         $q->where('dia_subasta', $now->toDateString())
                             ->where('hora_fin', '<=', $now->toTimeString());
                     });
-            })
-            ->get();
+            })->get();
 
         foreach ($subastas as $subasta) {
             DB::transaction(function () use ($subasta) {
@@ -41,67 +44,82 @@ class CerrarSubastasFinalizadas extends Command
 
     private function procesarSubasta($subasta)
     {
-        $inversiones = Investment::where('property_id', $subasta->property_id)->get();
-        $totalInversiones = $inversiones->count();
-        $this->info("Subasta {$subasta->id} (Propiedad {$subasta->property_id}) tiene {$totalInversiones} inversiones");
-
-        if ($totalInversiones === 0) {
-            $this->info("No se encontraron inversiones para la propiedad {$subasta->property_id}");
+        $pujas = Bid::where('auction_id', $subasta->id)->get();
+        if ($pujas->isEmpty()) {
             $subasta->update(['estado' => 'finalizada']);
+            $this->info("❌ Subasta {$subasta->id} finalizada sin participantes.");
             return;
         }
 
-        $inversionGanadora = $inversiones->sortByDesc('monto_invertido')->first();
-        $ganadorId = $inversionGanadora->customer_id;
+        // Ganador: mayor monto
+        $ganadorBid = $pujas->sortByDesc('monto')->first();
+        $ganador = Investor::find($ganadorBid->investors_id);
 
-        $bidGanador = Bid::create([
-            'auction_id' => $subasta->id,
-            'customer_id' => $ganadorId,
-            'monto' => $inversionGanadora->monto_invertido
-        ]);
-
-        $this->info("Inversión ganadora: Monto {$inversionGanadora->monto_invertido}, Cliente {$ganadorId}");
-        $this->info("Registro creado en bids: ID {$bidGanador->id}");
-
-        $inversionesPerdedoras = $inversiones->where('customer_id', '!=', $ganadorId);
-
-        foreach ($inversionesPerdedoras as $inversion) {
-            $cliente = Customer::find($inversion->customer_id);
-            $cliente->increment('monto', $inversion->monto_invertido);
-
-            $this->info("💰 DEVUELTO S/ {$inversion->monto_invertido} al cliente {$cliente->id} ({$cliente->name}) - PERDEDOR");
+        if (!$ganador) {
+            $this->error("No se encontró el inversor ganador con ID: {$ganadorBid->investors_id}");
+            return;
         }
 
-        $this->info("🏆 GANADOR: Cliente {$ganadorId} - NO recibe devolución (dinero ya descontado: S/ {$inversionGanadora->monto_invertido})");
+        $property = $subasta->property;
+        $currency = $property->currency->codigo ?? 'PEN'; // PEN o USD
 
-        $subasta->update([
-            'estado' => 'finalizada',
-            'ganador_id' => $ganadorId
+        // Registrar movimiento de descuento (Zuma descuenta al ganador)
+        Movement::create([
+            'investor_id' => $ganador->id,
+            'amount' => $ganadorBid->monto,
+            'type' => MovementType::INVESTMENT,
+            'status' => MovementStatus::CONFIRMED,
+            'confirm_status' => MovementStatus::CONFIRMED,
+            'description' => "Zuma descontó el monto por ser ganador de la subasta {$subasta->id}",
+            'currency' => $currency,
         ]);
 
-        $this->info("Subasta {$subasta->id} cerrada exitosamente.");
-        $this->info("🏆 Ganador: Cliente {$ganadorId} (pierde S/ {$inversionGanadora->monto_invertido})");
-        $this->info("💰 Fondos devueltos a " . $inversionesPerdedoras->count() . " clientes perdedores");
+        // Actualizar balance del ganador (descontar de invested_amount)
+        $balanceGanador = Balance::where('investor_id', $ganador->id)->where('currency', $currency)->first();
+        if ($balanceGanador) {
+            $balanceGanador->increment('invested_amount', $ganadorBid->monto);
+        }
 
-        $this->registrarEstadisticas($subasta, $inversiones, $inversionGanadora);
-    }
+        // Asignar propiedad al ganador
+        PropertyInvestor::create([
+            'property_id' => $property->id,
+            'investor_id' => $ganador->id,
+        ]);
 
-    private function registrarEstadisticas($subasta, $inversiones, $inversionGanadora)
-    {
-        $totalInvertido = $inversiones->sum('monto_invertido');
-        $totalDevuelto = $inversiones->where('customer_id', '!=', $inversionGanadora->customer_id)
-                                   ->sum('monto_invertido');
+        // Actualizar subasta
+        $subasta->update([
+            'estado' => 'finalizada',
+            'ganador_id' => $ganador->id,
+        ]);
 
-        $this->info("=== ESTADÍSTICAS DE SUBASTA {$subasta->id} ===");
-        $this->info("Total participantes: " . $inversiones->count());
-        $this->info("Total invertido: S/ {$totalInvertido}");
-        $this->info("Monto ganador: S/ {$inversionGanadora->monto_invertido}");
-        $this->info("Total devuelto: S/ {$totalDevuelto}");
-        $this->info("========================================");
-    }
+        // Actualizar estado de propiedad
+        $property->update([
+            'estado' => 'subastada',
+        ]);
 
-    public function schedule(Schedule $schedule): void
-    {
-        $schedule->command(static::class)->everyMinute();
+        // Devolver fondos a perdedores
+        $perdedores = $pujas->where('investors_id', '!=', $ganador->id);
+        foreach ($perdedores as $puja) {
+            $balance = Balance::where('investor_id', $puja->investors_id)
+                              ->where('currency', $currency)
+                              ->first();
+
+            if ($balance) {
+                $balance->increment('amount', $puja->monto);
+            }
+
+            Movement::create([
+                'investor_id' => $puja->investors_id,
+                'amount' => $puja->monto,
+                'type' => MovementType::WITHDRAW,
+                'status' => MovementStatus::CONFIRMED,
+                'confirm_status' => MovementStatus::CONFIRMED,
+                'description' => "Devolución por perder subasta {$subasta->id}",
+                'currency' => $currency,
+            ]);
+        }
+
+        $this->info("✅ Subasta {$subasta->id} procesada. Ganador: {$ganador->id}, monto: {$ganadorBid->monto}");
+        $this->info("💰 Se devolvieron fondos a " . $perdedores->count() . " perdedores.");
     }
 }

@@ -2,45 +2,59 @@
 
 namespace App\Http\Resources\Subastas\Property;
 
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\File;
 
-class PropertyResource extends JsonResource{
-    public function toArray(Request $request): array{
+class PropertyResource extends JsonResource
+{
+    public function toArray(Request $request): array
+    {
         return [
             'id' => $this->id,
             'nombre' => $this->nombre,
+            'departamento' => $this->departamento,
             'distrito' => $this->distrito,
+            'provincia' => $this->provincia,
+            'direccion' => $this->direccion,
             'descripcion' => $this->descripcion,
             'valor_estimado' => $this->valor_estimado,
-            'tea' => $this->tea,
-            'validado' => $this->validado,
-            'Moneda' =>$this->currency->codigo,
-            'financiado' => 'S/N',
-            'fecha_inversion' => $this->fecha_inversion
-                ? Carbon::parse($this->fecha_inversion)->format('d-m-Y')
-                : '00-00-0000',
+            'valor_subasta' => $this->valor_subasta ?? 0,
+            'valor_requerido' => $this->valor_requerido ?? 0,
+            'Moneda' => $this->currency->codigo,
             'estado' => $this->estado,
-            'estado_nombre' => match($this->estado) {
-                'no_subastada' => 'No subastada',
-                'programada'   => 'Subasta programada',
-                'en_subasta'   => 'En subasta',
-                'subastada'    => 'Subastada con éxito',
-                'desierta'     => 'Subasta desierta',
-                default        => 'Estado desconocido',
+            'estado_nombre' => match ($this->estado) {
+                'en_subasta' => 'En subasta',
+                'activa' => 'Activa',
+                'subastada' => 'Subastada',
+                'programada' => 'Programada',
+                'desactivada' => 'Desactivada',
+                'adquirido' => 'Adquirido',
+                'pendiente' => 'Pendiente',
+                'completo' => 'Completo',
+                default => 'Estado desconocido',
             },
-            'foto' => $this->getFotoUrl(),
+            'foto' => $this->getImagenes(),
+            'tea' => optional($this->configuracion)->tea, // 👈 Aquí se agrega la TEA
         ];
     }
-    private function getFotoUrl(): string{
-        if (empty($this->foto)) {
-            return asset('Propiedades/Casas/no-image.png');
+
+    private function getImagenes(): array
+    {
+        $rutaCarpeta = public_path("Propiedades/{$this->id}");
+        $imagenes = [];
+
+        if (File::exists($rutaCarpeta)) {
+            $archivos = File::files($rutaCarpeta);
+            foreach ($archivos as $archivo) {
+                $imagenes[] = asset("Propiedades/{$this->id}/" . $archivo->getFilename());
+            }
         }
-        $ruta = public_path("Propiedades/Casas/{$this->foto}");
-        if (!file_exists($ruta)) {
-            return asset('Propiedades/Casas/no-image.png');
+
+        if (empty($imagenes)) {
+            $imagenes[] = asset('Propiedades/no-image.png');
         }
-        return asset("Propiedades/Casas/{$this->foto}");
+
+        return $imagenes;
     }
 }

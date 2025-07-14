@@ -12,9 +12,13 @@ import Button from 'primevue/button';
 import MultiSelect from 'primevue/multiselect';
 import Select from 'primevue/select';
 import Image from 'primevue/image';
+import Menu from 'primevue/menu';
 import ConfigPropiedades from './ConfigPropiedades.vue';
+import UpdatePropiedades from './UpdatePropiedades.vue';
+import DeletePropiedades from './DeletePropiedades.vue';
 
-// Declarar las props que este componente puede recibir
+import Tag from 'primevue/tag';
+
 const props = defineProps({
   refresh: {
     type: Number,
@@ -33,15 +37,21 @@ const perPage = ref(10);
 const search = ref('');
 const selectedColumns = ref([]);
 const showModal = ref(false);
+const showUpdateModal = ref(false);
+const showDeleteModal = ref(false);
 const selectedId = ref(null);
+const menu = ref();
+const menuItems = ref([]);
 
 const selectedEstado = ref(null);
+// Estados actualizados según tu enum de la base de datos
 const selectedOpcions = ref([
     { name: 'En subasta', value: 'en_subasta' },
-    { name: 'Subasta programada', value: 'programada' },
-    { name: 'No subastada', value: 'no_subastada' },
     { name: 'Subastada', value: 'subastada' },
-    { name: 'Desierta', value: 'desierta' },
+    { name: 'Programada', value: 'programada' },
+    { name: 'Desactivada', value: 'desactivada' },
+    { name: 'Activa', value: 'activa' },
+    { name: 'Adquirido', value: 'adquirido' },
 ]);
 
 let searchTimeout;
@@ -66,40 +76,8 @@ const loadData = async () => {
     }
 };
 
-const updatePropertyStatus = async (propertyId, isEnSubasta) => {
-    try {
-        const newStatus = isEnSubasta ? 'en_subasta' : 'no_subastada';
-        
-        await axios.put(`/property/${propertyId}/estado`, {
-            estado: newStatus
-        });
-
-        const propertyIndex = products.value.findIndex(p => p.id === propertyId);
-        if (propertyIndex !== -1) {
-            products.value[propertyIndex].estado = newStatus;
-        }
-
-        toast.add({ 
-            severity: 'success', 
-            summary: 'Éxito', 
-            detail: `Estado actualizado a: ${isEnSubasta ? 'En subasta' : 'No subastada'}`, 
-            life: 3000 
-        });
-    } catch (error) {
-        toast.add({ 
-            severity: 'error', 
-            summary: 'Error', 
-            detail: 'No se pudo actualizar el estado de la propiedad', 
-            life: 3000 
-        });
-        
-        loadData();
-    }
-};
-
 onMounted(loadData);
 
-// Observar cambios en la prop refresh para recargar datos
 watch(() => props.refresh, () => {
     loadData();
 });
@@ -123,23 +101,103 @@ const isColumnSelected = (fieldName) => {
 };
 
 const optionalColumns = ref([
-    { field: 'descripcion', header: 'Descripcion' },
+    { field: 'descripcion', header: 'Descripción' },
     { field: 'foto', header: 'Imagen' },
+    { field: 'valor_subasta', header: 'Valor Subasta' },
 ]);
 
-const abrirConfiguracion = (data) => {
-    selectedId.value = data.id;
-    showModal.value = true;
-};
-
-// Funciones que parecen faltar
 const onEditar = (data) => {
-    console.log('Editar:', data);
+    selectedId.value = data.id;
+    showUpdateModal.value = true;
 };
 
 const onEliminar = (data) => {
-    console.log('Eliminar:', data);
+    selectedId.value = data.id;
+    showDeleteModal.value = true;
 };
+
+// Función para formatear valores monetarios
+const formatCurrency = (value, currency = 'USD') => {
+    if (!value || value === 0) return '-';
+    return new Intl.NumberFormat('es-PE', {
+        style: 'currency',
+        currency: currency,
+        minimumFractionDigits: 2
+    }).format(value);
+};
+
+// Función para obtener el color del estado
+const getEstadoSeverity = (estado) => {
+    switch (estado) {
+        case 'en_subasta':
+            return 'info';
+        case 'activa':
+            return 'success';
+        case 'subastada':
+            return 'warn';
+        case 'programada':
+            return 'info';
+        case 'desactivada':
+            return 'danger';
+        case 'adquirido':
+            return 'success';
+        case 'pendiente':
+            return 'warn';
+        default:
+            return 'secondary';
+    }
+};
+
+const onPropiedadActualizada = () => {
+    loadData();
+};
+
+const onPropiedadEliminada = () => {
+    loadData();
+};
+
+const copiarId = async (id) => {
+    try {
+        await navigator.clipboard.writeText(id);
+        toast.add({
+            severity: 'success',
+            summary: 'ID copiado',
+            detail: `ID ${id} copiado al portapapeles`,
+            life: 3000,
+        });
+    } catch (err) {
+        toast.add({
+            severity: 'error',
+            summary: 'Error al copiar',
+            detail: 'No se pudo copiar el ID',
+            life: 3000,
+        });
+    }
+};
+
+// Función para mostrar el menú contextual
+const showContextMenu = (event, data) => {
+    menuItems.value = [
+        {
+            label: 'Editar',
+            icon: 'pi pi-pencil',
+            command: () => onEditar(data)
+        },
+        {
+            label: 'Eliminar',
+            icon: 'pi pi-trash',
+            command: () => onEliminar(data)
+        },
+        {
+            label: 'Copiar ID',
+            icon: 'pi pi-copy',
+            command: () => copiarId(data.id)
+        }
+    ];
+    
+    menu.value.show(event);
+};
+
 </script>
 
 <template>
@@ -174,31 +232,100 @@ const onEliminar = (data) => {
 
         <Column selectionMode="multiple" style="width: 3rem" :exportable="false" />
         <Column field="nombre" header="Nombre" sortable style="min-width: 15rem" />
-        <Column field="distrito" header="Distrito" sortable style="min-width: 15rem" />
-        <Column v-if="isColumnSelected('descripcion')" field="descripcion" header="Descripción" sortable
-            style="min-width: 41rem">
+
+        <Column field="departamento" header="Departamento" sortable style="min-width: 12rem">
+            <template #body="slotProps">
+                <span>{{ slotProps.data.departamento || '-' }}</span>
+            </template>
         </Column>
+
+        <Column field="provincia" header="Provincia" sortable style="min-width: 12rem">
+            <template #body="slotProps">
+                <span>{{ slotProps.data.provincia || '-' }}</span>
+            </template>
+        </Column>
+        <Column field="distrito" header="Distrito" sortable style="min-width: 12rem" />
+        
+        <Column v-if="isColumnSelected('direccion')" field="direccion" header="Dirección" sortable style="min-width: 20rem">
+            <template #body="slotProps">
+                <span>{{ slotProps.data.direccion || '-' }}</span>
+            </template>
+        </Column>
+
+        <!-- Columnas opcionales -->
+        <Column v-if="isColumnSelected('descripcion')" field="descripcion" header="Descripción" sortable
+            style="min-width: 25rem">
+        </Column>
+        
         <Column v-if="isColumnSelected('foto')" header="Imagen">
             <template #body="slotProps">
-                <Image v-if="slotProps.data.foto" :src="slotProps.data.foto" class="rounded" alt="Foto" preview
-                    width="50" style="width: 64px" />
-                <span v-else>-</span>
+                <div v-if="slotProps.data.foto && slotProps.data.foto.length > 0" class="flex gap-1">
+                    <Image v-for="(imagen, index) in slotProps.data.foto.slice(0, 3)" 
+                           :key="index" 
+                           :src="imagen" 
+                           class="rounded" 
+                           alt="Foto" 
+                           preview
+                           width="40" 
+                           height="40" 
+                           style="object-fit: cover" />
+                    <span v-if="slotProps.data.foto.length > 3" class="text-sm text-gray-500 self-center">
+                        +{{ slotProps.data.foto.length - 3 }}
+                    </span>
+                </div>
+                <span v-else>Sin imágenes</span>
             </template>
         </Column>
-        <Column field="validado" header="Validado" style="min-width: 5rem" sortable>
+
+        <Column field="Moneda" header="Moneda" sortable style="min-width: 5rem">
             <template #body="slotProps">
-                <span>{{ slotProps.data.validado ? 'Sí' : 'No' }}</span>
+                <span>{{ slotProps.data.Moneda || '-' }}</span>
             </template>
         </Column>
-        <Column field="fecha_inversion" header="Fecha de inversión" style="min-width: 11rem" sortable/>
-        <Column field="estado_nombre" header="Estado" style="min-width: 5rem" sortable/>
-        <Column :exportable="false" style="min-width: 10rem">
+
+        <Column field="valor_estimado" header="Valor Estimado" sortable style="min-width: 10rem">
             <template #body="slotProps">
-                <Button icon="pi pi-cog" outlined rounded class="mr-2" severity="info" @click="abrirConfiguracion(slotProps.data)" />
-                <Button icon="pi pi-pencil" outlined rounded class="mr-2" @click="onEditar(slotProps.data)" />
-                <Button icon="pi pi-trash" outlined rounded severity="danger" @click="onEliminar(slotProps.data)" />
+                <span>{{ formatCurrency(slotProps.data.valor_estimado, slotProps.data.Moneda) }}</span>
             </template>
         </Column>
+
+        <Column field="valor_requerido" header="Valor requerido" sortable style="min-width: 10rem">
+            <template #body="slotProps">
+                <span>{{ formatCurrency(slotProps.data.valor_requerido, slotProps.data.Moneda) }}</span>
+            </template>
+        </Column>
+        
+        <Column v-if="isColumnSelected('valor_subasta')" field="valor_subasta" header="Valor Subasta" sortable style="min-width: 10rem">
+            <template #body="slotProps">
+                <span>{{ formatCurrency(slotProps.data.valor_subasta, slotProps.data.Moneda) }}</span>
+            </template>
+        </Column>
+
+        <Column field="estado_nombre" header="Estado" style="min-width: 5rem" sortable>
+            <template #body="slotProps">
+                <Tag :value="slotProps.data.estado_nombre" :severity="getEstadoSeverity(slotProps.data.estado)" />
+            </template>
+        </Column>
+        
+        <Column header="">
+            <template #body="slotProps">
+                <Button 
+                    icon="pi pi-ellipsis-v" 
+                    text 
+                    rounded 
+                    aria-label="Más opciones"
+                    @click="showContextMenu($event, slotProps.data)" 
+                />
+            </template>
+        </Column>
+
     </DataTable>
+    
+    <!-- Menú contextual -->
+    <Menu ref="menu" :model="menuItems" popup />
+    
+    <!-- Modales -->
     <ConfigPropiedades v-model:visible="showModal" :idPropiedad="selectedId" @configuracion-guardada="loadData" />
+    <UpdatePropiedades v-model:visible="showUpdateModal" :idPropiedad="selectedId" @propiedad-actualizada="onPropiedadActualizada" />
+    <DeletePropiedades v-model:visible="showDeleteModal" :idPropiedad="selectedId" @propiedad-eliminada="onPropiedadEliminada" />
 </template>

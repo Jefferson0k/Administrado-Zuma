@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace App\Models;
 
@@ -21,6 +21,10 @@ class Auction extends Model{
         return $this->hasMany(Bid::class);
     }
     public function ganador() {
-        return $this->belongsTo(Customer::class, 'ganador_id');
+        return $this->belongsTo(Investor::class, 'ganador_id');
     }
+    public function property(){
+        return $this->belongsTo(Property::class, 'property_id');
+    }
+
 }
