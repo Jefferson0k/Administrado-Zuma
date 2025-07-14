@@ -81,5 +81,13 @@ class Property extends Model{
     {
         return $this->hasMany(PropertyConfiguracion::class, 'property_id');
     }
+    public function configuracion()
+    {
+        return $this->hasOne(PropertyConfiguracion::class);
+    }
+    public function configuracionActiva()
+{
+    return $this->hasOne(PropertyConfiguracion::class, 'property_id')->where('estado', 'activa');
+}
 
 }

@@ -9,7 +9,7 @@ return new class extends Migration {
         Schema::create('property_loan_details', function (Blueprint $table) {
             $table->id();
             $table->ulid('property_id');
-            $table->unsignedBigInteger('customer_id');
+            $table->ulid('investor_id'); // <-- reemplaza customer_id por investor_id
 
             $table->string('ocupacion_profesion')->nullable();
             $table->string('motivo_prestamo')->nullable();
@@ -25,9 +25,9 @@ return new class extends Migration {
                 ->on('properties')
                 ->onDelete('cascade');
 
-            $table->foreign('customer_id')
+            $table->foreign('investor_id') // <-- nueva relación con tabla investors
                 ->references('id')
-                ->on('customers')
+                ->on('investors')
                 ->onDelete('cascade');
         });
     }

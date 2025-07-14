@@ -113,7 +113,7 @@ onMounted(getData);
         </template>
 
         <Column selectionMode="multiple" style="width: 3rem" :exportable="false" />
-        <Column field="Dni" header="DNI" />
+        <Column field="documento" header="DNI" />
         <Column field="cliente" header="Cliente" />
         <Column field="propiedad" header="Propiedad" />
         <Column field="requerido" header="Valor Requerido" />

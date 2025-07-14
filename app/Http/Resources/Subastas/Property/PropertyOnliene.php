@@ -43,8 +43,6 @@ class PropertyOnliene extends JsonResource{
             'tem' => $this->tem,
             'valor_estimado' => $this->valor_estimado ?? 0,
             'Moneda' => $this->currency->codigo,
-            'deadlines_id' => $this->plazo->nombre,
-            'Simbolo' => $this->plazo->simbolo,
             'inversionistas_pujando' => $inversionistas,
             'total_inversionistas' => count($inversionistas),
             'monto_actual_mayor' => $inversionistas->isNotEmpty() ? $inversionistas->first()['monto'] : $this->subasta->monto_inicial,

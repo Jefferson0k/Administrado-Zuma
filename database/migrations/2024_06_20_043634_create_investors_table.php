@@ -24,6 +24,7 @@ return new class extends Migration
             $table->string('document_back')->nullable();
             $table->enum('status', ['not validated', 'validated'])->default('not validated');
             $table->enum('type', ['inversionista', 'cliente', 'mixto'])->default('inversionista');
+            $table->integer('asignado')->default(0);
             $table->timestamps();
         });
     }

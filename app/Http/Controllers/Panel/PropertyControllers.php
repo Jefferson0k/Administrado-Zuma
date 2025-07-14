@@ -8,12 +8,10 @@ use App\Http\Requests\Property\StorePropertyRequest;
 use App\Http\Resources\Subastas\Property\PropertyConfiguracionResource;
 use App\Http\Resources\Subastas\Property\PropertyOnliene;
 use App\Http\Resources\Subastas\Property\PropertyReglaResource;
-use App\Http\Resources\Subastas\Property\PropertyReglasResource;
 use App\Http\Resources\Subastas\Property\PropertyResource;
 use App\Http\Resources\Subastas\Property\PropertyShowResource;
 use App\Http\Resources\Subastas\Property\PropertyUpdateResource;
 use App\Models\Auction;
-use App\Models\Deadlines;
 use App\Models\Imagenes;
 use App\Models\PaymentSchedule;
 use App\Models\Property;
@@ -118,14 +116,23 @@ class PropertyControllers extends Controller{
             $currencyId = $request->input('currency_id');
 
             $query = app(Pipeline::class)
-                ->send(Property::where('estado', 'activa'))
+                ->send(
+                    PropertyConfiguracion::with([
+                        'property.currency',
+                        'plazo'
+                    ])
+                    ->where('estado', 1) // Solo configuraciones activas
+                    ->whereHas('property', function ($q) {
+                        $q->where('estado', 'activa'); // Solo si la propiedad está activa
+                    })
+                )
                 ->through([
                     new FilterBySearch($search),
                     new FilterByCurrency($currencyId),
                 ])
                 ->thenReturn();
 
-            return PropertyResource::collection($query->paginate($perPage));
+            return PropertyConfiguracionResource::collection($query->paginate($perPage));
         } catch (\Throwable $th) {
             return response()->json([
                 'message' => 'Error al cargar los datos',
@@ -141,11 +148,11 @@ class PropertyControllers extends Controller{
         return new PropertyUpdateResource($property);
     }
     public function showCustumer($id){
-        $property = Property::with('subasta')->find($id);
-        if (!$property) {
-            return response()->json(['error' => 'Propiedad no encontrada'], 404);
+        $config = PropertyConfiguracion::with('plazo')->find($id);
+        if (!$config) {
+            return response()->json(['error' => 'Configuración no encontrada'], 404);
         }
-        return new PropertyShowResource($property);
+        return new PropertyShowResource($config);
     }
     public function update(PropertyUpdateRequest $request, $id){
         DB::beginTransaction();
@@ -215,8 +222,8 @@ class PropertyControllers extends Controller{
             $this->generatePaymentScheduleByType($propertyInvestor->id, $config);
 
             // Si ya tiene 2 configuraciones distintas, cambiar estado a activa
-            if ($property->config_total >= 2 && $property->estado !== 'activa') {
-                $property->estado = 'activa';
+            if ($property->config_total >= 2 && $property->estado !== 'completo') {
+                $property->estado = 'completo';
                 $property->save();
             }
 
@@ -237,7 +244,6 @@ class PropertyControllers extends Controller{
             ], 500);
         }
     }
-
     private function generatePaymentScheduleByType($propertyInvestorId, $config)
     {
         $deadline = $config->plazo;
@@ -300,12 +306,12 @@ class PropertyControllers extends Controller{
             $query = app(Pipeline::class)
                 ->send(Property::where('estado', 'en_subasta')
                     ->whereIn('id', $propertyIdsConSubastasActivas)
-                    ->with(['subasta', 'currency', 'plazo'])
+                    ->with(['subasta', 'currency'])
                 )
                 ->through([
                     new FilterBySearch($search),
                 ])
-                ->thenReturn();            
+                ->thenReturn();
             $collection = PropertyOnliene::collection($query->paginate($perPage));
             $collection->additional(['orden_monto' => $ordenMonto]);
             return $collection;
@@ -379,56 +385,69 @@ class PropertyControllers extends Controller{
             ], 500);
         }
     }
-    public function listPropertiesActivas(Request $request): JsonResponse{
-        try {
-            $perPage = $request->input('per_page', 10);
-            $search = $request->input('search');
+    public function listPropertiesActivas(Request $request): JsonResponse
+{
+    try {
+        $perPage = $request->input('per_page', 10);
+        $search = $request->input('search');
 
-            $query = Property::query()
-                ->where('estado', 'activa')
-                ->when($search, function ($query) use ($search) {
-                    return $query->where(function ($q) use ($search) {
-                        $q->where('nombre', 'LIKE', "%{$search}%")
-                        ->orWhere('id', 'LIKE', "%{$search}%")
-                        ->orWhere('departamento', 'LIKE', "%{$search}%")
-                        ->orWhere('provincia', 'LIKE', "%{$search}%")
-                        ->orWhere('distrito', 'LIKE', "%{$search}%");
+        $query = PropertyConfiguracion::with(['property.currency'])
+            ->where('estado', 2) // estado en PropertyConfiguracion
+            ->whereHas('property', function ($q) use ($search) {
+                $q->whereIn('estado', ['completo', 'desactivada']);
+
+                if ($search) {
+                    $q->where(function ($subquery) use ($search) {
+                        $subquery->where('nombre', 'LIKE', "%{$search}%")
+                            ->orWhere('id', 'LIKE', "%{$search}%")
+                            ->orWhere('departamento', 'LIKE', "%{$search}%")
+                            ->orWhere('provincia', 'LIKE', "%{$search}%")
+                            ->orWhere('distrito', 'LIKE', "%{$search}%");
                     });
-                })
-                ->with(['currency']);
+                }
+            });
 
-            $properties = $query->paginate($perPage);
+        $configuraciones = $query->paginate($perPage);
 
-            return response()->json([
-                'data' => $properties->map(function ($property) {
-                    return [
-                        'id' => $property->id,
-                        'nombre' => $property->nombre,
-                        'departamento' => $property->departamento,
-                        'provincia' => $property->provincia,
-                        'distrito' => $property->distrito,
-                        'direccion' => $property->direccion,
-                        'descripcion' => $property->descripcion,
-                        'estado' => $property->estado,
-                        'valor_estimado' => $property->valor_estimado,
-                    ];
-                }),
-                'pagination' => [
-                    'total' => $properties->total(),
-                    'current_page' => $properties->currentPage(),
-                    'per_page' => $properties->perPage(),
-                    'last_page' => $properties->lastPage(),
-                    'from' => $properties->firstItem(),
-                    'to' => $properties->lastItem(),
-                ],
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Error al listar propiedades',
-                'message' => $e->getMessage(),
-            ], 500);
-        }
+        return response()->json([
+            'data' => $configuraciones->map(function ($config) {
+                $property = $config->property;
+
+                return [
+                    'config_id' => $config->id,
+                    'property_id' => $property->id,
+                    'nombre' => $property->nombre,
+                    'departamento' => $property->departamento,
+                    'provincia' => $property->provincia,
+                    'distrito' => $property->distrito,
+                    'direccion' => $property->direccion,
+                    'descripcion' => $property->descripcion,
+                    'estado_property' => $property->estado,
+                    'estado_config' => $config->estado,
+                    'valor_estimado' => $property->valor_estimado,
+                    'tea' => $config->tea,
+                    'tem' => $config->tem,
+                    'moneda' => $property->currency->codigo ?? null,
+                    'foto' => $property->getImagenes(),
+                ];
+            }),
+            'pagination' => [
+                'total' => $configuraciones->total(),
+                'current_page' => $configuraciones->currentPage(),
+                'per_page' => $configuraciones->perPage(),
+                'last_page' => $configuraciones->lastPage(),
+                'from' => $configuraciones->firstItem(),
+                'to' => $configuraciones->lastItem(),
+            ],
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => 'Error al listar configuraciones',
+            'message' => $e->getMessage(),
+        ], 500);
     }
+}
+
     public function listReglas(Request $request){
         $perPage = $request->get('per_page', 10);
         $estado = $request->get('estado', 1);

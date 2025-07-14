@@ -5,11 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class PropertyLoanDetail extends Model{
+class PropertyLoanDetail extends Model
+{
     use HasFactory;
+
     protected $fillable = [
         'property_id',
-        'customer_id',
+        'investor_id',
         'ocupacion_profesion',
         'motivo_prestamo',
         'descripcion_financiamiento',
@@ -17,10 +19,14 @@ class PropertyLoanDetail extends Model{
         'garantia',
         'perfil_riesgo',
     ];
-    public function customer(){
-        return $this->belongsTo(Customer::class);
+
+    public function investor()
+    {
+        return $this->belongsTo(Investor::class);
     }
-    public function property(){
+
+    public function property()
+    {
         return $this->belongsTo(Property::class);
     }
 }

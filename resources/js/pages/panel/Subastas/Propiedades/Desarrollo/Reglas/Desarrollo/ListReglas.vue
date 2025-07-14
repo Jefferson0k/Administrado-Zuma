@@ -53,7 +53,7 @@
 
               <Column selectionMode="multiple" style="width: 3rem" :exportable="false" />
               <Column field="nombre" header="Propiedad" sortable style="width: 25rem" />
-              <Column field="valor" header="Valor" sortable style="width: 8rem" />
+              <Column field="valor_estimado" header="Valor" sortable style="width: 8rem" />
               <Column field="requerido" header="Requerido" sortable style="width: 8rem" />
               <Column field="tea" header="TEA" sortable style="width: 8rem">
                 <template #body="{ data }">{{ data.tea }}%</template>

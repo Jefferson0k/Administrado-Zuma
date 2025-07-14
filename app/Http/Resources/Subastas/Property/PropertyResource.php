@@ -31,23 +31,30 @@ class PropertyResource extends JsonResource
                 'desactivada' => 'Desactivada',
                 'adquirido' => 'Adquirido',
                 'pendiente' => 'Pendiente',
+                'completo' => 'Completo',
                 default => 'Estado desconocido',
             },
             'foto' => $this->getImagenes(),
+            'tea' => optional($this->configuracion)->tea, // 👈 Aquí se agrega la TEA
         ];
     }
-    private function getImagenes(): array{
+
+    private function getImagenes(): array
+    {
         $rutaCarpeta = public_path("Propiedades/{$this->id}");
         $imagenes = [];
+
         if (File::exists($rutaCarpeta)) {
             $archivos = File::files($rutaCarpeta);
             foreach ($archivos as $archivo) {
                 $imagenes[] = asset("Propiedades/{$this->id}/" . $archivo->getFilename());
             }
         }
+
         if (empty($imagenes)) {
             $imagenes[] = asset('Propiedades/no-image.png');
         }
+
         return $imagenes;
     }
 }

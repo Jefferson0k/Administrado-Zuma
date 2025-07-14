@@ -17,38 +17,39 @@
             <!-- Selección de Propiedad -->
             <div>
                 <label class="font-bold mb-1">Propiedad <span class="text-red-500">*</span></label>
-                <Select v-model="propiedadSeleccionada" :options="propiedades" :style="{ width: '100%' }" editable
-                    optionLabel="label" optionValue="value" showClear placeholder="Buscar propiedad..."
-                    @update:modelValue="onInputChange">
-                    <template #value="{ value }">
-                        <span>
-                            {{ getPropiedadLabel(value) }}
-                        </span>
+                <Select v-model="propiedadSeleccionada" :options="propiedades" optionLabel="label" showClear editable
+                    :style="{ width: '100%' }" placeholder="Buscar propiedad..." @update:modelValue="onInputChange">
+                    <template #value="{ value, placeholder }">
+                        <span v-if="value">{{ value.label }}</span>
+                        <span v-else class="text-gray-400">{{ placeholder }}</span>
                     </template>
                     <template #option="{ option }">
                         <div class="flex justify-between items-center">
                             <div>
                                 <strong>{{ option.label }}</strong>
-                                <div class="text-sm text-gray-500">{{ option.sublabel }}</div>
+                                <div class="text-sm text-gray-500">DNI: {{ option.documento }}</div>
                             </div>
-                            <Tag v-if="option.estado" :value="option.estado"
-                                :severity="getEstadoSeverity(option.estado)" class="ml-3" />
+                            <!-- Mostrar estado como Tag -->
+                            <Tag
+                                :value="option.asignado === 0 ? 'Pendiente' : 'Asignado'"
+                                :severity="option.asignado === 0 ? 'warning' : 'success'"
+                                class="ml-3"
+                            />
                         </div>
                     </template>
                     <template #empty>Propiedad no encontrada.</template>
                 </Select>
+
             </div>
 
             <!-- Selección de Cliente -->
             <div>
                 <label class="font-bold mb-1">Cliente <span class="text-red-500">*</span></label>
-                <Select v-model="clienteSeleccionado" :options="clientes" :style="{ width: '100%' }" editable
-                    optionLabel="label" optionValue="value" showClear placeholder="Buscar cliente..."
-                    @update:modelValue="onClienteChange">
-                    <template #value="{ value }">
-                        <span>
-                            {{ getClienteLabel(value) }}
-                        </span>
+                <Select v-model="clienteSeleccionado" :options="clientes" optionLabel="label" showClear editable
+                    :style="{ width: '100%' }" placeholder="Buscar cliente..." @update:modelValue="onClienteChange">
+                    <template #value="{ value, placeholder }">
+                        <span v-if="value">{{ value.label }}</span>
+                        <span v-else class="text-gray-400">{{ placeholder }}</span>
                     </template>
                     <template #option="{ option }">
                         <div class="flex justify-between items-center">
@@ -63,33 +64,33 @@
                 </Select>
             </div>
 
-            <!-- Otros campos -->
+            <!-- Campos del formulario -->
             <div>
                 <label class="font-bold mb-1">Ocupación/Profesión <span class="text-red-500">*</span></label>
-                <Textarea id="ocupacion" v-model="form.ocupacion_profesion" autoResize rows="2" class="w-full" />
+                <Textarea v-model="form.ocupacion_profesion" autoResize rows="2" class="w-full" />
             </div>
             <div>
                 <label class="font-bold mb-1">Motivo del Préstamo <span class="text-red-500">*</span></label>
-                <Textarea id="motivo" v-model="form.motivo_prestamo" autoResize rows="2" class="w-full" />
+                <Textarea v-model="form.motivo_prestamo" autoResize rows="2" class="w-full" />
             </div>
             <div>
                 <label class="font-bold mb-1">Descripción del Financiamiento <span class="text-red-500">*</span></label>
-                <Textarea id="descripcion" v-model="form.descripcion_financiamiento" autoResize rows="3"
-                    class="w-full" />
+                <Textarea v-model="form.descripcion_financiamiento" autoResize rows="3" class="w-full" />
             </div>
             <div>
                 <label class="font-bold mb-1">Solicitud del Préstamo para <span class="text-red-500">*</span></label>
-                <Textarea id="solicitud" v-model="form.solicitud_prestamo_para" autoResize rows="2" class="w-full" />
+                <Textarea v-model="form.solicitud_prestamo_para" autoResize rows="2" class="w-full" />
             </div>
             <div>
                 <label class="font-bold mb-1">Garantía <span class="text-red-500">*</span></label>
-                <Textarea id="garantia" v-model="form.garantia" autoResize rows="2" class="w-full" />
+                <Textarea v-model="form.garantia" autoResize rows="2" class="w-full" />
             </div>
             <div>
                 <label class="font-bold mb-1">Perfil del Riesgo <span class="text-red-500">*</span></label>
-                <Textarea id="perfil" v-model="form.perfil_riesgo" autoResize rows="2" class="w-full" />
+                <Textarea v-model="form.perfil_riesgo" autoResize rows="2" class="w-full" />
             </div>
         </div>
+
         <template #footer>
             <Button label="Cancelar" icon="pi pi-times" severity="secondary" text @click="visible = false" />
             <Button label="Guardar" icon="pi pi-check" severity="contrast" @click="guardarFormulario" />
@@ -153,28 +154,22 @@ const onClienteChange = (valor) => {
     }
 }
 
-const getPropiedadLabel = (id) => {
-    const prop = propiedades.value.find(p => p.value === id)
-    return prop ? prop.label : id
-}
-
-const getClienteLabel = (id) => {
-    const cliente = clientes.value.find(c => c.value === id)
-    return cliente ? cliente.label : id
-}
-
 const getEstadoSeverity = (estado) => {
     switch (estado) {
-        case 'pendiente':
-            return 'warn'
+        case 'completo':
         case 'activa':
             return 'success'
+        case 'pendiente':
+            return 'warning'
         case 'desactivada':
             return 'danger'
-        default:
+        case 'subastada':
             return 'info'
+        default:
+            return 'secondary'
     }
 }
+
 
 const buscarPropiedades = debounce(async (texto) => {
     if (!texto) {
@@ -190,8 +185,8 @@ const buscarPropiedades = debounce(async (texto) => {
         propiedades.value = response.data.data.map((propiedad) => ({
             label: `${propiedad.nombre} - ${propiedad.departamento}, ${propiedad.provincia}`,
             sublabel: `${propiedad.distrito} | ${propiedad.direccion}`,
-            value: propiedad.id,
-            estado: propiedad.estado,
+            value: propiedad.property_id,
+            estado_property: propiedad.estado_property,
             valor_estimado: propiedad.valor_estimado
         }))
     } catch (error) {
@@ -216,10 +211,10 @@ const buscarClientes = debounce(async (texto) => {
         })
 
         clientes.value = response.data.data.map((cliente) => ({
-            label: `${cliente.nombre} ${cliente.apellidos}`,
-            sublabel: `DNI: ${cliente.dni}`,
+            label: cliente.nombre_completo,
+            sublabel: `DNI: ${cliente.documento}`,
             value: cliente.id,
-            estado: cliente.estado,
+            asignado: cliente.asignado,
         }))
     } catch (error) {
         toast.add({
@@ -254,8 +249,8 @@ const guardarFormulario = async () => {
 
     try {
         const payload = {
-            property_id: propiedadSeleccionada.value,
-            customer_id: clienteSeleccionado.value,
+            property_id: propiedadSeleccionada.value.value,
+            investor_id: clienteSeleccionado.value.value,
             ...form.value
         }
 

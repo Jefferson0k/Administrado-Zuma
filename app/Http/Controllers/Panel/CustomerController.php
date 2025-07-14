@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Models\Investor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -12,38 +13,44 @@ class CustomerController extends Controller{
         try {
             $perPage = $request->input('per_page', 10);
             $search = $request->input('search');
-            $query = Customer::query()
-                ->where('estado', 1)
+
+            $query = Investor::query()
+                ->whereIn('type', ['cliente', 'mixto']) // ← aquí está el cambio
+                ->where('asignado', 0)
                 ->when($search, function ($query) use ($search) {
                     return $query->where(function ($q) use ($search) {
-                        $q->where('nombre', 'LIKE', "%{$search}%")
-                        ->orWhere('apellidos', 'LIKE', "%{$search}%")
-                        ->orWhere('dni', 'LIKE', "%{$search}%");
+                        $q->where('name', 'LIKE', "%{$search}%")
+                        ->orWhere('first_last_name', 'LIKE', "%{$search}%")
+                        ->orWhere('second_last_name', 'LIKE', "%{$search}%")
+                        ->orWhere('document', 'LIKE', "%{$search}%");
                     });
                 });
-            $customers = $query->paginate($perPage);
+
+            $investors = $query->paginate($perPage);
+
             return response()->json([
-                'data' => $customers->map(function ($customer) {
+                'data' => $investors->map(function ($investor) {
                     return [
-                        'id' => $customer->id,
-                        'dni' => $customer->dni,
-                        'nombre' => $customer->nombre,
-                        'apellidos' => $customer->apellidos,
-                        'estado' => $customer->estado,
+                        'id' => $investor->id,
+                        'documento' => $investor->document,
+                        'nombre_completo' => $investor->name . ' ' . $investor->first_last_name . ' ' . $investor->second_last_name,
+                        'email' => $investor->email,
+                        'type' => $investor->type,
+                        'asignado' => $investor->asignado,
                     ];
                 }),
                 'pagination' => [
-                    'total' => $customers->total(),
-                    'current_page' => $customers->currentPage(),
-                    'per_page' => $customers->perPage(),
-                    'last_page' => $customers->lastPage(),
-                    'from' => $customers->firstItem(),
-                    'to' => $customers->lastItem(),
+                    'total' => $investors->total(),
+                    'current_page' => $investors->currentPage(),
+                    'per_page' => $investors->perPage(),
+                    'last_page' => $investors->lastPage(),
+                    'from' => $investors->firstItem(),
+                    'to' => $investors->lastItem(),
                 ],
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'error' => 'Error al listar clientes',
+                'error' => 'Error al listar inversores disponibles',
                 'message' => $e->getMessage(),
             ], 500);
         }

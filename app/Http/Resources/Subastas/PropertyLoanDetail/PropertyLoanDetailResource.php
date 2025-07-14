@@ -7,7 +7,6 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class PropertyLoanDetailResource extends JsonResource{
     public function toArray(Request $request): array{
-        // Obtener la configuración activa relacionada con la propiedad
         $config = $this->property->configuraciones()
             ->with('plazo')
             ->latest()
@@ -15,7 +14,17 @@ class PropertyLoanDetailResource extends JsonResource{
 
         return [
             'id' => $this->id,
-            'customer_id' => $this->customer_id,
+            'investor_id' => $this->investor_id,
+            'inversionista' => [
+                'documento' => $this->investor->document ?? null,
+                'nombre_completo' => trim(
+                    ($this->investor->name ?? '') . ' ' .
+                    ($this->investor->first_last_name ?? '') . ' ' .
+                    ($this->investor->second_last_name ?? '')
+                ),
+                'email' => $this->investor->email ?? null,
+                'telefono' => $this->investor->telephone ?? null,
+            ],
             'ocupacion_profesion' => $this->ocupacion_profesion,
             'motivo_prestamo' => $this->motivo_prestamo,
             'descripcion_financiamiento' => $this->descripcion_financiamiento,

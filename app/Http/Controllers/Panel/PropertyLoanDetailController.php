@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use App\Http\Requests\PropertyLoanDetail\StorePropertyLoanDetailRequests;
 use App\Http\Resources\Subastas\PropertyLoanDetail\PropertyLoanDetailListResource;
 use App\Http\Resources\Subastas\PropertyLoanDetail\PropertyLoanDetailResource;
+use App\Models\Investor;
 use App\Models\Property;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -16,17 +17,26 @@ class PropertyLoanDetailController extends Controller{
     public function index(Request $request){
         $perPage = $request->input('per_page', 10);
         $loanDetails = PropertyLoanDetail::with([
-            'customer',
+            'investor',
             'property.ultimaConfiguracion.plazo'
         ])->latest()->paginate($perPage);
+
         return PropertyLoanDetailListResource::collection($loanDetails);
     }
+
     public function store(StorePropertyLoanDetailRequests $request){
         $validated = $request->validated();
         $loanDetail = PropertyLoanDetail::updateOrCreate(
             ['property_id' => $validated['property_id']],
             $validated
         );
+        $property = $loanDetail->property;
+        if ($property && $property->estado !== 'activa') {
+            $property->estado = 'activa';
+            $property->save();
+        }
+        Investor::whereIn('status', ['cliente', 'mixto'])
+            ->update(['asignado' => 1]);
         return response()->json([
             'status' => 'success',
             'message' => 'Información del financiamiento guardada correctamente.',
@@ -35,14 +45,12 @@ class PropertyLoanDetailController extends Controller{
     }
     public function show($id){
         $loanDetail = PropertyLoanDetail::with([
-            'customer',
+            'investor',
             'property.images',
             'property.paymentSchedules',
         ])->findOrFail($id);
-
         return new PropertyLoanDetailResource($loanDetail);
     }
-
     public function update(StorePropertyLoanDetailRequests $request, $id){
         $validated = $request->validated();
         $loanDetail = PropertyLoanDetail::findOrFail($id);
