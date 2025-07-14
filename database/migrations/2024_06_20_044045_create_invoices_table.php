@@ -14,14 +14,21 @@ return new class extends Migration
         Schema::create('invoices', function (Blueprint $table) {
             $table->ulid('id')->primary();
             $table->uuid('invoice_code');
-            $table->decimal('amount', 10, 2)->default(0);;
-            $table->decimal('financed_amount_by_garantia', 10, 2)->nullable()->default(0);;
-            $table->decimal('financed_amount', 10, 2)->default(0);
+            $table->char('currency', 3);
+            $table->bigInteger('amount')->default(0);
+            $table->bigInteger('financed_amount_by_garantia')->default(0);
+            $table->bigInteger('financed_amount')->default(0);
             $table->bigInteger('paid_amount')->default(0);
             $table->decimal('rate', 5, 2)->default(0);
             $table->date('due_date');
-            $table->enum('status', ['inactive', 'active'])->default('inactive');
+            $table->date('estimated_pay_date')->nullable();
+            $table->enum('status', ['inactive', 'active', 'expired', 'judicialized', 'reprogramed', 'paid', 'canceled'])->default('inactive');
             $table->foreignUlid('company_id')->constrained();
+
+            $table->string('loan_number')->nullable();
+            $table->string('invoice_number')->nullable();
+            $table->char('RUC_client', 20)->nullable();
+
             $table->string('created_by')->nullable();
             $table->string('updated_by')->nullable();
             $table->timestamps();

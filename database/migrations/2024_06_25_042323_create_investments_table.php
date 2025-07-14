@@ -13,17 +13,17 @@ return new class extends Migration
     {
         Schema::create('investments', function (Blueprint $table) {
             $table->id();
-            $table->decimal('amount', 10, 2)->default(0);
-            $table->decimal('return', 10, 2)->default(0);
+            $table->bigInteger('amount')->default(0);
+            $table->bigInteger('return')->default(0);
             $table->decimal('rate', 5, 2)->default(0);
             $table->char('currency', 3);
             $table->date('due_date');
-            $table->enum('status', ['inactive', 'active'])->default('inactive');
             $table->foreignUlid('investor_id')->constrained();
             $table->foreignUlid('invoice_id')->constrained();
             $table->foreignUlid('movement_id')->constrained();
             $table->ulid('previous_investment_id')->nullable();
             $table->ulid('original_investment_id')->nullable();
+            $table->enum('status', ['inactive', 'active', 'paid', 'reprogramed'])->default('inactive');
             $table->timestamps();
         });
     }
