@@ -134,15 +134,37 @@ class PropertyInvestorController extends Controller{
     }
     public function inversion(){
         $investor = Auth::guard('investor')->user();
-
-        $ultimaInversion = PropertyInvestor::with(['property.currency', 'property.plazo', 'paymentSchedules'])
-            ->where('investor_id', $investor->id)
-            ->latest()
-            ->first();
+        $estadoFiltro = $this->getEstadoFiltro($investor->type);
+        $ultimaInversion = PropertyInvestor::with([
+            'property.currency',
+            'configuracion' => function($query) use ($estadoFiltro) {
+                $query->whereIn('estado', $estadoFiltro);
+            },
+            'configuracion.plazo',
+            'paymentSchedules'
+        ])
+        ->where('investor_id', $investor->id)
+        ->whereHas('configuracion', function($query) use ($estadoFiltro) {
+            $query->whereIn('estado', $estadoFiltro);
+        })
+        ->latest()
+        ->first();
         if (!$ultimaInversion) {
             return response()->json(['message' => 'No se encontró inversión'], 404);
         }
         return response()->json(new InversionResource($ultimaInversion));
+    }
+    private function getEstadoFiltro($userType){
+        switch ($userType) {
+            case 'inversionista':
+                return [1];
+            case 'cliente':
+                return [2];
+            case 'mixto':
+                return [1, 2];
+            default:
+                return [];
+        }
     }
     public function ranquiSubastas(){
         $ranking = PropertyInvestor::with('property')

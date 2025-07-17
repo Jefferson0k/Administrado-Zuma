@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\CreditSimulationController;
 use App\Http\Controllers\Api\FixedTermInvestmentControllers;
 use App\Http\Controllers\Api\FixedTermScheduleController;
 use App\Http\Controllers\Api\InvestmentController;
+use App\Http\Controllers\Api\PropertyReservationController;
 use App\Http\Controllers\Api\TipoCambioSbs;
 use App\Http\Controllers\Panel\CalculadoraController;
 use Illuminate\Support\Facades\Route;
@@ -67,7 +68,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/ranking', [PropertyInvestorController::class, 'ranquiSubastas']);
     });
 
-    Route::get('/propiedad/{id}/cronograma', [PaymentScheduleController::class, 'getCronogramaPorPropiedad']);
+    Route::get('/propiedad/{property_investor_id}/cronograma', [PaymentScheduleController::class, 'getCronogramaPorUsuario']);
     Route::post('/calculate', [InvestmentControllers::class, 'simulateByAmount']);
     
     Route::prefix('investments')->group(function () {
@@ -95,6 +96,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/config/{id}/schedules', [PropertyControllers::class, 'showConfig']);
 
     Route::get('/fixed-term-schedules/{id}/cronograma', [FixedTermScheduleController::class, 'showCronograma']);
+
+    Route::post('/reservas', [PropertyReservationController::class, 'store']);
 });
 
 Route::prefix('investments')->group(function () {

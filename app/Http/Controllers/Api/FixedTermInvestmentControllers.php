@@ -229,19 +229,18 @@ class FixedTermInvestmentControllers extends Controller{
             ], 500);
         }
     }
-    public function last(){
+   public function last(){
         $lastInvestment = auth()->user()
             ->investment()
-            ->where('status', 'pendiente')
+            ->whereIn('status', ['Pendiente', 'Activo'])
             ->with(['rate', 'frequency', 'termPlan'])
             ->latest()
             ->first();
         if (!$lastInvestment) {
-            return response()->json(['message' => 'No se encontró inversión pendiente'], 404);
+            return response()->json(['message' => 'No se encontró inversión pendiente o activa'], 404);
         }
         return new FixedTermInvestmentResource($lastInvestment);
     }
-
     public function pendingInvestments(){
         $pendingInvestments = auth()->user()
             ->investment()

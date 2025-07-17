@@ -17,7 +17,7 @@ class Investor extends Authenticatable implements MustVerifyEmail{
     protected $fillable = [
         'name', 'first_last_name', 'second_last_name', 'alias',
         'document', 'email', 'password', 'telephone',
-        'document_front', 'document_back', 'monto', 'status', 'asignado'
+        'document_front', 'document_back', 'monto', 'status', 'asignado', 'type'
     ];
     protected $hidden = [
         'password',
