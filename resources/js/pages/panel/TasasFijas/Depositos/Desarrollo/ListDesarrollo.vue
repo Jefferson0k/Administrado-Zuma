@@ -182,9 +182,11 @@ onMounted(() => {
         <!-- Columna con botón de acciones (3 puntos) -->
         <Column style="min-width: 6rem" header="">
             <template #body="slotProps">
-                <Button icon="pi pi-ellipsis-v" text rounded @click="(event) => openMenu(event, slotProps.data)" />
+                <Button v-if="slotProps.data.status === 'Pendiente' && slotProps.data.confirm_status === 'Pendiente'"
+                    icon="pi pi-ellipsis-v" text rounded @click="(event) => openMenu(event, slotProps.data)" />
             </template>
         </Column>
+
     </DataTable>
 
     <!-- Menú contextual -->

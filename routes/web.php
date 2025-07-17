@@ -213,6 +213,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
     Route::get('/fixed-term-schedules/{id}/cronograma', [FixedTermScheduleController::class, 'showCronograma']);
     Route::post('/pagos-tasas', [PagosController::class, 'store']);
+    Route::get('/pagos-tasas', [PagosController::class, 'lis']);
 });
 
 Route::get('/currencies', [CurrencyControllers::class, 'index']);
