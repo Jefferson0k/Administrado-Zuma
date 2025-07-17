@@ -210,6 +210,7 @@ async function cargarTiposTasa() {
 }
 
 // Guardar nuevos plazos
+// Guardar nuevos plazos
 async function guardarPlazos() {
   if (!rangoSeleccionado.value) {
     toast.add({ severity: 'warn', summary: 'Atención', detail: 'Seleccione un rango de monto', life: 3000 })
@@ -243,10 +244,6 @@ async function guardarPlazos() {
         detail: `Se crearon ${response.data.total_creados} registros correctamente`,
         life: 3000
       })
-
-      seleccionados.value = []
-      rangoSeleccionado.value = null
-      tipoSeleccionado.value = null
     }
 
   } catch (error) {
@@ -256,9 +253,15 @@ async function guardarPlazos() {
 
     toast.add({ severity: 'error', summary: 'Error', detail: mensaje, life: 5000 })
   } finally {
+    // Limpiar selección y deshabilitar campos
+    seleccionados.value = []
+    rangoSeleccionado.value = null
+    tipoSeleccionado.value = null
+    deshabilitado.value = true
     guardando.value = false
   }
 }
+
 
 // Guardar nuevo plazo desde el diálogo
 const storeTermPlan = async () => {
