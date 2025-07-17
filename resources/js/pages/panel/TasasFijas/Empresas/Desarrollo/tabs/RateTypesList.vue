@@ -1,73 +1,122 @@
 <template>
   <div>
-    <h6 class="mb-3 font-semibold">Tipos de tasa registrados</h6>
-
-    <DataTable :value="tipos" stripedRows class="p-datatable-sm mb-4">
-      <Column field="nombre" header="Nombre" />
-      <Column field="descripcion" header="Descripción" />
-      <Column header="Acciones">
-        <template #body="{ data }">
-          <Button icon="pi pi-trash" severity="danger" text @click="eliminar(data.id)" />
-        </template>
-      </Column>
-    </DataTable>
-
-    <Divider />
-
-    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-      <div>
-        <label class="text-sm font-medium">Nombre</label>
-        <InputText v-model="form.nombre" class="w-full" />
+    <!-- Selección de tipo de tasa -->
+    <div class="mb-4">
+      <h6 class="mb-2 font-semibold">Selecciona el tipo de tasa</h6>
+      <div class="flex flex-wrap gap-4">
+        <div
+          v-for="tipo in tipos"
+          :key="tipo.id"
+          class="flex items-center gap-2 p-2 border rounded shadow-sm bg-white"
+        >
+          <Checkbox v-model="tiposSeleccionados" :inputId="`tipo-${tipo.id}`" :value="tipo.id" />
+          <label :for="`tipo-${tipo.id}`" class="text-sm">
+            {{ tipo.nombre }} — {{ tipo.descripcion }}
+          </label>
+        </div>
       </div>
-      <div>
-        <label class="text-sm font-medium">Descripción</label>
-        <InputText v-model="form.descripcion" class="w-full" />
-      </div>
-      <div class="flex items-end">
-        <Button label="Agregar" icon="pi pi-plus" @click="agregar" :loading="loading" />
-      </div>
+    </div>
+
+    <!-- Tabla de tasas por moneda -->
+    <div v-for="(rangosPorMoneda, moneda) in matriz" :key="moneda" class="mb-6">
+      <h6 class="font-bold mb-2">
+        Moneda: {{ moneda === 'PEN' ? 'Soles (PEN)' : 'Dólares (USD)' }}
+      </h6>
+
+      <DataTable :value="rangosPorMoneda" stripedRows class="p-datatable-sm" responsiveLayout="scroll">
+        <Column field="rango" header="Rango de Monto" />
+        <Column v-for="plazo in plazos" :key="plazo.id" :header="plazo.nombre">
+          <template #body="{ data }">
+            <InputNumber
+              v-model="data.tasas[plazo.id]"
+              inputClass="w-full"
+              :minFractionDigits="2"
+              :maxFractionDigits="2"
+              suffix="%"
+              @blur="guardarTasa(data, plazo.id)"
+            />
+          </template>
+        </Column>
+      </DataTable>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import axios from 'axios'
-import { useToast } from 'primevue/usetoast'
+import Checkbox from 'primevue/checkbox'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
-import Divider from 'primevue/divider'
-import InputText from 'primevue/inputtext'
-import Button from 'primevue/button'
+import InputNumber from 'primevue/inputnumber'
+import { useToast } from 'primevue/usetoast'
+
+const props = defineProps({
+  empresaId: Number
+})
 
 const toast = useToast()
+const matriz = ref({})
+const plazos = ref([])
 const tipos = ref([])
-const form = ref({ nombre: '', descripcion: '' })
-const loading = ref(false)
+const tiposSeleccionados = ref([])
 
-async function cargar() {
-  const res = await axios.get('/api/rate-types')
-  tipos.value = res.data
-}
-
-async function agregar() {
-  loading.value = true
+async function cargarTodo() {
   try {
-    await axios.post('/api/rate-types', form.value)
-    toast.add({ summary: 'Tipo agregado', severity: 'success', life: 3000 })
-    form.value.nombre = ''
-    form.value.descripcion = ''
-    await cargar()
-  } finally {
-    loading.value = false
+    const [matrizRes, tiposRes] = await Promise.all([
+      axios.get(`/fixed-term-matrix/${props.empresaId}`),
+      axios.get('/rate-types')
+    ])
+    matriz.value = matrizRes.data.matriz
+    plazos.value = matrizRes.data.plazos
+    tipos.value = tiposRes.data.data
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'No se pudo cargar la información',
+      life: 3000
+    })
   }
 }
 
-async function eliminar(id) {
-  await axios.delete(`/api/rate-types/${id}`)
-  await cargar()
-  toast.add({ summary: 'Tipo eliminado', severity: 'info', life: 3000 })
+async function guardarTasa(rango, plazoId) {
+  const valor = rango.tasas[plazoId]
+  if (valor === null || valor === undefined || tiposSeleccionados.value.length === 0) return
+
+  // Guardar por cada tipo de tasa seleccionado
+  for (const tipoId of tiposSeleccionados.value) {
+    try {
+      await axios.post('/fixed-term-rates', {
+        corporate_entity_id: props.empresaId,
+        amount_range_id: rango.id,
+        term_plan_id: plazoId,
+        rate_type_id: tipoId,
+        valor: valor
+      })
+
+      toast.add({
+        severity: 'success',
+        summary: 'Tasa guardada',
+        detail: `Rango ${rango.rango} - ${plazos.value.find(p => p.id === plazoId)?.nombre}`,
+        life: 1500
+      })
+    } catch (err) {
+      toast.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'No se pudo guardar una de las tasas',
+        life: 3000
+      })
+    }
+  }
 }
 
-onMounted(cargar)
+watch(() => props.empresaId, () => {
+  if (props.empresaId) cargarTodo()
+})
+
+onMounted(() => {
+  if (props.empresaId) cargarTodo()
+})
 </script>

@@ -27,7 +27,8 @@ return new class extends Migration {
                 'activa',         // Activa para mostrar
                 'adquirido',      // Ya fue comprado
                 'pendiente',      // Registro en espera
-                'completo'        // Ya tiene configuración de inversionista y cliente
+                'completo',        // Ya tiene configuración de inversionista y cliente
+                'espera'
             ])->default('pendiente');
 
             // 👉 Aquí agregas la nueva columna

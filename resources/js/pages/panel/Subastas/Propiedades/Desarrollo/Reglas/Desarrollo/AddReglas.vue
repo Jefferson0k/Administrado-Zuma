@@ -9,8 +9,8 @@
             <Button label="Exportar" icon="pi pi-upload" severity="secondary" @click="showToast" />
         </template>
     </Toolbar>
-    <Dialog v-model:visible="visible" modal header="Reglas del inmueble" :style="{ width: '950px' }">
-        <div class="flex flex-col gap-4">
+    <Dialog v-model:visible="visible" modal header="Reglas del inmueble" :style="{ width: '1100px' }">
+        <div class="flex flex-col gap-6">
             <!-- Propiedad (fila completa) -->
             <div>
                 <label class="block font-semibold mb-2">Propiedad <span class="text-red-500">*</span></label>
@@ -36,32 +36,8 @@
                 </Select>
             </div>
 
-            <!-- Primera fila de 3 columnas -->
+            <!-- Campos comunes -->
             <div class="grid grid-cols-3 gap-4">
-                <!-- TEA -->
-                <div>
-                    <label class="block font-semibold mb-2">
-                        TEA (%) <span class="text-red-500">*</span>
-                    </label>
-                    <div class="relative">
-                        <input type="number" v-model="tea" class="p-inputtext p-component w-full pr-8"
-                            placeholder="Ej. 12.5" step="0.01" min="0" max="100" />
-                        <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
-                    </div>
-                </div>
-
-                <!-- TEM -->
-                <div>
-                    <label class="block font-semibold mb-2">
-                        TEM (%) <span class="text-red-500">*</span>
-                    </label>
-                    <div class="relative">
-                        <input type="number" v-model="tem" class="p-inputtext p-component w-full pr-8"
-                            placeholder="Ej. 1.05" step="0.01" min="0" max="20" />
-                        <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
-                    </div>
-                </div>
-
                 <!-- Tipo Cronograma -->
                 <div>
                     <label class="block font-semibold mb-2">
@@ -70,10 +46,7 @@
                     <Select v-model="cronograma" :options="cronogramaOpciones" optionLabel="label" optionValue="value"
                         placeholder="Seleccionar tipo..." class="w-full" />
                 </div>
-            </div>
 
-            <!-- Segunda fila de 2 columnas -->
-            <div class="grid grid-cols-2 gap-4">
                 <!-- Plazo -->
                 <div>
                     <label class="block font-semibold mb-2">
@@ -83,19 +56,7 @@
                         placeholder="Seleccione un plazo" class="w-full" />
                 </div>
 
-                <!-- Tipo de usuario -->
-                <div>
-                    <label class="block font-semibold mb-2">
-                        Tipo de usuario <span class="text-red-500">*</span>
-                    </label>
-                    <Select v-model="tipoUsuario" :options="tipoUsuarioOpciones" optionLabel="label" optionValue="value"
-                        placeholder="Seleccione un tipo..." class="w-full" />
-                </div>
-            </div>
-
-            <!-- Tercera fila: Riesgo y Botón -->
-            <div class="grid grid-cols-2 gap-4">
-                <!-- Riesgo -->
+                <!-- Riesgo (compartido) -->
                 <div>
                     <label class="block font-semibold mb-2">
                         Riesgo <span class="text-red-500">*</span>
@@ -110,11 +71,89 @@
                         </template>
                     </Select>
                 </div>
+            </div>
 
-                <!-- Botón Previsualizar -->
-                <div class="flex items-end">
-                    <Button label="Previsualizar cronograma" icon="pi pi-eye" severity="info"
-                        :disabled="!canPreviewCronograma" @click="previsualizarCronograma" class="w-full" />
+            <!-- SECCIÓN INVERSIONISTA -->
+            <div class="border border-blue-200 rounded-lg p-4 bg-blue-50">
+                <h3 class="text-lg font-semibold text-blue-800 mb-4 flex items-center">
+                    <i class="pi pi-chart-line mr-2"></i>
+                    Configuración para Inversionista
+                </h3>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- TEM Inversionista -->
+                    <div>
+                        <label class="block font-semibold mb-2">
+                            TEM Inversionista (%) <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <input type="number" v-model="temInversionista" class="p-inputtext p-component w-full pr-8"
+                                placeholder="Ej. 1.05" step="0.01" min="0" max="20" />
+                            <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
+                        </div>
+                    </div>
+
+                    <!-- TEA Inversionista -->
+                    <div>
+                        <label class="block font-semibold mb-2">
+                            TEA Inversionista (%) <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <input type="number" v-model="teaInversionista" class="p-inputtext p-component w-full pr-8"
+                                placeholder="Ej. 12.5" step="0.01" min="0" max="100" />
+                            <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center mt-4">
+                    <Button label="Previsualizar cronograma" icon="pi pi-eye" severity="info" outlined
+                        :disabled="!canPreviewCronogramaInversionista" @click="previsualizarCronograma('inversionista')" />
+                    
+                    <Button label="Guardar Inversionista" icon="pi pi-check" severity="primary"
+                        :disabled="!canSaveInversionista" @click="actualizarPropiedad(1)" />
+                </div>
+            </div>
+
+            <!-- SECCIÓN CLIENTE -->
+            <div class="border border-green-200 rounded-lg p-4 bg-green-50">
+                <h3 class="text-lg font-semibold text-green-800 mb-4 flex items-center">
+                    <i class="pi pi-user mr-2"></i>
+                    Configuración para Cliente
+                </h3>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- TEM Cliente -->
+                    <div>
+                        <label class="block font-semibold mb-2">
+                            TEM Cliente (%) <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <input type="number" v-model="temCliente" class="p-inputtext p-component w-full pr-8"
+                                placeholder="Ej. 1.05" step="0.01" min="0" max="20" />
+                            <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
+                        </div>
+                    </div>
+
+                    <!-- TEA Cliente -->
+                    <div>
+                        <label class="block font-semibold mb-2">
+                            TEA Cliente (%) <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <input type="number" v-model="teaCliente" class="p-inputtext p-component w-full pr-8"
+                                placeholder="Ej. 15.0" step="0.01" min="0" max="100" />
+                            <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center mt-4">
+                    <Button label="Previsualizar cronograma" icon="pi pi-eye" severity="info" outlined
+                        :disabled="!canPreviewCronogramaCliente" @click="previsualizarCronograma('cliente')" />
+                    
+                    <Button label="Guardar Cliente" icon="pi pi-check" severity="success"
+                        :disabled="!canSaveCliente" @click="actualizarPropiedad(2)" />
                 </div>
             </div>
         </div>
@@ -123,11 +162,10 @@
             <div class="flex justify-end gap-2">
                 <Button label="Cancelar" icon="pi pi-times" severity="secondary" text
                     @click="() => { visible = false; resetForm() }" />
-
-                <Button label="Guardar" icon="pi pi-check" severity="contrast" @click="actualizarPropiedad" />
             </div>
         </template>
     </Dialog>
+    
     <!-- Componente para ver cronograma -->
     <VerCronograma v-model:visible="cronogramaVisible" :propiedad-data="propiedadSeleccionadaData"
         :parametros="parametrosCronograma" />
@@ -154,39 +192,49 @@ const cronogramaVisible = ref(false)
 const propiedades = ref([])
 const propiedadSeleccionada = ref(null)
 const propiedadSeleccionadaData = ref(null)
-const tea = ref('')
-const tem = ref('')
+
+// Campos comunes
 const cronograma = ref(null)
 const deadlines_id = ref(null)
-const riesgo = ref(null)
 const plazos = ref([])
-const tipoUsuario = ref(null)
-const estado = ref(null) // Nuevo campo para el estado
+const riesgo = ref(null) // Riesgo compartido
 
+// Campos específicos para inversionista
+const temInversionista = ref('')
+const teaInversionista = ref('')
+
+// Campos específicos para cliente
+const temCliente = ref('')
+const teaCliente = ref('')
+
+const tipoUsuarioActual = ref(null) // Para saber qué tipo se está previsualizando
 
 const resetForm = () => {
     propiedadSeleccionada.value = null
-    tea.value = ''
-    tem.value = ''
     cronograma.value = null
     deadlines_id.value = null
     riesgo.value = null
-    tipoUsuario.value = null
-    estado.value = null
+    temInversionista.value = ''
+    teaInversionista.value = ''
+    temCliente.value = ''
+    teaCliente.value = ''
     propiedadSeleccionadaData.value = null
     propiedades.value = []
+    tipoUsuarioActual.value = null
 }
-
 
 const parametrosCronograma = computed(() => {
     const plazoSeleccionado = plazos.value.find(p => p.id === deadlines_id.value)
-
     const propiedadData = propiedades.value.find(p => p.value === propiedadSeleccionada.value)
     const valorRequerido = propiedadData ? parseFloat(propiedadData.valor_requerido) : 0
 
+    // Usar TEA y TEM según el tipo de usuario actual
+    const teaActual = tipoUsuarioActual.value === 'inversionista' ? teaInversionista.value : teaCliente.value
+    const temActual = tipoUsuarioActual.value === 'inversionista' ? temInversionista.value : temCliente.value
+
     return {
-        tea: tea.value,
-        tem: tem.value,
+        tea: teaActual,
+        tem: temActual,
         cronograma: cronograma.value,
         deadlines_id: deadlines_id.value,
         duracion_meses: plazoSeleccionado ? plazoSeleccionado.duracion_meses : 0,
@@ -194,7 +242,7 @@ const parametrosCronograma = computed(() => {
     }
 })
 
-const previsualizarCronograma = async () => {
+const previsualizarCronograma = async (tipo) => {
     if (!propiedadSeleccionada.value) {
         toast.add({
             severity: 'warn',
@@ -216,28 +264,55 @@ const previsualizarCronograma = async () => {
         return
     }
 
+    tipoUsuarioActual.value = tipo
+
     try {
         const response = await axios.get(`/property/${propiedadSeleccionada.value}`)
         propiedadSeleccionadaData.value = response.data.data
-
         cronogramaVisible.value = true
-
     } catch (error) {
         propiedadSeleccionadaData.value = {
             ...propiedadData,
             valor_requerido: propiedadData.valor_requerido || 0
         }
-
         cronogramaVisible.value = true
     }
 }
 
-const canPreviewCronograma = computed(() => {
+// Computed para validar campos comunes
+const camposComunes = computed(() => {
     return propiedadSeleccionada.value !== null &&
-        tea.value !== '' &&
-        tem.value !== '' &&
         cronograma.value !== null &&
-        deadlines_id.value !== null
+        deadlines_id.value !== null &&
+        riesgo.value !== null
+})
+
+// Computed para validar previsualización inversionista
+const canPreviewCronogramaInversionista = computed(() => {
+    return camposComunes.value && 
+        temInversionista.value !== '' &&
+        teaInversionista.value !== ''
+})
+
+// Computed para validar previsualización cliente
+const canPreviewCronogramaCliente = computed(() => {
+    return camposComunes.value && 
+        temCliente.value !== '' &&
+        teaCliente.value !== ''
+})
+
+// Computed para validar guardado inversionista
+const canSaveInversionista = computed(() => {
+    return camposComunes.value && 
+        temInversionista.value !== '' &&
+        teaInversionista.value !== ''
+})
+
+// Computed para validar guardado cliente
+const canSaveCliente = computed(() => {
+    return camposComunes.value && 
+        temCliente.value !== '' &&
+        teaCliente.value !== ''
 })
 
 const cronogramaOpciones = [
@@ -251,11 +326,6 @@ const riesgos = [
     { label: 'B', value: 'B' },
     { label: 'C', value: 'C' },
     { label: 'D', value: 'D' }
-]
-
-const tipoUsuarioOpciones = [
-    { label: 'Inversionista', value: 1 },
-    { label: 'Cliente', value: 2 }
 ]
 
 const showToast = () => {
@@ -350,17 +420,22 @@ const onInputChange = (valor) => {
     }
 }
 
-const actualizarPropiedad = async () => {
+const actualizarPropiedad = async (tipoUsuario) => {
     if (!propiedadSeleccionada.value) {
         toast.add({ severity: 'warn', summary: 'Validación', detail: 'Seleccione una propiedad', life: 3000 })
         return
     }
 
-    if (!tea.value || !tem.value || !deadlines_id.value || !riesgo.value || !cronograma.value || !tipoUsuario.value) {
+    // Validar campos según el tipo de usuario
+    const tea = tipoUsuario === 1 ? teaInversionista.value : teaCliente.value
+    const tem = tipoUsuario === 1 ? temInversionista.value : temCliente.value
+
+    if (!tea || !tem || !deadlines_id.value || !riesgo.value || !cronograma.value) {
+        const tipoTexto = tipoUsuario === 1 ? 'inversionista' : 'cliente'
         toast.add({
             severity: 'warn',
             summary: 'Validación',
-            detail: 'Todos los campos son requeridos',
+            detail: `Todos los campos para ${tipoTexto} son requeridos`,
             life: 3000
         })
         return
@@ -368,24 +443,30 @@ const actualizarPropiedad = async () => {
 
     try {
         const response = await axios.put(`/property/${propiedadSeleccionada.value}/estado`, {
-            tea: tea.value,
-            tem: tem.value,
+            tea: tea,
+            tem: tem,
             deadlines_id: deadlines_id.value,
             riesgo: riesgo.value,
             tipo_cronograma: cronograma.value,
-            //estado_property: estado.value,
-            estado_configuracion: tipoUsuario.value,
+            estado_configuracion: tipoUsuario,
         })
 
+        const tipoTexto = tipoUsuario === 1 ? 'inversionista' : 'cliente'
         toast.add({
             severity: 'success',
             summary: 'Actualizado',
-            detail: response.data.message,
+            detail: `Configuración para ${tipoTexto} guardada exitosamente`,
             life: 3000
         })
 
-        visible.value = false
-        resetForm()
+        // Limpiar solo los campos del tipo guardado
+        if (tipoUsuario === 1) {
+            temInversionista.value = ''
+            teaInversionista.value = ''
+        } else {
+            temCliente.value = ''
+            teaCliente.value = ''
+        }
 
     } catch (error) {
         const errores = error.response?.data?.errors

@@ -12,6 +12,7 @@ return new class extends Migration {
             $table->decimal('desde', 12, 2)->default(0);
             $table->decimal('hasta', 12, 2)->nullable();
             $table->enum('moneda', ['PEN', 'USD'])->default('PEN');
+            $table->enum('estado', ['activo', 'pendientes'])->default('pendientes');
             $table->timestamps();
         });
     }

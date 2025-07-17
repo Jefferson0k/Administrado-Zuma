@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\CreditSimulationController;
 use App\Http\Controllers\Api\FixedTermInvestmentControllers;
+use App\Http\Controllers\Api\FixedTermScheduleController;
 use App\Http\Controllers\Api\InvestmentController;
 use App\Http\Controllers\Api\TipoCambioSbs;
 use App\Http\Controllers\Panel\CalculadoraController;
@@ -88,7 +89,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::prefix('tasas-fijas')->group(function () {
         Route::get('/last', [FixedTermInvestmentControllers::class, 'last']);
         Route::get('/top', [FixedTermInvestmentControllers::class, 'top']);
+        Route::get('/fixed-term-investments/pendientes', [FixedTermInvestmentControllers::class, 'pendingInvestments']);
     });
+    
+    Route::get('/config/{id}/schedules', [PropertyControllers::class, 'showConfig']);
 });
 
 Route::prefix('investments')->group(function () {
@@ -103,3 +107,5 @@ Route::prefix('online')->group(function () {
 });
 
 Route::get('/Tipo-Cambio-Sbs', [TipoCambioSbs::class, 'TipoCambioSbs']);
+
+Route::get('/fixed-term-schedules/{id}/cronograma', [FixedTermScheduleController::class, 'showCronograma']);

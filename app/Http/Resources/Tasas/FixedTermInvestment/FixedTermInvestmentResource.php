@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Tasas\FixedTermInvestment;
 
+use Carbon\Carbon;
 use Illuminate\Http\Resources\Json\JsonResource;
 class FixedTermInvestmentResource extends JsonResource{
     public function toArray($request){
@@ -10,10 +11,12 @@ class FixedTermInvestmentResource extends JsonResource{
             'amount' => $this->amount,
             'status' => $this->status,
             'rate' => $this->rate?->valor,
+            'entidad' => $this->rate->corporateEntity->nombre,
+            'ruc' => $this->rate->corporateEntity->ruc,
             'rate_type' => $this->rate?->rateType?->nombre,
             'frequency' => $this->frequency?->nombre,
             'term_plan' => $this->termPlan?->nombre,
-            'created_at' => $this->created_at->format('Y-m-d'),
+            'created_at' => Carbon::parse($this->created_at)->format('d-m-y'),
         ];
     }
 }

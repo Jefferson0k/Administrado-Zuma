@@ -38,30 +38,46 @@
                     class="w-full" />
             </div>
 
-            <!-- Estado (Dropdown) -->
+            <!-- Estado -->
             <div>
                 <label class="block font-bold mb-3">Estado <span class="text-red-500">*</span></label>
-                <Dropdown v-model="empresa.estado" :options="estados" placeholder="Seleccione el estado"
-                    class="w-full" />
+                <Dropdown v-model="empresa.estado" :options="estados" placeholder="Seleccione el estado" class="w-full" />
             </div>
 
-            <!-- Tipo de empresa (Dropdown) -->
+            <!-- Tipo de empresa -->
             <div>
                 <label class="block font-bold mb-3">Tipo <span class="text-red-500">*</span></label>
-                <Dropdown v-model="empresa.tipo" :options="tiposEntidad" placeholder="Seleccione el tipo de entidad"
-                    class="w-full" />
+                <Dropdown v-model="empresa.tipo" :options="tiposEntidad" placeholder="Seleccione el tipo de entidad" class="w-full" />
             </div>
 
-            <!-- Teléfono editable -->
+            <!-- Teléfono -->
             <div>
                 <label class="block font-bold mb-3">Teléfono <span class="text-red-500">*</span></label>
                 <InputText v-model="empresa.telefono" placeholder="Ingrese el teléfono" class="w-full" />
             </div>
 
-            <!-- Email editable -->
+            <!-- Email -->
             <div>
                 <label class="block font-bold mb-3">Email <span class="text-red-500">*</span></label>
                 <InputText v-model="empresa.email" placeholder="Ingrese el email" class="w-full" />
+            </div>
+
+            <!-- PDF -->
+            <div>
+                <label class="block font-bold mb-3">PDF de autorización <span class="text-red-500">*</span></label>
+                <FileUpload
+                    mode="advanced"
+                    name="pdf"
+                    accept=".pdf"
+                    :auto="true"
+                    customUpload
+                    :maxFileSize="10000000"
+                    @uploader="onUploadPdf"
+                    :chooseLabel="'Seleccionar PDF'"
+                    :uploadLabel="'Subir'"
+                    :cancelLabel="'Cancelar'"
+                    class="w-full"
+                />
             </div>
         </div>
 
@@ -79,26 +95,26 @@ import axios from 'axios';
 import { useToast } from 'primevue/usetoast';
 import { defineEmits } from 'vue';
 
-// PrimeVue Components
-import InputNumber from 'primevue/inputnumber';
 import Toolbar from 'primevue/toolbar';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
-import Textarea from 'primevue/textarea';
+import InputNumber from 'primevue/inputnumber';
 import Dropdown from 'primevue/dropdown';
+import Textarea from 'primevue/textarea';
+import FileUpload from 'primevue/fileupload';
 
 const toast = useToast();
-const submitted = ref(false);
-const AgregarDialog = ref(false);
-const consultandoRuc = ref(false);
 const emit = defineEmits(['agregado']);
 
-// Listas
+const AgregarDialog = ref(false);
+const consultandoRuc = ref(false);
+const submitted = ref(false);
+const archivoPdf = ref(null);
+
 const tiposEntidad = ['banco', 'cooperativa', 'caja', 'financiera'];
 const estados = ['activo', 'inactivo'];
 
-// Modelo de datos
 const empresa = ref({
     ruc: null,
     razonSocial: '',
@@ -109,6 +125,16 @@ const empresa = ref({
     telefono: '',
     email: ''
 });
+
+function openNew() {
+    resetEmpresa();
+    AgregarDialog.value = true;
+}
+
+function hideDialog() {
+    AgregarDialog.value = false;
+    resetEmpresa();
+}
 
 function resetEmpresa() {
     empresa.value = {
@@ -121,17 +147,28 @@ function resetEmpresa() {
         telefono: '',
         email: ''
     };
+    archivoPdf.value = null;
     submitted.value = false;
 }
 
-function openNew() {
-    resetEmpresa();
-    AgregarDialog.value = true;
-}
-
-function hideDialog() {
-    AgregarDialog.value = false;
-    resetEmpresa();
+function onUploadPdf(event) {
+    const file = event.files[0];
+    if (file && file.type === "application/pdf") {
+        archivoPdf.value = file;
+        toast.add({
+            severity: 'success',
+            summary: 'PDF cargado',
+            detail: `Archivo "${file.name}" listo para enviar`,
+            life: 3000
+        });
+    } else {
+        toast.add({
+            severity: 'error',
+            summary: 'Archivo inválido',
+            detail: 'Debe subir un archivo PDF',
+            life: 4000
+        });
+    }
 }
 
 async function consultarRuc() {
@@ -152,11 +189,10 @@ async function consultarRuc() {
 
         if (response.data) {
             const data = response.data;
-
             empresa.value.razonSocial = data.razonSocial || '';
             empresa.value.direccion = data.direccion || '';
             empresa.value.actividadEconomica = data.actividadEconomica || '';
-            empresa.value.estado = data.estado?.toLowerCase() || 'activo'; // por defecto 'activo'
+            empresa.value.estado = data.estado?.toLowerCase() || 'activo';
 
             toast.add({
                 severity: 'success',
@@ -167,15 +203,12 @@ async function consultarRuc() {
         }
     } catch (error) {
         console.error('Error al consultar RUC:', error);
-
-        const mensaje = error.response?.data?.message || 'Ocurrió un error al consultar el RUC';
         toast.add({
             severity: 'error',
             summary: 'Error',
-            detail: mensaje,
+            detail: error.response?.data?.message || 'Error al consultar el RUC',
             life: 5000
         });
-
         resetEmpresa();
     } finally {
         consultandoRuc.value = false;
@@ -188,7 +221,7 @@ function guardarEmpresa() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!empresa.value.ruc || empresa.value.ruc.toString().length !== 11 || isNaN(empresa.value.ruc)) {
-        toast.add({ severity: 'warn', summary: 'RUC inválido', detail: 'Debe ingresar un RUC de 11 dígitos', life: 3000 });
+        toast.add({ severity: 'warn', summary: 'RUC inválido', detail: 'Debe ingresar un RUC válido', life: 3000 });
         return;
     }
 
@@ -198,7 +231,7 @@ function guardarEmpresa() {
     }
 
     if (!empresa.value.tipo || !tiposEntidad.includes(empresa.value.tipo)) {
-        toast.add({ severity: 'warn', summary: 'Tipo de entidad requerido', detail: 'Debe seleccionar un tipo válido', life: 3000 });
+        toast.add({ severity: 'warn', summary: 'Tipo inválido', detail: 'Seleccione un tipo válido', life: 3000 });
         return;
     }
 
@@ -208,22 +241,28 @@ function guardarEmpresa() {
     }
 
     if (!empresa.value.email || !emailRegex.test(empresa.value.email)) {
-        toast.add({ severity: 'warn', summary: 'Email inválido', detail: 'Debe ingresar un correo electrónico válido', life: 3000 });
+        toast.add({ severity: 'warn', summary: 'Email inválido', detail: 'Ingrese un correo válido', life: 3000 });
         return;
     }
 
-    // Payload con los nombres correctos
-    const payload = {
-        nombre: empresa.value.razonSocial,
-        ruc: empresa.value.ruc.toString(),
-        direccion: empresa.value.direccion,
-        telefono: empresa.value.telefono.toString(),
-        email: empresa.value.email,
-        tipo_entidad: empresa.value.tipo,
-        estado: empresa.value.estado.toLowerCase() // 'activo' o 'inactivo'
-    };
+    if (!archivoPdf.value) {
+        toast.add({ severity: 'warn', summary: 'Falta PDF', detail: 'Debe subir un archivo PDF', life: 3000 });
+        return;
+    }
 
-    axios.post('/coperativa', payload)
+    const formData = new FormData();
+    formData.append('nombre', empresa.value.razonSocial);
+    formData.append('ruc', empresa.value.ruc.toString());
+    formData.append('direccion', empresa.value.direccion);
+    formData.append('telefono', empresa.value.telefono.toString());
+    formData.append('email', empresa.value.email);
+    formData.append('tipo_entidad', empresa.value.tipo);
+    formData.append('estado', empresa.value.estado.toLowerCase());
+    formData.append('pdf', archivoPdf.value);
+
+    axios.post('/coperativa', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    })
         .then(() => {
             toast.add({
                 severity: 'success',
@@ -236,11 +275,10 @@ function guardarEmpresa() {
         })
         .catch((error) => {
             console.error('Error al guardar empresa:', error);
-            const mensaje = error.response?.data?.message || 'Ocurrió un error al guardar la empresa';
             toast.add({
                 severity: 'error',
                 summary: 'Error',
-                detail: mensaje,
+                detail: error.response?.data?.message || 'Ocurrió un error al guardar la empresa',
                 life: 5000
             });
         });

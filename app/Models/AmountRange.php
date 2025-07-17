@@ -9,7 +9,7 @@ class AmountRange extends Model{
     use HasFactory;
     protected $table = 'amount_ranges';
     protected $fillable = [
-        'corporate_entity_id', 'desde', 'hasta', 'moneda',
+        'corporate_entity_id', 'desde', 'hasta', 'moneda','estado'
     ];
     public function corporateEntity(){
         return $this->belongsTo(CorporateEntity::class);

@@ -240,6 +240,15 @@ class FixedTermInvestmentControllers extends Controller{
         }
         return new FixedTermInvestmentResource($lastInvestment);
     }
+    public function pendingInvestments(){
+        $pendingInvestments = auth()->user()
+            ->investment()
+            ->with(['rate.corporateEntity', 'rate.rateType', 'frequency', 'termPlan'])
+            ->where('status', 'pendiente')
+            ->latest()
+            ->get();
+        return FixedTermInvestmentResource::collection($pendingInvestments);
+    }
     public function top(){
         $top = FixedTermInvestment::select(
                 'investor_id',

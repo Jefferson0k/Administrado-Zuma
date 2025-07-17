@@ -10,14 +10,10 @@
         </TabPanel>
 
         <TabPanel header="Plazos">
-          <TermPlansList />
+            <TermPlansList :empresa-id="empresa.id" />
         </TabPanel>
 
-        <TabPanel header="Tipos de Tasa">
-          <RateTypesList />
-        </TabPanel>
-
-        <TabPanel header="Tasas por Plazo">
+        <TabPanel header="Tasas por Plazo y Rango">
           <FixedTermMatrix :empresa-id="empresa.id" />
         </TabPanel>
       </TabView>
@@ -41,7 +37,6 @@ import TabPanel from 'primevue/tabpanel'
 // Subcomponentes (los crearás tú o te ayudo con eso)
 import AmountRangesList from './tabs/AmountRangesList.vue'
 import TermPlansList from './tabs/TermPlansList.vue'
-import RateTypesList from './tabs/RateTypesList.vue'
 import FixedTermMatrix from './tabs/FixedTermMatrix.vue'
 
 const visible = ref(false)

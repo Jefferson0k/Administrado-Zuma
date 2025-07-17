@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Notifications\InvestorEmailNotification;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -39,5 +38,7 @@ class Investor extends Authenticatable implements MustVerifyEmail{
     public function lastInvestment(){
         return $this->hasOne(FixedTermInvestment::class)->latestOfMany();
     }
-
+    public function propertyStatuses(){
+        return $this->hasMany(InvestorPropertyStatus::class);
+    }
 }

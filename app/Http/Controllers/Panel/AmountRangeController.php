@@ -12,6 +12,12 @@ class AmountRangeController extends Controller{
         $rangos = AmountRange::where('corporate_entity_id', $empresaId)->get();
         return AmountRangeResource::collection($rangos);
     }
+    public function showPendientes($empresaId){
+        $rangos = AmountRange::where('corporate_entity_id', $empresaId)
+                            ->where('estado', 'pendientes')
+                            ->get();
+        return AmountRangeResource::collection($rangos);
+    }
     public function store(StoreAmountRangeRequest $request){
         $data = $request->validated();
         $rango = AmountRange::create($data);

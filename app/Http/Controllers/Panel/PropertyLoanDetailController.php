@@ -10,6 +10,7 @@ use App\Http\Resources\Subastas\PropertyLoanDetail\PropertyLoanDetailListResourc
 use App\Http\Resources\Subastas\PropertyLoanDetail\PropertyLoanDetailResource;
 use App\Models\Investor;
 use App\Models\Property;
+use App\Models\PropertyInvestor;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -23,26 +24,35 @@ class PropertyLoanDetailController extends Controller{
 
         return PropertyLoanDetailListResource::collection($loanDetails);
     }
-
     public function store(StorePropertyLoanDetailRequests $request){
         $validated = $request->validated();
+
         $loanDetail = PropertyLoanDetail::updateOrCreate(
             ['property_id' => $validated['property_id']],
             $validated
         );
+
         $property = $loanDetail->property;
         if ($property && $property->estado !== 'activa') {
             $property->estado = 'activa';
             $property->save();
         }
-        Investor::whereIn('status', ['cliente', 'mixto'])
-            ->update(['asignado' => 1]);
+
+        $propertyInvestor = PropertyInvestor::where('config_id', $validated['config_id'])->first();
+        if ($propertyInvestor) {
+            $propertyInvestor->investor_id = $validated['investor_id'];
+            $propertyInvestor->save();
+
+            Investor::where('id', $validated['investor_id'])->update(['asignado' => 1]);
+        }
+
         return response()->json([
             'status' => 'success',
             'message' => 'Información del financiamiento guardada correctamente.',
             'data' => new PropertyLoanDetailResource($loanDetail),
         ]);
     }
+
     public function show($id){
         $loanDetail = PropertyLoanDetail::with([
             'investor',

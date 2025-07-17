@@ -385,69 +385,67 @@ class PropertyControllers extends Controller{
             ], 500);
         }
     }
-    public function listPropertiesActivas(Request $request): JsonResponse
-{
-    try {
-        $perPage = $request->input('per_page', 10);
-        $search = $request->input('search');
+    public function listPropertiesActivas(Request $request): JsonResponse{
+        try {
+            $perPage = $request->input('per_page', 10);
+            $search = $request->input('search');
 
-        $query = PropertyConfiguracion::with(['property.currency'])
-            ->where('estado', 2) // estado en PropertyConfiguracion
-            ->whereHas('property', function ($q) use ($search) {
-                $q->whereIn('estado', ['completo', 'desactivada']);
+            $query = PropertyConfiguracion::with(['property.currency'])
+                ->where('estado', 2) // estado en PropertyConfiguracion
+                ->whereHas('property', function ($q) use ($search) {
+                    $q->whereIn('estado', ['completo', 'desactivada']);
 
-                if ($search) {
-                    $q->where(function ($subquery) use ($search) {
-                        $subquery->where('nombre', 'LIKE', "%{$search}%")
-                            ->orWhere('id', 'LIKE', "%{$search}%")
-                            ->orWhere('departamento', 'LIKE', "%{$search}%")
-                            ->orWhere('provincia', 'LIKE', "%{$search}%")
-                            ->orWhere('distrito', 'LIKE', "%{$search}%");
-                    });
-                }
-            });
+                    if ($search) {
+                        $q->where(function ($subquery) use ($search) {
+                            $subquery->where('nombre', 'LIKE', "%{$search}%")
+                                ->orWhere('id', 'LIKE', "%{$search}%")
+                                ->orWhere('departamento', 'LIKE', "%{$search}%")
+                                ->orWhere('provincia', 'LIKE', "%{$search}%")
+                                ->orWhere('distrito', 'LIKE', "%{$search}%");
+                        });
+                    }
+                });
 
-        $configuraciones = $query->paginate($perPage);
+            $configuraciones = $query->paginate($perPage);
 
-        return response()->json([
-            'data' => $configuraciones->map(function ($config) {
-                $property = $config->property;
+            return response()->json([
+                'data' => $configuraciones->map(function ($config) {
+                    $property = $config->property;
 
-                return [
-                    'config_id' => $config->id,
-                    'property_id' => $property->id,
-                    'nombre' => $property->nombre,
-                    'departamento' => $property->departamento,
-                    'provincia' => $property->provincia,
-                    'distrito' => $property->distrito,
-                    'direccion' => $property->direccion,
-                    'descripcion' => $property->descripcion,
-                    'estado_property' => $property->estado,
-                    'estado_config' => $config->estado,
-                    'valor_estimado' => $property->valor_estimado,
-                    'tea' => $config->tea,
-                    'tem' => $config->tem,
-                    'moneda' => $property->currency->codigo ?? null,
-                    'foto' => $property->getImagenes(),
-                ];
-            }),
-            'pagination' => [
-                'total' => $configuraciones->total(),
-                'current_page' => $configuraciones->currentPage(),
-                'per_page' => $configuraciones->perPage(),
-                'last_page' => $configuraciones->lastPage(),
-                'from' => $configuraciones->firstItem(),
-                'to' => $configuraciones->lastItem(),
-            ],
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'error' => 'Error al listar configuraciones',
-            'message' => $e->getMessage(),
-        ], 500);
+                    return [
+                        'config_id' => $config->id,
+                        'property_id' => $property->id,
+                        'nombre' => $property->nombre,
+                        'departamento' => $property->departamento,
+                        'provincia' => $property->provincia,
+                        'distrito' => $property->distrito,
+                        'direccion' => $property->direccion,
+                        'descripcion' => $property->descripcion,
+                        'estado_property' => $property->estado,
+                        'estado_config' => $config->estado,
+                        'valor_estimado' => $property->valor_estimado,
+                        'tea' => $config->tea,
+                        'tem' => $config->tem,
+                        'moneda' => $property->currency->codigo ?? null,
+                        'foto' => $property->getImagenes(),
+                    ];
+                }),
+                'pagination' => [
+                    'total' => $configuraciones->total(),
+                    'current_page' => $configuraciones->currentPage(),
+                    'per_page' => $configuraciones->perPage(),
+                    'last_page' => $configuraciones->lastPage(),
+                    'from' => $configuraciones->firstItem(),
+                    'to' => $configuraciones->lastItem(),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Error al listar configuraciones',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
     }
-}
-
     public function listReglas(Request $request){
         $perPage = $request->get('per_page', 10);
         $estado = $request->get('estado', 1);
@@ -463,5 +461,17 @@ class PropertyControllers extends Controller{
             return response()->json(['message' => 'Configuración no encontrada'], 404);
         }
         return new PropertyReglaResource($regla);
+    }
+    public function showConfig($configId, Request $request){
+        $perPage = $request->input('per_page', 15);
+        $propertyInvestorIds = PropertyInvestor::where('config_id', $configId)->pluck('id');
+        if ($propertyInvestorIds->isEmpty()) {
+            return response()->json(['error' => 'No se encontraron inversionistas con esa configuración'], 404);
+        }
+        $schedules = PaymentSchedule::whereIn('property_investor_id', $propertyInvestorIds)
+            ->orderBy('property_investor_id')
+            ->orderBy('cuota')
+            ->paginate($perPage);
+        return response()->json($schedules);
     }
 }
