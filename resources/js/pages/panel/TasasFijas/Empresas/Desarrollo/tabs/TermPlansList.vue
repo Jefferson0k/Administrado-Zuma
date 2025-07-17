@@ -1,46 +1,73 @@
 <template>
   <div class="space-y-6">
+    <!-- Botón para recargar los datos -->
+    <div class="mb-4">
+      <Button
+        label="Recargar datos"
+        icon="pi pi-refresh"
+        severity="info"
+        @click="recargarDatos"
+        :disabled="!deshabilitado"
+      />
+    </div>
+
     <!-- Selects de rango de monto y tipo de tasa -->
     <div class="flex flex-col md:flex-row md:items-end gap-4">
       <!-- Rango de monto -->
       <div class="flex-1">
         <label class="text-sm font-medium mb-1 block">Seleccione un rango de monto</label>
-        <Select v-model="rangoSeleccionado" :options="rangos" optionValue="id" placeholder="Seleccione un rango"
-          :filter="true" class="w-full">
-          <!-- Cómo se muestra cada opción en la lista -->
+        <Select
+          v-model="rangoSeleccionado"
+          :options="rangos"
+          optionValue="id"
+          placeholder="Seleccione un rango"
+          :filter="true"
+          class="w-full"
+          @change="onRangoChange"
+          :disabled="deshabilitado"
+        >
           <template #option="{ option }">
-            <div class="">
+            <div>
               <span class="font-medium">{{ mostrarRango(option) }}</span>
               <Tag :value="option.estado" :severity="option.estado === 'completo' ? 'success' : 'warn'" />
             </div>
           </template>
 
-          <!-- Cómo se muestra la opción seleccionada -->
           <template #value="{ value }">
             <div v-if="value">
               <span class="font-medium">
-                {{mostrarRango(rangos.find(r => r.id === value))}}
+                {{ mostrarRango(rangos.find(r => r.id === value)) }}
               </span>
-              <Tag :value="rangos.find(r => r.id === value)?.estado"
-                :severity="rangos.find(r => r.id === value)?.estado === 'completo' ? 'success' : 'warn'" class="ml-2" />
+              <Tag
+                :value="rangos.find(r => r.id === value)?.estado"
+                :severity="rangos.find(r => r.id === value)?.estado === 'completo' ? 'success' : 'warn'"
+                class="ml-2"
+              />
             </div>
             <span v-else class="text-gray-400">Seleccione un rango</span>
           </template>
         </Select>
-
       </div>
 
       <!-- Tipo de tasa -->
       <div class="w-64">
         <label class="text-sm font-medium mb-1 block">Seleccione un tipo de tasa</label>
-        <Select v-model="tipoSeleccionado" :options="tiposTasa" optionValue="id" optionLabel="nombre"
-          placeholder="Tipo de tasa" class="w-full" :filter="true">
+        <Select
+          v-model="tipoSeleccionado"
+          :options="tiposTasa"
+          optionValue="id"
+          optionLabel="nombre"
+          placeholder="Tipo de tasa"
+          class="w-full"
+          :filter="true"
+          :disabled="deshabilitado"
+        >
           <template #option="slotProps">
             {{ slotProps.option.nombre }} - {{ slotProps.option.descripcion }}
           </template>
           <template #value="slotProps">
             <span v-if="slotProps.value">
-              {{mostrarTipoTasa(tiposTasa.find(t => t.id === slotProps.value))}}
+              {{ mostrarTipoTasa(tiposTasa.find(t => t.id === slotProps.value)) }}
             </span>
             <span v-else class="text-gray-400">Tipo de tasa</span>
           </template>
@@ -52,8 +79,13 @@
     <div>
       <h6 class="text-sm font-semibold mb-2">Plazos</h6>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-        <div v-for="plazo in plazos" :key="plazo.id" class="flex items-center gap-2  p-2 rounded shadow-sm border">
-          <Checkbox v-model="seleccionados" :inputId="`plazo-${plazo.id}`" :value="plazo.id" />
+        <div v-for="plazo in plazos" :key="plazo.id" class="flex items-center gap-2 p-2 rounded shadow-sm border">
+          <Checkbox
+            v-model="seleccionados"
+            :inputId="`plazo-${plazo.id}`"
+            :value="plazo.id"
+            :disabled="deshabilitado"
+          />
           <label :for="`plazo-${plazo.id}`" class="text-sm">
             {{ plazo.nombre }} ({{ plazo.dias_minimos }} días)
           </label>
@@ -62,10 +94,22 @@
     </div>
 
     <!-- Botones -->
-    <!-- Botones -->
     <div class="flex justify-between items-center mt-4">
-      <Button label="Agregar un nuevo plazo" icon="pi pi-plus" severity="secondary" @click="visible = true" />
-      <Button label="Registrar" icon="pi pi-save" severity="contrast" @click="guardarPlazos" :loading="guardando" />
+      <Button
+        label="Agregar un nuevo plazo"
+        icon="pi pi-plus"
+        severity="secondary"
+        @click="visible = true"
+        :disabled="deshabilitado"
+      />
+      <Button
+        label="Registrar"
+        icon="pi pi-save"
+        severity="contrast"
+        @click="guardarPlazos"
+        :loading="guardando"
+        :disabled="deshabilitado"
+      />
     </div>
 
     <!-- Diálogo para nuevo plazo -->
@@ -77,20 +121,18 @@
             <InputText id="nombre" v-model="form.nombre" fluid required />
           </div>
           <div>
-            <label for="dias_minimos" class="block font-bold mb-3">Días mínimos <span
-                class="text-red-500">*</span></label>
+            <label for="dias_minimos" class="block font-bold mb-3">Días mínimos <span class="text-red-500">*</span></label>
             <InputText id="dias_minimos" v-model="form.dias_minimos" class="w-full" required />
           </div>
           <div>
-            <label for="dias_maximos" class="block font-bold mb-3">Días máximos <span
-                class="text-red-500">*</span></label>
+            <label for="dias_maximos" class="block font-bold mb-3">Días máximos <span class="text-red-500">*</span></label>
             <InputText id="dias_maximos" v-model="form.dias_maximos" class="w-full" required />
           </div>
         </div>
       </form>
       <template #footer>
         <Button label="Cancelar" severity="secondary" @click="visible = false" class="mr-2" />
-        <Button type="submit" label="Guardar" severity="contrast"/>
+        <Button type="submit" label="Guardar" severity="contrast" @click="storeTermPlan" />
       </template>
     </Dialog>
   </div>
@@ -106,7 +148,7 @@ import Button from 'primevue/button'
 import Select from 'primevue/select'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
-import Tag from 'primevue/tag';
+import Tag from 'primevue/tag'
 
 const props = defineProps({ empresaId: Number })
 const toast = useToast()
@@ -122,34 +164,49 @@ const tiposTasa = ref([])
 const tipoSeleccionado = ref(null)
 
 const visible = ref(false)
+const deshabilitado = ref(true)
+
 const form = ref({
   nombre: '',
   dias_minimos: '',
   dias_maximos: ''
 })
 
-// Cargar plazos, rangos, tipos de tasa
+// Función para recargar todos los datos y habilitar inputs
+async function recargarDatos() {
+  deshabilitado.value = true
+  try {
+    await Promise.all([
+      cargarPlazos(),
+      cargarTiposTasa(),
+      cargarRangos()
+    ])
+    deshabilitado.value = false
+    toast.add({ severity: 'success', summary: 'Listo', detail: 'Datos cargados correctamente', life: 3000 })
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'Error al cargar los datos', life: 3000 })
+  }
+}
+
+// Evento al cambiar el select de rango
+function onRangoChange(e) {
+  console.log('Rango seleccionado:', e.value)
+}
+
+// Cargar plazos, rangos y tipos de tasa
 async function cargarPlazos() {
   const res = await axios.get('/term-plans')
   plazos.value = res.data.data
 }
 
 async function cargarRangos() {
-  try {
-    const res = await axios.get(`/amount-ranges/${props.empresaId}/pendientes`)
-    rangos.value = res.data.data
-  } catch (error) {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar los rangos', life: 3000 })
-  }
+  const res = await axios.get(`/amount-ranges/${props.empresaId}/pendientes`)
+  rangos.value = res.data.data
 }
 
 async function cargarTiposTasa() {
-  try {
-    const res = await axios.get('/rate-types')
-    tiposTasa.value = res.data.data
-  } catch (error) {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar tipos de tasa', life: 3000 })
-  }
+  const res = await axios.get('/rate-types')
+  tiposTasa.value = res.data.data
 }
 
 // Guardar nuevos plazos
@@ -217,14 +274,11 @@ const storeTermPlan = async () => {
 }
 
 onMounted(() => {
-  console.log('empresaId:', props.empresaId) // <-- este log
-  cargarPlazos()
-  cargarTiposTasa()
-  if (props.empresaId) cargarRangos()
+  // Nada se carga al inicio, hasta que el usuario presione "Recargar"
 })
 
 watch(() => props.empresaId, () => {
-  if (props.empresaId) cargarRangos()
+  if (!deshabilitado.value && props.empresaId) cargarRangos()
 })
 
 // Helpers

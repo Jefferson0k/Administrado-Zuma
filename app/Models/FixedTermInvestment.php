@@ -30,4 +30,10 @@ class FixedTermInvestment extends Model{
     public function schedules(){
         return $this->hasMany(FixedTermSchedule::class);
     }
+    public function checkAndFinalizeIfNeeded() {
+        $remaining = $this->schedules()->where('status', '!=', 'pagado')->count();
+        if ($remaining === 0) {
+            $this->update(['status' => 'finalizado']);
+        }
+    }
 }

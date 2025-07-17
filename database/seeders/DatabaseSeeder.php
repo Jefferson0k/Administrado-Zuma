@@ -14,10 +14,10 @@ class DatabaseSeeder extends Seeder{
             TermSeeder::class,
             #PropertySeeder::class,
             CoopacSanCristobalSeeder::class,
-            #PaymentFrequencySeeder::class,
-            #CoopacSanMiguelSeeder::class,
-            #CoopacInclusivaSeeder::class,
-            #CoopacLosAndesSeeder::class,
+            PaymentFrequencySeeder::class,
+            CoopacSanMiguelSeeder::class,
+            CoopacInclusivaSeeder::class,
+            CoopacLosAndesSeeder::class,
             ProductSeeder::class,
         ]);
     }

@@ -93,6 +93,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
     
     Route::get('/config/{id}/schedules', [PropertyControllers::class, 'showConfig']);
+
+    Route::get('/fixed-term-schedules/{id}/cronograma', [FixedTermScheduleController::class, 'showCronograma']);
 });
 
 Route::prefix('investments')->group(function () {
@@ -107,5 +109,3 @@ Route::prefix('online')->group(function () {
 });
 
 Route::get('/Tipo-Cambio-Sbs', [TipoCambioSbs::class, 'TipoCambioSbs']);
-
-Route::get('/fixed-term-schedules/{id}/cronograma', [FixedTermScheduleController::class, 'showCronograma']);

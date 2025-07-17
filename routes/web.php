@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\ConsultasDni;
 use App\Http\Controllers\Api\ConsultasRucController;
+use App\Http\Controllers\Api\FixedTermInvestmentControllers;
+use App\Http\Controllers\Api\FixedTermScheduleController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\MovementController;
 use App\Http\Controllers\Api\RolesController;
@@ -13,6 +15,7 @@ use App\Http\Controllers\Panel\CurrencyControllers;
 use App\Http\Controllers\Panel\CustomerController;
 use App\Http\Controllers\Panel\DeadlinesControllers;
 use App\Http\Controllers\Panel\FixedTermRateController;
+use App\Http\Controllers\Panel\PagosController;
 use App\Http\Controllers\Panel\PaymentFrequencyController;
 use App\Http\Controllers\Panel\PaymentScheduleController;
 use App\Http\Controllers\Panel\PreviuController;
@@ -204,6 +207,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{id}/aceptar-tasas-fijas', [MovementController::class, 'aceptarTasasFijas']);
         Route::post('/{id}/rechazar-tasas-fijas', [MovementController::class, 'rechazarTasasFijas']);
     });
+
+    Route::prefix('pagos')->group(function () {
+        Route::get('/pendientes', [PagosController::class, 'pendientes']);
+    });
+    Route::get('/fixed-term-schedules/{id}/cronograma', [FixedTermScheduleController::class, 'showCronograma']);
+    Route::post('/pagos-tasas', [PagosController::class, 'store']);
 });
 
 Route::get('/currencies', [CurrencyControllers::class, 'index']);

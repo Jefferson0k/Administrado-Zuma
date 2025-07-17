@@ -38,16 +38,9 @@ const filters = ref({
         </template>
 
         <Column selectionMode="multiple" style="width: 3rem" :exportable="false"></Column>
-        <Column field="code" header="Codigo op" sortable style="min-width: 12rem"></Column>
-        <Column field="name" header="Inversionistas" sortable style="min-width: 16rem"></Column>
-        <Column field="category" header="Numero de operacion del voucher" sortable style="min-width: 15rem"></Column>
-        <Column field="category" header="Moneda" sortable style="min-width: 10rem"></Column>
+        <Column field="category" header="Codigo" sortable style="min-width: 15rem"></Column>
+        <Column field="category" header="Inversionita" sortable style="min-width: 15rem"></Column>
         <Column field="category" header="Monto" sortable style="min-width: 15rem"></Column>
-        <Column field="category" header="Estado" sortable style="min-width: 15rem"></Column>
-        <Column field="category" header="Comprovacion" sortable style="min-width: 15rem"></Column>
-        <Column field="category" header="Imagen de voucher" sortable style="min-width: 15rem"></Column>
-        <Column field="category" header="Fecha que se realizo" sortable style="min-width: 15rem"></Column>
-        <Column field="category" header="Empresa" sortable style="min-width: 15rem"></Column>
-        <Column field="category" header="Factura" sortable style="min-width: 15rem"></Column>
+        <Column field="category" header="Moneda" sortable style="min-width: 15rem"></Column>
     </DataTable>
 </template>
