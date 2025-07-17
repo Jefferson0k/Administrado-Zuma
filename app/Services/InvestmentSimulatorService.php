@@ -8,101 +8,103 @@ use Carbon\Carbon;
 use Exception;
 
 class InvestmentSimulatorService{
-    public function simulateByAmount(float $amount): array{
-        $rates = FixedTermRate::with(['amountRange', 'termPlan', 'corporateEntity', 'rateType'])
-            ->where('estado', 'activo')
-            ->whereHas('amountRange', function ($query) use ($amount) {
-                $query->where('desde', '<=', $amount)
-                    ->where(function ($q) use ($amount) {
-                        $q->whereNull('hasta')->orWhere('hasta', '>=', $amount);
-                    });
-            })
-            ->get();
+    public function simulateByAmount(float $amount): array
+{
+    $rates = FixedTermRate::with(['amountRange', 'termPlan', 'corporateEntity', 'rateType'])
+        ->where('estado', 'activo')
+        ->whereHas('amountRange', function ($query) use ($amount) {
+            $query->where('desde', '<=', $amount)
+                ->where(function ($q) use ($amount) {
+                    $q->whereNull('hasta')->orWhere('hasta', '>=', $amount);
+                });
+        })
+        ->get();
 
-        if ($rates->isEmpty()) {
-            throw new Exception('No se encontraron tasas para este monto');
-        }
+    if ($rates->isEmpty()) {
+        throw new Exception('No se encontraron tasas para este monto');
+    }
 
-        $agrupado = $rates->groupBy('corporate_entity_id');
-        $resultado = [];
+    $agrupado = $rates->groupBy('corporate_entity_id');
+    $resultado = [];
 
-        foreach ($agrupado as $ratesPorCoop) {
-            $cooperativa = $ratesPorCoop->first()->corporateEntity;
+    foreach ($agrupado as $ratesPorCoop) {
+        $cooperativa = $ratesPorCoop->first()->corporateEntity;
+        
+        $tiposTasa = $ratesPorCoop->groupBy('rate_type_id');
+        
+        $tasasPorTipo = [];
+        $mejorTasaGeneral = 0;
+
+        foreach ($tiposTasa as $ratesPorTipo) {
+            $tipoTasa = $ratesPorTipo->first()->rateType;
             
-            $tiposTasa = $ratesPorCoop->groupBy('rate_type_id');
-            
-            $tasasPorTipo = [];
-            $mejorTasaGeneral = 0;
+            $tasas = $ratesPorTipo->map(function ($rate) use ($amount) {
+                $tasaRow = [
+                    'id' => $rate->id,
+                    'plazo_dias' => $rate->termPlan->dias_maximos,
+                    'rate_model' => $rate
+                ];
 
-            foreach ($tiposTasa as $ratesPorTipo) {
-                $tipoTasa = $ratesPorTipo->first()->rateType;
-                
-                $tasas = $ratesPorTipo->map(function ($rate) use ($amount) {
-                    $tasaRow = [
-                        'id' => $rate->id,
-                        'plazo_dias' => $rate->termPlan->dias_maximos,
-                        'rate_model' => $rate
-                    ];
+                if ($rate->valor_trea !== null && $rate->valor_trem !== null) {
+                    $tasaRow['TREA'] = number_format($rate->valor_trea, 2) . '%';
+                    $tasaRow['TREM'] = number_format($rate->valor_trem, 2) . '%';
 
-                    if ($rate->valor_trea !== null && $rate->valor_trem !== null) {
-                        $tasaRow['TREA'] = number_format($rate->valor_trea, 2) . '%';
-                        $tasaRow['TREM'] = number_format($rate->valor_trem, 2) . '%';
+                    $interesTREA = round($amount * ($rate->valor_trea / 100), 2);
+                    $interesTREM = round($amount * ($rate->valor_trem / 100), 2);
 
-                        $interesTREA = round($amount * ($rate->valor_trea / 100), 2);
-                        $interesTREM = round($amount * ($rate->valor_trem / 100), 2);
+                    $tasaRow['retorno_trea'] = 'S/ ' . number_format($interesTREA, 2, ',', '.');
+                    $tasaRow['retorno_trem'] = 'S/ ' . number_format($interesTREM, 2, ',', '.');
 
-                        $tasaRow['retorno_trea'] = 'S/ ' . number_format($interesTREA, 2, ',', '.');
-                        $tasaRow['retorno_trem'] = 'S/ ' . number_format($interesTREM, 2, ',', '.');
+                    $tasaRow['orden_tasa'] = ($rate->valor_trea + $rate->valor_trem) / 2;
 
-                        $tasaRow['orden_tasa'] = ($rate->valor_trea + $rate->valor_trem) / 2;
+                } elseif ($rate->valor !== null) {
+                    $tasaRow['TEA'] = number_format($rate->valor, 2) . '%';
+                    $interes = round($amount * ($rate->valor / 100), 2);
+                    $tasaRow['retorno'] = 'S/ ' . number_format($interes, 2, ',', '.');
+                    $tasaRow['orden_tasa'] = $rate->valor;
 
-                    } elseif ($rate->valor !== null) {
-                        $tasaRow['TEA'] = number_format($rate->valor, 2) . '%';
-                        $interes = round($amount * ($rate->valor / 100), 2);
-                        $tasaRow['retorno'] = 'S/ ' . number_format($interes, 2, ',', '.');
-                        $tasaRow['orden_tasa'] = $rate->valor;
-
-                    } elseif ($rate->valor_tem !== null) {
-                        $tasaRow['TEM'] = number_format($rate->valor_tem, 2) . '%';
-                        $interes = round($amount * ($rate->valor_tem / 100), 2);
-                        $tasaRow['retorno'] = 'S/ ' . number_format($interes, 2, ',', '.');
-                        $tasaRow['orden_tasa'] = $rate->valor_tem;
-                    }
-
-                    return $tasaRow;
-                })->sortByDesc(function ($tasa) {
-                    return $tasa['orden_tasa'] ?? 0;
-                })->values();
-
-                $mejorTasaTipo = $tasas->first()['orden_tasa'] ?? 0;
-                if ($mejorTasaTipo > $mejorTasaGeneral) {
-                    $mejorTasaGeneral = $mejorTasaTipo;
+                } elseif ($rate->valor_tem !== null) {
+                    $tasaRow['TEM'] = number_format($rate->valor_tem, 2) . '%';
+                    $interes = round($amount * ($rate->valor_tem / 100), 2);
+                    $tasaRow['retorno'] = 'S/ ' . number_format($interes, 2, ',', '.');
+                    $tasaRow['orden_tasa'] = $rate->valor_tem;
                 }
 
-                $tasasPorTipo[] = [
-                    'tipo_tasa' => $tipoTasa->nombre,
-                    'tipo_columnas' => $this->detectarColumnas($tasas->first()),
-                    'tasas' => $tasas->map(fn($tasa) => collect($tasa)->except(['orden_tasa', 'rate_model']))
-                ];
+                return $tasaRow;
+            })->sortByDesc(function ($tasa) {
+                return $tasa['orden_tasa'] ?? 0;
+            })->values();
+
+            $mejorTasaTipo = $tasas->first()['orden_tasa'] ?? 0;
+            if ($mejorTasaTipo > $mejorTasaGeneral) {
+                $mejorTasaGeneral = $mejorTasaTipo;
             }
 
-            $resultado[] = [
-                'cooperativa' => $cooperativa->nombre,
-                'tipos_tasa' => $tasasPorTipo,
-                'mejor_tasa' => $mejorTasaGeneral
+            $tasasPorTipo[] = [
+                'tipo_tasa' => $tipoTasa->nombre,
+                'tipo_columnas' => $this->detectarColumnas($tasas->first()),
+                'tasas' => $tasas->map(fn($tasa) => collect($tasa)->except(['orden_tasa', 'rate_model']))
             ];
         }
 
-        usort($resultado, fn($a, $b) => $b['mejor_tasa'] <=> $a['mejor_tasa']);
-
-        $ordenes = ['Primera', 'Segunda', 'Tercera', 'Cuarta', 'Quinta'];
-        foreach ($resultado as $index => &$coop) {
-            $coop['orden'] = $ordenes[$index] ?? ($index + 1) . '°';
-            unset($coop['mejor_tasa']);
-        }
-
-        return $resultado;
+        $resultado[] = [
+            'cooperativa' => $cooperativa->nombre,
+            'pdf_url' => $cooperativa->pdf, // Agregar la URL del PDF
+            'tipos_tasa' => $tasasPorTipo,
+            'mejor_tasa' => $mejorTasaGeneral
+        ];
     }
+
+    usort($resultado, fn($a, $b) => $b['mejor_tasa'] <=> $a['mejor_tasa']);
+
+    $ordenes = ['Primera', 'Segunda', 'Tercera', 'Cuarta', 'Quinta'];
+    foreach ($resultado as $index => &$coop) {
+        $coop['orden'] = $ordenes[$index] ?? ($index + 1) . '°';
+        unset($coop['mejor_tasa']);
+    }
+
+    return $resultado;
+}
     public function generatePaymentSchedule(
         int $rateId,
         float $amount,

@@ -8,16 +8,19 @@ class StorePropertyLoanDetailRequests extends FormRequest{
     public function authorize(){
         return true;
     }
-    public function rules(){
+    public function rules(): array
+    {
         return [
-            'property_id' => 'required|exists:properties,id',
-            'investor_id' => 'required|exists:investors,id',
-            'ocupacion_profesion' => 'nullable|string|max:255',
-            'motivo_prestamo' => 'nullable|string|max:255',
-            'descripcion_financiamiento' => 'nullable|string',
-            'solicitud_prestamo_para' => 'nullable|string|max:255',
-            'garantia' => 'nullable|string|max:255',
-            'perfil_riesgo' => 'nullable|string|max:255',
+            'property_id' => ['required', 'exists:properties,id'],
+            'config_id' => ['required', 'exists:property_configuracions,id'],
+            'investor_id' => ['required', 'exists:investors,id'],
+            'ocupacion_profesion' => ['required', 'string'],
+            'motivo_prestamo' => ['required', 'string'],
+            'descripcion_financiamiento' => ['required', 'string'],
+            'solicitud_prestamo_para' => ['required', 'string'],
+            'garantia' => ['required', 'string'],
+            'perfil_riesgo' => ['required', 'string'],
         ];
     }
+
 }

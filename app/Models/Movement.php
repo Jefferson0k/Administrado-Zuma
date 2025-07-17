@@ -31,6 +31,9 @@ class Movement extends Model{
     public function investor(){
         return $this->belongsTo(Investor::class);
     }
+    public function deposit(){
+        return $this->hasOne(Deposit::class, 'movement_id');
+    }
     protected static function boot()
     {
         parent::boot();

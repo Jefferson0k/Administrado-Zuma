@@ -2,7 +2,10 @@
 
 use App\Http\Controllers\Api\ConsultasDni;
 use App\Http\Controllers\Api\ConsultasRucController;
+use App\Http\Controllers\Api\FixedTermInvestmentControllers;
+use App\Http\Controllers\Api\FixedTermScheduleController;
 use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\MovementController;
 use App\Http\Controllers\Api\RolesController;
 use App\Http\Controllers\Api\UsuariosController;
 use App\Http\Controllers\Panel\AmountRangeController;
@@ -12,6 +15,7 @@ use App\Http\Controllers\Panel\CurrencyControllers;
 use App\Http\Controllers\Panel\CustomerController;
 use App\Http\Controllers\Panel\DeadlinesControllers;
 use App\Http\Controllers\Panel\FixedTermRateController;
+use App\Http\Controllers\Panel\PagosController;
 use App\Http\Controllers\Panel\PaymentFrequencyController;
 use App\Http\Controllers\Panel\PaymentScheduleController;
 use App\Http\Controllers\Panel\PreviuController;
@@ -135,8 +139,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::prefix('coperativa')->group(function(){
-        Route::get('/', [CorporateEntityController::class, 'index'])->name('usuarios.index');
-        Route::post('/', [CorporateEntityController::class, 'store'])->name('store.index');
+        Route::get('/', [CorporateEntityController::class, 'index']);
+        Route::post('/', [CorporateEntityController::class, 'store']);
+        Route::get('{id}', [CorporateEntityController::class, 'show']);
+        Route::put('{id}', [CorporateEntityController::class, 'update']);
+        Route::delete('{id}', [CorporateEntityController::class, 'delete']);
+        Route::get('{id}/pdf', [CorporateEntityController::class, 'showPdf']);
     });
 
     Route::prefix('term-plans')->group(function(){
@@ -158,6 +166,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::prefix('amount-ranges')->controller(AmountRangeController::class)->group(function () {
         Route::get('{empresaId}', 'show');
+        Route::get('{empresaId}/pendientes', 'showPendientes');
         Route::post('', 'store');
         Route::delete('{id}', 'delete');
     });
@@ -183,6 +192,28 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
     
     Route::post('/properties/{id}/activacion', [PropertyLoanDetailController::class, 'activacion']);
+    
+    Route::prefix('fixed-term-rates')->controller(FixedTermRateController::class)->group(function () {
+        Route::post('/bulk', 'storeBulk');
+        Route::get('/entidad/{id}', 'showByEntidad');
+        Route::post('/plazos-temas', [FixedTermRateController::class, 'storePlazoTema']);
+        Route::put('/{id}', [FixedTermRateController::class, 'update']);
+    });
+    Route::post('/fixed-term-rates', [FixedTermRateController::class, 'store']);
+
+    Route::prefix('movements')->group(function () {
+        Route::get('/tasas-fijas', [MovementController::class, 'listTasasFijas']);
+        Route::get('/hipotecas', [MovementController::class, 'listHipotecas']);
+        Route::post('/{id}/aceptar-tasas-fijas', [MovementController::class, 'aceptarTasasFijas']);
+        Route::post('/{id}/rechazar-tasas-fijas', [MovementController::class, 'rechazarTasasFijas']);
+    });
+
+    Route::prefix('pagos')->group(function () {
+        Route::get('/pendientes', [PagosController::class, 'pendientes']);
+    });
+    Route::get('/fixed-term-schedules/{id}/cronograma', [FixedTermScheduleController::class, 'showCronograma']);
+    Route::post('/pagos-tasas', [PagosController::class, 'store']);
+    Route::get('/pagos-tasas', [PagosController::class, 'lis']);
 });
 
 Route::get('/currencies', [CurrencyControllers::class, 'index']);

@@ -170,7 +170,6 @@ const getEstadoSeverity = (estado) => {
     }
 }
 
-
 const buscarPropiedades = debounce(async (texto) => {
     if (!texto) {
         propiedades.value = []
@@ -186,6 +185,7 @@ const buscarPropiedades = debounce(async (texto) => {
             label: `${propiedad.nombre} - ${propiedad.departamento}, ${propiedad.provincia}`,
             sublabel: `${propiedad.distrito} | ${propiedad.direccion}`,
             value: propiedad.property_id,
+            config_id: propiedad.config_id, // ✅ necesario para backend
             estado_property: propiedad.estado_property,
             valor_estimado: propiedad.valor_estimado
         }))
@@ -250,6 +250,7 @@ const guardarFormulario = async () => {
     try {
         const payload = {
             property_id: propiedadSeleccionada.value.value,
+            config_id: propiedadSeleccionada.value.config_id, // ✅ se envía al backend
             investor_id: clienteSeleccionado.value.value,
             ...form.value
         }

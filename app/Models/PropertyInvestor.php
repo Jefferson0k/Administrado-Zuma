@@ -28,6 +28,6 @@ class PropertyInvestor extends Model{
         return $this->hasMany(PropertyLoanDetail::class, 'id_property_investor');
     }
     public function configuracion(){
-        return $this->belongsTo(PropertyConfiguracion::class);
+        return $this->belongsTo(PropertyConfiguracion::class, 'config_id');
     }
 }

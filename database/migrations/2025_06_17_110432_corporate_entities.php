@@ -15,6 +15,7 @@ return new class extends Migration{
             $table->string('email')->nullable();
             $table->enum('tipo_entidad', ['banco', 'cooperativa', 'caja', 'financiera'])->default('cooperativa');
             $table->enum('estado', ['activo', 'inactivo'])->default('activo');
+            $table->string('pdf')->nullable();
             $table->timestamps();
         });
     }

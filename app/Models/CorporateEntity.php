@@ -9,7 +9,7 @@ class CorporateEntity extends Model{
     use HasFactory;
     protected $table = 'corporate_entities';
     protected $fillable = [
-        'nombre', 'ruc', 'direccion', 'telefono', 'email', 'tipo_entidad', 'estado',
+        'nombre', 'ruc', 'direccion', 'telefono', 'email', 'tipo_entidad', 'estado', 'pdf'
     ];
     public function amountRanges(){
         return $this->hasMany(AmountRange::class);

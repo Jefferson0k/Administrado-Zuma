@@ -24,4 +24,7 @@ class FixedTermSchedule extends Model{
     public function investment(){
         return $this->belongsTo(FixedTermInvestment::class, 'fixed_term_investment_id');
     }
+    public function fixedTermInvestment(){
+        return $this->belongsTo(FixedTermInvestment::class, 'fixed_term_investment_id', 'id');
+    }
 }
