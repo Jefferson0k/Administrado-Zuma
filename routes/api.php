@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\ConsultasDni;
 use App\Http\Controllers\Api\CreditSimulationController;
 use App\Http\Controllers\Api\FixedTermInvestmentControllers;
 use App\Http\Controllers\Api\FixedTermScheduleController;
@@ -31,6 +32,7 @@ Route::post('/login', [CustomerSessionController::class, 'login']);
 Route::post('/customers/register', [RegisteredCustomerController::class, 'store']);
 Route::post('/email/verify/resend/{id}', [ProfileController::class, 'resendEmailVerification']);
 Route::put('/email/verify/{id}/{hash}', [ProfileController::class, 'emailVerification']);
+Route::get('/consultar-dni/{dni?}', [ConsultasDni::class, 'consultar'])->name('consultar.dni');
 
 /*
 |--------------------------------------------------------------------------

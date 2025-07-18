@@ -4,38 +4,40 @@ namespace Database\Seeders;
 
 use App\Models\Investor;
 use Faker\Factory;
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Faker\Provider\es_PE\Person;
+use Faker\Provider\es_PE\Company;
 use Illuminate\Support\Facades\Hash;
 
-class InvestorSeeder extends Seeder {
-    public function run(): void {
+class InvestorSeeder extends Seeder
+{
+    /**
+     * Run the database seeds.
+     */
+    public function run(): void
+    {
         $faker = Factory::create();
         $faker_locale = Factory::create('es_PE');
 
-        for ($i = 0; $i < 1; $i++) {
+        // Create 5 investors as specified
+        for ($i = 0; $i < 5; $i++) {
             $investor = Investor::create([
                 'name' => $faker_locale->firstName(),
                 'first_last_name' => $faker_locale->lastName(),
                 'second_last_name' => $faker_locale->lastName(),
                 'alias' => $faker_locale->word(),
-                'document' => $faker_locale->unique()->numerify('########'),
+                'document' => $faker_locale->unique()->numerify('########'), // 8 digits DNI
                 'email' => $faker->unique()->safeEmail(),
-                'password' => Hash::make('password123@A'),
-                'telephone' => $faker->numerify('9########'),
+                'password' => Hash::make('password123@A'), // Secure password that meets requirements
+                'telephone' => $faker->numerify('9########'), // 9 digits mobile number
                 'status' => 'validated',
-                'email_verified_at' => now(),
+                'email_verified_at' => now(), // Set email as verified
             ]);
 
-            // Crear balances relacionados
-            $investor->balances()->create([
-                'currency' => 'PEN',
-                'amount' => $faker->numberBetween(1000, 50000),
-            ]);
-
-            $investor->balances()->create([
-                'currency' => 'USD',
-                'amount' => $faker->numberBetween(1000, 50000),
-            ]);
+            // Create PEN and USD wallets (balances) for each investor
+            $investor->createBalance('PEN', $faker->numberBetween(1000, 50000));
+            $investor->createBalance('USD', $faker->numberBetween(1000, 50000));
         }
     }
 }

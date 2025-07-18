@@ -18,7 +18,7 @@ class BankAccountSeeder extends Seeder
     public function run(): void
     {
         $investorIDs = DB::table('investors')->pluck('id');
-        $banks = ['BCP', 'Interbank', 'BBVA', 'Caja Arequipa', 'Caja Cusco', 'Ban Bif'];
+        $bankIDs = DB::table('banks')->pluck('id');
         $accountType = ['Ahorros', 'Corriente'];
         $currency = Currency::cases();
 
@@ -27,7 +27,7 @@ class BankAccountSeeder extends Seeder
 
         for ($i = 0; $i < 20; $i++) {
             BankAccount::create([
-                "bank" => $faker->randomElement($banks),
+                "bank_id" => $faker->randomElement($bankIDs),
                 "type" => $faker->randomElement($accountType),
                 "currency" => $faker->randomElement($currency)->value,
                 "cc" => $faker->randomNumber(5, true),

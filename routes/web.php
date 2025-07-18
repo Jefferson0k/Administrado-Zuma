@@ -63,7 +63,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     #RUTAS DE API
     Route::prefix('api')->group(function () {
-        Route::get('/consultar-dni/{dni?}', [ConsultasDni::class, 'consultar'])->name('consultar.dni');
         Route::get('/consultar-ruc/{ruc?}', [ConsultasRucController::class, 'consultar'])->name('consultar.ruc');
     });
 
