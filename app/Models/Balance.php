@@ -4,13 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Concerns\HasUlids;
 
 class Balance extends Model{
-    use HasFactory;
+    use HasFactory, HasUlids;
     protected $table = 'balances';
-    protected $primaryKey = 'id';
-    public $incrementing = false;
-    protected $keyType = 'string';
     protected $fillable = [
         'amount',
         'invested_amount',

@@ -41,4 +41,14 @@ class Investor extends Authenticatable implements MustVerifyEmail{
     public function propertyStatuses(){
         return $this->hasMany(InvestorPropertyStatus::class);
     }
+    public function createBalance(string $currency, int $amount)
+    {
+        $balance = new Balance();
+        $balance->currency = $currency;
+        $balance->amount = $amount;
+        $balance->investor_id = $this->id;
+        $balance->save();
+
+        return $balance;
+    }
 }
