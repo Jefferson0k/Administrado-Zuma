@@ -1,22 +1,19 @@
 <?php
 
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-
 class PropertyReservation extends Model{
     use HasFactory;
+    protected $table = 'property_reservations';
     protected $fillable = [
         'investor_id',
         'property_id',
         'config_id',
         'amount',
-        'status',
-    ];
-    protected $casts = [
-        'reserved_at' => 'datetime',
-        'amount' => 'decimal:2',
+        'status'
     ];
     public function investor(){
         return $this->belongsTo(Investor::class);

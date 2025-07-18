@@ -7,8 +7,8 @@ use Faker\Factory;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
-class InvestorSeeder extends Seeder{
-    public function run(): void{
+class InvestorSeeder extends Seeder {
+    public function run(): void {
         $faker = Factory::create();
         $faker_locale = Factory::create('es_PE');
 
@@ -26,8 +26,16 @@ class InvestorSeeder extends Seeder{
                 'email_verified_at' => now(),
             ]);
 
-            $investor->createBalance('PEN', $faker->numberBetween(1000, 50000));
-            $investor->createBalance('USD', $faker->numberBetween(1000, 50000));
+            // Crear balances relacionados
+            $investor->balances()->create([
+                'currency' => 'PEN',
+                'amount' => $faker->numberBetween(1000, 50000),
+            ]);
+
+            $investor->balances()->create([
+                'currency' => 'USD',
+                'amount' => $faker->numberBetween(1000, 50000),
+            ]);
         }
     }
 }

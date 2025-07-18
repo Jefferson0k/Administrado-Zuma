@@ -5,13 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Concerns\HasUlids;
 
 class BankAccount extends Model{
-    use HasFactory;
+    use HasFactory, HasUlids;
     protected $table = 'bank_accounts';
-    protected $primaryKey = 'id';
-    public $incrementing = false; // porque usas ULID
-    protected $keyType = 'string';
     protected $fillable = [
         'id',
         'bank',
