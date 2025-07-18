@@ -87,7 +87,10 @@ class InvestmentSeeder extends Seeder
                 }
             }
 
-            $totalAmount = $invoice->financed_amount;
+            $totalAmount = MoneyConverter::fromDecimal(
+                $invoice->financed_amount,
+                $invoice->currency
+            );
 
             foreach ($selectedInvestors as $index => $investor) {
                 try {
@@ -102,7 +105,16 @@ class InvestmentSeeder extends Seeder
                     $percentage = $percentages[$index];
                     $investorAmount = $totalAmount->multiply(strval($percentage / 100));
 
-                    if (!$balance || $balance->amount->lessThan($investorAmount)) {
+                    if (!$balance) {
+                        continue;
+                    }
+
+                    $balanceAmount = MoneyConverter::fromDecimal(
+                        $balance->amount,
+                        $balance->currency
+                    );
+
+                    if ($balanceAmount->lessThan($investorAmount)) {
                         continue;
                     }
 
@@ -134,13 +146,22 @@ class InvestmentSeeder extends Seeder
                     $investment->save();
 
                     // Update investor's balance
-                    $balance->amount = $balance->amount->subtract($investorAmount);
-                    $balance->invested_amount = isset($balance->invested_amount) ?
-                        $balance->invested_amount->add($investorAmount) :
-                        $investorAmount;
-                    $balance->expected_amount = isset($balance->expected_amount) ?
-                        $balance->expected_amount->add($investment->return) :
-                        $investment->return;
+                    $currentAmount = MoneyConverter::fromDecimal((float)$balance->amount, $balance->currency);
+                    $newAmount = $currentAmount->subtract($investorAmount);
+                    $balance->amount = MoneyConverter::toSubunit($newAmount);
+
+                    $currentInvestedAmount = $balance->invested_amount ?
+                        MoneyConverter::fromDecimal((float)$balance->invested_amount, $balance->currency) :
+                        MoneyConverter::fromDecimal(0.0, $balance->currency);
+                    $newInvestedAmount = $currentInvestedAmount->add($investorAmount);
+                    $balance->invested_amount = MoneyConverter::toSubunit($newInvestedAmount);
+
+                    $investmentReturn = MoneyConverter::fromDecimal((float)$investment->return, $balance->currency);
+                    $currentExpectedAmount = $balance->expected_amount ?
+                        MoneyConverter::fromDecimal((float)$balance->expected_amount, $balance->currency) :
+                        MoneyConverter::fromDecimal(0.0, $balance->currency);
+                    $newExpectedAmount = $currentExpectedAmount->add($investmentReturn);
+                    $balance->expected_amount = MoneyConverter::toSubunit($newExpectedAmount);
                     $balance->save();
 
                     DB::commit();

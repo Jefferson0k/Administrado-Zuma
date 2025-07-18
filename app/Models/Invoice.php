@@ -13,19 +13,20 @@ class Invoice extends Model{
     public $incrementing = false;
     protected $keyType = 'string';
     protected $fillable = [
-        'id',
         'invoice_code',
         'amount',
+        'currency',
         'financed_amount_by_garantia',
         'financed_amount',
         'paid_amount',
         'rate',
         'due_date',
+        'estimated_pay_date',
         'status',
         'company_id',
-        'created_by',
-        'updated_by',
-        'deleted_by',
+        'loan_number',
+        'RUC_client',
+        'invoice_number'
     ];
     protected static function boot(){
         parent::boot();

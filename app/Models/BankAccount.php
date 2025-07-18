@@ -11,15 +11,14 @@ class BankAccount extends Model{
     use HasFactory, HasUlids;
     protected $table = 'bank_accounts';
     protected $fillable = [
-        'id',
-        'bank',
+        'bank_id',
         'type',
         'currency',
         'cc',
         'cci',
         'alias',
         'status',
-        'investor_id',
+        'investor_id'
     ];
     protected $casts = [
         'currency' => 'string',
