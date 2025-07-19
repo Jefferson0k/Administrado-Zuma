@@ -1,5 +1,5 @@
 <template>
-  <Dialog v-model:visible="visible" modal maximizable header="Configuración de" :style="{ width: '50vw' }"
+  <Dialog v-model:visible="visible" modal maximizable header="Configuraciónes" :style="{ width: '50vw' }"
     :breakpoints="{ '1199px': '75vw', '575px': '90vw' }">
     <div v-if="empresa">
       <h5 class="mb-3 font-bold text-lg">{{ empresa.nombre }}</h5>

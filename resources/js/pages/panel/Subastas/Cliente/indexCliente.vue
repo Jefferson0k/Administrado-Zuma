@@ -1,5 +1,5 @@
 <template>
-    <Head title="Pagos" />
+    <Head title="Pagos Cliente" />
     <AppLayout>
         <div>
             <template v-if="isLoading">
@@ -8,7 +8,7 @@
 
             <template v-else>
                 <div class="card">
-                    <ListPagos/>
+                    <ListCliente/>
                 </div>
             </template>
         </div>
@@ -20,9 +20,10 @@ import { ref, onMounted } from 'vue';
 import AppLayout from '@/layout/AppLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import Espera from '@/components/Espera.vue';
-import ListPagos from './Desarrollo/ListPagos.vue';
+import ListCliente from './Desarrollo/ListCliente.vue';
 
 const isLoading = ref(true);
+
 
 onMounted(() => {
     setTimeout(() => {

@@ -49,7 +49,7 @@ const aceptar = async () => {
         accept: async () => {
             try {
                 const id = selectedRow.value.id;
-                await axios.post(`/movements/${id}/aceptar-hipotecas`);
+                await axios.post(`/movements/${id}/aceptar-pago/cliente`);
                 toast.add({ severity: 'success', summary: 'Éxito', detail: 'Depósito aceptado correctamente.', life: 3000 });
 
                 // Recargar tabla
@@ -80,7 +80,7 @@ const rechazar = async () => {
         accept: async () => {
             try {
                 const id = selectedRow.value.id;
-                await axios.post(`/movements/${id}/rechazar-hipotecas`);
+                await axios.post(`/movements/${id}/rechazar/pago/cliente`);
                 toast.add({ severity: 'success', summary: 'Rechazado', detail: 'Depósito rechazado correctamente.', life: 3000 });
 
                 // Recargar la tabla
@@ -114,7 +114,7 @@ const menuItems = ref([
 const loadData = async (page = 1) => {
     loading.value = true;
     try {
-        const response = await axios.get(`/movements/hipotecas?page=${page}`);
+        const response = await axios.get(`/movements/pago/cliente?page=${page}`);
         const res = response.data;
 
         products.value = res.data;
@@ -148,7 +148,7 @@ onMounted(() => {
         <!-- Header con buscador -->
         <template #header>
             <div class="flex flex-wrap gap-2 items-center justify-between">
-                <h4 class="m-0">Credito - Inversionitas</h4>
+                <h4 class="m-0">Deposito - Cliente</h4>
                 <IconField>
                     <InputIcon>
                         <i class="pi pi-search" />
@@ -170,7 +170,7 @@ onMounted(() => {
         <Column field="deposit.resource_path" header="Voucher" style="min-width: 15rem">
             <template #body="slotProps">
                 <a v-if="slotProps.data.deposit?.resource_path && slotProps.data.deposit.resource_path !== '0'"
-                    :href="`https://tus3bucket-url.com/${slotProps.data.deposit.resource_path}`" target="_blank"
+                    :href="`https://zuma.com.pe/${slotProps.data.deposit.resource_path}`" target="_blank"
                     class="text-blue-600 underline">
                     Ver voucher
                 </a>

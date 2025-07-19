@@ -7,6 +7,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Tasas\Movement\MovementResource;
 use App\Models\Movement;
 use App\Models\FixedTermInvestment;
+use App\Models\PaymentSchedule;
+use App\Models\Property;
+use App\Models\PropertyInvestor;
+use App\Models\PropertyReservation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -23,6 +27,15 @@ class MovementController extends Controller{
     public function listHipotecas(Request $request){
         $movements = Movement::with('deposit')
             ->where('description', 'hipotecas')
+            ->orderByDesc('created_at')
+            ->paginate($request->get('per_page', 10));
+
+        return MovementResource::collection($movements)
+            ->additional(['success' => true]);
+    }
+    public function listPagosCliente(Request $request){
+        $movements = Movement::with('deposit')
+            ->where('description', 'zuma')
             ->orderByDesc('created_at')
             ->paginate($request->get('per_page', 10));
 
@@ -49,6 +62,96 @@ class MovementController extends Controller{
         ]);
     }
     public function rechazarTasasFijas(string $id){
+        DB::transaction(function () use ($id) {
+            $movement = Movement::with('deposit')->findOrFail($id);
+            $movement->update([
+                'status' => MovementStatus::INVALID,
+                'confirm_status' => MovementStatus::REJECTED,
+            ]);
+        });
+        return response()->json([
+            'success' => true,
+            'message' => 'Movimiento rechazado correctamente.',
+        ]);
+    }
+    public function aceptarHipotecas(string $id){
+        DB::transaction(function () use ($id) {
+            $movement = Movement::with('deposit')->findOrFail($id);
+            $movement->update([
+                'status' => MovementStatus::VALID,
+                'confirm_status' => MovementStatus::CONFIRMED,
+            ]);
+            
+            $deposit = $movement->deposit;
+            if ($deposit && $deposit->property_reservations_id) {
+                $deposit->propertyreservacion()->update([
+                    'status' => 'activo',
+                ]);
+            }
+            
+            $propertyReservation = PropertyReservation::find($id);
+        
+            if ($propertyReservation) {
+                $propertyReservation->update([
+                    'status' => 'pagado',
+                ]);
+                
+                PropertyInvestor::where('config_id', $propertyReservation->config_id)->update([
+                    'investor_id' => $propertyReservation->investor_id,
+                ]);
+                
+                Property::where('id', $propertyReservation->property_id)->update([
+                    'estado' => 'adquirido',
+                ]);
+            }
+        });
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Movimiento aceptado y estado de inversión activado. Reserva procesada si existe.',
+        ]);
+    }
+    public function rechazarhipotecas(string $id){
+        DB::transaction(function () use ($id) {
+            $movement = Movement::with('deposit')->findOrFail($id);
+            $movement->update([
+                'status' => MovementStatus::INVALID,
+                'confirm_status' => MovementStatus::REJECTED,
+            ]);
+        });
+        return response()->json([
+            'success' => true,
+            'message' => 'Movimiento rechazado correctamente.',
+        ]);
+    }
+    public function aceptarPagosCliente(string $id){
+        DB::transaction(function () use ($id) {
+            $movement = Movement::with('deposit')->findOrFail($id);
+            $movement->update([
+                'status' => MovementStatus::VALID,
+                'confirm_status' => MovementStatus::CONFIRMED,
+            ]); 
+            $deposit = $movement->deposit;
+            if ($deposit && $deposit->payment_schedules_id) {
+                $paymentSchedule = PaymentSchedule::findOrFail($deposit->payment_schedules_id);
+                $paymentSchedule->update(['estado' => 'pagado']);
+                $propertyInvestorId = $paymentSchedule->property_investor_id;
+                $totalCuotas = PaymentSchedule::where('property_investor_id', $propertyInvestorId)->count();
+                $cuotasPagadas = PaymentSchedule::where('property_investor_id', $propertyInvestorId)
+                                            ->where('estado', 'pagado')
+                                            ->count();
+                if ($totalCuotas === $cuotasPagadas) {
+                    PropertyInvestor::where('id', $propertyInvestorId)
+                                ->update(['status' => 'finalizado']);
+                }
+            }
+        });
+        return response()->json([
+            'success' => true,
+            'message' => 'Movimiento aceptado y estado de inversión actualizado. Reserva procesada si existe.',
+        ]);
+    }
+    public function rechazarPagosCliente(string $id){
         DB::transaction(function () use ($id) {
             $movement = Movement::with('deposit')->findOrFail($id);
             $movement->update([

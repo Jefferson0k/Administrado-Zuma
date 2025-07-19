@@ -18,26 +18,10 @@ const model = computed(() => [
         icon: 'pi pi-fw pi-box',
         to: '/pages',
         items: [
-            // === TASAS FIJAS ===
             {
                 label: 'Tasas fijas',
                 icon: 'pi pi-fw pi-percentage',
                 items: [
-                    {
-                        label: 'Entidades Financieras',
-                        icon: 'pi pi-fw pi-briefcase', // mejor que 'building' para representar empresas financieras
-                        to: '/tasas-fijas/empresas'
-                    },
-                    {
-                        label: 'Depósitos',
-                        icon: 'pi pi-fw pi-wallet', // mejor ícono para depósitos
-                        to: '/tasas-fijas/depositos'
-                    },
-                    {
-                        label: 'Pagos',
-                        icon: 'pi pi-fw pi-credit-card', // mejor ícono para pagos
-                        to: '/tasas-fijas/pagos'
-                    },
                     {
                         label: 'Configuración',
                         icon: 'pi pi-fw pi-cog',
@@ -49,17 +33,31 @@ const model = computed(() => [
                             },
                             {
                                 label: 'Frecuencia de Pago',
-                                icon: 'pi pi-fw pi-calendar-clock', // más específico que calendar
+                                icon: 'pi pi-fw pi-calendar-clock',
                                 to: '/Frecuencia/Pagos'
                             },
                         ]
                     },
+                    {
+                        label: 'Entidades Financieras',
+                        icon: 'pi pi-fw pi-briefcase',
+                        to: '/tasas-fijas/empresas'
+                    },
+                    {
+                        label: 'Depósitos',
+                        icon: 'pi pi-fw pi-wallet',
+                        to: '/tasas-fijas/depositos'
+                    },
+                    {
+                        label: 'Pagos',
+                        icon: 'pi pi-fw pi-credit-card',
+                        to: '/tasas-fijas/pagos'
+                    },
                 ]
             },
-            // === SUBASTA DE HIPOTECAS ===
             {
                 label: 'Subasta de Hipotecas',
-                icon: 'pi pi-fw pi-credit-card',
+                icon: 'pi pi-fw pi-home',
                 items: [
                     {
                         label: 'Registros',
@@ -67,12 +65,12 @@ const model = computed(() => [
                         items: [
                             {
                                 label: 'Registro de Inmueble',
-                                icon: 'pi pi-fw pi-home',
+                                icon: 'pi pi-fw pi-building',
                                 to: '/subasta-hipotecas/propiedades'
                             },
                             {
                                 label: 'Reglas del Inmueble',
-                                icon: 'pi pi-fw pi-cog',
+                                icon: 'pi pi-fw pi-sliders-h',
                                 to: '/subasta-hipotecas/reglas'
                             },
                             {
@@ -83,30 +81,39 @@ const model = computed(() => [
                         ]
                     },
                     {
+                        label: 'Reservas',
+                        icon: 'pi pi-fw pi-calendar-plus',
+                        to: '/subasta-hipotecas/reserva'
+                    },
+                    {
                         label: 'Histórico de Pujas',
-                        icon: 'pi pi-fw pi-history',
+                        icon: 'pi pi-fw pi-chart-line',
                         to: '/subasta-hipotecas/historicos'
                     },
                     {
                         label: 'Pagos',
-                        icon: 'pi pi-fw pi-money-bill',
+                        icon: 'pi pi-fw pi-wallet',
                         items: [
                             {
+                                label: 'Depósitos',
+                                icon: 'pi pi-fw pi-arrow-down',
+                                to: '/subasta-hipotecas/pagos'
+                            },
+                            {
                                 label: 'Pago de Entrada',
-                                icon: 'pi pi-fw pi-sign-in',
-                                to: '/subasta-hipotecas/pagos/entrada'
+                                icon: 'pi pi-fw pi-arrow-circle-down',
+                                to: '/subasta-hipotecas/cliente/pagos'
                             },
                             {
                                 label: 'Pago de Salida',
-                                icon: 'pi pi-fw pi-sign-out',
-                                to: '/subasta-hipotecas/pagos/salida'
+                                icon: 'pi pi-fw pi-arrow-circle-up',
+                                to: '/subasta-hipotecas/inversionista/pagos'
                             }
                         ]
                     }
                 ]
             },
 
-            // === FACTORING (link externo) ===
             {
                 label: 'Factoring',
                 icon: 'pi pi-fw pi-external-link',
@@ -115,8 +122,6 @@ const model = computed(() => [
             }
         ]
     },
-
-    // === USUARIOS Y ROLES ===
     {
         label: 'Usuarios',
         items: [

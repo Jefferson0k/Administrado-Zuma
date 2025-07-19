@@ -71,6 +71,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
 
     Route::get('/propiedad/{property_investor_id}/cronograma', [PaymentScheduleController::class, 'getCronogramaPorUsuario']);
+    Route::get('/propiedad/{property_investor_id}/cronograma/subasta', [PaymentScheduleController::class, 'Cronograma']);
     Route::post('/calculate', [InvestmentControllers::class, 'simulateByAmount']);
     
     Route::prefix('investments')->group(function () {
@@ -99,7 +100,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::get('/fixed-term-schedules/{id}/cronograma', [FixedTermScheduleController::class, 'showCronograma']);
 
-    Route::post('/reservas', [PropertyReservationController::class, 'store']);
+    Route::prefix('reservas')->group(function () {
+        Route::post('/', [PropertyReservationController::class, 'store']);
+        Route::get('/', [PropertyReservationController::class, 'list']);
+    });
 });
 
 Route::prefix('investments')->group(function () {

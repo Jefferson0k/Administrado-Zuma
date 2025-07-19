@@ -31,6 +31,14 @@ return new class extends Migration
                   ->nullable()
                   ->constrained('fixed_term_investments')
                   ->onDelete('cascade');
+            $table->foreignId('property_reservations_id')
+                  ->nullable()
+                  ->constrained('property_reservations')
+                  ->onDelete('cascade');
+            $table->foreignId('payment_schedules_id')
+                  ->nullable()
+                  ->constrained('payment_schedules')
+                  ->onDelete('cascade');
 
             $table->string('created_by')->nullable();
             $table->string('updated_by')->nullable();

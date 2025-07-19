@@ -6,7 +6,6 @@ use App\Models\Auction;
 use App\Models\Bid;
 use App\Models\Balance;
 use App\Models\Movement;
-use App\Models\Property;
 use App\Models\PropertyInvestor;
 use App\Models\Investor;
 use App\Enums\MovementStatus;

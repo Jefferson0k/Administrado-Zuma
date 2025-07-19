@@ -36,8 +36,8 @@
                 </Select>
             </div>
 
-            <!-- Campos comunes -->
-            <div class="grid grid-cols-3 gap-4">
+            <!-- Campos generales -->
+            <div class="grid grid-cols-2 gap-4">
                 <!-- Tipo Cronograma -->
                 <div>
                     <label class="block font-semibold mb-2">
@@ -55,22 +55,6 @@
                     <Select v-model="deadlines_id" :options="plazos" optionLabel="nombre" optionValue="id"
                         placeholder="Seleccione un plazo" class="w-full" />
                 </div>
-
-                <!-- Riesgo (compartido) -->
-                <div>
-                    <label class="block font-semibold mb-2">
-                        Riesgo <span class="text-red-500">*</span>
-                    </label>
-                    <Select v-model="riesgo" :options="riesgos" optionLabel="label" optionValue="value"
-                        placeholder="Seleccionar riesgo..." class="w-full">
-                        <template #value="{ value }">
-                            <Tag v-if="value" :value="value" :severity="getRiesgoSeverity(value)" class="px-2 py-1" />
-                        </template>
-                        <template #option="{ option }">
-                            <Tag :value="option.label" :severity="getRiesgoSeverity(option.value)" class="px-2 py-1" />
-                        </template>
-                    </Select>
-                </div>
             </div>
 
             <!-- SECCIÓN INVERSIONISTA -->
@@ -80,7 +64,7 @@
                     Configuración para Inversionista
                 </h3>
                 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-3 gap-4">
                     <!-- TEM Inversionista -->
                     <div>
                         <label class="block font-semibold mb-2">
@@ -104,6 +88,22 @@
                             <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
                         </div>
                     </div>
+
+                    <!-- Riesgo Inversionista -->
+                    <div>
+                        <label class="block font-semibold mb-2">
+                            Riesgo Inversionista <span class="text-red-500">*</span>
+                        </label>
+                        <Select v-model="riesgoInversionista" :options="riesgos" optionLabel="label" optionValue="value"
+                            placeholder="Seleccionar riesgo..." class="w-full">
+                            <template #value="{ value }">
+                                <Tag v-if="value" :value="value" :severity="getRiesgoSeverity(value)" class="px-2 py-1" />
+                            </template>
+                            <template #option="{ option }">
+                                <Tag :value="option.label" :severity="getRiesgoSeverity(option.value)" class="px-2 py-1" />
+                            </template>
+                        </Select>
+                    </div>
                 </div>
 
                 <div class="flex justify-between items-center mt-4">
@@ -122,7 +122,7 @@
                     Configuración para Cliente
                 </h3>
                 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-3 gap-4">
                     <!-- TEM Cliente -->
                     <div>
                         <label class="block font-semibold mb-2">
@@ -145,6 +145,22 @@
                                 placeholder="Ej. 15.0" step="0.01" min="0" max="100" />
                             <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
                         </div>
+                    </div>
+
+                    <!-- Riesgo Cliente -->
+                    <div>
+                        <label class="block font-semibold mb-2">
+                            Riesgo Cliente <span class="text-red-500">*</span>
+                        </label>
+                        <Select v-model="riesgoCliente" :options="riesgos" optionLabel="label" optionValue="value"
+                            placeholder="Seleccionar riesgo..." class="w-full">
+                            <template #value="{ value }">
+                                <Tag v-if="value" :value="value" :severity="getRiesgoSeverity(value)" class="px-2 py-1" />
+                            </template>
+                            <template #option="{ option }">
+                                <Tag :value="option.label" :severity="getRiesgoSeverity(option.value)" class="px-2 py-1" />
+                            </template>
+                        </Select>
                     </div>
                 </div>
 
@@ -193,19 +209,20 @@ const propiedades = ref([])
 const propiedadSeleccionada = ref(null)
 const propiedadSeleccionadaData = ref(null)
 
-// Campos comunes
+// Campos generales
 const cronograma = ref(null)
 const deadlines_id = ref(null)
 const plazos = ref([])
-const riesgo = ref(null) // Riesgo compartido
 
 // Campos específicos para inversionista
 const temInversionista = ref('')
 const teaInversionista = ref('')
+const riesgoInversionista = ref(null)
 
 // Campos específicos para cliente
 const temCliente = ref('')
 const teaCliente = ref('')
+const riesgoCliente = ref(null)
 
 const tipoUsuarioActual = ref(null) // Para saber qué tipo se está previsualizando
 
@@ -213,11 +230,12 @@ const resetForm = () => {
     propiedadSeleccionada.value = null
     cronograma.value = null
     deadlines_id.value = null
-    riesgo.value = null
     temInversionista.value = ''
     teaInversionista.value = ''
+    riesgoInversionista.value = null
     temCliente.value = ''
     teaCliente.value = ''
+    riesgoCliente.value = null
     propiedadSeleccionadaData.value = null
     propiedades.value = []
     tipoUsuarioActual.value = null
@@ -228,13 +246,15 @@ const parametrosCronograma = computed(() => {
     const propiedadData = propiedades.value.find(p => p.value === propiedadSeleccionada.value)
     const valorRequerido = propiedadData ? parseFloat(propiedadData.valor_requerido) : 0
 
-    // Usar TEA y TEM según el tipo de usuario actual
+    // Usar TEA, TEM y riesgo según el tipo de usuario actual
     const teaActual = tipoUsuarioActual.value === 'inversionista' ? teaInversionista.value : teaCliente.value
     const temActual = tipoUsuarioActual.value === 'inversionista' ? temInversionista.value : temCliente.value
+    const riesgoActual = tipoUsuarioActual.value === 'inversionista' ? riesgoInversionista.value : riesgoCliente.value
 
     return {
         tea: teaActual,
         tem: temActual,
+        riesgo: riesgoActual,
         cronograma: cronograma.value,
         deadlines_id: deadlines_id.value,
         duracion_meses: plazoSeleccionado ? plazoSeleccionado.duracion_meses : 0,
@@ -279,40 +299,43 @@ const previsualizarCronograma = async (tipo) => {
     }
 }
 
-// Computed para validar campos comunes
-const camposComunes = computed(() => {
+// Computed para validar campos generales
+const camposGenerales = computed(() => {
     return propiedadSeleccionada.value !== null &&
         cronograma.value !== null &&
-        deadlines_id.value !== null &&
-        riesgo.value !== null
+        deadlines_id.value !== null
 })
 
 // Computed para validar previsualización inversionista
 const canPreviewCronogramaInversionista = computed(() => {
-    return camposComunes.value && 
+    return camposGenerales.value && 
         temInversionista.value !== '' &&
-        teaInversionista.value !== ''
+        teaInversionista.value !== '' &&
+        riesgoInversionista.value !== null
 })
 
 // Computed para validar previsualización cliente
 const canPreviewCronogramaCliente = computed(() => {
-    return camposComunes.value && 
+    return camposGenerales.value && 
         temCliente.value !== '' &&
-        teaCliente.value !== ''
+        teaCliente.value !== '' &&
+        riesgoCliente.value !== null
 })
 
 // Computed para validar guardado inversionista
 const canSaveInversionista = computed(() => {
-    return camposComunes.value && 
+    return camposGenerales.value && 
         temInversionista.value !== '' &&
-        teaInversionista.value !== ''
+        teaInversionista.value !== '' &&
+        riesgoInversionista.value !== null
 })
 
 // Computed para validar guardado cliente
 const canSaveCliente = computed(() => {
-    return camposComunes.value && 
+    return camposGenerales.value && 
         temCliente.value !== '' &&
-        teaCliente.value !== ''
+        teaCliente.value !== '' &&
+        riesgoCliente.value !== null
 })
 
 const cronogramaOpciones = [
@@ -429,8 +452,9 @@ const actualizarPropiedad = async (tipoUsuario) => {
     // Validar campos según el tipo de usuario
     const tea = tipoUsuario === 1 ? teaInversionista.value : teaCliente.value
     const tem = tipoUsuario === 1 ? temInversionista.value : temCliente.value
+    const riesgo = tipoUsuario === 1 ? riesgoInversionista.value : riesgoCliente.value
 
-    if (!tea || !tem || !deadlines_id.value || !riesgo.value || !cronograma.value) {
+    if (!tea || !tem || !deadlines_id.value || !riesgo || !cronograma.value) {
         const tipoTexto = tipoUsuario === 1 ? 'inversionista' : 'cliente'
         toast.add({
             severity: 'warn',
@@ -446,7 +470,7 @@ const actualizarPropiedad = async (tipoUsuario) => {
             tea: tea,
             tem: tem,
             deadlines_id: deadlines_id.value,
-            riesgo: riesgo.value,
+            riesgo: riesgo,
             tipo_cronograma: cronograma.value,
             estado_configuracion: tipoUsuario,
         })
@@ -463,9 +487,11 @@ const actualizarPropiedad = async (tipoUsuario) => {
         if (tipoUsuario === 1) {
             temInversionista.value = ''
             teaInversionista.value = ''
+            riesgoInversionista.value = null
         } else {
             temCliente.value = ''
             teaCliente.value = ''
+            riesgoCliente.value = null
         }
 
     } catch (error) {

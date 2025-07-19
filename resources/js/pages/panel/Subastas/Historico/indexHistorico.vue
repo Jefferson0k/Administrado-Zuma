@@ -8,8 +8,7 @@
 
             <template v-else>
                 <div class="card">
-                    <AddHistorico @agregado="refrescar" />
-                    <ListHistorico :refresh="refreshKey" />
+                    <ListHistorico/>
                 </div>
             </template>
         </div>
@@ -21,15 +20,9 @@ import { ref, onMounted } from 'vue';
 import AppLayout from '@/layout/AppLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import Espera from '@/components/Espera.vue';
-import AddHistorico from './Desarrollo/AddHistorico.vue';
 import ListHistorico from './Desarrollo/ListHistorico.vue';
 
-const refreshKey = ref(0);
 const isLoading = ref(true);
-
-function refrescar() {
-    refreshKey.value++;
-}
 
 onMounted(() => {
     setTimeout(() => {

@@ -32,6 +32,7 @@ class PropertyLoanDetailListResource extends JsonResource{
                 'desactivada' => 'Desactivada',
                 'adquirido' => 'Adquirido',
                 'pendiente' => 'Pendiente',
+                'espera' => 'Espera',
                 default => 'Estado desconocido',
             },
         ];

@@ -8,7 +8,8 @@
 
             <template v-else>
                 <div class="card">
-                    <ListPagos/>
+                    <AddInversionista/>
+                    <ListInversionita/>
                 </div>
             </template>
         </div>
@@ -20,7 +21,8 @@ import { ref, onMounted } from 'vue';
 import AppLayout from '@/layout/AppLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import Espera from '@/components/Espera.vue';
-import ListPagos from './Desarrollo/ListPagos.vue';
+import AddInversionista from './Desarrollo/AddInversionista.vue';
+import ListInversionita from './Desarrollo/ListInversionita.vue';
 
 const isLoading = ref(true);
 

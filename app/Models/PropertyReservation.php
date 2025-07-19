@@ -22,7 +22,7 @@ class PropertyReservation extends Model{
         return $this->belongsTo(Property::class);
     }
     public function config(){
-        return $this->belongsTo(PropertyConfiguracion::class, 'config_id');
+        return $this->belongsTo(PropertyConfiguracion::class);
     }
     public function scopePendientes($query){
         return $query->where('status', 'pendiente');

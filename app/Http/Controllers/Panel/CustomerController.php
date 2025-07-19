@@ -16,7 +16,6 @@ class CustomerController extends Controller{
 
             $query = Investor::query()
                 ->whereIn('type', ['cliente', 'mixto']) // ← aquí está el cambio
-                ->where('asignado', 0)
                 ->when($search, function ($query) use ($search) {
                     return $query->where(function ($q) use ($search) {
                         $q->where('name', 'LIKE', "%{$search}%")

@@ -2,13 +2,8 @@
   <div class="space-y-6">
     <!-- Botón para recargar los datos -->
     <div class="mb-4">
-      <Button
-        label="Recargar datos"
-        icon="pi pi-refresh"
-        severity="info"
-        @click="recargarDatos"
-        :disabled="!deshabilitado"
-      />
+      <Button label="Recargar datos" icon="pi pi-refresh" severity="info" @click="recargarDatos"
+        :disabled="!deshabilitado" />
     </div>
 
     <!-- Selects de rango de monto y tipo de tasa -->
@@ -16,16 +11,8 @@
       <!-- Rango de monto -->
       <div class="flex-1">
         <label class="text-sm font-medium mb-1 block">Seleccione un rango de monto</label>
-        <Select
-          v-model="rangoSeleccionado"
-          :options="rangos"
-          optionValue="id"
-          placeholder="Seleccione un rango"
-          :filter="true"
-          class="w-full"
-          @change="onRangoChange"
-          :disabled="deshabilitado"
-        >
+        <Select v-model="rangoSeleccionado" :options="rangos" optionValue="id" placeholder="Seleccione un rango"
+          :filter="true" class="w-full" @change="onRangoChange" :disabled="deshabilitado">
           <template #option="{ option }">
             <div>
               <span class="font-medium">{{ mostrarRango(option) }}</span>
@@ -36,13 +23,10 @@
           <template #value="{ value }">
             <div v-if="value">
               <span class="font-medium">
-                {{ mostrarRango(rangos.find(r => r.id === value)) }}
+                {{mostrarRango(rangos.find(r => r.id === value))}}
               </span>
-              <Tag
-                :value="rangos.find(r => r.id === value)?.estado"
-                :severity="rangos.find(r => r.id === value)?.estado === 'completo' ? 'success' : 'warn'"
-                class="ml-2"
-              />
+              <Tag :value="rangos.find(r => r.id === value)?.estado"
+                :severity="rangos.find(r => r.id === value)?.estado === 'completo' ? 'success' : 'warn'" class="ml-2" />
             </div>
             <span v-else class="text-gray-400">Seleccione un rango</span>
           </template>
@@ -52,22 +36,14 @@
       <!-- Tipo de tasa -->
       <div class="w-64">
         <label class="text-sm font-medium mb-1 block">Seleccione un tipo de tasa</label>
-        <Select
-          v-model="tipoSeleccionado"
-          :options="tiposTasa"
-          optionValue="id"
-          optionLabel="nombre"
-          placeholder="Tipo de tasa"
-          class="w-full"
-          :filter="true"
-          :disabled="deshabilitado"
-        >
+        <Select v-model="tipoSeleccionado" :options="tiposTasa" optionValue="id" optionLabel="nombre"
+          placeholder="Tipo de tasa" class="w-full" :filter="true" :disabled="deshabilitado">
           <template #option="slotProps">
             {{ slotProps.option.nombre }} - {{ slotProps.option.descripcion }}
           </template>
           <template #value="slotProps">
             <span v-if="slotProps.value">
-              {{ mostrarTipoTasa(tiposTasa.find(t => t.id === slotProps.value)) }}
+              {{mostrarTipoTasa(tiposTasa.find(t => t.id === slotProps.value))}}
             </span>
             <span v-else class="text-gray-400">Tipo de tasa</span>
           </template>
@@ -78,38 +54,65 @@
     <!-- Plazos -->
     <div>
       <h6 class="text-sm font-semibold mb-2">Plazos</h6>
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-        <div v-for="plazo in plazos" :key="plazo.id" class="flex items-center gap-2 p-2 rounded shadow-sm border">
-          <Checkbox
-            v-model="seleccionados"
-            :inputId="`plazo-${plazo.id}`"
-            :value="plazo.id"
-            :disabled="deshabilitado"
-          />
-          <label :for="`plazo-${plazo.id}`" class="text-sm">
-            {{ plazo.nombre }} ({{ plazo.dias_minimos }} días)
-          </label>
+
+      <!-- 3 columnas por fila (hasta en pantallas grandes) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div v-for="plazo in plazos" :key="plazo.id" class="flex flex-col p-4 rounded shadow-sm border space-y-3">
+          <!-- Fila con checkbox, nombre y botón de desbloquear -->
+          <div class="flex justify-between items-center">
+            <div class="flex items-center gap-2">
+              <Checkbox v-model="seleccionados" :inputId="`plazo-${plazo.id}`" :value="plazo.id"
+                :disabled="deshabilitado" />
+              <label :for="`plazo-${plazo.id}`" class="text-sm font-semibold">
+                {{ plazo.nombre }}
+              </label>
+            </div>
+
+            <!-- Botón desbloquear o acciones -->
+            <div>
+              <Button v-if="!camposEditables[plazo.id]" icon="pi pi-unlock"
+                class="p-button-sm p-button-text p-button-secondary" @click="desbloquearCampo(plazo)"
+                v-tooltip="'Desbloquear para editar'" />
+              <div v-else class="flex gap-1">
+                <Button icon="pi pi-check" class="p-button-sm p-button-text p-button-success"
+                  @click="guardarEdicion(plazo.id)" v-tooltip="'Guardar'" />
+                <Button icon="pi pi-times" class="p-button-sm p-button-text p-button-danger"
+                  @click="cancelarEdicion(plazo.id)" v-tooltip="'Cancelar'" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Información de días -->
+          <div v-if="!camposEditables[plazo.id]" class="text-sm text-gray-700 pl-6">
+            {{ plazo.dias_minimos }} - {{ plazo.dias_maximos }} días
+          </div>
+
+          <!-- Campos editables -->
+          <div v-else class="grid grid-cols-1 gap-3">
+            <div>
+              <label class="text-xs">Nombre</label>
+              <InputText v-model="plazoEditado[plazo.id].nombre" class="w-full" />
+            </div>
+            <div>
+              <label class="text-xs">Días mínimos</label>
+              <InputText v-model="plazoEditado[plazo.id].dias_minimos" class="w-full" />
+            </div>
+            <div>
+              <label class="text-xs">Días máximos</label>
+              <InputText v-model="plazoEditado[plazo.id].dias_maximos" class="w-full" />
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
+
     <!-- Botones -->
     <div class="flex justify-between items-center mt-4">
-      <Button
-        label="Agregar un nuevo plazo"
-        icon="pi pi-plus"
-        severity="secondary"
-        @click="visible = true"
-        :disabled="deshabilitado"
-      />
-      <Button
-        label="Registrar"
-        icon="pi pi-save"
-        severity="contrast"
-        @click="guardarPlazos"
-        :loading="guardando"
-        :disabled="deshabilitado"
-      />
+      <Button label="Agregar un nuevo plazo" icon="pi pi-plus" severity="secondary" @click="visible = true"
+        :disabled="deshabilitado" />
+      <Button label="Registrar" icon="pi pi-save" severity="contrast" @click="guardarPlazos" :loading="guardando"
+        :disabled="deshabilitado" />
     </div>
 
     <!-- Diálogo para nuevo plazo -->
@@ -117,15 +120,18 @@
       <form @submit.prevent="storeTermPlan">
         <div class="flex flex-col gap-6">
           <div>
-            <label for="nombre" class="block font-bold mb-3">Nombre <span class="text-red-500">*</span></label>
+            <label for="nombre" class="block font-bold mb-3">Etiqueta por mes <span
+                class="text-red-500">*</span></label>
             <InputText id="nombre" v-model="form.nombre" fluid required />
           </div>
           <div>
-            <label for="dias_minimos" class="block font-bold mb-3">Días mínimos <span class="text-red-500">*</span></label>
+            <label for="dias_minimos" class="block font-bold mb-3">cantidad de dias minimos <span
+                class="text-red-500">*</span></label>
             <InputText id="dias_minimos" v-model="form.dias_minimos" class="w-full" required />
           </div>
           <div>
-            <label for="dias_maximos" class="block font-bold mb-3">Días máximos <span class="text-red-500">*</span></label>
+            <label for="dias_maximos" class="block font-bold mb-3">cantidad de dias maximo <span
+                class="text-red-500">*</span></label>
             <InputText id="dias_maximos" v-model="form.dias_maximos" class="w-full" required />
           </div>
         </div>
@@ -157,6 +163,9 @@ const plazos = ref([])
 const seleccionados = ref([])
 const guardando = ref(false)
 
+const camposEditables = ref({})
+const plazoEditado = ref({})
+
 const rangos = ref([])
 const rangoSeleccionado = ref(null)
 
@@ -165,6 +174,36 @@ const tipoSeleccionado = ref(null)
 
 const visible = ref(false)
 const deshabilitado = ref(true)
+
+function desbloquearCampo(plazo) {
+  camposEditables.value[plazo.id] = true
+  plazoEditado.value[plazo.id] = {
+    nombre: plazo.nombre,
+    dias_minimos: plazo.dias_minimos,
+    dias_maximos: plazo.dias_maximos
+  }
+}
+
+function cancelarEdicion(plazoId) {
+  delete camposEditables.value[plazoId]
+  delete plazoEditado.value[plazoId]
+}
+
+async function guardarEdicion(plazoId) {
+  const datos = plazoEditado.value[plazoId]
+
+  try {
+    await axios.put(`/term-plans/${plazoId}`, datos)
+    toast.add({ severity: 'success', summary: 'Actualizado', detail: 'Plazo actualizado correctamente' })
+
+    // Refrescar lista
+    await cargarPlazos()
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo actualizar el plazo' })
+  } finally {
+    cancelarEdicion(plazoId)
+  }
+}
 
 const form = ref({
   nombre: '',
