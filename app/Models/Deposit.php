@@ -27,6 +27,7 @@ class Deposit extends Model{
         'created_by',
         'updated_by',
         'fixed_term_investment_id',
+        'payment_schedules_id',
     ];
 
     protected $casts = [
@@ -67,5 +68,8 @@ class Deposit extends Model{
     }
     public function propertyreservacion(){
         return $this->belongsTo(PropertyReservation::class);
+    }
+    public function paymentschedules(){
+        return $this->belongsTo(PaymentSchedule::class);
     }
 }

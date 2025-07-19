@@ -22,6 +22,7 @@ use App\Http\Controllers\Panel\PropertyControllers;
 use App\Http\Controllers\Panel\PropertyLoanDetailController;
 use App\Http\Controllers\Panel\RateTypeController;
 use App\Http\Controllers\Panel\TermPlanController;
+use App\Http\Controllers\Web\SubastaHipotecas\ClienteWebController;
 use App\Http\Controllers\Web\SubastaHipotecas\CuentasBancariasWebControler;
 use App\Http\Controllers\Web\SubastaHipotecas\DepositosWebControler;
 use App\Http\Controllers\Web\SubastaHipotecas\HistoricoWebController;
@@ -85,6 +86,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/tipo-cambio', [TipoCambioWebControler::class, 'views'])->name('tipo-cambio.views');
         Route::get('/reglas', [ReglasWebController::class, 'views'])->name('tipo-cambio.views');
         Route::get('/inversionista', [InversionistasWebController::class, 'views'])->name('tipo-cambio.views');
+        Route::get('/cliente/pagos', [ClienteWebController::class, 'views']);
     });
 
     #USUARIOS -> BACKEND
@@ -204,10 +206,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('movements')->group(function () {
         Route::get('/tasas-fijas', [MovementController::class, 'listTasasFijas']);
         Route::get('/hipotecas', [MovementController::class, 'listHipotecas']);
+        Route::get('/pago/cliente', [MovementController::class, 'listPagosCliente']);
+
         Route::post('/{id}/aceptar-tasas-fijas', [MovementController::class, 'aceptarTasasFijas']);
-        Route::post('/{id}/rechazar-tasas-fijas', [MovementController::class, 'rechazarTasasFijas']);
         Route::post('/{id}/aceptar-hipotecas', [MovementController::class, 'aceptarHipotecas']);
+        Route::post('/{id}/aceptar-pago/cliente', [MovementController::class, 'aceptarPagosCliente']);
+
+        Route::post('/{id}/rechazar-tasas-fijas', [MovementController::class, 'rechazarTasasFijas']);
         Route::post('/{id}/rechazar-hipotecas', [MovementController::class, 'rechazarhipotecas']);
+        Route::post('/{id}/rechazar/pago/cliente', [MovementController::class, 'rechazarPagosCliente']);
     });
 
     Route::prefix('pagos')->group(function () {

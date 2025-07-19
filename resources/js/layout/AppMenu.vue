@@ -57,7 +57,7 @@ const model = computed(() => [
             },
             {
                 label: 'Subasta de Hipotecas',
-                icon: 'pi pi-fw pi-credit-card',
+                icon: 'pi pi-fw pi-home',
                 items: [
                     {
                         label: 'Registros',
@@ -65,12 +65,12 @@ const model = computed(() => [
                         items: [
                             {
                                 label: 'Registro de Inmueble',
-                                icon: 'pi pi-fw pi-home',
+                                icon: 'pi pi-fw pi-building',
                                 to: '/subasta-hipotecas/propiedades'
                             },
                             {
                                 label: 'Reglas del Inmueble',
-                                icon: 'pi pi-fw pi-cog',
+                                icon: 'pi pi-fw pi-sliders-h',
                                 to: '/subasta-hipotecas/reglas'
                             },
                             {
@@ -82,32 +82,38 @@ const model = computed(() => [
                     },
                     {
                         label: 'Reservas',
-                        icon: 'pi pi-fw pi-history',
+                        icon: 'pi pi-fw pi-calendar-plus',
                         to: '/subasta-hipotecas/reserva'
                     },
                     {
                         label: 'Histórico de Pujas',
-                        icon: 'pi pi-fw pi-history',
+                        icon: 'pi pi-fw pi-chart-line',
                         to: '/subasta-hipotecas/historicos'
                     },
                     {
                         label: 'Pagos',
-                        icon: 'pi pi-fw pi-money-bill',
+                        icon: 'pi pi-fw pi-wallet',
                         items: [
                             {
-                                label: 'Pago de Entrada',
-                                icon: 'pi pi-fw pi-sign-in',
+                                label: 'Depósitos',
+                                icon: 'pi pi-fw pi-arrow-down',
                                 to: '/subasta-hipotecas/pagos'
                             },
                             {
+                                label: 'Pago de Entrada',
+                                icon: 'pi pi-fw pi-arrow-circle-down',
+                                to: '/subasta-hipotecas/cliente/pagos'
+                            },
+                            {
                                 label: 'Pago de Salida',
-                                icon: 'pi pi-fw pi-sign-out',
+                                icon: 'pi pi-fw pi-arrow-circle-up',
                                 to: '/subasta-hipotecas/pagos/salida'
                             }
                         ]
                     }
                 ]
             },
+
             {
                 label: 'Factoring',
                 icon: 'pi pi-fw pi-external-link',

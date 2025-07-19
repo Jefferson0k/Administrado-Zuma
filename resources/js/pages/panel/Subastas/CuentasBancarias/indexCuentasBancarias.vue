@@ -15,7 +15,7 @@
             responsiveLayout="scroll">
             <template #header>
               <div class="flex flex-wrap gap-2 items-center justify-between">
-                <h2 class="text-xl font-semibold">Listado de Reservas</h2>
+                <h2 class="text-xl font-semibold">Entrada - inversionista</h2>
               </div>
             </template>
 
