@@ -71,6 +71,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
 
     Route::get('/propiedad/{property_investor_id}/cronograma', [PaymentScheduleController::class, 'getCronogramaPorUsuario']);
+    Route::get('/propiedad/{property_investor_id}/cronograma/subasta', [PaymentScheduleController::class, 'Cronograma']);
     Route::post('/calculate', [InvestmentControllers::class, 'simulateByAmount']);
     
     Route::prefix('investments')->group(function () {

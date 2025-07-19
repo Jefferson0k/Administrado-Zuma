@@ -9,4 +9,9 @@ class InversionistasWebController extends Controller{
         //Gate::authorize('viewAny', User::class);
         return Inertia::render('panel/Subastas/Propiedades/Desarrollo/Inversionista/indexInversionista');
     }
+    public function index(): Response{
+        //Gate::authorize('viewAny', User::class);
+        return Inertia::render('panel/Subastas/Inversionista/indexInversionista');
+    }
 }
+

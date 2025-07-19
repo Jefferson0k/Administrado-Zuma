@@ -23,4 +23,11 @@ class PropertyConfiguracion extends Model {
     public function property() {
         return $this->belongsTo(Property::class, 'property_id');
     }
+    public function subasta(){
+        return $this->property->subasta();
+    }
+    public function propertyInvestor(){
+        return $this->hasOne(PropertyInvestor::class, 'config_id');
+    }
+
 }

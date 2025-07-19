@@ -107,7 +107,7 @@ const model = computed(() => [
                             {
                                 label: 'Pago de Salida',
                                 icon: 'pi pi-fw pi-arrow-circle-up',
-                                to: '/subasta-hipotecas/pagos/salida'
+                                to: '/subasta-hipotecas/inversionista/pagos'
                             }
                         ]
                     }

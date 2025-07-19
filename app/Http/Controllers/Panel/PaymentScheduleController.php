@@ -21,4 +21,23 @@ class PaymentScheduleController extends Controller {
             ->paginate(10);
         return PaymentScheduleResource::collection($cronogramas);
     }
+    public function Cronograma($property_investor_id){
+        $propertyInvestor = PropertyInvestor::find($property_investor_id);
+        if (!$propertyInvestor) {
+            return response()->json(['message' => 'No se encontró la inversión especificada'], 404);
+        }
+        $cronogramas = PaymentSchedule::where('property_investor_id', $propertyInvestor->id)
+            ->paginate(request('per_page', 10));
+        return PaymentScheduleResource::collection($cronogramas);
+    }
+    public function getCronograma($property_investor_id){
+        $cronogramas = PaymentSchedule::where('property_investor_id', $property_investor_id)
+            ->paginate(10);
+
+        if ($cronogramas->isEmpty()) {
+            return response()->json(['message' => 'No se encontró cronograma para esta inversión'], 404);
+        }
+
+        return PaymentScheduleResource::collection($cronogramas);
+    }
 }

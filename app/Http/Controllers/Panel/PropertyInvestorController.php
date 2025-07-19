@@ -134,23 +134,17 @@ class PropertyInvestorController extends Controller{
     }
     public function inversion(){
         $investor = Auth::guard('investor')->user();
-        $estadoFiltro = $this->getEstadoFiltro($investor->type);
         $ultimaInversion = PropertyInvestor::with([
             'property.currency',
-            'configuracion' => function($query) use ($estadoFiltro) {
-                $query->whereIn('estado', $estadoFiltro);
-            },
             'configuracion.plazo',
             'paymentSchedules'
         ])
         ->where('investor_id', $investor->id)
-        ->whereHas('configuracion', function($query) use ($estadoFiltro) {
-            $query->whereIn('estado', $estadoFiltro);
-        })
+        ->where('status', 'pendiente')
         ->latest()
         ->first();
         if (!$ultimaInversion) {
-            return response()->json(['message' => 'No se encontró inversión'], 404);
+            return response()->json(['message' => 'No se encontró inversión pendiente'], 404);
         }
         return response()->json(new InversionResource($ultimaInversion));
     }

@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\PropertyReservationController;
 use App\Http\Controllers\Api\RolesController;
 use App\Http\Controllers\Api\UsuariosController;
 use App\Http\Controllers\Panel\AmountRangeController;
+use App\Http\Controllers\Panel\BidControllers;
 use App\Http\Controllers\Panel\CalculadoraController;
 use App\Http\Controllers\Panel\CorporateEntityController;
 use App\Http\Controllers\Panel\CurrencyControllers;
@@ -85,6 +86,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/retiros', [RetirosWebControler::class, 'views'])->name('retiros.views');
         Route::get('/tipo-cambio', [TipoCambioWebControler::class, 'views'])->name('tipo-cambio.views');
         Route::get('/reglas', [ReglasWebController::class, 'views'])->name('tipo-cambio.views');
+        Route::get('/inversionista/pagos', [InversionistasWebController::class, 'index']);
         Route::get('/inversionista', [InversionistasWebController::class, 'views'])->name('tipo-cambio.views');
         Route::get('/cliente/pagos', [ClienteWebController::class, 'views']);
     });
@@ -127,7 +129,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/reglas/{id}/show', [PropertyControllers::class, 'showReglas']);
     });
     
-    Route::get('/propiedad/{id}/cronograma', [PaymentScheduleController::class, 'getCronogramaPorPropiedad']);    
+    Route::get('/propiedad/{id}/cronograma', [PaymentScheduleController::class, 'getCronogramaPorPropiedad']);
+    Route::get('/cronograma/{property_investor_id}', [PaymentScheduleController::class, 'getCronograma']);
     #Seccion de apis x mientas
     Route::prefix('api')->group(function () {
         #Route::post('/bids', [BidControllers::class, 'index'])->name(name: 'bids.index');
@@ -219,6 +222,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::prefix('pagos')->group(function () {
         Route::get('/pendientes', [PagosController::class, 'pendientes']);
+        Route::get('/cliente/pendiente', [PagosController::class, 'PagosHipotecas']);
     });
 
     Route::prefix('reservas-propiedades')->group(function () {
@@ -228,8 +232,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::get('/fixed-term-schedules/{id}/cronograma', [FixedTermScheduleController::class, 'showCronograma']);
-    Route::post('/pagos-tasas', [PagosController::class, 'store']);
-    Route::get('/pagos-tasas', [PagosController::class, 'lis']);
+    Route::get('/consultas/propiedad/{property_investor_id}/cronograma', [PaymentScheduleController::class, 'getCronogramaPorUsuario']);
+
+    Route::prefix('pagos-tasas')->group(function () {
+        Route::post('/', [PagosController::class, 'store']);
+        Route::get('/', [PagosController::class, 'lis']);
+    });
+
+    Route::prefix('pagos-inversinotas')->group(function () {
+        Route::post('/', [PagosController::class, 'storePayment']);
+    });
+
+    Route::get('/deposits/historial', [PagosController::class, 'listHistorial']);
+
+    Route::get('bids', [BidControllers::class, 'index']);
+    Route::get('bids/{id}', [BidControllers::class, 'show']);
+
 });
 
 Route::get('/currencies', [CurrencyControllers::class, 'index']);
