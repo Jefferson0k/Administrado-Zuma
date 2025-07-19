@@ -34,6 +34,7 @@ class PropertyConfiguracionResource extends JsonResource{
                 'adquirido' => 'Adquirido',
                 'pendiente' => 'Pendiente',
                 'completo' => 'Completo',
+                'espera' => 'Espera',
                 default => 'Estado desconocido',
             },
         ];

@@ -1,11 +1,10 @@
 <?php
 
-use App\Http\Controllers\Api\ConsultasDni;
 use App\Http\Controllers\Api\ConsultasRucController;
-use App\Http\Controllers\Api\FixedTermInvestmentControllers;
 use App\Http\Controllers\Api\FixedTermScheduleController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\MovementController;
+use App\Http\Controllers\Api\PropertyReservationController;
 use App\Http\Controllers\Api\RolesController;
 use App\Http\Controllers\Api\UsuariosController;
 use App\Http\Controllers\Panel\AmountRangeController;
@@ -77,7 +76,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     #RUTAS DE WEB EN LA PARTE DE SUBASTA HIPOTECARIA
     Route::prefix('subasta-hipotecas')->group(function(){
-        Route::get('/cuentas-bancarias', [CuentasBancariasWebControler::class, 'views'])->name('cuentas-bancarias.subasta.views');
+        Route::get('/reserva', [CuentasBancariasWebControler::class, 'views'])->name('cuentas-bancarias.subasta.views');
         Route::get('/depositos', [DepositosWebControler::class, 'views'])->name('depositos.views');
         Route::get('/historicos', [HistoricoWebController::class, 'views'])->name('historicos.views');
         Route::get('/pagos', [PagosWebControler::class, 'views'])->name('pagos.views');
@@ -207,11 +206,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/hipotecas', [MovementController::class, 'listHipotecas']);
         Route::post('/{id}/aceptar-tasas-fijas', [MovementController::class, 'aceptarTasasFijas']);
         Route::post('/{id}/rechazar-tasas-fijas', [MovementController::class, 'rechazarTasasFijas']);
+        Route::post('/{id}/aceptar-hipotecas', [MovementController::class, 'aceptarHipotecas']);
+        Route::post('/{id}/rechazar-hipotecas', [MovementController::class, 'rechazarhipotecas']);
     });
 
     Route::prefix('pagos')->group(function () {
         Route::get('/pendientes', [PagosController::class, 'pendientes']);
     });
+
+    Route::prefix('reservas-propiedades')->group(function () {
+        Route::get('/', [PropertyReservationController::class, 'inversionistasConPendientes']);
+        Route::get('/{id}', [PropertyReservationController::class, 'show']);
+        Route::put('/{id}/cancelar', [PropertyReservationController::class, 'update']);
+    });
+
     Route::get('/fixed-term-schedules/{id}/cronograma', [FixedTermScheduleController::class, 'showCronograma']);
     Route::post('/pagos-tasas', [PagosController::class, 'store']);
     Route::get('/pagos-tasas', [PagosController::class, 'lis']);

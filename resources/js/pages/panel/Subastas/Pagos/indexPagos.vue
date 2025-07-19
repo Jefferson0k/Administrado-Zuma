@@ -8,8 +8,7 @@
 
             <template v-else>
                 <div class="card">
-                    <AddPagos @agregado="refrescar" />
-                    <ListPagos :refresh="refreshKey" />
+                    <ListPagos/>
                 </div>
             </template>
         </div>
@@ -21,15 +20,9 @@ import { ref, onMounted } from 'vue';
 import AppLayout from '@/layout/AppLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import Espera from '@/components/Espera.vue';
-import AddPagos from './Desarrollo/AddPagos.vue';
 import ListPagos from './Desarrollo/ListPagos.vue';
 
-const refreshKey = ref(0);
 const isLoading = ref(true);
-
-function refrescar() {
-    refreshKey.value++;
-}
 
 onMounted(() => {
     setTimeout(() => {

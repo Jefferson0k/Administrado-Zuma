@@ -81,6 +81,11 @@ const model = computed(() => [
                         ]
                     },
                     {
+                        label: 'Reservas',
+                        icon: 'pi pi-fw pi-history',
+                        to: '/subasta-hipotecas/reserva'
+                    },
+                    {
                         label: 'Histórico de Pujas',
                         icon: 'pi pi-fw pi-history',
                         to: '/subasta-hipotecas/historicos'
@@ -92,7 +97,7 @@ const model = computed(() => [
                             {
                                 label: 'Pago de Entrada',
                                 icon: 'pi pi-fw pi-sign-in',
-                                to: '/subasta-hipotecas/pagos/entrada'
+                                to: '/subasta-hipotecas/pagos'
                             },
                             {
                                 label: 'Pago de Salida',

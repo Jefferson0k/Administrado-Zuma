@@ -12,8 +12,6 @@ use Laravel\Sanctum\HasApiTokens;
 class Investor extends Authenticatable implements MustVerifyEmail{
     use HasApiTokens, HasFactory, Notifiable, HasUlids;
     protected $table = 'investors';
-    protected $keyType = 'string';
-    public $incrementing = false;
     protected $fillable = [
         'name', 'first_last_name', 'second_last_name', 'alias',
         'document', 'email', 'password', 'telephone',

@@ -32,6 +32,8 @@ class PropertyResource extends JsonResource
                 'adquirido' => 'Adquirido',
                 'pendiente' => 'Pendiente',
                 'completo' => 'Completo',
+                'espera' => 'Espera
+                ',
                 default => 'Estado desconocido',
             },
             'foto' => $this->getImagenes(),

@@ -65,5 +65,7 @@ class Deposit extends Model{
     public function fixedTermInvestment(){
         return $this->belongsTo(FixedTermInvestment::class);
     }
-
+    public function propertyreservacion(){
+        return $this->belongsTo(PropertyReservation::class);
+    }
 }
