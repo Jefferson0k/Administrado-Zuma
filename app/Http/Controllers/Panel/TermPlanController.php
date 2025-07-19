@@ -21,5 +21,18 @@ class TermPlanController extends Controller{
         $planes = TermPlan::latest()->get();
         return TermPlanResource::collection($planes);
     }
+    public function update(Request $request, TermPlan $termPlan){
+        $validated = $request->validate([
+            'nombre' => 'required|string|max:255',
+            'dias_minimos' => 'required|integer|min:1',
+            'dias_maximos' => 'required|integer|min:1|gte:dias_minimos',
+        ]);
+        $termPlan->update($validated);
+        return response()->json([
+            'success' => true,
+            'message' => 'Plazo actualizado correctamente',
+            'data' => new TermPlanResource($termPlan)
+        ]);
+    }
 }
 

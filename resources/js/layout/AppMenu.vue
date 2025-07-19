@@ -18,26 +18,10 @@ const model = computed(() => [
         icon: 'pi pi-fw pi-box',
         to: '/pages',
         items: [
-            // === TASAS FIJAS ===
             {
                 label: 'Tasas fijas',
                 icon: 'pi pi-fw pi-percentage',
                 items: [
-                    {
-                        label: 'Entidades Financieras',
-                        icon: 'pi pi-fw pi-briefcase', // mejor que 'building' para representar empresas financieras
-                        to: '/tasas-fijas/empresas'
-                    },
-                    {
-                        label: 'Depósitos',
-                        icon: 'pi pi-fw pi-wallet', // mejor ícono para depósitos
-                        to: '/tasas-fijas/depositos'
-                    },
-                    {
-                        label: 'Pagos',
-                        icon: 'pi pi-fw pi-credit-card', // mejor ícono para pagos
-                        to: '/tasas-fijas/pagos'
-                    },
                     {
                         label: 'Configuración',
                         icon: 'pi pi-fw pi-cog',
@@ -49,14 +33,28 @@ const model = computed(() => [
                             },
                             {
                                 label: 'Frecuencia de Pago',
-                                icon: 'pi pi-fw pi-calendar-clock', // más específico que calendar
+                                icon: 'pi pi-fw pi-calendar-clock',
                                 to: '/Frecuencia/Pagos'
                             },
                         ]
                     },
+                    {
+                        label: 'Entidades Financieras',
+                        icon: 'pi pi-fw pi-briefcase',
+                        to: '/tasas-fijas/empresas'
+                    },
+                    {
+                        label: 'Depósitos',
+                        icon: 'pi pi-fw pi-wallet',
+                        to: '/tasas-fijas/depositos'
+                    },
+                    {
+                        label: 'Pagos',
+                        icon: 'pi pi-fw pi-credit-card',
+                        to: '/tasas-fijas/pagos'
+                    },
                 ]
             },
-            // === SUBASTA DE HIPOTECAS ===
             {
                 label: 'Subasta de Hipotecas',
                 icon: 'pi pi-fw pi-credit-card',
@@ -105,8 +103,6 @@ const model = computed(() => [
                     }
                 ]
             },
-
-            // === FACTORING (link externo) ===
             {
                 label: 'Factoring',
                 icon: 'pi pi-fw pi-external-link',
@@ -115,8 +111,6 @@ const model = computed(() => [
             }
         ]
     },
-
-    // === USUARIOS Y ROLES ===
     {
         label: 'Usuarios',
         items: [

@@ -149,6 +149,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('term-plans')->group(function(){
         Route::post('/', [TermPlanController::class, 'store']);
         Route::get('/', [TermPlanController::class, 'list']);
+        Route::put('/{termPlan}', [TermPlanController::class, 'update']);
+
     });
 
     Route::get('/deadlines', [DeadlinesControllers::class, 'index']);

@@ -24,8 +24,8 @@
     <Column field="tipo_entidad" header="Tipo" sortable style="min-width: 8rem" />
     <Column field="estado" header="Estado" sortable style="min-width: 8rem">
       <template #body="{ data }">
-        <Tag :severity="data.estado === 'activo' ? 'success' : 'danger'" 
-             :value="data.estado === 'activo' ? 'Activo' : 'Inactivo'" />
+        <Tag :severity="data.estado === 'activo' ? 'success' : 'danger'"
+          :value="data.estado === 'activo' ? 'Activo' : 'Inactivo'" />
       </template>
     </Column>
     <Column header="" style="width: 3rem;">
@@ -40,71 +40,63 @@
   <Menu ref="menu" :model="menuItems" popup />
   <ConfigEmpresa ref="configDialog" />
 
+  <VerDialog ref="viewDialogRef" />
+
   <!-- Dialog para editar cooperativa -->
-  <Dialog v-model:visible="editDialog" :style="{ width: '600px' }" header="Editar Cooperativa" :modal="true" class="p-fluid">
-    <div class="field">
-      <label for="nombre">Nombre</label>
-      <InputText id="nombre" v-model="editForm.nombre" required />
+  <Dialog v-model:visible="editDialog" :style="{ width: '600px' }" header="Editar Cooperativa" :modal="true"
+    class="p-fluid">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div class="field">
+        <label for="nombre" class="block font-bold mb-3">Nombre <span class="text-red-500">*</span></label>
+        <InputText id="nombre" v-model="editForm.nombre" required fluid />
+      </div>
+      <div class="field">
+        <label for="ruc" class="block font-bold mb-3">RUC <span class="text-red-500">*</span></label>
+        <InputText id="ruc" v-model="editForm.ruc" required fluid />
+      </div>
+
+      <div class="field">
+        <label for="direccion" class="block font-bold mb-3">Dirección <span class="text-red-500">*</span></label>
+        <InputText id="direccion" v-model="editForm.direccion" required fluid />
+      </div>
+      <div class="field">
+        <label for="telefono" class="block font-bold mb-3">Teléfono <span class="text-red-500">*</span></label>
+        <InputText id="telefono" v-model="editForm.telefono" fluid />
+      </div>
+
+      <div class="field">
+        <label for="email" class="block font-bold mb-3">Email <span class="text-red-500">*</span></label>
+        <InputText id="email" v-model="editForm.email" type="email" fluid />
+      </div>
+      <div class="field">
+        <label for="tipo_entidad" class="block font-bold mb-3">Tipo de Entidad <span class="text-red-500">*</span></label>
+        <InputText id="tipo_entidad" v-model="editForm.tipo_entidad" fluid />
+      </div>
+
+      <div class="field md:col-span-2">
+        <label for="estado" class="block font-bold mb-3">Estado <span class="text-red-500">*</span></label>
+        <Select v-model="editForm.estado" :options="estadoOptions" optionLabel="label" optionValue="value"
+          placeholder="Seleccione un estado" fluid />
+      </div>
+
+      <div class="field md:col-span-2">
+        <label for="pdf" class="block font-bold mb-3">PDF (opcional)</label>
+        <FileUpload mode="basic" accept="application/pdf" :maxFileSize="2048000" customUpload @select="onFileSelect"
+          :auto="false" chooseLabel="Seleccionar PDF" class="w-full" />
+        <small class="p-error block mt-1" v-if="editForm.pdf">
+          Archivo seleccionado: {{ editForm.pdf.name }}
+        </small>
+      </div>
     </div>
-    <div class="field">
-      <label for="ruc">RUC</label>
-      <InputText id="ruc" v-model="editForm.ruc" required />
-    </div>
-    <div class="field">
-      <label for="direccion">Dirección</label>
-      <InputText id="direccion" v-model="editForm.direccion" required />
-    </div>
-    <div class="field">
-      <label for="telefono">Teléfono</label>
-      <InputText id="telefono" v-model="editForm.telefono" />
-    </div>
-    <div class="field">
-      <label for="email">Email</label>
-      <InputText id="email" v-model="editForm.email" type="email" />
-    </div>
-    <div class="field">
-      <label for="tipo_entidad">Tipo de Entidad</label>
-      <InputText id="tipo_entidad" v-model="editForm.tipo_entidad" />
-    </div>
-    <div class="field">
-      <label for="estado">Estado</label>
-      <Dropdown v-model="editForm.estado" :options="estadoOptions" 
-                optionLabel="label" optionValue="value" />
-    </div>
-    <div class="field">
-      <label for="pdf">PDF (opcional)</label>
-      <FileUpload mode="basic" accept="application/pdf" :maxFileSize="2048000" 
-                  customUpload @select="onFileSelect" :auto="false" 
-                  chooseLabel="Seleccionar PDF" />
-      <small class="p-error" v-if="editForm.pdf">Archivo seleccionado: {{ editForm.pdf.name }}</small>
-    </div>
+
     <template #footer>
-      <Button label="Cancelar" icon="pi pi-times" text @click="editDialog = false" />
-      <Button label="Guardar" icon="pi pi-check" :loading="loading" @click="actualizarCooperativa" />
+      <div class="flex justify-end gap-2">
+        <Button label="Cancelar" icon="pi pi-times" severity="secondary" text @click="editDialog = false" />
+        <Button label="Guardar" icon="pi pi-check" severity="contrast" :loading="loading" @click="actualizarCooperativa" />
+      </div>
     </template>
   </Dialog>
 
-  <!-- Dialog para ver detalles -->
-  <Dialog v-model:visible="viewDialog" :style="{ width: '600px' }" header="Detalles de la Cooperativa" :modal="true">
-    <div v-if="selectedItem" class="grid grid-cols-2 gap-4">
-      <div><strong>Nombre:</strong> {{ selectedItem.nombre }}</div>
-      <div><strong>RUC:</strong> {{ selectedItem.ruc }}</div>
-      <div><strong>Dirección:</strong> {{ selectedItem.direccion }}</div>
-      <div><strong>Teléfono:</strong> {{ selectedItem.telefono }}</div>
-      <div><strong>Email:</strong> {{ selectedItem.email }}</div>
-      <div><strong>Tipo:</strong> {{ selectedItem.tipo_entidad }}</div>
-      <div><strong>Estado:</strong> 
-        <Tag :severity="selectedItem.estado === 'activo' ? 'success' : 'danger'" 
-             :value="selectedItem.estado === 'activo' ? 'Activo' : 'Inactivo'" />
-      </div>
-      <div v-if="selectedItem.pdf_url"><strong>PDF:</strong> 
-        <Button label="Ver PDF" icon="pi pi-file-pdf" text @click="verPDF(selectedItem)" />
-      </div>
-    </div>
-    <template #footer>
-      <Button label="Cerrar" icon="pi pi-times" @click="viewDialog = false" />
-    </template>
-  </Dialog>
   <ConfirmDialog />
 </template>
 
@@ -123,11 +115,11 @@ import Tag from 'primevue/tag'
 import Button from 'primevue/button'
 import Menu from 'primevue/menu'
 import Dialog from 'primevue/dialog'
-import Dropdown from 'primevue/dropdown'
 import FileUpload from 'primevue/fileupload'
-import ProgressSpinner from 'primevue/progressspinner'
 import ConfirmDialog from 'primevue/confirmdialog'
 import ConfigEmpresa from './ConfigEmpresa.vue'
+import VerDialog from './ver.vue'
+import Select from 'primevue/select'
 
 const toast = useToast()
 const confirm = useConfirm()
@@ -138,14 +130,10 @@ const cooperativas = ref([])
 const selectedCooperativas = ref([])
 const selectedItem = ref(null)
 const loading = ref(false)
-
+const viewDialogRef = ref(null)
 // Diálogos
 const editDialog = ref(false)
 const viewDialog = ref(false)
-const pdfDialog = ref(false)
-const pdfUrl = ref('')
-const pdfLoading = ref(false)
-const pdfError = ref('')
 
 // Opciones para el dropdown de estado
 const estadoOptions = ref([
@@ -182,13 +170,12 @@ const menuItems = ref([
 
 function toggleMenu(event, item) {
   selectedItem.value = item
-  
-  // Actualizar dinámicamente el menú basado en si tiene PDF
+
   menuItems.value = [
     { label: 'Ver', icon: 'pi pi-eye', command: () => ver(item) },
-    { 
-      label: 'Ver PDF', 
-      icon: 'pi pi-file-pdf', 
+    {
+      label: 'Ver PDF',
+      icon: 'pi pi-file-pdf',
       command: () => verPDF(item),
       disabled: !item.pdf_url
     },
@@ -196,14 +183,17 @@ function toggleMenu(event, item) {
     { label: 'Eliminar', icon: 'pi pi-trash', command: () => eliminar(item) },
     { label: 'Configurar', icon: 'pi pi-cog', command: () => configurar(item) }
   ]
-  
+
   menu.value.toggle(event)
 }
 
 function ver(item) {
+  configDialog.value?.close?.() // si quieres cerrar otros diálogos
   selectedItem.value = item
   viewDialog.value = true
+  viewDialogRef.value.open(item) // este es el punto importante
 }
+
 
 function editar(item) {
   selectedItem.value = item
@@ -273,38 +263,6 @@ function verPDF(item) {
   window.open(url, '_blank') // Abre en nueva pestaña
 }
 
-
-function descargarPDF() {
-  if (selectedItem.value?.pdf_url) {
-    // Crear enlace temporal para descargar
-    const link = document.createElement('a')
-    link.href = `/coperativa/${selectedItem.value.id}/pdf`
-    link.download = `${selectedItem.value.nombre}_documento.pdf`
-    link.target = '_blank'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-}
-
-function onPdfLoad() {
-  console.log('PDF cargado exitosamente')
-  pdfLoading.value = false
-}
-
-function onPdfError() {
-  console.error('Error al cargar PDF en iframe')
-  pdfError.value = 'Error al cargar el PDF en el visor'
-  pdfLoading.value = false
-}
-
-function cerrarPDF() {
-  pdfDialog.value = false
-  pdfUrl.value = ''
-  pdfLoading.value = false
-  pdfError.value = ''
-}
-
 function onFileSelect(event) {
   editForm.value.pdf = event.files[0]
 }
@@ -312,7 +270,7 @@ function onFileSelect(event) {
 async function actualizarCooperativa() {
   try {
     loading.value = true
-    
+
     const formData = new FormData()
     formData.append('_method', 'PUT')
     formData.append('nombre', editForm.value.nombre)
@@ -322,24 +280,24 @@ async function actualizarCooperativa() {
     formData.append('email', editForm.value.email)
     formData.append('tipo_entidad', editForm.value.tipo_entidad)
     formData.append('estado', editForm.value.estado)
-    
+
     if (editForm.value.pdf) {
       formData.append('pdf', editForm.value.pdf)
     }
-    
+
     await axios.post(`/coperativa/${editForm.value.id}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
     })
-    
+
     toast.add({
       severity: 'success',
       summary: 'Éxito',
       detail: 'Cooperativa actualizada correctamente',
       life: 3000
     })
-    
+
     editDialog.value = false
     obtenerCooperativas()
   } catch (error) {
