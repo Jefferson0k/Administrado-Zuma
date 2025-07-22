@@ -7,7 +7,6 @@ use App\Http\Requests\Property\PropertyUpdateRequest;
 use App\Http\Requests\Property\StorePropertyRequest;
 use App\Http\Resources\PropertyConfiguracionSubastaResource;
 use App\Http\Resources\Subastas\Property\PropertyConfiguracionResource;
-use App\Http\Resources\Subastas\Property\PropertyOnliene;
 use App\Http\Resources\Subastas\Property\PropertyReglaResource;
 use App\Http\Resources\Subastas\Property\PropertyResource;
 use App\Http\Resources\Subastas\Property\PropertyShowResource;
@@ -403,9 +402,8 @@ class PropertyControllers extends Controller{
         try {
             $perPage = $request->input('per_page', 10);
             $search = $request->input('search');
-
-            $query = PropertyConfiguracion::with(['property.currency'])
-                ->where('estado', 2) // estado en PropertyConfiguracion
+            $query = PropertyConfiguracion::with(['property.currency', 'property.investor'])
+                ->where('estado', 2)
                 ->whereHas('property', function ($q) use ($search) {
                     $q->whereIn('estado', ['completo', 'desactivada']);
 
@@ -419,13 +417,11 @@ class PropertyControllers extends Controller{
                         });
                     }
                 });
-
             $configuraciones = $query->paginate($perPage);
-
             return response()->json([
                 'data' => $configuraciones->map(function ($config) {
                     $property = $config->property;
-
+                    $investor = $property->investor;
                     return [
                         'config_id' => $config->id,
                         'property_id' => $property->id,
@@ -442,6 +438,11 @@ class PropertyControllers extends Controller{
                         'tem' => $config->tem,
                         'moneda' => $property->currency->codigo ?? null,
                         'foto' => $property->getImagenes(),
+                        'cliente_id' => $property->investor_id,
+                        'investor_name' => $investor->name ?? null,
+                        'investor_first_last_name' => $investor->first_last_name ?? null,
+                        'investor_second_last_name' => $investor->second_last_name ?? null,
+                        'investor_document' => $investor->document ?? null,
                     ];
                 }),
                 'pagination' => [

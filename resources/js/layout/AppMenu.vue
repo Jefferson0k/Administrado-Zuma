@@ -117,7 +117,7 @@ const model = computed(() => [
             {
                 label: 'Factoring',
                 icon: 'pi pi-fw pi-external-link',
-                url: 'https://fondeoadmin.apros.global/',
+                url: 'https://backoffice.zuma.com.pe/',
                 target: '_blank'
             }
         ]

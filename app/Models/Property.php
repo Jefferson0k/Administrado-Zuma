@@ -12,6 +12,7 @@ class Property extends Model{
     public $incrementing = false;
     protected $keyType = 'string';
     protected $fillable = [
+        'investor_id',
         'nombre',
         'departamento',
         'provincia',
@@ -23,6 +24,7 @@ class Property extends Model{
         'valor_requerido',
         'currency_id',
         'estado',
+        'investor_id'
     ];
     protected static function boot(){
         parent::boot();
@@ -37,6 +39,9 @@ class Property extends Model{
     }
     public function currency(){
         return $this->belongsTo(Currency::class);
+    }
+    public function investor(){
+        return $this->belongsTo(Investor::class);
     }
     public function investments(){
         return $this->hasMany(Investment::class);

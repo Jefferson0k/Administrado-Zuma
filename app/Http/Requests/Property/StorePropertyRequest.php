@@ -21,7 +21,7 @@ class StorePropertyRequest extends FormRequest{
             'valor_subasta'   => 'nullable|numeric|min:0',
             'valor_requerido' => 'required|numeric|min:0',
             'currency_id'     => 'required|exists:currencies,id',
-
+            'investor_id'     => 'required',
             'imagenes'        => 'nullable|array',
             'imagenes.*'      => 'nullable|image|max:2048',
         ];

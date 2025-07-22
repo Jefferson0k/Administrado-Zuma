@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Notifications\InvestorEmailVerificationNotification;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -48,5 +49,8 @@ class Investor extends Authenticatable implements MustVerifyEmail{
         $balance->save();
 
         return $balance;
+    }
+    public function sendEmailVerificationNotification(){
+        $this->notify(new InvestorEmailVerificationNotification());
     }
 }
