@@ -8,6 +8,7 @@ return new class extends Migration {
     public function up(): void {
         Schema::create('properties', function (Blueprint $table) {
             $table->ulid('id')->primary();
+            $table->foreignUlid('investor_id')->constrained('investors');
             $table->string('departamento')->nullable();
             $table->string('provincia')->nullable();
             $table->string('distrito')->nullable();
@@ -18,26 +19,14 @@ return new class extends Migration {
             $table->decimal('valor_subasta', 15, 2)->nullable();
             $table->decimal('valor_requerido', 15, 2);
             $table->foreignId('currency_id')->constrained('currencies');
-
             $table->enum('estado', [
-                'en_subasta',     // En proceso de subasta
-                'subastada',      // Subasta finalizada
-                'programada',     // En espera de iniciar subasta
-                'desactivada',    // No visible ni activa
-                'activa',         // Activa para mostrar
-                'adquirido',      // Ya fue comprado
-                'pendiente',      // Registro en espera
-                'completo',        // Ya tiene configuración de inversionista y cliente
-                'espera'
+                'en_subasta', 'subastada', 'programada', 'desactivada',
+                'activa', 'adquirido', 'pendiente', 'completo', 'espera'
             ])->default('pendiente');
-
-            // 👉 Aquí agregas la nueva columna
             $table->unsignedTinyInteger('config_total')->default(0);
-
             $table->timestamps();
         });
     }
-
     public function down(): void {
         Schema::dropIfExists('properties');
     }

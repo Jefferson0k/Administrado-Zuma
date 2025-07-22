@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Email\UpdateCustomerEmailVerificationRequest;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
 use App\Models\Customer;
+use App\Models\Investor;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -76,22 +77,24 @@ class ProfileController extends Controller
             ], 500);
         }
     }
-    public function emailVerification(UpdateCustomerEmailVerificationRequest $request, $id, $hash){
+    public function emailVerification(UpdateCustomerEmailVerificationRequest $request, $id, $hash)
+    {
         try {
             $validatedData = $request->validated();
 
-            // Verifica que el usuario exista
-            $customer = Customer::find($id);
-            if (!$customer) {
+            // Verifica que la URL esté firmada correctamente y no haya expirado
+            $investor = Investor::find($id);
+            if (!$investor) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Usuario no encontrado.',
                 ], 404);
             }
 
-            // Compara el hash de la URL con el generado desde el email
-            $expectedHash = sha1($customer->getEmailForVerification());
+            // Genera el hash esperado basado en el ID del usuario y el email
+            $expectedHash = sha1($investor->getEmailForVerification());
 
+            // Verifica si el hash coincide con el hash del email del usuario
             if (!hash_equals($expectedHash, $hash)) {
                 return response()->json([
                     'success' => false,
@@ -99,24 +102,24 @@ class ProfileController extends Controller
                 ], 400);
             }
 
-            // Verifica si ya está confirmado el correo
-            if ($customer->hasVerifiedEmail()) {
+            // Verifica si el usuario ya ha verificado su email
+            if ($investor->hasVerifiedEmail()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Correo ya está verificado.'
+                    'message' => 'Correo ya esta verificado.'
                 ], 307);
             }
 
-            // Marca como verificado
-            $customer->markEmailAsVerified();
+            // Marca el email del usuario como verificado
+            $investor->markEmailAsVerified();
 
-            // Dispara el evento
-            event(new Verified($customer));
+            // Lanza el evento de verificación
+            event(new Verified($investor));
 
             return response()->json([
                 'success' => true,
                 'message' => 'Tu cuenta ha sido activada correctamente.',
-                'data' => $customer
+                'data' => $investor
             ], 201);
         } catch (\Throwable $th) {
             return response()->json([
@@ -125,7 +128,6 @@ class ProfileController extends Controller
             ], 500);
         }
     }
-
     /**
      * Update the user's profile information.
      */

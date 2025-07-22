@@ -18,6 +18,7 @@ use App\Http\Controllers\Panel\DeadlinesControllers;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Panel\PropertyControllers;
 use App\Http\Controllers\Panel\InvestmentControllers;
+use App\Http\Controllers\Panel\InvestorController;
 use App\Http\Controllers\Panel\LoanSimulationController;
 use App\Http\Controllers\Panel\PaymentScheduleController;
 use App\Http\Controllers\Panel\PropertyInvestorController;
@@ -30,9 +31,9 @@ use App\Http\Controllers\Panel\PropertyInvestorController;
 
 Route::post('/login', [CustomerSessionController::class, 'login']);
 Route::post('/customers/register', [RegisteredCustomerController::class, 'store']);
-Route::post('/email/verify/resend/{id}', [ProfileController::class, 'resendEmailVerification']);
 Route::put('/email/verify/{id}/{hash}', [ProfileController::class, 'emailVerification']);
 Route::get('/consultar-dni/{dni?}', [ConsultasDni::class, 'consultar'])->name('consultar.dni');
+Route::post('/email/verify/resend/{id}', [InvestorController::class, 'resendEmailVerification']);
 
 /*
 |--------------------------------------------------------------------------

@@ -18,6 +18,8 @@ class PropertyLoanDetail extends Model
         'solicitud_prestamo_para',
         'garantia',
         'perfil_riesgo',
+        'empresa_tasadora',
+        'config_id',
     ];
 
     public function investor()

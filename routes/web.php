@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\ConsultasDni;
 use App\Http\Controllers\Api\ConsultasRucController;
 use App\Http\Controllers\Api\FixedTermScheduleController;
 use App\Http\Controllers\Api\InvoiceController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\Panel\CurrencyControllers;
 use App\Http\Controllers\Panel\CustomerController;
 use App\Http\Controllers\Panel\DeadlinesControllers;
 use App\Http\Controllers\Panel\FixedTermRateController;
+use App\Http\Controllers\Panel\InvestorController;
 use App\Http\Controllers\Panel\PagosController;
 use App\Http\Controllers\Panel\PaymentFrequencyController;
 use App\Http\Controllers\Panel\PaymentScheduleController;
@@ -239,6 +241,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/', [PagosController::class, 'lis']);
     });
 
+    Route::prefix('customer')->group(function () {
+        Route::post('/', [InvestorController::class, 'store']);
+    });
+
     Route::prefix('pagos-inversinotas')->group(function () {
         Route::post('/', [PagosController::class, 'storePayment']);
     });
@@ -247,6 +253,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('bids', [BidControllers::class, 'index']);
     Route::get('bids/{id}', [BidControllers::class, 'show']);
+
+    Route::get('/dni/{dni?}', [ConsultasDni::class, 'consultar']);
 
 });
 

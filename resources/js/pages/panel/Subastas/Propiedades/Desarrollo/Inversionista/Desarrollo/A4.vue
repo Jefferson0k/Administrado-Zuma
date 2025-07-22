@@ -88,11 +88,9 @@ watch(() => props.prestamosId, async (newId) => {
 const loadImageAsBase64 = (url, timeout = 10000) => {
     return Promise.race([
         new Promise((resolve, reject) => {
-            // Detectar si es SVG por la extensión o content-type
             const isSvg = url.toLowerCase().includes('.svg') || url.includes('svg');
             
             if (isSvg) {
-                // Manejar SVG como antes
                 fetch(url)
                     .then((res) => res.text())
                     .then((svgText) => {
@@ -117,9 +115,8 @@ const loadImageAsBase64 = (url, timeout = 10000) => {
                     })
                     .catch(reject);
             } else {
-                // Manejar imágenes normales (JPG, PNG, etc.)
                 const img = new Image();
-                img.crossOrigin = "anonymous"; // Importante para evitar problemas de CORS
+                img.crossOrigin = "anonymous";
                 
                 img.onload = () => {
                     const canvas = document.createElement("canvas");
@@ -129,7 +126,7 @@ const loadImageAsBase64 = (url, timeout = 10000) => {
                     const ctx = canvas.getContext("2d");
                     ctx.drawImage(img, 0, 0);
 
-                    const base64 = canvas.toDataURL("image/jpeg", 0.8); // Calidad 0.8 para JPG
+                    const base64 = canvas.toDataURL("image/jpeg", 0.8);
                     resolve(base64);
                 };
                 
@@ -141,7 +138,6 @@ const loadImageAsBase64 = (url, timeout = 10000) => {
                 img.src = url;
             }
         }),
-        // Timeout para evitar que se cuelgue
         new Promise((_, reject) => 
             setTimeout(() => reject(new Error('Timeout al cargar imagen')), timeout)
         )
@@ -156,242 +152,206 @@ const generatePDF = async () => {
         }
 
         const data = prestamoData.value.data;
-
         const pdf = new jsPDF({ unit: "mm", format: "a4" });
-        const margin = 10;
+        const margin = 15;
         const pageWidth = 210;
         const pageHeight = pdf.internal.pageSize.getHeight();
         const centerX = pageWidth / 2;
-        let y = 15;
+        const contentWidth = pageWidth - (2 * margin);
+        let y = 20;
 
         const now = new Date();
         const fechaActual = now.toLocaleDateString("es-PE");
         const horaActual = now.toLocaleTimeString("es-PE");
 
-        // Fecha y hora
-        pdf.setFontSize(7);
+        // HEADER: Fecha y hora centrada
+        pdf.setFontSize(8);
         pdf.setFont("helvetica", "normal");
         pdf.text(`Fecha: ${fechaActual}    Hora: ${horaActual}`, centerX, y, { align: "center" });
-        y += 5;
+        y += 8;
         
+        // Línea separadora
         pdf.setLineWidth(0.3);
         pdf.line(margin, y, pageWidth - margin, y);
-        y += 2;
+        y += 8;
 
+        // LOGO Y INFORMACIÓN EN LA MISMA FILA
         if (data.logo) {
             try {
                 const base64Logo = await loadImageAsBase64(data.logo);
-
-                const logoWidth = 30;
-                const logoHeight = 8;
-                const logoX = margin + 10; // <-- mover logo un poco más adentro
+                
+                // Logo a la izquierda
+                const logoWidth = 35;
+                const logoHeight = 12;
+                const logoX = margin;
                 const logoY = y;
-
+                
                 pdf.addImage(base64Logo, 'PNG', logoX, logoY, logoWidth, logoHeight);
 
-                // INFO a la derecha del logo
-                const infoWidth = 120; // ancho del bloque de info
-                const spaceUsedByLogo = logoX + logoWidth;
-                const remainingWidth = pageWidth - spaceUsedByLogo - margin;
-
-                const infoX = spaceUsedByLogo + (remainingWidth - infoWidth) / 2;
-                const labelY = logoY + 2.5;
-                const valueY = labelY + 5;
-
-                // Etiquetas en negrita
-                pdf.setFontSize(9);
+                // Información a la derecha del logo
+                const infoStartX = logoX + logoWidth + 10;
+                const colWidth = (pageWidth - infoStartX - margin) / 4;
+                
+                // Encabezados
+                pdf.setFontSize(7);
                 pdf.setFont("helvetica", "bold");
-                pdf.text("Nombre propiedad", infoX, labelY);
-                pdf.text("Esquema", infoX + 40, labelY);
-                pdf.text("Plazo", infoX + 75, labelY);
-                pdf.text("Monto otorgado", infoX + 105, labelY);
+                pdf.text("PROPIEDAD", infoStartX, y + 2);
+                pdf.text("ESQUEMA", infoStartX + colWidth, y + 2);
+                pdf.text("PLAZO", infoStartX + (colWidth * 2), y + 2);
+                pdf.text("MONTO", infoStartX + (colWidth * 3), y + 2);
 
-                // Valores también en negrita
-                pdf.setFontSize(9);
+                // Valores
+                pdf.setFontSize(8);
                 pdf.setFont("helvetica", "bold");
-                pdf.text(data.Property ?? '---', infoX, valueY);
-                pdf.text(data.Esquema ?? '---', infoX + 40, valueY);
-                pdf.text(data.Plazo ?? '---', infoX + 75, valueY);
-                const formattedMonto = data.Monto ? `S/ ${parseFloat(data.Monto).toFixed(2)}` : '---';
-                pdf.text(formattedMonto, infoX + 105, valueY);
+                
+                // Texto con wrapping para cada columna
+                const propertyText = pdf.splitTextToSize(data.Property || '---', colWidth - 2);
+                const esquemaText = pdf.splitTextToSize(data.Esquema || '---', colWidth - 2);
+                const plazoText = pdf.splitTextToSize(data.Plazo || '---', colWidth - 2);
+                const montoText = pdf.splitTextToSize(data.Monto ? `S/ ${parseFloat(data.Monto).toFixed(2)}` : '---', colWidth - 2);
 
-                y = valueY + 1;
+                let textY = y + 6;
+                pdf.text(propertyText, infoStartX, textY);
+                pdf.text(esquemaText, infoStartX + colWidth, textY);
+                pdf.text(plazoText, infoStartX + (colWidth * 2), textY);
+                pdf.text(montoText, infoStartX + (colWidth * 3), textY);
+
+                // Calcular la altura máxima usada
+                const maxLines = Math.max(propertyText.length, esquemaText.length, plazoText.length, montoText.length);
+                y = logoY + Math.max(logoHeight, 6 + (maxLines * 4)) + 5;
+                
             } catch (error) {
                 console.error('Error al cargar logo:', error);
+                y += 15;
             }
         }
 
-
-        pdf.setLineWidth(0.1);
-        pdf.line(margin, y + 4, pageWidth - margin, y + 4);
+        // Línea separadora
+        pdf.setLineWidth(0.2);
+        pdf.line(margin, y, pageWidth - margin, y);
         y += 10;
 
-        pdf.setFontSize(8);
-        pdf.setFont("helvetica", "normal");
+        // SECCIONES DE INFORMACIÓN
+        const addSection = (title, content, indent = 0) => {
+            const sectionX = margin + indent;
+            const maxWidth = contentWidth - indent;
+            
+            // Verificar espacio disponible
+            if (y > pageHeight - 30) {
+                pdf.addPage();
+                y = margin + 10;
+            }
+            
+            // Título de sección
+            pdf.setFontSize(9);
+            pdf.setFont("helvetica", "bold");
+            pdf.text(title, sectionX, y);
+            y += 6;
 
-        pdf.setFontSize(10);
-        pdf.setFont("helvetica", "bold");
-        pdf.text("Codigo de la subasta ", margin, y);
-        y += 9;
+            // Contenido
+            pdf.setFontSize(8);
+            pdf.setFont("helvetica", "normal");
+            const lines = pdf.splitTextToSize(content || '---', maxWidth);
+            
+            lines.forEach(line => {
+                if (y > pageHeight - 20) {
+                    pdf.addPage();
+                    y = margin + 10;
+                }
+                pdf.text(line, sectionX, y);
+                y += 4;
+            });
+            
+            y += 4; // Espacio entre secciones
+        };
 
-        pdf.setFontSize(8);
-        pdf.setFont("helvetica", "normal");
+        // Código de subasta (vacío por ahora)
+        addSection("Código de la subasta:", "");
 
-        pdf.setFontSize(10);
-        pdf.setFont("helvetica", "bold");
-        pdf.text("Ocupacion y/o carrera", margin, y); // título
+        // Información del préstamo
+        addSection("Ocupación y/o carrera:", data.ocupacion_profesion);
+        addSection("Descripción del préstamo:", data.descripcion_financiamiento);
+        addSection("Solicita el préstamo para:", data.motivo_prestamo);
+
+        // Secciones con indentación
+        addSection("Propiedad ofrecida en garantía:", data.garantia, 20);
+        addSection("Perfil de riesgo:", data.perfil_riesgo, 20);
+
         y += 5;
-
-        pdf.setFontSize(9);
-        pdf.setFont("helvetica", "normal");
-        pdf.text(data.ocupacion_profesion ?? '---', margin, y); // valor debajo
-        y += 7;
-
-        pdf.setFontSize(10);
-        pdf.setFont("helvetica", "bold");
-        pdf.text("Descripcion del prestamo", margin, y); // título
-        y += 5;
-
-        pdf.setFontSize(9);
-        pdf.setFont("helvetica", "normal");
-        pdf.text(data.descripcion_financiamiento ?? '---', margin, y); // valor debajo
-        y += 7;
-
-        pdf.setFontSize(10);
-        pdf.setFont("helvetica", "bold");
-        pdf.text("Solicita el prestamo para:", margin, y); // título
-        y += 5;
-
-        pdf.setFontSize(9);
-        pdf.setFont("helvetica", "normal");
-        pdf.text(data.motivo_prestamo ?? '---', margin, y); // valor debajo
-        y += 7;
-
-        const indentX = margin + 30; // <-- sangría adicional
-
-        pdf.setFontSize(8);
-        pdf.setFont("helvetica", "normal");
-
-        pdf.setFontSize(10);
-        pdf.setFont("helvetica", "bold");
-        pdf.text("Propiedad ofrecida en garantía", indentX, y);
-        y += 5;
-
-        pdf.setFontSize(9);
-        pdf.setFont("helvetica", "normal");
-        pdf.text(data.garantia ?? '---', indentX, y);
-        y += 7;
-
-        pdf.setFontSize(8);
-        pdf.setFont("helvetica", "normal");
-
-        pdf.setFontSize(10);
-        pdf.setFont("helvetica", "bold");
-        pdf.text("Perfil de riesgo", indentX, y);
-        y += 5;
-
-        pdf.setFontSize(9);
-        pdf.setFont("helvetica", "normal");
-        pdf.text(data.perfil_riesgo ?? '---', indentX, y);
-        y += 7;
-
-        pdf.setFontSize(8);
-        pdf.setFont("helvetica", "normal");
 
         // SECCIÓN DE IMÁGENES
-        pdf.setFontSize(10);
-        pdf.setFont("helvetica", "normal");
-        pdf.text("FOTOS DE LA PROPIEDAD", margin, y);
-        y += 5;
+        if (y > pageHeight - 50) {
+            pdf.addPage();
+            y = margin + 10;
+        }
 
-        // Cargar y mostrar imágenes
+        pdf.setFontSize(10);
+        pdf.setFont("helvetica", "bold");
+        pdf.text("FOTOS DE LA PROPIEDAD", margin, y);
+        y += 8;
+
         if (data.imagenes && data.imagenes.length > 0) {
-            const imageWidth = 30; // Ancho de cada imagen en mm
-            const imageHeight = 30; // Alto de cada imagen en mm
+            const imageSize = 35;
+            const imageSpacing = 8;
             const imagesPerRow = 4;
-            const imageSpacing = 5; // Espacio entre imágenes
-            const availableWidth = pageWidth - 2 * margin;
-            const totalImageWidth = imagesPerRow * imageWidth + (imagesPerRow - 1) * imageSpacing;
-            const startX = margin + (availableWidth - totalImageWidth) / 2;
+            const totalImageWidth = (imagesPerRow * imageSize) + ((imagesPerRow - 1) * imageSpacing);
+            const startX = margin + (contentWidth - totalImageWidth) / 2;
 
             let currentRow = 0;
             let currentCol = 0;
 
-            console.log(`Iniciando carga de ${data.imagenes.length} imágenes`);
-
             for (let i = 0; i < data.imagenes.length; i++) {
-                try {
-                    // Verificar si necesitamos una nueva página
-                    const currentY = y + currentRow * (imageHeight + imageSpacing);
-                    if (currentY + imageHeight > pageHeight - margin - 20) {
-                        pdf.addPage();
-                        y = margin + 10;
-                        currentRow = 0;
-
-                        // Reimprimimos el título en la nueva página
-                        pdf.setFontSize(10);
-                        pdf.setFont("helvetica", "bold");
-                        pdf.text("FOTOS DE LA PROPIEDAD (Continuación)", margin, y);
-                        y += 9;
-                    }
-
-                    const imageUrl = data.imagenes[i];
-                    console.log(`Cargando imagen ${i + 1}/${data.imagenes.length}: ${imageUrl}`);
+                const currentY = y + (currentRow * (imageSize + imageSpacing));
+                
+                // Verificar si necesitamos nueva página
+                if (currentY + imageSize > pageHeight - margin - 20) {
+                    pdf.addPage();
+                    y = margin + 10;
+                    currentRow = 0;
                     
-                    const base64Image = await loadImageAsBase64(imageUrl);
+                    pdf.setFontSize(10);
+                    pdf.setFont("helvetica", "bold");
+                    pdf.text("FOTOS DE LA PROPIEDAD (Continuación)", margin, y);
+                    y += 8;
+                }
 
-                    const xPos = startX + currentCol * (imageWidth + imageSpacing);
-                    const yPos = y + currentRow * (imageHeight + imageSpacing);
+                try {
+                    const base64Image = await loadImageAsBase64(data.imagenes[i]);
+                    const xPos = startX + (currentCol * (imageSize + imageSpacing));
+                    const yPos = y + (currentRow * (imageSize + imageSpacing));
 
-                    // Agregar imagen al PDF
-                    pdf.addImage(base64Image, 'JPEG', xPos, yPos, imageWidth, imageHeight);
-
-                    // Agregar borde opcional
+                    pdf.addImage(base64Image, 'JPEG', xPos, yPos, imageSize, imageSize);
                     pdf.setLineWidth(0.1);
-                    pdf.setDrawColor(0,0,0);
-                    pdf.rect(xPos, yPos, imageWidth, imageHeight);
+                    pdf.setDrawColor(0, 0, 0);
+                    pdf.rect(xPos, yPos, imageSize, imageSize);
 
-                    console.log(`Imagen ${i + 1} cargada exitosamente`);
-
-                    currentCol++;
-                    if (currentCol >= imagesPerRow) {
-                        currentCol = 0;
-                        currentRow++;
-                    }
                 } catch (error) {
                     console.error(`Error al cargar imagen ${i + 1}:`, error);
-                    console.log(`URL problemática: ${data.imagenes[i]}`);
                     
-                    // Agregar un placeholder para la imagen que falló
-                    const xPos = startX + currentCol * (imageWidth + imageSpacing);
-                    const yPos = y + currentRow * (imageHeight + imageSpacing);
+                    const xPos = startX + (currentCol * (imageSize + imageSpacing));
+                    const yPos = y + (currentRow * (imageSize + imageSpacing));
                     
-                    // Dibujar un rectángulo con texto
                     pdf.setFillColor(240, 240, 240);
-                    pdf.rect(xPos, yPos, imageWidth, imageHeight, 'F');
+                    pdf.rect(xPos, yPos, imageSize, imageSize, 'F');
                     pdf.setDrawColor(200, 200, 200);
-                    pdf.rect(xPos, yPos, imageWidth, imageHeight);
+                    pdf.rect(xPos, yPos, imageSize, imageSize);
                     
-                    pdf.setFontSize(6);
+                    pdf.setFontSize(7);
                     pdf.setTextColor(100, 100, 100);
-                    pdf.text("Imagen no", xPos + imageWidth/2, yPos + imageHeight/2 - 2, { align: "center" });
-                    pdf.text("disponible", xPos + imageWidth/2, yPos + imageHeight/2 + 2, { align: "center" });
+                    pdf.text("Imagen no", xPos + imageSize/2, yPos + imageSize/2 - 2, { align: "center" });
+                    pdf.text("disponible", xPos + imageSize/2, yPos + imageSize/2 + 2, { align: "center" });
                     pdf.setTextColor(0, 0, 0);
-                    
-                    // Continuar con la siguiente imagen
-                    currentCol++;
-                    if (currentCol >= imagesPerRow) {
-                        currentCol = 0;
-                        currentRow++;
-                    }
+                }
+
+                currentCol++;
+                if (currentCol >= imagesPerRow) {
+                    currentCol = 0;
+                    currentRow++;
                 }
             }
 
-            // Calcular el espacio usado por las imágenes
             const totalRows = Math.ceil(data.imagenes.length / imagesPerRow);
-            y += totalRows * (imageHeight + imageSpacing) + 10;
-
-            console.log(`Procesamiento de imágenes completado`);
+            y += (totalRows * (imageSize + imageSpacing)) + 10;
         } else {
             pdf.setFontSize(8);
             pdf.setFont("helvetica", "normal");
@@ -399,34 +359,29 @@ const generatePDF = async () => {
             y += 10;
         }
 
-        // Título "CRONOGRAMA DE PAGO"
-        pdf.setFontSize(10);
-        pdf.setFont("helvetica", "normal");
+        // CRONOGRAMA DE PAGO
+        if (y > pageHeight - 80) {
+            pdf.addPage();
+            y = margin + 10;
+        }
+
+        pdf.setFontSize(11);
+        pdf.setFont("helvetica", "bold");
         pdf.text("CRONOGRAMA DE PAGO", margin, y);
-        y += 2;
-
-        // Línea superior
-        const indent = 15; // sangría para líneas
-        const textIndent = 30; // sangría adicional solo para texto
-        const innerMargin = margin + indent;
-        const innerTextMargin = margin + textIndent;
-
-        pdf.setLineWidth(0.1);
-        pdf.line(innerMargin, y + 4, pageWidth - innerMargin, y + 4);
         y += 8;
 
-        // Texto
+        // Información financiera en dos columnas
+        const financialInfoY = y;
+        const col1X = margin + 20;
+        const col2X = centerX + 10;
+
         pdf.setFontSize(8);
         pdf.setFont("helvetica", "normal");
 
-        const tem = `${parseFloat(data.tem).toFixed(4)}%`;
-        const tea = `${parseFloat(data.tea).toFixed(4)}%`;
+        const tem = data.tem ? `${parseFloat(data.tem).toFixed(4)}%` : '---';
+        const tea = data.tea ? `${parseFloat(data.tea).toFixed(4)}%` : '---';
         const gananciaTotal = data.ganancia_total ? `S/ ${parseFloat(data.ganancia_total).toFixed(2)}` : '---';
         const montoOtorgado = data.Monto ? `S/ ${parseFloat(data.Monto).toFixed(2)}` : '---';
-
-        // Nuevas posiciones ajustadas
-        const col1X = innerTextMargin;
-        const col2X = centerX + textIndent;
 
         pdf.text(`Tasa Efectiva Mensual: ${tem}`, col1X, y);
         pdf.text(`Ganancia Total: ${gananciaTotal}`, col2X, y);
@@ -434,78 +389,86 @@ const generatePDF = async () => {
 
         pdf.text(`Tasa Efectiva Anual: ${tea}`, col1X, y);
         pdf.text(`Monto Otorgado: ${montoOtorgado}`, col2X, y);
+        y += 8;
 
-        // Línea inferior
+        // Líneas decorativas
+        const indentMargin = margin + 10;
         pdf.setLineWidth(0.1);
-        pdf.line(innerMargin, y + 4, pageWidth - innerMargin, y + 4);
-        y += 5;
-
-        pdf.setLineWidth(0.1);
-        pdf.line(margin, y + 4, pageWidth - margin, y + 4);
-        y += 9;
-
-        // ---- Cronograma de pagos ----
-        const headers = [
-            "Cuota", "Vencimiento", "Saldo inicial", "Intereses", "Capital", "Cuota neta", "Saldo final"
-        ];
-        const colWidths = [20, 30, 30, 25, 25, 30, 30];
-
-        pdf.setFontSize(8);
-        pdf.setFont("helvetica", "bold");
-        let x = margin;
-        headers.forEach((header, i) => {
-            pdf.text(header, x + colWidths[i] / 2, y, { align: "center" });
-            x += colWidths[i];
-        });
-
-        y += 3; 
+        pdf.line(indentMargin, y, pageWidth - indentMargin, y);
+        y += 3;
         pdf.line(margin, y, pageWidth - margin, y);
+        y += 8;
 
+        // TABLA DE CRONOGRAMA
+        const headers = ["Cuota", "Vencimiento", "Saldo inicial", "Intereses", "Capital", "Cuota neta", "Saldo final"];
+        const colWidths = [18, 25, 27, 22, 22, 25, 27];
+        
+        // Verificar que las columnas no excedan el ancho disponible
+        const totalTableWidth = colWidths.reduce((sum, width) => sum + width, 0);
+        const tableStartX = margin + (contentWidth - totalTableWidth) / 2;
+
+        // Encabezados de tabla
+        pdf.setFontSize(7);
+        pdf.setFont("helvetica", "bold");
+        let headerX = tableStartX;
+        
+        headers.forEach((header, i) => {
+            pdf.text(header, headerX + colWidths[i]/2, y, { align: "center" });
+            headerX += colWidths[i];
+        });
+        
+        y += 4;
+        pdf.setLineWidth(0.2);
+        pdf.line(tableStartX, y, tableStartX + totalTableWidth, y);
+        y += 2;
+
+        // Filas de datos
         const cuotas = data.cronograma || [];
-
         pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(6);
 
-        cuotas.forEach((item, index) => {
+        cuotas.forEach((item) => {
             const rowData = [
-                item.cuota,
+                item.cuota?.toString() || '-',
                 item.vencimiento || '-',
-                `S/ ${parseFloat(item.saldo_inicial).toFixed(2)}`,
-                `S/ ${parseFloat(item.intereses).toFixed(2)}`,
-                `S/ ${parseFloat(item.capital).toFixed(2)}`,
-                `S/ ${parseFloat(item.total_cuota).toFixed(2)}`,
-                `S/ ${parseFloat(item.saldo_final).toFixed(2)}`
+                item.saldo_inicial ? `S/ ${parseFloat(item.saldo_inicial).toFixed(2)}` : '-',
+                item.intereses ? `S/ ${parseFloat(item.intereses).toFixed(2)}` : '-',
+                item.capital ? `S/ ${parseFloat(item.capital).toFixed(2)}` : '-',
+                item.total_cuota ? `S/ ${parseFloat(item.total_cuota).toFixed(2)}` : '-',
+                item.saldo_final ? `S/ ${parseFloat(item.saldo_final).toFixed(2)}` : '-'
             ];
 
-            const cellLines = rowData.map((text, i) =>
-                pdf.splitTextToSize(text, colWidths[i] - 2)
-            );
+            // Calcular altura de fila
+            const cellLines = rowData.map((text, i) => pdf.splitTextToSize(text, colWidths[i] - 1));
             const maxLines = Math.max(...cellLines.map(lines => lines.length));
-            const rowHeight = maxLines * 5;
+            const rowHeight = Math.max(4, maxLines * 3.5);
 
-            if (y + rowHeight > pageHeight - margin - 10) {
+            // Nueva página si es necesario
+            if (y + rowHeight > pageHeight - 25) {
                 pdf.addPage();
                 y = margin + 10;
 
-                // Reimprimir encabezado
-                pdf.setFontSize(8);
+                // Reimprimir encabezados
+                pdf.setFontSize(7);
                 pdf.setFont("helvetica", "bold");
-                let headerX = margin;
+                let reHeaderX = tableStartX;
                 headers.forEach((header, i) => {
-                    pdf.text(header, headerX + colWidths[i] / 2, y, { align: "center" });
-                    headerX += colWidths[i];
+                    pdf.text(header, reHeaderX + colWidths[i]/2, y, { align: "center" });
+                    reHeaderX += colWidths[i];
                 });
                 y += 4;
-                pdf.line(margin, y, pageWidth - margin, y);
-                y += 4;
+                pdf.line(tableStartX, y, tableStartX + totalTableWidth, y);
+                y += 2;
+                pdf.setFont("helvetica", "normal");
+                pdf.setFontSize(6);
             }
 
-            let cellX = margin;
-            pdf.setFontSize(7);
-            pdf.setFont("helvetica", "normal");
+            // Dibujar fila
+            let cellX = tableStartX;
             rowData.forEach((text, i) => {
-                const lines = pdf.splitTextToSize(text, colWidths[i] - 2);
-                lines.forEach((line, j) => {
-                    pdf.text(line, cellX + colWidths[i] / 2, y + 3.5 + j * 4, { align: "center" });
+                const lines = pdf.splitTextToSize(text, colWidths[i] - 1);
+                lines.forEach((line, lineIndex) => {
+                    pdf.text(line, cellX + colWidths[i]/2, y + 3 + (lineIndex * 3.5), { align: "center" });
                 });
                 cellX += colWidths[i];
             });
@@ -513,23 +476,30 @@ const generatePDF = async () => {
             y += rowHeight;
         });
 
-        pdf.line(margin, y, pageWidth - margin, y);
-        y += 5;
+        // Línea final de tabla
+        pdf.setLineWidth(0.2);
+        pdf.line(tableStartX, y, tableStartX + totalTableWidth, y);
 
-        // Pie de página
+        // PIE DE PÁGINA PARA TODAS LAS PÁGINAS
         const totalPages = pdf.internal.getNumberOfPages();
         for (let i = 1; i <= totalPages; i++) {
             pdf.setPage(i);
-            pdf.setFontSize(8);
+            pdf.setFontSize(7);
             pdf.setTextColor(100, 100, 100);
-            pdf.text(window.location.href, pageWidth - margin, 287, { align: "right" });
-            pdf.text(`Página ${i} de ${totalPages}`, margin, 287, { align: "left" });
-            pdf.text(`Ref: ${data.id}`, centerX, 287, { align: "center" });
+            
+            const footerY = pageHeight - 8;
+            pdf.text(window.location.href, pageWidth - margin, footerY, { align: "right" });
+            pdf.text(`Página ${i} de ${totalPages}`, margin, footerY);
+            pdf.text(`Ref: ${data.id || referenceNumber}`, centerX, footerY, { align: "center" });
+            
+            pdf.setTextColor(0, 0, 0);
         }
 
+        // Generar blob y URL
         const blob = pdf.output("blob");
         localPdfUrl.value = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
         console.log("PDF generado correctamente con ID:", data.id);
+        
     } catch (error) {
         console.error("Error al generar PDF:", error);
     }
