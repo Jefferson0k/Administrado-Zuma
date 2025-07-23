@@ -5,18 +5,31 @@ namespace App\Http\Resources\Subastas\PropertyLoanDetail;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class PropertyLoanDetailListResource extends JsonResource{
-    public function toArray(Request $request): array{
+class PropertyLoanDetailListResource extends JsonResource
+{
+    public function toArray(Request $request): array
+    {
         $property = $this->property;
         $config = $property->ultimaConfiguracion;
         $investor = $this->investor;
 
         return [
             'id' => $this->id,
+            'property_id' => $this->property_id,
+            'investor_id' => $this->investor_id,
+            'ocupacion_profesion' => $this->ocupacion_profesion,
+            'motivo_prestamo' => $this->motivo_prestamo,
+            'descripcion_financiamiento' => $this->descripcion_financiamiento,
+            'solicitud_prestamo_para' => $this->solicitud_prestamo_para,
+            'garantia' => $this->garantia,
+            'perfil_riesgo' => $this->perfil_riesgo,
+            'empresa_tasadora' => $this->empresa_tasadora,
+            'config_id' => $this->config_id,
+
+            // Datos relacionados
             'documento' => $investor?->document ?? 'Sin documento',
             'cliente' => $investor ? "{$investor->name} {$investor->first_last_name} {$investor->second_last_name}" : 'Sin nombre',
             'propiedad' => $property?->nombre,
-            'property_id' => $property?->id,
             'valor' => $property?->valor_estimado,
             'requerido' => $property?->valor_requerido,
             'subasta' => $property?->valor_subasta ?? 0,

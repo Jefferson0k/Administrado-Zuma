@@ -14,16 +14,38 @@ class Investor extends Authenticatable implements MustVerifyEmail{
     use HasApiTokens, HasFactory, Notifiable, HasUlids;
     protected $table = 'investors';
     protected $fillable = [
-        'name', 'first_last_name', 'second_last_name', 'alias',
-        'document', 'email', 'password', 'telephone',
-        'document_front', 'document_back', 'monto', 'status', 'asignado', 'type'
+        'name',
+        'first_last_name',
+        'second_last_name',
+        'document',
+        'alias',
+        'email',
+        'password',
+        'telephone',
+        'document_front',
+        'document_back',
+        'profile_photo_path',
+        'status',
+        'email_verified_at',
+        'is_pep',
+        'has_relationship_pep',
+        'department',
+        'province',
+        'district',
+        'address',
+        'api_token',
+        'type',
+        'asignado',
     ];
     protected $hidden = [
         'password',
         'remember_token',
+        'api_token',
     ];
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'is_pep' => 'boolean',
+        'has_relationship_pep' => 'boolean',
     ];
     public function investments(){
         return $this->hasMany(Investment::class);
@@ -40,8 +62,7 @@ class Investor extends Authenticatable implements MustVerifyEmail{
     public function propertyStatuses(){
         return $this->hasMany(InvestorPropertyStatus::class);
     }
-    public function createBalance(string $currency, int $amount)
-    {
+    public function createBalance(string $currency, int $amount){
         $balance = new Balance();
         $balance->currency = $currency;
         $balance->amount = $amount;

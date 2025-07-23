@@ -1,0 +1,1 @@
+* * * * * cd /var/www && php artisan subastas:cerrar >> /var/log/cron.log 2>&1

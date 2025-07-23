@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\CreditSimulationController;
 use App\Http\Controllers\Api\FixedTermInvestmentControllers;
 use App\Http\Controllers\Api\FixedTermScheduleController;
 use App\Http\Controllers\Api\InvestmentController;
+use App\Http\Controllers\Api\NotificacionController;
 use App\Http\Controllers\Api\PropertyReservationController;
 use App\Http\Controllers\Api\TipoCambioSbs;
 use App\Http\Controllers\Panel\CalculadoraController;
@@ -104,6 +105,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::prefix('reservas')->group(function () {
         Route::post('/', [PropertyReservationController::class, 'store']);
         Route::get('/', [PropertyReservationController::class, 'list']);
+    });
+
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', [NotificacionController::class, 'list'])->name('notifications.list');
+        Route::get('/missing-data', [NotificacionController::class, 'getMissingData'])->name('notifications.missing-data');
+        Route::post('/mark-completed', [NotificacionController::class, 'markAsCompleted'])->name('notifications.mark-completed');
     });
 });
 
