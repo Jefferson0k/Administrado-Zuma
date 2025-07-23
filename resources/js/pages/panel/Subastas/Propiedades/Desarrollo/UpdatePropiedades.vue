@@ -109,7 +109,7 @@ const props = defineProps({
         default: false
     },
     idPropiedad: {
-        type: [String, Number], // ← ya lo corrigiste aquí 👌
+        type: [String, Number],
         default: null
     }
 });
@@ -138,7 +138,9 @@ const form = reactive({
     estado: '',
     tea: null,
     tem: null,
-    riesgo: null
+    riesgo: null,
+    // Agregamos el investor_id al formulario
+    investor_id: null
 });
 
 const monedas = [
@@ -200,6 +202,8 @@ const cargarPropiedad = async () => {
         form.valor_requerido = property.valor_requerido;
         form.currency_id = property.currency_id;
         form.estado = property.estado || '';
+        // Guardamos el investor_id de la respuesta
+        form.investor_id = property.investor_id;
 
         await buscarUbicacion(property.departamento, property.provincia, property.distrito);
 
@@ -300,6 +304,11 @@ const actualizarPropiedad = async () => {
         formData.append('valor_estimado', form.valor_estimado);
         formData.append('valor_requerido', form.valor_requerido);
         formData.append('currency_id', form.currency_id);
+        
+        // Enviar el investor_id de forma interna
+        if (form.investor_id) {
+            formData.append('investor_id', form.investor_id);
+        }
 
         archivos.value.forEach((file) => {
             formData.append('imagenes[]', file);
@@ -341,7 +350,7 @@ const resetForm = () => {
     Object.keys(form).forEach(key => {
         if (key === 'departamento' || key === 'provincia' || key === 'distrito') {
             form[key] = null;
-        } else if (key === 'valor_estimado' || key === 'valor_requerido' || key === 'currency_id' || key === 'tea' || key === 'tem' || key === 'riesgo') {
+        } else if (key === 'valor_estimado' || key === 'valor_requerido' || key === 'currency_id' || key === 'tea' || key === 'tem' || key === 'riesgo' || key === 'investor_id') {
             form[key] = null;
         } else {
             form[key] = '';
