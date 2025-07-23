@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Panel;
 use App\Enums\MovementStatus;
 use App\Enums\MovementType;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\Subastas\Auction\AuctionHistoryResource;
 use App\Http\Resources\Subastas\Investment\InvestmentResource;
 use App\Http\Resources\Subastas\Investment\RecordInvestmentResource;
 use App\Models\Investment;
@@ -98,15 +99,16 @@ class InvestmentControllers extends Controller {
     }
     public function indexUser(Request $request){
         $investor = auth('sanctum')->user();
-
         if (!$investor) {
             return response()->json(['error' => 'No autenticado'], 401);
         }
-
-        $inversiones = Investment::with('property')
-            ->where('investor_id', $investor->id)
-            ->paginate(5);
-
-        return RecordInvestmentResource::collection($inversiones);
+        $participaciones = Bid::with([
+            'subasta.property', 
+            'subasta.ganador'
+        ])
+        ->where('investors_id', $investor->id)
+        ->orderBy('created_at', 'desc')
+        ->paginate(10);
+        return AuctionHistoryResource::collection($participaciones);
     }
 }

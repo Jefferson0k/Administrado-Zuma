@@ -96,4 +96,5 @@ class Property extends Model{
     public function investorStatuses(){
         return $this->hasMany(InvestorPropertyStatus::class);
     }
+    
 }
