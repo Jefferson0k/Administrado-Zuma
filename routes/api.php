@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\ConsultasDni;
+use App\Http\Controllers\Api\ContactRequestController;
 use App\Http\Controllers\Api\CreditSimulationController;
 use App\Http\Controllers\Api\FixedTermInvestmentControllers;
 use App\Http\Controllers\Api\FixedTermScheduleController;
@@ -20,7 +21,6 @@ use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Panel\PropertyControllers;
 use App\Http\Controllers\Panel\InvestmentControllers;
 use App\Http\Controllers\Panel\InvestorController;
-use App\Http\Controllers\Panel\LoanSimulationController;
 use App\Http\Controllers\Panel\PaymentScheduleController;
 use App\Http\Controllers\Panel\PropertyInvestorController;
 
@@ -35,6 +35,8 @@ Route::post('/customers/register', [RegisteredCustomerController::class, 'store'
 Route::put('/email/verify/{id}/{hash}', [ProfileController::class, 'emailVerification']);
 Route::get('/consultar-dni/{dni?}', [ConsultasDni::class, 'consultar'])->name('consultar.dni');
 Route::post('/email/verify/resend/{id}', [InvestorController::class, 'resendEmailVerification']);
+Route::post('/contact-request', [ContactRequestController::class, 'storeContactUs']);
+Route::post('/contact-request/internal', [ContactRequestController::class, 'storeInternal']);
 
 /*
 |--------------------------------------------------------------------------
