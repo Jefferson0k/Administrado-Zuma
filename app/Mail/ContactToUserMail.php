@@ -10,15 +10,17 @@ class ContactToUserMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public array $data;
+    public $contactData;
 
-    public function __construct(array $data){
-        $this->data = $data;
+    public function __construct($contactData)
+    {
+        $this->contactData = $contactData;
     }
 
-    public function build(){
-        return $this->subject('Gracias por contactarnos')
-                    ->view('emails.contact_to_user')
-                    ->with($this->data);
+    public function build()
+    {
+        return $this->subject('Confirmación de solicitud de contacto')
+                    ->view('emails.contact-to-user')
+                    ->with('data', $this->contactData);
     }
 }

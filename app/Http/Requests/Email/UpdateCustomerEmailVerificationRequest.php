@@ -20,30 +20,24 @@ class UpdateCustomerEmailVerificationRequest extends FormRequest
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
-    public function rules(): array
-    {
+    public function rules(): array{
         return [
             'expires' => [
-                'required',
+                'sometimes', // Cambiar de 'required' a 'sometimes'
                 'integer',
                 function ($attribute, $value, $fail) {
-                    if (Carbon::now()->timestamp > intval($value)) {
-                        $fail('EL enlace de verificación ha expirado, vuelve a intentarlo.');
+                    if ($value && Carbon::now()->timestamp > intval($value)) {
+                        $fail('El enlace de verificación ha expirado, vuelve a intentarlo.');
                     }
                 }
             ],
         ];
     }
 
-    /**
-     * Get the error messages for the defined validation rules.
-     *
-     * @return array<string, string>
-     */
     public function messages(): array
     {
         return [
-            'expires.required' => 'Falta el tiempo de expiración del enlace de verificación.',
+            'expires.integer' => 'El formato del tiempo de expiración es inválido.',
         ];
     }
 }

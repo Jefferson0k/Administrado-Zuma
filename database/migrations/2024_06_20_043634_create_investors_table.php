@@ -28,6 +28,7 @@ return new class extends Migration {
             $table->string('district', 2)->nullable();
             $table->string('address', 255)->nullable();
             $table->string('api_token', 60)->unique()->nullable();
+            $table->string('codigo')->unique()->nullable()->comment('Código único del inversionista');
             $table->enum('type', ['inversionista', 'cliente', 'mixto'])->default('inversionista');
             $table->integer('asignado')->default(0);
             $table->timestamps();

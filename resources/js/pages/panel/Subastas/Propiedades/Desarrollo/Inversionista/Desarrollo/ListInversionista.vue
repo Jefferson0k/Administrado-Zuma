@@ -166,19 +166,22 @@
 
         <Column header="">
             <template #body="{ data }">
-                <div class="flex gap-2 justify-center">
-                    <Button icon="pi pi-eye" rounded severity="info" variant="outlined" @click="verDetalle(data)" />
-
-                    <template v-if="data.estado === 'activa'">
-                        <Button icon="pi pi-cog" outlined rounded severity="contrast" @click="abrirConfiguracion(data)" />
-                        <Button icon="pi pi-pencil" rounded severity="warning" variant="outlined" @click="editarPrestamo(data)" />
-                        <Button icon="pi pi-trash" rounded severity="danger" variant="outlined" @click="eliminarPrestamo(data)" />
-                    </template>
-                    <template v-else>
-                        <Button icon="pi pi-cog" outlined rounded severity="contrast" disabled />
-                        <Button icon="pi pi-pencil" rounded severity="warning" variant="outlined" disabled />
-                        <Button icon="pi pi-trash" rounded severity="danger" variant="outlined" disabled />
-                    </template>
+                <div class="flex justify-center">
+                    <Menu 
+                        ref="menu" 
+                        :model="getMenuItems(data)" 
+                        :popup="true" 
+                        id="overlay_menu"
+                    />
+                    <Button 
+                        icon="pi pi-ellipsis-v" 
+                        severity="secondary" 
+                        variant="text" 
+                        rounded
+                        @click="toggleMenu($event, data)"
+                        aria-haspopup="true" 
+                        aria-controls="overlay_menu"
+                    />
                 </div>
             </template>
         </Column>
@@ -228,6 +231,60 @@
         </template>
     </Dialog>
 
+    <!-- Dialog para envío por email -->
+    <Dialog 
+        v-model:visible="showEmailDialog" 
+        header="Enviar por Email"
+        :style="{ width: '500px' }"
+        modal
+    >
+        <div class="p-4">
+            <div class="mb-4">
+                <label for="email" class="block text-sm font-medium mb-2">Correo electrónico:</label>
+                <InputText 
+                    id="email"
+                    v-model="emailAddress" 
+                    type="email" 
+                    placeholder="correo@ejemplo.com"
+                    class="w-full"
+                />
+            </div>
+            <div class="mb-4">
+                <label for="message" class="block text-sm font-medium mb-2">Mensaje <span class="text-red-500">*</span> (mínimo 10 caracteres):</label>
+                <Textarea 
+                    id="message"
+                    v-model="emailMessage" 
+                    rows="4" 
+                    placeholder="Por favor complete los datos faltantes de su perfil..."
+                    class="w-full"
+                    :class="{ 'p-invalid': emailMessage && emailMessage.length < 10 }"
+                />
+                <small v-if="emailMessage && emailMessage.length < 10" class="text-red-500">
+                    El mensaje debe tener al menos 10 caracteres ({{ emailMessage.length }}/10)
+                </small>
+            </div>
+            <div class="mb-4">
+                <label for="asunto" class="block text-sm font-medium mb-2">Asunto:</label>
+                <InputText 
+                    id="asunto"
+                    v-model="emailSubject" 
+                    placeholder="Completar datos del perfil"
+                    class="w-full"
+                />
+            </div>
+        </div>
+        
+        <template #footer>
+            <Button label="Cancelar" severity="secondary" @click="showEmailDialog = false" />
+            <Button 
+                label="Enviar" 
+                icon="pi pi-send" 
+                @click="sendByEmail" 
+                :disabled="!emailAddress || !emailMessage || emailMessage.length < 10 || !emailSubject"
+            />
+        </template>
+    </Dialog>
+
     <A4 v-if="showPrintDialog" :prestamosId="prestamosId" v-model:visible="showPrintDialog"
         @close="handleClosePrestamo" />
     <Congiguracion v-model:visible="showModal" :idPropiedad="prestamosId" @configuracion-guardada="getData" />
@@ -247,16 +304,20 @@ import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import MultiSelect from 'primevue/multiselect';
 import Dialog from 'primevue/dialog';
+import Menu from 'primevue/menu';
+import Textarea from 'primevue/textarea';
 import A4 from './A4.vue';
 import Congiguracion from './Congiguracion.vue';
 
 const toast = useToast();
 const dt = ref();
+const menu = ref();
 const products = ref([]);
 const selectedProducts = ref([]);
 const showPrintDialog = ref(false);
 const prestamosId = ref(null);
 const showModal = ref(false);
+const currentData = ref(null);
 
 // Estados para el MultiSelect y Dialog
 const selectedColumns = ref([]);
@@ -264,6 +325,12 @@ const showDetailDialog = ref(false);
 const dialogTitle = ref('');
 const dialogContent = ref('');
 const dialogData = ref(null);
+
+// Estados para el dialog de email
+const showEmailDialog = ref(false);
+const emailAddress = ref('');
+const emailMessage = ref('');
+const emailSubject = ref('Completar datos del perfil');
 
 const filters = ref({
     global: { value: null, matchMode: FilterMatchMode.CONTAINS }
@@ -278,6 +345,160 @@ const optionalColumns = ref([
     { field: 'garantia', header: 'Garantía' },
     { field: 'perfil_riesgo', header: 'Perfil de Riesgo' },
 ]);
+
+// Función para obtener los items del menú según el estado
+const getMenuItems = (data) => {
+    const baseItems = [
+        {
+            label: 'Ver Detalle',
+            icon: 'pi pi-eye',
+            command: () => verDetalle(data)
+        }
+    ];
+
+    if (data.estado === 'activa') {
+        baseItems.push(
+            {
+                separator: true
+            },
+            {
+                label: 'Configuración',
+                icon: 'pi pi-cog',
+                command: () => abrirConfiguracion(data)
+            },
+            {
+                label: 'Editar',
+                icon: 'pi pi-pencil',
+                command: () => editarPrestamo(data)
+            },
+            {
+                separator: true
+            },
+            {
+                label: 'Enviar por Email',
+                icon: 'pi pi-envelope',
+                command: () => abrirEmailDialog(data)
+            },
+            {
+                label: 'Descargar PDF',
+                icon: 'pi pi-download',
+                command: () => descargarPDF(data)
+            },
+            {
+                separator: true
+            },
+            {
+                label: 'Eliminar',
+                icon: 'pi pi-trash',
+                class: 'text-red-500',
+                command: () => eliminarPrestamo(data)
+            }
+        );
+    } else {
+        baseItems.push(
+            {
+                separator: true
+            },
+            {
+                label: 'Enviar por Email',
+                icon: 'pi pi-envelope',
+                command: () => abrirEmailDialog(data)
+            },
+            {
+                label: 'Descargar PDF',
+                icon: 'pi pi-download',
+                command: () => descargarPDF(data)
+            }
+        );
+    }
+
+    return baseItems;
+};
+
+// Función para mostrar/ocultar el menú
+const toggleMenu = (event, data) => {
+    currentData.value = data;
+    menu.value.toggle(event);
+};
+
+// Función para abrir el dialog de email
+const abrirEmailDialog = (data) => {
+    currentData.value = data;
+    emailAddress.value = '';
+    emailMessage.value = 'Estimado/a inversionista,\n\nEsperamos que se encuentre bien. Le escribimos para solicitar que complete algunos datos faltantes en su perfil de inversionista.\n\nPara completar su información, por favor haga clic en el siguiente botón:\n\n[BOTÓN DE ACCESO]\n\nGracias por su tiempo y confianza.\n\nSaludos cordiales,\nEquipo ZUMA';
+    emailSubject.value = 'Completar datos del perfil';
+    showEmailDialog.value = true;
+};
+
+// Función para enviar por email
+const sendByEmail = async () => {
+    if (!emailAddress.value) {
+        toast.add({ 
+            severity: 'warn',
+            summary: 'Atención',
+            detail: 'Por favor ingresa un correo electrónico',
+            life: 3000
+        });
+        return;
+    }
+
+    if (!emailMessage.value || emailMessage.value.length < 10) {
+        toast.add({ 
+            severity: 'warn',
+            summary: 'Atención',
+            detail: 'El mensaje debe tener al menos 10 caracteres',
+            life: 3000
+        });
+        return;
+    }
+
+    if (!emailSubject.value) {
+        toast.add({ 
+            severity: 'warn',
+            summary: 'Atención',
+            detail: 'Por favor ingresa un asunto',
+            life: 3000
+        });
+        return;
+    }
+
+    try {
+        const payload = {
+            emails: emailAddress.value,
+            mensaje: emailMessage.value,
+            asunto: emailSubject.value,
+            investor_id: currentData.value.investor_id // Agregar el investor_id
+        };
+
+        const response = await axios.post('/property/enviar-emails', payload);
+
+        toast.add({ 
+            severity: 'success',
+            summary: 'Éxito',
+            detail: response.data.message || 'Correo enviado correctamente.',
+            life: 3000
+        });
+        showEmailDialog.value = false;
+    } catch (error) {
+        const detail = error.response?.data?.message || 'No se pudo enviar el correo';
+        toast.add({ 
+            severity: 'error', 
+            summary: 'Error', 
+            detail,
+            life: 3000
+        });
+    }
+};
+
+// Función para descargar PDF
+const descargarPDF = (data) => {
+    toast.add({ 
+        severity: 'info', 
+        summary: 'Descarga', 
+        detail: `Descargando PDF del préstamo ${data.id}` 
+    });
+    // Lógica para descargar PDF
+};
 
 // Función para verificar si una columna está seleccionada
 const isColumnSelected = (fieldName) => {

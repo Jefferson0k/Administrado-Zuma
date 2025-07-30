@@ -5,20 +5,17 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Investor;
 use App\Models\BankAccount;
+use App\Models\PropertyReservation;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class NotificacionController extends Controller
 {
-    /**
-     * Obtiene las notificaciones pendientes para el inversionista autenticado
-     */
     public function list(Request $request): JsonResponse
     {
         try {
-            // Obtener el inversionista autenticado
             $investor = $request->user();
-            
+
             if (!$investor) {
                 return response()->json([
                     'success' => false,
@@ -28,22 +25,24 @@ class NotificacionController extends Controller
 
             $notifications = [];
 
-            // 1. Verificar datos personales faltantes
             $personalDataNotification = $this->checkPersonalData($investor);
             if ($personalDataNotification) {
                 $notifications[] = $personalDataNotification;
             }
 
-            // 2. Verificar cuenta bancaria
             $bankAccountNotification = $this->checkBankAccount($investor);
             if ($bankAccountNotification) {
                 $notifications[] = $bankAccountNotification;
             }
 
-            // 3. Verificar depósitos (si tienes esta lógica)
             $depositNotification = $this->checkDeposits($investor);
             if ($depositNotification) {
                 $notifications[] = $depositNotification;
+            }
+
+            $pendingInvestmentNotification = $this->checkPendingInvestment($investor);
+            if ($pendingInvestmentNotification) {
+                $notifications[] = $pendingInvestmentNotification;
             }
 
             return response()->json([
@@ -51,7 +50,6 @@ class NotificacionController extends Controller
                 'notifications' => $notifications,
                 'count' => count($notifications)
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -61,30 +59,24 @@ class NotificacionController extends Controller
         }
     }
 
-    /**
-     * Verifica si faltan datos personales por completar
-     */
     private function checkPersonalData(Investor $investor): ?array
     {
         $requiredFields = [
             'department' => 'departamento',
-            'province' => 'provincia', 
+            'province' => 'provincia',
             'district' => 'distrito',
             'document_front' => 'documento frontal',
             'document_back' => 'documento posterior'
         ];
-
         $missingFields = [];
-
         foreach ($requiredFields as $field => $label) {
             if (empty($investor->$field)) {
                 $missingFields[] = $label;
             }
         }
-
         if (!empty($missingFields)) {
             $missingText = implode(', ', $missingFields);
-            
+
             return [
                 'id' => 'personal_data',
                 'icon' => 'pi pi-user',
@@ -95,18 +87,12 @@ class NotificacionController extends Controller
                 'missing_fields' => array_keys($requiredFields)
             ];
         }
-
         return null;
     }
 
-    /**
-     * Verifica si el inversionista tiene al menos una cuenta bancaria
-     */
     private function checkBankAccount(Investor $investor): ?array
     {
-        $bankAccountsCount = BankAccount::where('investor_id', $investor->id)
-            ->where('status', 'active') // Asumiendo que tienen un status activo
-            ->count();
+        $bankAccountsCount = BankAccount::where('investor_id', $investor->id)->count();
 
         if ($bankAccountsCount === 0) {
             return [
@@ -118,17 +104,11 @@ class NotificacionController extends Controller
                 'priority' => 2
             ];
         }
-
         return null;
     }
 
-    /**
-     * Verifica si el inversionista tiene depósitos
-     * Ajusta esta lógica según tu modelo de depósitos
-     */
     private function checkDeposits(Investor $investor): ?array
     {
-        // Verificar si tiene balances o inversiones
         $hasBalance = $investor->balances()->where('amount', '>', 0)->exists();
         $hasInvestments = $investor->investments()->exists();
 
@@ -145,15 +125,29 @@ class NotificacionController extends Controller
 
         return null;
     }
-
-    /**
-     * Obtiene detalles específicos de datos faltantes
-     */
+    private function checkPendingInvestment(Investor $investor): ?array{
+        $count = PropertyReservation::where('investor_id', $investor->id)
+            ->where('status', 'pendiente')
+            ->count();
+        if ($count > 0) {
+            return [
+                'id' => 'pending_reservation',
+                'icon' => 'pi pi-clock',
+                'text' => $count === 1
+                    ? 'Tienes 1 reserva pendiente por completar. Confirma tu inversión para asegurar tu participación.'
+                    : "Tienes {$count} reservas pendientes por completar. Confirma tus inversiones para asegurar tu participación.",
+                'action' => 'Ver reservas',
+                'type' => 'reserva_pendiente',
+                'priority' => 4
+            ];
+        }
+        return null;
+    }
     public function getMissingData(Request $request): JsonResponse
     {
         try {
             $investor = $request->user();
-            
+
             if (!$investor) {
                 return response()->json([
                     'success' => false,
@@ -167,11 +161,10 @@ class NotificacionController extends Controller
                 'has_deposits' => $investor->balances()->where('amount', '>', 0)->exists()
             ];
 
-            // Verificar campos personales faltantes
             $personalFields = [
                 'department' => 'Departamento',
                 'province' => 'Provincia',
-                'district' => 'Distrito', 
+                'district' => 'Distrito',
                 'document_front' => 'Documento Frontal',
                 'document_back' => 'Documento Posterior'
             ];
@@ -187,7 +180,6 @@ class NotificacionController extends Controller
                 'missing_data' => $missingData,
                 'completion_percentage' => $this->calculateCompletionPercentage($investor)
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -196,16 +188,13 @@ class NotificacionController extends Controller
         }
     }
 
-    /**
-     * Calcula el porcentaje de completitud del perfil
-     */
     private function calculateCompletionPercentage(Investor $investor): float
     {
-        $totalFields = 8; // Campos básicos + campos adicionales
-        $completedFields = 3; // name, email, document (asumiendo que siempre están)
+        $totalFields = 8;
+        $completedFields = 3;
 
         $additionalFields = ['department', 'province', 'district', 'document_front', 'document_back'];
-        
+
         foreach ($additionalFields as $field) {
             if (!empty($investor->$field)) {
                 $completedFields++;
@@ -215,17 +204,11 @@ class NotificacionController extends Controller
         return round(($completedFields / $totalFields) * 100, 2);
     }
 
-    /**
-     * Marca una notificación como completada (opcional)
-     */
     public function markAsCompleted(Request $request): JsonResponse
     {
         $request->validate([
             'notification_id' => 'required|string'
         ]);
-
-        // Aquí podrías implementar lógica para marcar notificaciones como vistas
-        // por ejemplo, guardando en una tabla de notificaciones_vistas
 
         return response()->json([
             'success' => true,

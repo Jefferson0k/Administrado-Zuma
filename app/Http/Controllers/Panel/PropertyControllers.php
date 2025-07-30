@@ -11,6 +11,7 @@ use App\Http\Resources\Subastas\Property\PropertyReglaResource;
 use App\Http\Resources\Subastas\Property\PropertyResource;
 use App\Http\Resources\Subastas\Property\PropertyShowResource;
 use App\Http\Resources\Subastas\Property\PropertyUpdateResource;
+use App\Mail\MasiveEmail;
 use App\Models\Auction;
 use App\Models\Imagenes;
 use App\Models\PaymentSchedule;
@@ -29,6 +30,8 @@ use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
 class PropertyControllers extends Controller{
@@ -146,6 +149,73 @@ class PropertyControllers extends Controller{
             return response()->json(['error' => 'Propiedad no encontrada'], 404);
         }
         return new PropertyUpdateResource($property);
+    }
+    public function enviar(Request $request){
+        $validator = Validator::make($request->all(), [
+            'emails' => 'required|string',
+            'mensaje' => 'required|string|min:10',
+            'asunto' => 'required|string|max:255',
+            'investor_id' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Datos inválidos',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $emailsArray = $this->processEmails($request->emails);
+            if (empty($emailsArray)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontraron emails válidos'
+                ], 400);
+            }
+
+            $mensaje = $request->mensaje;
+            $asunto = $request->asunto;
+            $investorId = $request->investor_id;
+            
+            $enviados = 0;
+            $errores = [];
+
+            foreach ($emailsArray as $email) {
+                try {
+                    Mail::to($email)->send(new MasiveEmail($mensaje, $asunto, $investorId));
+                    $enviados++;
+                } catch (\Exception $e) {
+                    $errores[] = "Error enviando a {$email}: " . $e->getMessage();
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Proceso completado. {$enviados} emails enviados exitosamente",
+                'enviados' => $enviados,
+                'total' => count($emailsArray),
+                'errores' => $errores
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al procesar el envío: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    private function processEmails($emailsString){
+        $emails = preg_split('/[,;\s\n\r]+/', $emailsString);
+        $validEmails = [];
+        foreach ($emails as $email) {
+            $email = trim($email);
+            if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $validEmails[] = $email;
+            }
+        }
+        return array_unique($validEmails);
     }
     public function showCustumer($id){
         $config = PropertyConfiguracion::with('plazo')->find($id);
