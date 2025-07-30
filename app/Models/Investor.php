@@ -36,6 +36,7 @@ class Investor extends Authenticatable implements MustVerifyEmail{
         'api_token',
         'type',
         'asignado',
+        'codigo',
     ];
     protected $hidden = [
         'password',
@@ -73,5 +74,8 @@ class Investor extends Authenticatable implements MustVerifyEmail{
     }
     public function sendEmailVerificationNotification(){
         $this->notify(new InvestorEmailVerificationNotification());
+    }
+    public function codigoAsignado(){
+        return $this->hasOne(InvestorCode::class);
     }
 }

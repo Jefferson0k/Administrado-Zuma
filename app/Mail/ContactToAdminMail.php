@@ -10,15 +10,17 @@ class ContactToAdminMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public array $data;
+    public $contactData;
 
-    public function __construct(array $data){
-        $this->data = $data;
+    public function __construct($contactData)
+    {
+        $this->contactData = $contactData;
     }
 
-    public function build(){
-        return $this->subject('Nueva solicitud de contacto')
-                    ->view('emails.contact_to_admin')
-                    ->with('data', $this->data);
+    public function build()
+    {
+        return $this->subject('Nueva solicitud de contacto - ' . $this->contactData['interested_product'])
+                    ->view('emails.contact-to-admin')
+                    ->with('data', $this->contactData);
     }
 }

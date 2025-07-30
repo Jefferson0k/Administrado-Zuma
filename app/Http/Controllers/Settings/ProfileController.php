@@ -7,6 +7,7 @@ use App\Http\Requests\Email\UpdateCustomerEmailVerificationRequest;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
 use App\Models\Customer;
 use App\Models\Investor;
+use Carbon\Carbon;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -77,12 +78,10 @@ class ProfileController extends Controller
             ], 500);
         }
     }
-    public function emailVerification(UpdateCustomerEmailVerificationRequest $request, $id, $hash)
-    {
+    public function emailVerification(UpdateCustomerEmailVerificationRequest $request, $id, $hash){
         try {
             $validatedData = $request->validated();
-
-            // Verifica que la URL esté firmada correctamente y no haya expirado
+            
             $investor = Investor::find($id);
             if (!$investor) {
                 return response()->json([
@@ -91,10 +90,19 @@ class ProfileController extends Controller
                 ], 404);
             }
 
-            // Genera el hash esperado basado en el ID del usuario y el email
+            // Verificar expiración solo si se proporciona expires
+            if (isset($validatedData['expires'])) {
+                $expires = intval($validatedData['expires']);
+                if (Carbon::now()->timestamp > $expires) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'El enlace de verificación ha expirado.'
+                    ], 400);
+                }
+            }
+
             $expectedHash = sha1($investor->getEmailForVerification());
 
-            // Verifica si el hash coincide con el hash del email del usuario
             if (!hash_equals($expectedHash, $hash)) {
                 return response()->json([
                     'success' => false,
@@ -102,25 +110,22 @@ class ProfileController extends Controller
                 ], 400);
             }
 
-            // Verifica si el usuario ya ha verificado su email
             if ($investor->hasVerifiedEmail()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Correo ya esta verificado.'
-                ], 307);
+                ], 409);
             }
 
-            // Marca el email del usuario como verificado
             $investor->markEmailAsVerified();
-
-            // Lanza el evento de verificación
             event(new Verified($investor));
 
             return response()->json([
                 'success' => true,
                 'message' => 'Tu cuenta ha sido activada correctamente.',
                 'data' => $investor
-            ], 201);
+            ], 200);
+            
         } catch (\Throwable $th) {
             return response()->json([
                 'success' => false,

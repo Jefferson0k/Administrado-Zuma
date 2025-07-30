@@ -49,6 +49,7 @@ use Inertia\Inertia;
 Route::get('/', function () {
     return Inertia::render('Welcome');
 })->name('home');
+Route::get('/investors/{id}', [InvestorController::class, 'show']);
 
 Route::middleware(['auth', 'verified'])->group(function () {
     #PARA QUE CUANDO SE CREA UN USUARIO O MODIFICA SU PASSWORD LO REDIRECCIONE PARA QUE PUEDA ACTUALIZAR
@@ -129,6 +130,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/{id}/actualizar', [PropertyControllers::class, 'updateProperty'])->name('property.update');
         Route::delete('/{id}', [PropertyControllers::class, 'delete'])->name('property.delete');
         Route::get('/reglas/{id}/show', [PropertyControllers::class, 'showReglas']);
+        Route::post('/enviar-emails', [PropertyControllers::class, 'enviar']);
     });
     
     Route::get('/propiedad/{id}/cronograma', [PaymentScheduleController::class, 'getCronogramaPorPropiedad']);
