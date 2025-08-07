@@ -2,16 +2,21 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class VisitaProducto extends Model{
+    use HasFactory;
     protected $table = 'visitas_productos';
     protected $fillable = [
         'ip',
         'producto_id',
     ];
-    public function producto(): BelongsTo{
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+    public function producto(){
         return $this->belongsTo(Product::class, 'producto_id');
     }
 }
