@@ -4,7 +4,6 @@ import { Head, usePage } from '@inertiajs/vue3';
 import Password from './settings/Password.vue';
 import Message from 'primevue/message';
 import StatsWidget from '@/components/dashboard/StatsWidget.vue';
-
 const page = usePage();
 const mustReset = page.props.mustReset;
 // Obtener el usuario autenticado
