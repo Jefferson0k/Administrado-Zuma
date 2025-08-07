@@ -10,27 +10,47 @@ class ProductSeeder extends Seeder
 {
     public function run(): void
     {
-        // Producto 1: Hipoteca
+        // Producto 1: Factoring
+        $factoring = Product::create([
+            'nombre' => 'Factoring',
+            'descripcion' => 'Financiamiento a través de la compra de facturas por cobrar.'
+        ]);
+
+        ProductAccount::create([
+            'product_id' => $factoring->id,
+            'entidad' => 'BCP',
+            'numero_cuenta' => '001-1111111111',
+            'moneda' => 'PEN'
+        ]);
+
+        ProductAccount::create([
+            'product_id' => $factoring->id,
+            'entidad' => 'Interbank',
+            'numero_cuenta' => '002-2222222222',
+            'moneda' => 'USD'
+        ]);
+
+        // Producto 2: Hipotecas
         $hipoteca = Product::create([
-            'nombre' => 'Hipoteca',
+            'nombre' => 'Hipotecas',
             'descripcion' => 'Producto de inversión respaldado por hipotecas.'
         ]);
 
         ProductAccount::create([
             'product_id' => $hipoteca->id,
-            'entidad' => 'BCP',
-            'numero_cuenta' => '001-1234567890',
+            'entidad' => 'BBVA',
+            'numero_cuenta' => '003-3333333333',
             'moneda' => 'PEN'
         ]);
 
         ProductAccount::create([
             'product_id' => $hipoteca->id,
-            'entidad' => 'Interbank',
-            'numero_cuenta' => '002-9876543210',
+            'entidad' => 'Scotiabank',
+            'numero_cuenta' => '004-4444444444',
             'moneda' => 'USD'
         ]);
 
-        // Producto 2: Tasa Fija
+        // Producto 3: Tasa Fija
         $tasaFija = Product::create([
             'nombre' => 'Tasa Fija',
             'descripcion' => 'Inversión con tasa fija mensual garantizada.'
@@ -38,15 +58,15 @@ class ProductSeeder extends Seeder
 
         ProductAccount::create([
             'product_id' => $tasaFija->id,
-            'entidad' => 'BBVA',
-            'numero_cuenta' => '003-4567891230',
+            'entidad' => 'Banco Pichincha',
+            'numero_cuenta' => '005-5555555555',
             'moneda' => 'PEN'
         ]);
 
         ProductAccount::create([
             'product_id' => $tasaFija->id,
-            'entidad' => 'Scotiabank',
-            'numero_cuenta' => '004-3216549870',
+            'entidad' => 'MiBanco',
+            'numero_cuenta' => '006-6666666666',
             'moneda' => 'USD'
         ]);
     }

@@ -23,6 +23,7 @@ use App\Http\Controllers\Panel\InvestmentControllers;
 use App\Http\Controllers\Panel\InvestorController;
 use App\Http\Controllers\Panel\PaymentScheduleController;
 use App\Http\Controllers\Panel\PropertyInvestorController;
+use App\Http\Controllers\Panel\VisitaProductoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -41,7 +42,8 @@ Route::get('/contact/system-check', [ContactRequestController::class, 'systemChe
 Route::get('/contact/test-email', [ContactRequestController::class, 'testEmail']);
 Route::get('/investors/{id}', [InvestorController::class, 'show']);
 Route::put('/investors/{id}', [InvestorController::class, 'update']);
-
+Route::get('/visitas-producto', [VisitaProductoController::class, 'visitasPorProducto']);
+Route::post('/producto/{id}/click', [VisitaProductoController::class, 'registrar'])->name('producto.click');
 /*
 |--------------------------------------------------------------------------
 | RUTAS PROTEGIDAS (requieren login con Sanctum)
