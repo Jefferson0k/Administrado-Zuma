@@ -3,7 +3,7 @@ import AppLayout from '@/layout/AppLayout.vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import Password from './settings/Password.vue';
 import Message from 'primevue/message';
-import Button from 'primevue/button';
+import StatsWidget from '@/components/dashboard/StatsWidget.vue';
 
 const page = usePage();
 const mustReset = page.props.mustReset;
@@ -41,6 +41,7 @@ function getMotivationalMessage() {
 </script>
 
 <template>
+
   <Head title="Dashboard" />
   <div v-if="mustReset">
     <div>
@@ -48,13 +49,15 @@ function getMotivationalMessage() {
     </div>
   </div>
   <AppLayout v-else>
+    <StatsWidget />
+    <br>
     <div class="card">
       <!-- Saludo y nombre completo del usuario - Orden corregido: primero nombre, luego apellidos -->
       <h2>{{ getGreeting() }}, {{ user.name }}!</h2>
       <br>
       <!-- Mensaje motivacional con PrimeVue Message - Uso correcto del binding con ":" -->
       <Message severity="info">{{ motivationalMessage }}</Message>
-      
+
       <!-- Botón para realizar alguna acción -->
     </div>
   </AppLayout>

@@ -1,62 +1,83 @@
+<script setup>
+import { ref, onMounted } from 'vue'
+import axios from 'axios'
+// Este arreglo es solo para definir nombre y descripción (puedes traer esto también del backend si prefieres)
+const productos = ref([
+  {
+    id: 1,
+    nombre: 'Factoring',
+    descripcion: 'Compra de facturas para financiamiento.',
+    visitas: 0,
+    icono: 'pi-briefcase',
+    color: 'bg-orange-100',
+    textColor: 'text-orange-500',
+  },
+  {
+    id: 2,
+    nombre: 'Hipotecas',
+    descripcion: 'Inversión respaldada por garantías hipotecarias.',
+    visitas: 0,
+    icono: 'pi-home',
+    color: 'bg-blue-100',
+    textColor: 'text-blue-500',
+  },
+  {
+    id: 3,
+    nombre: 'Tasa Fija',
+    descripcion: 'Interés fijo mensual garantizado.',
+    visitas: 0,
+    icono: 'pi-percentage',
+    color: 'bg-green-100',
+    textColor: 'text-green-500',
+  },
+])
+
+// Llamada al backend para obtener el número de visitas
+async function cargarVisitas() {
+  try {
+    const response = await axios.get('/api/visitas-producto')
+    const visitas = response.data.data // arreglo de objetos: { producto_id, total }
+
+    // Actualizamos visitas en productos
+    productos.value.forEach(producto => {
+      const encontrado = visitas.find(v => v.producto_id === producto.id)
+      producto.visitas = encontrado ? encontrado.total : 0
+    })
+  } catch (error) {
+    console.error('Error cargando visitas', error)
+  }
+}
+
+onMounted(() => {
+  cargarVisitas()
+})
+</script>
+
 <template>
-    <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-        <div class="card mb-0">
-            <div class="flex justify-between mb-4">
-                <div>
-                    <span class="block text-muted-color font-medium mb-4">Orders</span>
-                    <div class="text-surface-900 dark:text-surface-0 font-medium text-xl">152</div>
-                </div>
-                <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
-                    <i class="pi pi-shopping-cart text-blue-500 !text-xl"></i>
-                </div>
+  <div class="grid grid-cols-12 gap-6">
+    <div
+      v-for="producto in productos"
+      :key="producto.id"
+      class="col-span-12 lg:col-span-6 xl:col-span-4"
+    >
+      <div class="card mb-0">
+        <div class="flex justify-between mb-4">
+          <div>
+            <span class="block text-muted-color font-medium mb-4">{{ producto.nombre }}</span>
+            <div class="text-surface-900 dark:text-surface-0 font-medium text-xl">
+              {{ producto.visitas }} Visitas
             </div>
-            <span class="text-primary font-medium">24 new </span>
-            <span class="text-muted-color">since last visit</span>
+          </div>
+          <div
+            class="flex items-center justify-center rounded-border"
+            :class="producto.color"
+            style="width: 2.5rem; height: 2.5rem"
+          >
+            <i class="pi !text-xl" :class="[producto.icono, producto.textColor]"></i>
+          </div>
         </div>
+        <span class="text-primary font-medium">{{ producto.descripcion }}</span>
+      </div>
     </div>
-    <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-        <div class="card mb-0">
-            <div class="flex justify-between mb-4">
-                <div>
-                    <span class="block text-muted-color font-medium mb-4">Revenue</span>
-                    <div class="text-surface-900 dark:text-surface-0 font-medium text-xl">$2.100</div>
-                </div>
-                <div class="flex items-center justify-center bg-orange-100 dark:bg-orange-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
-                    <i class="pi pi-dollar text-orange-500 !text-xl"></i>
-                </div>
-            </div>
-            <span class="text-primary font-medium">%52+ </span>
-            <span class="text-muted-color">since last week</span>
-        </div>
-    </div>
-    <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-        <div class="card mb-0">
-            <div class="flex justify-between mb-4">
-                <div>
-                    <span class="block text-muted-color font-medium mb-4">Customers</span>
-                    <div class="text-surface-900 dark:text-surface-0 font-medium text-xl">28441</div>
-                </div>
-                <div class="flex items-center justify-center bg-cyan-100 dark:bg-cyan-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
-                    <i class="pi pi-users text-cyan-500 !text-xl"></i>
-                </div>
-            </div>
-            <span class="text-primary font-medium">520 </span>
-            <span class="text-muted-color">newly registered</span>
-        </div>
-    </div>
-    <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-        <div class="card mb-0">
-            <div class="flex justify-between mb-4">
-                <div>
-                    <span class="block text-muted-color font-medium mb-4">Comments</span>
-                    <div class="text-surface-900 dark:text-surface-0 font-medium text-xl">152 Unread</div>
-                </div>
-                <div class="flex items-center justify-center bg-purple-100 dark:bg-purple-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
-                    <i class="pi pi-comment text-purple-500 !text-xl"></i>
-                </div>
-            </div>
-            <span class="text-primary font-medium">85 </span>
-            <span class="text-muted-color">responded</span>
-        </div>
-    </div>
+  </div>
 </template>
