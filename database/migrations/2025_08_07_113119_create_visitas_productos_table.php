@@ -13,12 +13,15 @@ return new class extends Migration
     {
         Schema::create('visitas_productos', function (Blueprint $table) {
             $table->id();
-            $table->string('ip');
             $table->unsignedBigInteger('producto_id');
+            $table->ipAddress('ip');
+            $table->string('user_agent')->nullable();
+            $table->string('fingerprint')->nullable();
             $table->timestamps();
-            $table->unique(['ip', 'producto_id']);
-            $table->foreign('producto_id')->references('id')->on('products')->onDelete('cascade');
+
+            $table->foreign('producto_id')->references('id')->on('products');
         });
+
 
     }
 
