@@ -11,6 +11,8 @@ class VisitaProducto extends Model{
     protected $fillable = [
         'ip',
         'producto_id',
+        'user_agent',
+        'fingerprint'
     ];
     protected $casts = [
         'created_at' => 'datetime',
