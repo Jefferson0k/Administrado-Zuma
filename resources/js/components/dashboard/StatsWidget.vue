@@ -1,7 +1,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
-// Este arreglo es solo para definir nombre y descripción (puedes traer esto también del backend si prefieres)
+
+const totalVisitas = ref(0)
+
 const productos = ref([
   {
     id: 1,
@@ -32,13 +34,12 @@ const productos = ref([
   },
 ])
 
-// Llamada al backend para obtener el número de visitas
 async function cargarVisitas() {
   try {
     const response = await axios.get('/api/visitas-producto')
-    const visitas = response.data.data // arreglo de objetos: { producto_id, total }
+    const visitas = response.data.data
+    totalVisitas.value = response.data.total_visitas // NUEVO
 
-    // Actualizamos visitas en productos
     productos.value.forEach(producto => {
       const encontrado = visitas.find(v => v.producto_id === producto.id)
       producto.visitas = encontrado ? encontrado.total : 0
@@ -55,11 +56,27 @@ onMounted(() => {
 
 <template>
   <div class="grid grid-cols-12 gap-6">
-    <div
-      v-for="producto in productos"
-      :key="producto.id"
-      class="col-span-12 lg:col-span-6 xl:col-span-4"
-    >
+    <!-- Card global -->
+    <div class="col-span-12 lg:col-span-6 xl:col-span-3">
+      <div class="card mb-0">
+        <div class="flex justify-between mb-4">
+          <div>
+            <span class="block text-muted-color font-medium mb-4">Visitas Totales</span>
+            <div class="text-surface-900 dark:text-surface-0 font-medium text-xl">
+              {{ totalVisitas }} Visitas
+            </div>
+          </div>
+          <div class="flex items-center justify-center rounded-border bg-purple-100"
+            style="width: 2.5rem; height: 2.5rem">
+            <span class="text-purple-500 font-bold text-xl">Z</span>
+          </div>
+        </div>
+        <span class="text-primary font-medium">Cantidad total de visitas a todos los productos.</span>
+      </div>
+    </div>
+
+    <!-- Cards por producto -->
+    <div v-for="producto in productos" :key="producto.id" class="col-span-12 lg:col-span-6 xl:col-span-3">
       <div class="card mb-0">
         <div class="flex justify-between mb-4">
           <div>
@@ -68,11 +85,8 @@ onMounted(() => {
               {{ producto.visitas }} Visitas
             </div>
           </div>
-          <div
-            class="flex items-center justify-center rounded-border"
-            :class="producto.color"
-            style="width: 2.5rem; height: 2.5rem"
-          >
+          <div class="flex items-center justify-center rounded-border" :class="producto.color"
+            style="width: 2.5rem; height: 2.5rem">
             <i class="pi !text-xl" :class="[producto.icono, producto.textColor]"></i>
           </div>
         </div>

@@ -47,9 +47,10 @@ class VisitaProductoController extends Controller
             ->selectRaw('COUNT(*) as total')
             ->groupBy('producto_id')
             ->get();
-
+        $totalGlobal = VisitaProducto::count();
         return response()->json([
             'success' => true,
+            'total_visitas' => $totalGlobal,
             'data' => $visitas
         ]);
     }
