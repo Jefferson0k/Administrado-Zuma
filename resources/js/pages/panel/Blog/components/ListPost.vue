@@ -17,7 +17,7 @@
     </template>
     <Column selectionMode="multiple" style="width: 3rem" :exportable="false" />
     <Column field="titulo" header="Titulo" sortable />
-    <Column field="resumen" header="Resumen" sortable />
+    <!--<Column field="resumen" header="Resumen" sortable />-->
     <Column field="contenido" header="Contenido" sortable />
     <Column field="categories" header="Categorías" sortable>
       <template #body="{ data }">

@@ -32,11 +32,14 @@
         <MultiSelect v-model="post.category_id" display="chip" :options="categories" optionLabel="nombre" optionValue="id" filter placeholder="Seleccione la categoría" :maxSelectedLabels="3" class="w-full" />
       </div>
 
-      <!-- Resumen -->
-      <div class="col-span-2">
+      <!-- Resumen
+        <div class="col-span-2">
         <label class="block font-semibold mb-2">Resumen <span class="text-red-500">*</span></label>
         <InputText v-model="post.resumen" placeholder="Ingresa el resumen" class="w-full" />
       </div>
+       
+      -->
+     
 
       <!-- Contenido -->
       <div class="col-span-2">
