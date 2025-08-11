@@ -19,6 +19,7 @@ return new class extends Migration
             $table->text('contenido')->nullable();
             $table->string('resumen')->nullable();
             $table->string('imagen')->nullable();
+            $table->string('referencias')->nullable();
             $table->foreignId('state_id')->constrained();
             $table->dateTime('fecha_programada')->nullable();
             $table->dateTime('fecha_publicacion')->nullable();
