@@ -119,6 +119,34 @@ const model = computed(() => [
                 icon: 'pi pi-fw pi-external-link',
                 url: 'https://backoffice.zuma.com.pe/',
                 target: '_blank'
+            },
+                   {
+                label: 'Blog',
+                icon: 'pi pi-fw pi-sparkles',
+                items: [
+                    {
+                        label: 'Categorias',
+                        icon: 'pi pi-fw pi-objects-column',
+                        to: '/blog/categorias'
+                    },
+                     {
+                        label: 'Registro',
+                        icon: 'pi pi-fw pi-file-plus',
+                        to: '/blog/registro'
+                    },
+                     {
+                        label: 'Posts',
+                        icon: 'pi pi-fw pi-list',
+                        to: '/blog/posts'
+                    },
+                    {
+                        label: 'Seguimiento',
+                        icon: 'pi pi-fw pi-star',
+                        to: '/blog/seguimiento'
+                    },
+                   
+                      
+                ]
             }
         ]
     },

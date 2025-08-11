@@ -43,6 +43,7 @@ use App\Http\Controllers\Web\TasasFijas\PaymentFrequenciesWebController;
 use App\Http\Controllers\Web\TasasFijas\RateTypeWebController;
 use App\Http\Controllers\Web\TasasFijas\TermPlanWebController;
 use App\Http\Controllers\Web\UsuarioWebController;
+use App\Http\Controllers\BlogController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -257,6 +258,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('bids/{id}', [BidControllers::class, 'show']);
 
     Route::get('/dni/{dni?}', [ConsultasDni::class, 'consultar']);
+
+    Route::get('/blog/registro', [BlogController::class, 'create']);
+    Route::get('/blog/seguimiento', [BlogController::class, 'seguimiento']);
+    Route::get('/blog/categorias', [BlogController::class, 'categorias']);
+    Route::get('/blog/posts', [BlogController::class, 'index']);
+
 
 });
 

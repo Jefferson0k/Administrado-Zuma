@@ -33,6 +33,11 @@ class BlogController extends Controller
         ]);
     }
 
+     
+    public function create(){
+        return Inertia::render('panel/Blog/CreatePost');
+    }
+
     public function seguimiento(){
         return Inertia::render('panel/Blog/Seguimiento');
     }

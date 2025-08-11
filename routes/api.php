@@ -24,6 +24,7 @@ use App\Http\Controllers\Panel\InvestorController;
 use App\Http\Controllers\Panel\PaymentScheduleController;
 use App\Http\Controllers\Panel\PropertyInvestorController;
 use App\Http\Controllers\Panel\VisitaProductoController;
+use App\Http\Controllers\BlogController;
 
 /*
 |--------------------------------------------------------------------------
@@ -134,3 +135,17 @@ Route::prefix('online')->group(function () {
 });
 
 Route::get('/Tipo-Cambio-Sbs', [TipoCambioSbs::class, 'TipoCambioSbs']);
+Route::post('/blog/guardar', [BlogController::class, 'guardar']);
+Route::get('/blog/lista', [BlogController::class, 'lista']);
+Route::get('/blog/productos', [BlogController::class, 'productos']);
+Route::delete('/blog/eliminar/{id}', [BlogController::class, 'eliminar']);
+Route::post('/blog/actualizar/{id}', [BlogController::class, 'actualizar']);
+Route::get('/blog/publicar/{user_id}/{post_id}/{state_id}', [BlogController::class, 'publicar']);
+
+Route::get('/blog/publicaciones', [BlogController::class, 'publicaciones']);
+Route::post('/blog/guardar-rating', [BlogController::class, 'guardar_rating']);
+Route::post('/blog/guardar-categoria', [BlogController::class, 'guardar_categoria']);
+//Route::post('/blog/actualizar-categoria/{id}', [BlogController::class, 'actualizar_categoria']);
+Route::get('/blog/eliminar-categoria/{id}', [BlogController::class, 'eliminar_categoria']);
+Route::get('/blog/listar-categoria', [BlogController::class, 'listar_categoria']);
+Route::get('/blog/listar-categoria-filtrada/{id}', [BlogController::class, 'listar_categoria_filtrada']);
