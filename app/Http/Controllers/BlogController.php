@@ -246,6 +246,30 @@ class BlogController extends Controller
         return response()->json($posts);
     }
 
+
+     public function showPost(){
+        $posts = Post::with(['ratings', 'categories'])->where('state_id', 2)->get();
+
+        // Para cada post, obtenemos artículos relacionados por categoría
+        foreach ($posts as $post) {
+            $categoryIds = $post->categories->pluck('id')->toArray();
+
+            // Busca otros posts en las mismas categorías, excluyendo el actual
+            $related = Post::where('state_id', 2)
+                ->where('id', '!=', $post->id)
+                ->whereHas('categories', function ($query) use ($categoryIds) {
+                    $query->whereIn('categories.id', $categoryIds);
+                })
+                ->limit(5)
+                ->get();
+
+            // Agrega los relacionados al post
+            $post->related_articles = $related;
+        }
+
+        return response()->json($posts);
+    }
+
     private function getRealIp(Request $request): string
     {
         $keys = [
