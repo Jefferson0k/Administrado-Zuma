@@ -58,7 +58,8 @@ class InvestorEmailVerificationNotification extends VerifyEmail
             $query = parse_url($verificationUrl, PHP_URL_QUERY);
 
             // Construir la URL del frontend Vue
-            $frontendUrl = env('CLIENT_APP_URL', 'http://localhost:5173') . '/email-verify';
+            $frontendUrl = env('CLIENT_APP_URL', 'https://zuma.com.pe') . '/email/verify/' . '?' . parse_url($verificationUrl, PHP_URL_QUERY);
+            $frontendUrl = env('CLIENT_APP_URL', 'https://zuma.com.pe') . '/email/verify/';
             if ($query) {
                 $frontendUrl .= '?' . $query;
             }
