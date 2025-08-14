@@ -10,7 +10,7 @@ class PropertyLoanDetailListResource extends JsonResource
     public function toArray(Request $request): array
     {
         $property = $this->property;
-        $config = $property->ultimaConfiguracion;
+        $config = $property?->ultimaConfiguracion;
         $investor = $this->investor;
 
         return [
@@ -26,17 +26,19 @@ class PropertyLoanDetailListResource extends JsonResource
             'empresa_tasadora' => $this->empresa_tasadora,
             'config_id' => $this->config_id,
 
-            // Datos relacionados
+            // Datos relacionados con verificaciones adicionales
             'documento' => $investor?->document ?? 'Sin documento',
-            'cliente' => $investor ? "{$investor->name} {$investor->first_last_name} {$investor->second_last_name}" : 'Sin nombre',
-            'propiedad' => $property?->nombre,
-            'valor' => $property?->valor_estimado,
-            'requerido' => $property?->valor_requerido,
-            'subasta' => $property?->valor_subasta ?? 0,
+            'cliente' => $investor 
+                ? trim("{$investor->name} {$investor->first_last_name} {$investor->second_last_name}")
+                : 'Sin nombre',
+            'propiedad' => $property?->nombre ?? 'Sin nombre de propiedad',
+            'valor' => $property?->valor_estimado ?? '0.00',
+            'requerido' => $property?->valor_requerido ?? '0.00',
+            'subasta' => $property?->valor_subasta ?? '0.00',
             'riesgo' => $config?->riesgo ?? 'No asignado',
             'cronograma' => $config?->tipo_cronograma ?? 'No definido',
             'plazo' => $config?->plazo?->nombre ?? 'Sin plazo asignado',
-            'estado' => $property?->estado,
+            'estado' => $property?->estado ?? 'sin_estado',
             'estado_nombre' => match ($property?->estado) {
                 'en_subasta' => 'En subasta',
                 'activa' => 'Activa',
@@ -46,6 +48,7 @@ class PropertyLoanDetailListResource extends JsonResource
                 'adquirido' => 'Adquirido',
                 'pendiente' => 'Pendiente',
                 'espera' => 'Espera',
+                null => 'Sin estado',
                 default => 'Estado desconocido',
             },
         ];
