@@ -141,6 +141,8 @@ Route::get('/blog/productos', [BlogController::class, 'productos']);
 Route::delete('/blog/eliminar/{id}', [BlogController::class, 'eliminar']);
 Route::post('/blog/actualizar/{id}', [BlogController::class, 'actualizar']);
 Route::get('/blog/publicar/{user_id}/{post_id}/{state_id}', [BlogController::class, 'publicar']);
+Route::get('/blog/showpost/{id}', [BlogController::class, 'showPost']);
+
 
 Route::get('/blog/publicaciones', [BlogController::class, 'publicaciones']);
 Route::post('/blog/guardar-rating', [BlogController::class, 'guardar_rating']);
