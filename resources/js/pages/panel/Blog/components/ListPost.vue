@@ -66,11 +66,6 @@
           optionValue="id" filter placeholder="Seleccione la categoría" :maxSelectedLabels="3" class="w-full" />
       </div>
       <div>
-        <label class="block font-bold mb-3">Resumen <span class="text-red-500">*</span></label>
-        <InputText v-model="editForm.resumen" :useGrouping="false" placeholder="Ingresa el resumen" inputId="resumen"
-          class="w-full" />
-      </div>
-      <div>
         <label class="block font-bold mb-3">Contenido <span class="text-red-500">*</span></label>
         <QuillEditor v-model:content="editForm.contenido" contentType="html" placeholder="Ingresa el contenido"
           class="w-full" />
