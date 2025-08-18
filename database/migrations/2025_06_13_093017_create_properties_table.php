@@ -15,9 +15,11 @@ return new class extends Migration {
             $table->string('direccion')->nullable();
             $table->string('nombre');
             $table->text('descripcion')->nullable();
-            $table->decimal('valor_estimado', 15, 2)->nullable();
-            $table->decimal('valor_subasta', 15, 2)->nullable();
-            $table->decimal('valor_requerido', 15, 2);
+            
+            $table->bigInteger('valor_estimado')->default(0);
+            $table->bigInteger('valor_subasta')->default(0);
+            $table->bigInteger('valor_requerido')->default(0);
+
             $table->foreignId('currency_id')->constrained('currencies');
             $table->enum('estado', [
                 'en_subasta', 'subastada', 'programada', 'desactivada',

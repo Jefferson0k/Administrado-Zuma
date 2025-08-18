@@ -75,22 +75,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/depositos', [DepositosWebController::class, 'views'])->name('depositos.views');
         Route::get('/empresas', [EmpresasWebController::class, 'views'])->name('empresas.views');
         Route::get('/pagos', [PagosWebController::class, 'views'])->name('pagos.views');
-        Route::get('/planes', [TermPlanWebController::class, 'views'])->name('pagos.views');
-        Route::get('/tipos', [RateTypeWebController::class, 'views'])->name('pagos.views');
+        Route::get('/planes', [TermPlanWebController::class, 'views'])->name('planes.views');
+        Route::get('/tipos', [RateTypeWebController::class, 'views'])->name('tipos.views');
     });
 
     #RUTAS DE WEB EN LA PARTE DE SUBASTA HIPOTECARIA
     Route::prefix('subasta-hipotecas')->group(function(){
         Route::get('/reserva', [CuentasBancariasWebControler::class, 'views'])->name('cuentas-bancarias.subasta.views');
-        Route::get('/depositos', [DepositosWebControler::class, 'views'])->name('depositos.views');
+        Route::get('/depositos', [DepositosWebControler::class, 'views'])->name('reserva.views');
         Route::get('/historicos', [HistoricoWebController::class, 'views'])->name('historicos.views');
-        Route::get('/pagos', [PagosWebControler::class, 'views'])->name('pagos.views');
+        Route::get('/pagos', [PagosWebControler::class, 'views'])->name('pago.views');
         Route::get('/propiedades', [PropiedadesWebControler::class, 'views'])->name('propiedades.views');
         Route::get('/retiros', [RetirosWebControler::class, 'views'])->name('retiros.views');
         Route::get('/tipo-cambio', [TipoCambioWebControler::class, 'views'])->name('tipo-cambio.views');
-        Route::get('/reglas', [ReglasWebController::class, 'views'])->name('tipo-cambio.views');
+        Route::get('/reglas', [ReglasWebController::class, 'views'])->name('reglas.views');
         Route::get('/inversionista/pagos', [InversionistasWebController::class, 'index']);
-        Route::get('/inversionista', [InversionistasWebController::class, 'views'])->name('tipo-cambio.views');
+        Route::get('/inversionista', [InversionistasWebController::class, 'views'])->name('inversionista.views');
         Route::get('/cliente/pagos', [ClienteWebController::class, 'views']);
     });
 
@@ -124,10 +124,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/', [PropertyControllers::class, 'index'])->name('property.index');
         Route::get('/reglas', [PropertyControllers::class, 'listReglas'])->name('property.listReglas');
         Route::post('/', [PropertyControllers::class, 'store'])->name('property.store');
-        Route::get('/{id}', [PropertyControllers::class, 'show'])->name('property.show');
+        Route::get('/{id}', [PropertyControllers::class, 'show'])->name('propertys.shows');
         Route::put('/{id}/estado', [PropertyControllers::class, 'update'])->name('property.update');
-        Route::get('/{id}/show', [PropertyControllers::class, 'showProperty'])->name('property.show');
-        Route::put('/{id}/actualizar', [PropertyControllers::class, 'updateProperty'])->name('property.update');
+        Route::get('/{id}/show', [PropertyControllers::class, 'showProperty'])->name('show.show');
+        Route::put('/{id}/actualizar', [PropertyControllers::class, 'updateProperty'])->name('actualizar.update');
         Route::delete('/{id}', [PropertyControllers::class, 'delete'])->name('property.delete');
         Route::get('/reglas/{id}/show', [PropertyControllers::class, 'showReglas']);
         Route::post('/enviar-emails', [PropertyControllers::class, 'enviar']);

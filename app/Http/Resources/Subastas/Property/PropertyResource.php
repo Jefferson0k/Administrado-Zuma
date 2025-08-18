@@ -18,9 +18,9 @@ class PropertyResource extends JsonResource
             'provincia' => $this->provincia,
             'direccion' => $this->direccion,
             'descripcion' => $this->descripcion,
-            'valor_estimado' => $this->valor_estimado,
-            'valor_subasta' => $this->valor_subasta ?? 0,
-            'valor_requerido' => $this->valor_requerido ?? 0,
+            'valor_estimado' => $this->valor_estimado->getAmount() / 100,
+            'valor_subasta'  => $this->valor_subasta?->getAmount() / 100,
+            'valor_requerido'=> $this->valor_requerido->getAmount() / 100,
             'Moneda' => $this->currency->codigo,
             'estado' => $this->estado,
             'estado_nombre' => match ($this->estado) {
@@ -37,7 +37,7 @@ class PropertyResource extends JsonResource
                 default => 'Estado desconocido',
             },
             'foto' => $this->getImagenes(),
-            'tea' => optional($this->configuracion)->tea, // 👈 Aquí se agrega la TEA
+            'tea' => optional($this->configuracion)->tea,
         ];
     }
 

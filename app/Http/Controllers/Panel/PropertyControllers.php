@@ -13,7 +13,7 @@ use App\Http\Resources\Subastas\Property\PropertyShowResource;
 use App\Http\Resources\Subastas\Property\PropertyUpdateResource;
 use App\Mail\MasiveEmail;
 use App\Models\Auction;
-use App\Models\Imagenes;
+use App\Models\Currency;
 use App\Models\PaymentSchedule;
 use App\Models\Property;
 use App\Models\PropertyConfiguracion;
@@ -29,21 +29,44 @@ use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
-
+use Money\Money;
+use Money\Currency as MoneyCurrency;
 class PropertyControllers extends Controller{
-    public function store(StorePropertyRequest $request){
+    public function store(StorePropertyRequest $request)
+    {
         $data = $request->validated();
-        $property = Property::create($data);
-        if ($request->hasFile('imagenes')) {
-            $this->handleImagenesUpload($request, $property->id);
+        
+        // Asegurar que currency_id existe
+        if (!$data['currency_id']) {
+            $data['currency_id'] = Currency::where('codigo', 'PEN')->first()->id;
         }
+        
+        $property = Property::create($data);
+        
+        if ($request->hasFile('imagenes')) {
+            foreach ($request->file('imagenes') as $imagen) {
+                $filename = Str::uuid() . '.' . $imagen->getClientOriginalExtension();
+                $path = "propiedades/{$property->id}/{$filename}";
+                Storage::disk('s3')->put($path, file_get_contents($imagen));
+                $property->images()->create([
+                    'imagen' => $filename,
+                    'path'   => $path,
+                ]);
+            }
+        }
+
+        // Refrescar desde BD para asegurar que tenemos todos los datos
+        $property = Property::with(['images', 'currency'])->find($property->id);
+        
         return response()->json([
-            'message' => 'Propiedad registrada exitosamente.',
-            'property' => $property->load('images'),
+            'success'  => true,
+            'message'  => 'Propiedad registrada exitosamente.',
+            'property' => $property,
         ], 201);
     }
     public function showProperty(string $id){
@@ -52,41 +75,52 @@ class PropertyControllers extends Controller{
     }
     public function updateProperty(StorePropertyRequest $request, string $id){
         $property = Property::findOrFail($id);
-        $property->update($request->validated());        
+        $property->update($request->validated());
         if ($request->has('imagenes_eliminar')) {
             $imagenesAEliminar = $request->input('imagenes_eliminar');
-            
             foreach ($imagenesAEliminar as $imagenId) {
                 $image = $property->images()->find($imagenId);
                 if ($image) {
-                    $imagePath = public_path("Propiedades/{$property->id}/{$image->imagen}");
-                    if (File::exists($imagePath)) {
-                        File::delete($imagePath);
+                    $imagePath = "propiedades/{$property->id}/{$image->imagen}";
+                    if (Storage::disk('s3')->exists($imagePath)) {
+                        Storage::disk('s3')->delete($imagePath);
                     }
                     $image->delete();
                 }
             }
         }
         if ($request->hasFile('imagenes')) {
-            $this->handleImagenesUpload($request, $property->id);
+            foreach ($request->file('imagenes') as $imagen) {
+                $filename = Str::uuid() . '.' . $imagen->getClientOriginalExtension();
+                $path = "propiedades/{$property->id}/{$filename}";
+                Storage::disk('s3')->put($path, file_get_contents($imagen));
+                $property->images()->create([
+                    'imagen' => $filename,
+                    'path'   => $path,
+                ]);
+            }
         }
-        return response()->json(['message' => 'Propiedad actualizada correctamente.'], 200);
+        return response()->json([
+            'success' => true,
+            'message' => 'Propiedad actualizada correctamente.'
+        ], 200);
     }
     public function delete(string $id){
         $property = Property::findOrFail($id);
         foreach ($property->images as $image) {
-            $imagePath = public_path("Propiedades/{$property->id}/{$image->imagen}");
-            if (File::exists($imagePath)) {
-                File::delete($imagePath);
+            $imagePath = "propiedades/{$property->id}/{$image->imagen}";
+            if (Storage::disk('s3')->exists($imagePath)) {
+                Storage::disk('s3')->delete($imagePath);
             }
             $image->delete();
         }
-        $directory = public_path("Propiedades/{$property->id}");
-        if (File::isDirectory($directory)) {
-            File::deleteDirectory($directory);
-        }
+        $directory = "propiedades/{$property->id}";
+        Storage::disk('s3')->deleteDirectory($directory);
         $property->delete();
-        return response()->json(['message' => 'Propiedad eliminada correctamente.'], 200);
+        return response()->json([
+            'success' => true,
+            'message' => 'Propiedad eliminada correctamente.'
+        ], 200);
     }
     public function index(Request $request){
         try {
@@ -124,9 +158,9 @@ class PropertyControllers extends Controller{
                         'property.currency',
                         'plazo'
                     ])
-                    ->where('estado', 1) // Solo configuraciones activas
+                    ->where('estado', 1)
                     ->whereHas('property', function ($q) {
-                        $q->where('estado', 'activa'); // Solo si la propiedad está activa
+                        $q->where('estado', 'activa');
                     })
                 )
                 ->through([
@@ -226,18 +260,22 @@ class PropertyControllers extends Controller{
     }
     public function update(PropertyUpdateRequest $request, $id){
         DB::beginTransaction();
-
         try {
-            $property = Property::findOrFail($id);
-
-            // Buscar configuración por estado (1 o 2)
+            $property = Property::with('currency')->findOrFail($id);
+            if (!$request->filled('tea') || !$request->filled('tem')) {
+                return response()->json([
+                    'message' => 'TEM y TEA son requeridos',
+                    'errors' => [
+                        'tea' => !$request->filled('tea') ? ['El campo TEA es requerido'] : [],
+                        'tem' => !$request->filled('tem') ? ['El campo TEM es requerido'] : [],
+                    ]
+                ], 422);
+            }
             $existingConfig = PropertyConfiguracion::where('property_id', $property->id)
                 ->where('estado', $request->estado_configuracion)
                 ->latest()
                 ->first();
-
             if (!$existingConfig) {
-                // Crear nueva configuración
                 $config = PropertyConfiguracion::create([
                     'property_id' => $property->id,
                     'deadlines_id' => $request->deadlines_id,
@@ -247,11 +285,8 @@ class PropertyControllers extends Controller{
                     'riesgo' => $request->riesgo,
                     'estado' => $request->estado_configuracion,
                 ]);
-
-                // Sumar 1 al contador de configuraciones
                 $property->increment('config_total');
             } else {
-                // Actualizar configuración existente
                 $existingConfig->update([
                     'deadlines_id' => $request->deadlines_id,
                     'tea' => $request->tea,
@@ -259,23 +294,22 @@ class PropertyControllers extends Controller{
                     'tipo_cronograma' => $request->tipo_cronograma,
                     'riesgo' => $request->riesgo,
                 ]);
-
                 $config = $existingConfig;
             }
-
             $config->load(['plazo', 'property']);
-
-            // Crear o actualizar PropertyInvestor
+            $valorRequeridoMoney = $property->valor_requerido;
+            $valorRequeridoCentavos = $valorRequeridoMoney->getAmount(); // Ya está en centavos
             $existingInvestor = PropertyInvestor::where('property_id', $property->id)
                 ->where('config_id', $config->id)
                 ->first();
 
             if ($existingInvestor) {
                 $existingInvestor->update([
-                    'amount' => $property->valor_requerido,
+                    'amount' => $valorRequeridoCentavos, // Guardar en centavos
                     'status' => 'pendiente',
                 ]);
 
+                // Eliminar cronograma anterior
                 PaymentSchedule::where('property_investor_id', $existingInvestor->id)->delete();
                 $propertyInvestor = $existingInvestor;
             } else {
@@ -283,7 +317,7 @@ class PropertyControllers extends Controller{
                     'property_id' => $property->id,
                     'investor_id' => null,
                     'config_id' => $config->id,
-                    'amount' => $property->valor_requerido,
+                    'amount' => $valorRequeridoCentavos, // Guardar en centavos
                     'status' => 'pendiente',
                 ]);
             }
@@ -291,7 +325,7 @@ class PropertyControllers extends Controller{
             // Generar cronograma
             $this->generatePaymentScheduleByType($propertyInvestor->id, $config);
 
-            // Si ya tiene 2 configuraciones distintas, cambiar estado a activa
+            // Si ya tiene 2 configuraciones distintas, cambiar estado a completo
             if ($property->config_total >= 2 && $property->estado !== 'completo') {
                 $property->estado = 'completo';
                 $property->save();
@@ -301,7 +335,7 @@ class PropertyControllers extends Controller{
 
             return response()->json([
                 'message' => 'Configuración registrada correctamente.',
-                'property' => $property,
+                'property' => $property->fresh()->load('currency'),
                 'property_investor_id' => $propertyInvestor->id,
             ]);
 
@@ -314,47 +348,62 @@ class PropertyControllers extends Controller{
             ], 500);
         }
     }
-    private function generatePaymentScheduleByType($propertyInvestorId, $config)
-    {
+    private function generatePaymentScheduleByType($propertyInvestorId, $config){
         $deadline = $config->plazo;
-
         if (!$deadline) {
             throw new \Exception('No se encontró configuración o plazo asociado a la propiedad.');
         }
-
         $property = $config->property;
-
-        // Asignar temporalmente los valores de configuración
         $property->tem = $config->tem;
         $property->tea = $config->tea;
         $property->tipo_cronograma = $config->tipo_cronograma;
-
-        // Escoger el servicio correcto
         if ($property->tipo_cronograma === 'americano') {
             $service = new CreditSimulationAmericanoService();
         } else {
             $service = new CreditSimulationService();
         }
-
         $simulation = $service->generate($property, $deadline, 1, $deadline->duracion_meses);
-        $pagos = $simulation['cronograma_final']['pagos'];
-
-        // Crear cronograma
-        foreach ($pagos as $pago) {
-            PaymentSchedule::create([
-                'property_investor_id' => $propertyInvestorId,
-                'cuota' => $pago['cuota'],
-                'vencimiento' => Carbon::createFromFormat('d/m/Y', $pago['vcmto'])->format('Y-m-d'),
-                'saldo_inicial' => (float) str_replace(',', '', $pago['saldo_inicial']),
-                'capital' => (float) str_replace(',', '', $pago['capital']),
-                'intereses' => (float) str_replace(',', '', $pago['interes']),
-                'cuota_neta' => (float) str_replace(',', '', $pago['cuota_neta']),
-                'igv' => (float) str_replace(',', '', $pago['igv']),
-                'total_cuota' => (float) str_replace(',', '', $pago['total_cuota']),
-                'saldo_final' => (float) str_replace(',', '', $pago['saldo_final']),
-                'estado' => 'pendiente',
-            ]);
+        if (!isset($simulation['cronograma_final']['pagos']) || !is_array($simulation['cronograma_final']['pagos'])) {
+            throw new \Exception('La simulación no generó un cronograma válido.');
         }
+
+        $pagos = $simulation['cronograma_final']['pagos'];
+        foreach ($pagos as $pago) {
+            try {
+                $fechaVencimiento = Carbon::createFromFormat('d/m/Y', $pago['vcmto']);
+                PaymentSchedule::create([
+                    'property_investor_id' => $propertyInvestorId,
+                    'cuota' => (int) $pago['cuota'],
+                    'vencimiento' => $fechaVencimiento->format('Y-m-d'),
+                    'saldo_inicial' => $this->cleanNumericValue($pago['saldo_inicial']),
+                    'capital' => $this->cleanNumericValue($pago['capital']),
+                    'intereses' => $this->cleanNumericValue($pago['interes']),
+                    'cuota_neta' => $this->cleanNumericValue($pago['cuota_neta']),
+                    'igv' => $this->cleanNumericValue($pago['igv'] ?? 0),
+                    'total_cuota' => $this->cleanNumericValue($pago['total_cuota']),
+                    'saldo_final' => $this->cleanNumericValue($pago['saldo_final']),
+                    'estado' => 'pendiente',
+                ]);
+                
+            } catch (\Exception $e) {
+                Log::error("Error creando pago {$pago['cuota']}: " . $e->getMessage(), [
+                    'pago' => $pago,
+                    'property_investor_id' => $propertyInvestorId
+                ]);
+                throw new \Exception("Error procesando la cuota {$pago['cuota']}: " . $e->getMessage());
+            }
+        }
+    }
+    private function cleanNumericValue($value): float{
+        if ($value === null || $value === '') {
+            return 0.0;
+        }
+        if (is_string($value)) {
+            $cleaned = preg_replace('/[^0-9.-]/', '', $value);
+            $value = $cleaned;
+        }
+        
+        return (float) $value;
     }
     public function subastadas(Request $request){
         try {
@@ -405,60 +454,49 @@ class PropertyControllers extends Controller{
             ], 500);
         }
     }
-
-    private function handleImagenesUpload(StorePropertyRequest $request, string $propertyId): void {
-        $directory = public_path("Propiedades/{$propertyId}");
-        File::ensureDirectoryExists($directory, 0755, true);
-        foreach ($request->file('imagenes') as $file) {
-            $filename = Str::uuid() . '.' . $file->getClientOriginalExtension();
-            $file->move($directory, $filename);
-            Imagenes::create([
-                'property_id' => $propertyId,
-                'imagen' => $filename,
-            ]);
-        }
-    }
     public function listProperties(Request $request): JsonResponse{
         try {
             $perPage = $request->input('per_page', 10);
             $search = $request->input('search');
-
             $query = Property::query()
                 ->where('estado', 'pendiente')
                 ->when($search, function ($query) use ($search) {
                     return $query->where(function ($q) use ($search) {
                         $q->where('nombre', 'LIKE', "%{$search}%")
-                        ->orWhere('id', 'LIKE', "%{$search}%")
-                        ->orWhere('departamento', 'LIKE', "%{$search}%")
-                        ->orWhere('provincia', 'LIKE', "%{$search}%")
-                        ->orWhere('distrito', 'LIKE', "%{$search}%");
+                            ->orWhere('id', 'LIKE', "%{$search}%")
+                            ->orWhere('departamento', 'LIKE', "%{$search}%")
+                            ->orWhere('provincia', 'LIKE', "%{$search}%")
+                            ->orWhere('distrito', 'LIKE', "%{$search}%");
                     });
                 })
                 ->with(['currency']);
-
             $properties = $query->paginate($perPage);
-
             return response()->json([
                 'data' => $properties->map(function ($property) {
                     return [
-                        'id' => $property->id,
-                        'nombre' => $property->nombre,
-                        'departamento' => $property->departamento,
-                        'provincia' => $property->provincia,
-                        'distrito' => $property->distrito,
-                        'direccion' => $property->direccion,
-                        'descripcion' => $property->descripcion,
-                        'estado' => $property->estado,
-                        'valor_requerido' => $property->valor_requerido,
+                        'id'             => $property->id,
+                        'nombre'         => $property->nombre,
+                        'departamento'   => $property->departamento,
+                        'provincia'      => $property->provincia,
+                        'distrito'       => $property->distrito,
+                        'direccion'      => $property->direccion,
+                        'descripcion'    => $property->descripcion,
+                        'estado'         => $property->estado,
+                        'valor_requerido' => $property->valor_requerido 
+                            ? (float) $property->valor_requerido->getAmount() / 100 
+                            : null,
+                        'currency_id'    => $property->currency_id,
+                        'currency'       => $property->currency?->codigo ?? 'PEN',
+                        'currency_symbol' => $property->currency_id === 1 ? 'S/' : '$',
                     ];
                 }),
                 'pagination' => [
-                    'total' => $properties->total(),
+                    'total'        => $properties->total(),
                     'current_page' => $properties->currentPage(),
-                    'per_page' => $properties->perPage(),
-                    'last_page' => $properties->lastPage(),
-                    'from' => $properties->firstItem(),
-                    'to' => $properties->lastItem(),
+                    'per_page'     => $properties->perPage(),
+                    'last_page'    => $properties->lastPage(),
+                    'from'         => $properties->firstItem(),
+                    'to'           => $properties->lastItem(),
                 ],
             ]);
         } catch (\Exception $e) {
@@ -468,7 +506,7 @@ class PropertyControllers extends Controller{
             ], 500);
         }
     }
-    public function listPropertiesActivas(Request $request): JsonResponse{
+    public function listPropertiesActivas(Request $request){
         try {
             $perPage = $request->input('per_page', 10);
             $search = $request->input('search');
@@ -492,6 +530,14 @@ class PropertyControllers extends Controller{
                 'data' => $configuraciones->map(function ($config) {
                     $property = $config->property;
                     $investor = $property->investor;
+                    $valorEstimado = $property->valor_estimado
+                        ? [
+                            'amount' => $property->valor_estimado->getAmount(),
+                            'decimal' => number_format($property->valor_estimado->getAmount() / 100, 2, '.', ''),
+                            'currency' => $property->valor_estimado->getCurrency()->getCode(),
+                        ]
+                        : null;
+
                     return [
                         'config_id' => $config->id,
                         'property_id' => $property->id,
@@ -503,7 +549,7 @@ class PropertyControllers extends Controller{
                         'descripcion' => $property->descripcion,
                         'estado_property' => $property->estado,
                         'estado_config' => $config->estado,
-                        'valor_estimado' => $property->valor_estimado,
+                        'valor_estimado' => $valorEstimado,
                         'tea' => $config->tea,
                         'tem' => $config->tem,
                         'moneda' => $property->currency->codigo ?? null,

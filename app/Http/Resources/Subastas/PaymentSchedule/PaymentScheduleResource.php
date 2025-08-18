@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Subastas\PaymentSchedule;
 
+use Carbon\Carbon;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class PaymentScheduleResource extends JsonResource
@@ -11,7 +12,7 @@ class PaymentScheduleResource extends JsonResource
         return [
             'id'              => $this->id,
             'cuota'           => $this->cuota,
-            'vencimiento'     => $this->vencimiento,
+            'vencimiento' => Carbon::parse($this->vencimiento)->format('d-m-Y'),
             'saldo_inicial'   => $this->saldo_inicial,
             'capital'         => $this->capital,
             'intereses'       => $this->intereses,
