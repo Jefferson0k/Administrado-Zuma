@@ -17,8 +17,6 @@ class PreviuController extends Controller{
             intval($request->input('plazo')),
             intval($request->input('moneda_id', 1))
         );
-
-
         return response()->json($cronograma);
     }
     public function previewManual(Request $request){
@@ -30,7 +28,6 @@ class PreviuController extends Controller{
     intval($request->input('plazo')),
     intval($request->input('moneda_id', 1))
         );
-
         return response()->json($cronograma);
     }
 }

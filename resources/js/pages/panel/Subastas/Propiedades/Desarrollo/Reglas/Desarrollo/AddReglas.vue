@@ -70,11 +70,15 @@
                         <label class="block font-semibold mb-2">
                             TEM Inversionista (%) <span class="text-red-500">*</span>
                         </label>
-                        <div class="relative">
-                            <input type="number" v-model="temInversionista" class="p-inputtext p-component w-full pr-8"
-                                placeholder="Ej. 1.05" step="0.01" min="0" max="20" />
-                            <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
-                        </div>
+                        <InputNumber v-model="temInversionista" 
+                            @update:modelValue="calcularTeaDesdeTemInversionista"
+                            class="w-full"
+                            placeholder="Ej. 1.05" 
+                            :minFractionDigits="3"
+                            :maxFractionDigits="3"
+                            suffix="%" 
+                            :min="0" 
+                            :max="20" />
                     </div>
 
                     <!-- TEA Inversionista -->
@@ -82,11 +86,18 @@
                         <label class="block font-semibold mb-2">
                             TEA Inversionista (%) <span class="text-red-500">*</span>
                         </label>
-                        <div class="relative">
-                            <input type="number" v-model="teaInversionista" class="p-inputtext p-component w-full pr-8"
-                                placeholder="Ej. 12.5" step="0.01" min="0" max="100" />
-                            <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
-                        </div>
+                        <InputNumber v-model="teaInversionista" 
+                            @update:modelValue="calcularTemDesdeTeaInversionista"
+                            class="w-full"
+                            placeholder="Ej. 12.5" 
+                            :minFractionDigits="3"
+                            :maxFractionDigits="3"
+                            suffix="%" 
+                            :min="0" 
+                            :max="100" />
+                        <small class="text-gray-600 mt-1 block">
+                            Conversión automática TEM ↔ TEA
+                        </small>
                     </div>
 
                     <!-- Riesgo Inversionista -->
@@ -128,11 +139,15 @@
                         <label class="block font-semibold mb-2">
                             TEM Cliente (%) <span class="text-red-500">*</span>
                         </label>
-                        <div class="relative">
-                            <input type="number" v-model="temCliente" class="p-inputtext p-component w-full pr-8"
-                                placeholder="Ej. 1.05" step="0.01" min="0" max="20" />
-                            <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
-                        </div>
+                        <InputNumber v-model="temCliente" 
+                            @update:modelValue="calcularTeaDesdeTemCliente"
+                            class="w-full"
+                            placeholder="Ej. 1.05" 
+                            :minFractionDigits="3"
+                            :maxFractionDigits="3"
+                            suffix="%" 
+                            :min="0" 
+                            :max="20" />
                     </div>
 
                     <!-- TEA Cliente -->
@@ -140,11 +155,18 @@
                         <label class="block font-semibold mb-2">
                             TEA Cliente (%) <span class="text-red-500">*</span>
                         </label>
-                        <div class="relative">
-                            <input type="number" v-model="teaCliente" class="p-inputtext p-component w-full pr-8"
-                                placeholder="Ej. 15.0" step="0.01" min="0" max="100" />
-                            <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
-                        </div>
+                        <InputNumber v-model="teaCliente" 
+                            @update:modelValue="calcularTemDesdeTeaCliente"
+                            class="w-full"
+                            placeholder="Ej. 15.0" 
+                            :minFractionDigits="3"
+                            :maxFractionDigits="3"
+                            suffix="%" 
+                            :min="0" 
+                            :max="100" />
+                        <small class="text-gray-600 mt-1 block">
+                            Conversión automática TEM ↔ TEA
+                        </small>
                     </div>
 
                     <!-- Riesgo Cliente -->
@@ -198,6 +220,7 @@ import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 import axios from 'axios'
 import { debounce } from 'lodash'
+import InputNumber from 'primevue/inputnumber'
 import VerCronograma from './verCronograma.vue'
 
 const toast = useToast()
@@ -215,30 +238,123 @@ const deadlines_id = ref(null)
 const plazos = ref([])
 
 // Campos específicos para inversionista
-const temInversionista = ref('')
-const teaInversionista = ref('')
+const temInversionista = ref(null)
+const teaInversionista = ref(null)
 const riesgoInversionista = ref(null)
 
 // Campos específicos para cliente
-const temCliente = ref('')
-const teaCliente = ref('')
+const temCliente = ref(null)
+const teaCliente = ref(null)
 const riesgoCliente = ref(null)
 
 const tipoUsuarioActual = ref(null) // Para saber qué tipo se está previsualizando
+
+// Variables para mostrar los cálculos automáticos - ELIMINADAS
+// const temCalculadoInversionista = ref('')
+// const temCalculadoCliente = ref('')
+
+// Funciones de conversión TEA/TEM
+const convertirTeaATem = (tea) => {
+    if (!tea || tea === 0) return 0
+    // Fórmula: TEM = (1 + TEA)^(1/12) - 1
+    return Math.pow(1 + (tea / 100), 1/12) - 1
+}
+
+const convertirTemATea = (tem) => {
+    if (!tem || tem === 0) return 0
+    // Fórmula: TEA = (1 + TEM)^12 - 1
+    return Math.pow(1 + (tem / 100), 12) - 1
+}
+
+// Variables para prevenir bucles infinitos
+const actualizandoInversionista = ref(false)
+const actualizandoCliente = ref(false)
+
+// Funciones para calcular automáticamente - Inversionista
+const calcularTeaDesdeTemInversionista = () => {
+    if (actualizandoInversionista.value) return
+    
+    if (temInversionista.value !== null && temInversionista.value !== undefined && temInversionista.value !== '') {
+        actualizandoInversionista.value = true
+        const teaCalculado = convertirTemATea(parseFloat(temInversionista.value))
+        teaInversionista.value = parseFloat((teaCalculado * 100).toFixed(3))
+        setTimeout(() => {
+            actualizandoInversionista.value = false
+        }, 100)
+    } else {
+        if (!actualizandoInversionista.value) {
+            teaInversionista.value = null
+        }
+    }
+}
+
+const calcularTemDesdeTeaInversionista = () => {
+    if (actualizandoInversionista.value) return
+    
+    if (teaInversionista.value !== null && teaInversionista.value !== undefined && teaInversionista.value !== '') {
+        actualizandoInversionista.value = true
+        const temCalculado = convertirTeaATem(parseFloat(teaInversionista.value))
+        temInversionista.value = parseFloat((temCalculado * 100).toFixed(3))
+        setTimeout(() => {
+            actualizandoInversionista.value = false
+        }, 100)
+    } else {
+        if (!actualizandoInversionista.value) {
+            temInversionista.value = null
+        }
+    }
+}
+
+// Funciones para calcular automáticamente - Cliente
+const calcularTeaDesdeTemCliente = () => {
+    if (actualizandoCliente.value) return
+    
+    if (temCliente.value !== null && temCliente.value !== undefined && temCliente.value !== '') {
+        actualizandoCliente.value = true
+        const teaCalculado = convertirTemATea(parseFloat(temCliente.value))
+        teaCliente.value = parseFloat((teaCalculado * 100).toFixed(3))
+        setTimeout(() => {
+            actualizandoCliente.value = false
+        }, 100)
+    } else {
+        if (!actualizandoCliente.value) {
+            teaCliente.value = null
+        }
+    }
+}
+
+const calcularTemDesdeTeaCliente = () => {
+    if (actualizandoCliente.value) return
+    
+    if (teaCliente.value !== null && teaCliente.value !== undefined && teaCliente.value !== '') {
+        actualizandoCliente.value = true
+        const temCalculado = convertirTeaATem(parseFloat(teaCliente.value))
+        temCliente.value = parseFloat((temCalculado * 100).toFixed(3))
+        setTimeout(() => {
+            actualizandoCliente.value = false
+        }, 100)
+    } else {
+        if (!actualizandoCliente.value) {
+            temCliente.value = null
+        }
+    }
+}
 
 const resetForm = () => {
     propiedadSeleccionada.value = null
     cronograma.value = null
     deadlines_id.value = null
-    temInversionista.value = ''
-    teaInversionista.value = ''
+    temInversionista.value = null
+    teaInversionista.value = null
     riesgoInversionista.value = null
-    temCliente.value = ''
-    teaCliente.value = ''
+    temCliente.value = null
+    teaCliente.value = null
     riesgoCliente.value = null
     propiedadSeleccionadaData.value = null
     propiedades.value = []
     tipoUsuarioActual.value = null
+    actualizandoInversionista.value = false
+    actualizandoCliente.value = false
 }
 
 const parametrosCronograma = computed(() => {
@@ -246,7 +362,6 @@ const parametrosCronograma = computed(() => {
     const propiedadData = propiedades.value.find(p => p.value === propiedadSeleccionada.value)
     const valorRequerido = propiedadData ? parseFloat(propiedadData.valor_requerido) : 0
 
-    // Usar TEA, TEM y riesgo según el tipo de usuario actual
     const teaActual = tipoUsuarioActual.value === 'inversionista' ? teaInversionista.value : teaCliente.value
     const temActual = tipoUsuarioActual.value === 'inversionista' ? temInversionista.value : temCliente.value
     const riesgoActual = tipoUsuarioActual.value === 'inversionista' ? riesgoInversionista.value : riesgoCliente.value
@@ -258,7 +373,10 @@ const parametrosCronograma = computed(() => {
         cronograma: cronograma.value,
         deadlines_id: deadlines_id.value,
         duracion_meses: plazoSeleccionado ? plazoSeleccionado.duracion_meses : 0,
-        valor_requerido: valorRequerido
+        valor_requerido: valorRequerido,
+        currency_id: propiedadData?.currency_id || 1,
+        currency: propiedadData?.currency || 'PEN',
+        currency_symbol: propiedadData?.currency_symbol || 'S/'
     }
 })
 
@@ -309,32 +427,32 @@ const camposGenerales = computed(() => {
 // Computed para validar previsualización inversionista
 const canPreviewCronogramaInversionista = computed(() => {
     return camposGenerales.value && 
-        temInversionista.value !== '' &&
-        teaInversionista.value !== '' &&
+        temInversionista.value !== null && temInversionista.value !== '' &&
+        teaInversionista.value !== null && teaInversionista.value !== '' &&
         riesgoInversionista.value !== null
 })
 
 // Computed para validar previsualización cliente
 const canPreviewCronogramaCliente = computed(() => {
     return camposGenerales.value && 
-        temCliente.value !== '' &&
-        teaCliente.value !== '' &&
+        temCliente.value !== null && temCliente.value !== '' &&
+        teaCliente.value !== null && teaCliente.value !== '' &&
         riesgoCliente.value !== null
 })
 
 // Computed para validar guardado inversionista
 const canSaveInversionista = computed(() => {
     return camposGenerales.value && 
-        temInversionista.value !== '' &&
-        teaInversionista.value !== '' &&
+        temInversionista.value !== null && temInversionista.value !== '' &&
+        teaInversionista.value !== null && teaInversionista.value !== '' &&
         riesgoInversionista.value !== null
 })
 
 // Computed para validar guardado cliente
 const canSaveCliente = computed(() => {
     return camposGenerales.value && 
-        temCliente.value !== '' &&
-        teaCliente.value !== '' &&
+        temCliente.value !== null && temCliente.value !== '' &&
+        teaCliente.value !== null && teaCliente.value !== '' &&
         riesgoCliente.value !== null
 })
 
@@ -416,7 +534,10 @@ const buscarPropiedades = debounce(async (texto) => {
             sublabel: `${propiedad.distrito} | ${propiedad.direccion}`,
             value: propiedad.id,
             estado: propiedad.estado,
-            valor_requerido: propiedad.valor_requerido
+            valor_requerido: propiedad.valor_requerido,
+            currency_id: propiedad.currency_id,
+            currency: propiedad.currency,
+            currency_symbol: propiedad.currency_symbol
         }))
     } catch (error) {
         toast.add({
@@ -485,12 +606,12 @@ const actualizarPropiedad = async (tipoUsuario) => {
 
         // Limpiar solo los campos del tipo guardado
         if (tipoUsuario === 1) {
-            temInversionista.value = ''
-            teaInversionista.value = ''
+            temInversionista.value = null
+            teaInversionista.value = null
             riesgoInversionista.value = null
         } else {
-            temCliente.value = ''
-            teaCliente.value = ''
+            temCliente.value = null
+            teaCliente.value = null
             riesgoCliente.value = null
         }
 

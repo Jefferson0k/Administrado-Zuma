@@ -59,10 +59,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
 
     Route::prefix('property')->group(function () {
-        Route::get('/', [PropertyControllers::class, 'index'])->name('property.index');
-        Route::get('/active/sow', [PropertyControllers::class, 'indexSubastaTotoal'])->name('property.indexSubastaTotoal');
+        Route::get('/', [PropertyControllers::class, 'index'])->name('propertys.index');
+        Route::get('/active/sow', [PropertyControllers::class, 'indexSubastaTotoal'])->name('active.indexSubastaTotoal');
         Route::get('/{id}', [PropertyControllers::class, 'show'])->name('property.show');
-        Route::put('/{id}/estado', [PropertyControllers::class, 'update'])->name('property.update');
+        Route::put('/{id}/estado', [PropertyControllers::class, 'update'])->name('estado.update');
     });
 
     Route::get('/subastadas', [PropertyControllers::class, 'subastadas'])->name('property.subastadas');
@@ -106,8 +106,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/fixed-term-investments/pendientes', [FixedTermInvestmentControllers::class, 'pendingInvestments']);
     });
     
-    Route::get('/config/{id}/schedules', [PropertyControllers::class, 'showConfig']);
-
+\
     Route::get('/fixed-term-schedules/{id}/cronograma', [FixedTermScheduleController::class, 'showCronograma']);
 
     Route::prefix('reservas')->group(function () {

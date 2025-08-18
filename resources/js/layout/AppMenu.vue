@@ -74,7 +74,7 @@ const model = computed(() => [
                                 to: '/subasta-hipotecas/reglas'
                             },
                             {
-                                label: 'Información del Inversionista',
+                                label: 'Información del cliente',
                                 icon: 'pi pi-fw pi-user',
                                 to: '/subasta-hipotecas/inversionista'
                             }

@@ -4,14 +4,17 @@ namespace App\Http\Resources\Subastas\PropertyLoanDetail;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-
-class PropertyLoanDetailListResource extends JsonResource
-{
-    public function toArray(Request $request): array
-    {
+use Money\Formatter\DecimalMoneyFormatter;
+use Money\Currencies\ISOCurrencies;
+class PropertyLoanDetailListResource extends JsonResource{
+    public function toArray(Request $request): array{
         $property = $this->property;
         $config = $property?->ultimaConfiguracion;
         $investor = $this->investor;
+
+        // Preparar formateador para Money
+        $currencies = new ISOCurrencies();
+        $moneyFormatter = new DecimalMoneyFormatter($currencies);
 
         return [
             'id' => $this->id,
@@ -32,9 +35,18 @@ class PropertyLoanDetailListResource extends JsonResource
                 ? trim("{$investor->name} {$investor->first_last_name} {$investor->second_last_name}")
                 : 'Sin nombre',
             'propiedad' => $property?->nombre ?? 'Sin nombre de propiedad',
-            'valor' => $property?->valor_estimado ?? '0.00',
-            'requerido' => $property?->valor_requerido ?? '0.00',
-            'subasta' => $property?->valor_subasta ?? '0.00',
+
+            // Aquí formateamos valores Money a decimal
+            'valor' => $property?->valor_estimado 
+                ? $moneyFormatter->format($property->valor_estimado) 
+                : '0.00',
+            'requerido' => $property?->valor_requerido 
+                ? $moneyFormatter->format($property->valor_requerido) 
+                : '0.00',
+            'subasta' => $property?->valor_subasta 
+                ? $moneyFormatter->format($property->valor_subasta) 
+                : '0.00',
+
             'riesgo' => $config?->riesgo ?? 'No asignado',
             'cronograma' => $config?->tipo_cronograma ?? 'No definido',
             'plazo' => $config?->plazo?->nombre ?? 'Sin plazo asignado',
@@ -53,4 +65,5 @@ class PropertyLoanDetailListResource extends JsonResource
             },
         ];
     }
+
 }

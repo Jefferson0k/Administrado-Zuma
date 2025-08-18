@@ -1,6 +1,6 @@
 <template>
   <div>
-    <Tabs v-model="estadoSeleccionado" class="mb-4">
+    <Tabs value="1" class="mb-4">
       <TabList>
         <Tab
           v-for="tab in tabs"
@@ -19,81 +19,84 @@
           :key="tab.value"
           :value="tab.value"
         >
-          <template v-if="estadoSeleccionado === tab.value">
-            <DataTable
-              ref="dt"
-              :value="products"
-              :paginator="true"
-              :rows="10"
-              :rowsPerPageOptions="[5, 10, 25]"
-              :totalRecords="totalRecords"
-              :loading="loading"
-              lazy
-              dataKey="id"
-              @page="onPage"
-              paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-              currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} reglas"
-              class="p-datatable-sm"
-            >
-              <template #header>
-                <div class="flex flex-wrap gap-2 items-center justify-between">
-                  <h4 class="m-0">
-                    {{ tab.title === 'Inversionista' ? 'Reglas Inversionista' : 'Reglas Cliente' }}
-                  </h4>
-                  <IconField>
-                    <template #icon><i class="pi pi-search" /></template>
-                    <InputText
-                      v-model="searchText"
-                      placeholder="Buscar por nombre, cronograma o riesgo..."
-                      @input="buscarReglas"
-                    />
-                  </IconField>
-                </div>
-              </template>
-
-              <Column selectionMode="multiple" style="width: 3rem" :exportable="false" />
-              <Column field="nombre" header="Propiedad" sortable style="width: 25rem" />
-              <Column field="valor_estimado" header="Valor de la propiedas" sortable style="width: 14rem" />
-              <Column field="requerido" header="Monto Requerido" sortable style="width: 12rem" />
-              <Column field="tea" header="TEA" sortable style="width: 8rem">
-                <template #body="{ data }">{{ data.tea }}%</template>
-              </Column>
-              <Column field="tem" header="TEM" sortable style="width: 8rem">
-                <template #body="{ data }">{{ data.tem }}%</template>
-              </Column>
-              <Column field="tipo_cronograma" header="Cronograma" sortable style="width: 10rem">
-                <template #body="{ data }">{{ formatCronograma(data.tipo_cronograma) }}</template>
-              </Column>
-              <Column field="deadlines_id" header="Plazo" sortable style="width: 10rem">
-                <template #body="{ data }">{{ data.plazo_nombre || data.deadlines_id }}</template>
-              </Column>
-              <Column field="riesgo" header="Riesgo" sortable style="width: 5rem">
-                <template #body="{ data }">
-                  <Tag :value="data.riesgo" :severity="getRiesgoSeverity(data.riesgo)" />
-                </template>
-              </Column>
-              <Column field="estado_nombre" header="Usuario" sortable style="width: 8rem">
-                <template #body="{ data }">
-                  <Tag :value="data.estado_nombre" :severity="getEstadoSeverity(data.estado_nombre)" />
-                </template>
-              </Column>
-              <Column field="estadoProperty" header="Estado" sortable style="width: 8rem" />
-              <Column header="" style="width: 1rem">
-                <template #body="{ data }">
-                  <Button 
-                    icon="pi pi-ellipsis-v" 
-                    text 
-                    rounded 
-                    severity="secondary" 
-                    @click="toggleMenu($event, data)" 
-                    aria-haspopup="true" 
-                    aria-controls="overlay_menu"
-                    v-tooltip.bottom="'Opciones'"
+          <DataTable
+            ref="dt"
+            :value="products"
+            :paginator="true"
+            :rows="10"
+            :rowsPerPageOptions="[5, 10, 25]"
+            :totalRecords="totalRecords"
+            :loading="loading"
+            lazy
+            dataKey="id"
+            @page="onPage"
+            paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+            currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} reglas"
+            class="p-datatable-sm"
+          >
+            <template #header>
+              <div class="flex flex-wrap gap-2 items-center justify-between">
+                <h4 class="m-0">
+                  {{ estadoSeleccionado === '1' ? 'Reglas Inversionista' : 'Reglas Cliente' }}
+                </h4>
+                <IconField>
+                  <template #icon><i class="pi pi-search" /></template>
+                  <InputText
+                    v-model="searchText"
+                    placeholder="Buscar por nombre, cronograma o riesgo..."
+                    @input="buscarReglas"
                   />
-                </template>
-              </Column>
-            </DataTable>
-          </template>
+                </IconField>
+              </div>
+            </template>
+
+            <Column selectionMode="multiple" style="width: 3rem" :exportable="false" />
+            <Column field="nombre" header="Propiedad" sortable style="width: 25rem" />
+            <Column field="Moneda" header="Moneda" sortable style="width: 5rem" />
+            <Column field="valor_estimado" header="Valor de la propiedad" sortable style="width: 16rem">
+              <template #body="{ data }">{{ formatMoney(data.valor_estimado) }}</template>
+            </Column>
+            <Column field="requerido" header="Monto Requerido" sortable style="width: 14rem">
+              <template #body="{ data }">{{ formatMoney(data.requerido) }}</template>
+            </Column>
+            <Column field="tea" header="TEA" sortable style="width: 8rem">
+              <template #body="{ data }">{{ data.tea }}%</template>
+            </Column>
+            <Column field="tem" header="TEM" sortable style="width: 8rem">
+              <template #body="{ data }">{{ data.tem }}%</template>
+            </Column>
+            <Column field="tipo_cronograma" header="Cronograma" sortable style="width: 10rem">
+              <template #body="{ data }">{{ formatCronograma(data.tipo_cronograma) }}</template>
+            </Column>
+            <Column field="deadlines_id" header="Plazo" sortable style="width: 10rem">
+              <template #body="{ data }">{{ data.plazo_nombre || data.deadlines_id }}</template>
+            </Column>
+            <Column field="riesgo" header="Riesgo" sortable style="width: 5rem">
+              <template #body="{ data }">
+                <Tag :value="data.riesgo" :severity="getRiesgoSeverity(data.riesgo)" />
+              </template>
+            </Column>
+            <Column field="estado_nombre" header="Usuario" sortable style="width: 8rem">
+              <template #body="{ data }">
+                <Tag :value="data.estado_nombre" :severity="getEstadoSeverity(data.estado_nombre)" />
+              </template>
+            </Column>
+            <Column field="estadoProperty" header="Estado" sortable style="width: 8rem" />
+            <Column header="" style="width: 1rem">
+              <template #body="{ data }">
+                <Button 
+                  icon="pi pi-ellipsis-v" 
+                  text 
+                  rounded 
+                  severity="secondary" 
+                  @click="toggleMenu($event, data)" 
+                  aria-haspopup="true" 
+                  aria-controls="overlay_menu"
+                  v-tooltip.bottom="'Opciones'"
+                />
+              </template>
+            </Column>
+          </DataTable>
         </TabPanel>
       </TabPanels>
     </Tabs>
@@ -150,6 +153,7 @@ const reglaSeleccionada = ref(null)
 const dialogVisible = ref(false)
 const dialogCronograma = ref(false)
 
+// ✅ CORRECTO: Estado actual para saber qué datos cargar
 const estadoSeleccionado = ref('1')
 
 const tabs = ref([
@@ -175,17 +179,33 @@ const menuItems = ref([
   }
 ])
 
+// 💰 Función para formatear valores monetarios
+const formatMoney = (value) => {
+  if (value === null || value === undefined || isNaN(value)) {
+    return '0.00'
+  }
+  
+  // Convertir a número y formatear con 2 decimales y separadores de miles
+  return new Intl.NumberFormat('es-PE', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    useGrouping: true
+  }).format(Number(value))
+}
+
 const toggleMenu = (event, rowData) => {
   reglaSeleccionada.value = { ...rowData }
+  console.log('Regla seleccionada:', reglaSeleccionada.value)
   menu.value.toggle(event)
 }
 
+// ✅ CORRECTO: Función simple para cambiar tab
 const cambiarTab = (newValue) => {
-  if (estadoSeleccionado.value === newValue) return
+  console.log('Cambiando a tab:', newValue)
   estadoSeleccionado.value = newValue
   currentPage.value = 1
   searchText.value = ''
-  cargarPropiedades(1)
+  cargarPropiedades(1, '')
 }
 
 const buscarReglas = debounce(() => {
@@ -195,6 +215,12 @@ const buscarReglas = debounce(() => {
 
 const cargarPropiedades = async (page = 1, search = '') => {
   loading.value = true
+  console.log('Cargando propiedades:', { 
+    page, 
+    search, 
+    estado: estadoSeleccionado.value 
+  })
+  
   try {
     const response = await axios.get('/property/reglas', {
       params: {
@@ -204,10 +230,13 @@ const cargarPropiedades = async (page = 1, search = '') => {
       }
     })
 
-    products.value = response.data.data
-    totalRecords.value = response.data.meta.total
-    currentPage.value = response.data.meta.current_page
+    products.value = response.data.data || []
+    totalRecords.value = response.data.meta?.total || 0
+    currentPage.value = response.data.meta?.current_page || 1
+    
+    console.log('Datos cargados:', response.data)
   } catch (error) {
+    console.error('Error al cargar propiedades:', error)
     toast.add({
       severity: 'error',
       summary: 'Error',
@@ -246,9 +275,11 @@ const editarRegla = () => {
 }
 
 const verCronograma = () => {
+  console.log('Abriendo cronograma para:', reglaSeleccionada.value)
   dialogCronograma.value = true
 }
 
+// ✅ CORRECTO: Copiar el property_id (UUID largo)
 const copiarId = async () => {
   try {
     const property_id = `${reglaSeleccionada.value.property_id}`
@@ -256,7 +287,7 @@ const copiarId = async () => {
     toast.add({ 
       severity: 'success', 
       summary: 'ID copiado', 
-      detail: `ID: ${property_id}`, 
+      detail: `Property ID: ${property_id}`, 
       life: 2000 
     })
   } catch (err) {
@@ -269,8 +300,9 @@ const copiarId = async () => {
   }
 }
 
-// ✅ Al montar, cargar Inversionista por defecto
+// ✅ PERFECTO: Al cargar, automáticamente muestra Inversionista
 onMounted(() => {
-  cargarPropiedades()
+  console.log('Componente montado - Cargando Inversionista por defecto')
+  cargarPropiedades(1, '')
 })
 </script>
