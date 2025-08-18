@@ -58,10 +58,9 @@
   <label class="block font-semibold mb-2">Imágenes para mostrar <span class="text-red-500">*</span></label>
   <FileUpload
     mode="advanced"
-    name="imgs[]"
+    name="imagenes[]"
     accept=".jpg,.png"
     :multiple="true"
-    :auto="true"
     customUpload
     :maxFileSize="10000000"
     @uploader="onUploadImage"
@@ -140,6 +139,8 @@ function onUploadImage(event) {
       toast.add({ severity: 'error', summary: 'Archivo inválido', detail: 'Debe subir un archivo JPG o PNG.', life: 4000 })
     }
   }
+  // Limpia lista interna del FileUpload
+  event.options.clear()
 }
 
 // Eliminar imagen de la lista
