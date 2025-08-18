@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use App\Models\ComentarioPost;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -166,6 +167,47 @@ class BlogController extends Controller
         ], 201);
     });
 }
+
+
+public function getcomentarios(Request $request){
+    
+
+}
+
+
+
+public function saveComentario(Request $request)
+{
+    // Validación de datos
+    $validated = $request->validate([
+        'post_id'    => 'required|exists:posts,id',
+        'comentario' => 'required|string|max:500',
+        'email'      => 'required|email|max:255',
+         'estrellas' => 'nullable|numeric|min:0|max:5',
+        'nombre'=> 'required|string',
+    ]);
+
+    // Inserción en la base de datos
+    $comentario = ComentarioPost::create([
+        'post_id'    => $validated['post_id'],
+        'comentario' => $validated['comentario'],
+        'email'      => $validated['email'],
+    ]);
+
+    $rating= Rating::create([
+        'post_id'    => $validated['post_id'],
+        'entrellas' => $validated['estrellas'] ?? 3.00,
+        'ip'      => '192.168.0.10',
+
+    ]);
+
+    return response()->json([
+        'ok'        => true,
+        'message'   => 'Comentario guardado con éxito',
+        'data'      => $comentario
+    ], 201);
+}
+
 
 
  public function guardar_categoria(Request $request)

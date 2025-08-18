@@ -142,8 +142,10 @@ Route::delete('/blog/eliminar/{id}', [BlogController::class, 'eliminar']);
 Route::post('/blog/actualizar/{id}', [BlogController::class, 'actualizar']);
 Route::get('/blog/publicar/{user_id}/{post_id}/{state_id}', [BlogController::class, 'publicar']);
 Route::get('/blog/showpost/{id}', [BlogController::class, 'showPost']);
+Route::get('/blog/getcomentarios', [BlogController::class, 'getComentarios']);
 
 
+Route::post('/blog/savecomentario', [BlogController::class, 'saveComentario']);
 Route::get('/blog/publicaciones', [BlogController::class, 'publicaciones']);
 Route::post('/blog/guardar-rating', [BlogController::class, 'guardar_rating']);
 Route::post('/blog/guardar-categoria', [BlogController::class, 'guardar_categoria']);

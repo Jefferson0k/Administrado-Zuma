@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 class Rating extends Model
 {
     use HasFactory;
+        protected $table = 'rating';
+
 
     protected $fillable = [
         'post_id',
@@ -16,4 +18,10 @@ class Rating extends Model
     ];
 
     public $timestamps = false;
+
+
+    public function post()
+    {
+        return $this->belongsTo(Post::class, 'post_id');
+    }
 }

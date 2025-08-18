@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('post_id')->constrained('posts')->onDelete('cascade');
             $table->string('ip', 45);
-            $table->decimal('estrellas', 3, 2);
+            $table->decimal('estrellas', 3, 2)->default(1.00);
             $table->timestamps();
         });
     }
