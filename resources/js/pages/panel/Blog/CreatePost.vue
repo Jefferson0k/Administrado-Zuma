@@ -53,23 +53,39 @@
         <Calendar v-model="post.fecha_programada" dateFormat="dd/mm/yy" placeholder="Selecciona la fecha" showIcon showTime hourFormat="12" class="w-full" />
       </div>
 
-      <!-- Imagen -->
-      <div>
-        <label class="block font-semibold mb-2">Imagen para mostrar <span class="text-red-500">*</span></label>
-        <FileUpload
-          mode="advanced"
-          name="img"
-          accept=".jpg,.png"
-          :auto="true"
-          customUpload
-          :maxFileSize="10000000"
-          @uploader="onUploadImage"
-          :chooseLabel="'Seleccionar Imagen'"
-          :uploadLabel="'Subir'"
-          :cancelLabel="'Cancelar'"
-          class="w-full"
-        />
-      </div>
+      <!-- Imágenes -->
+<div class="col-span-2">
+  <label class="block font-semibold mb-2">Imágenes para mostrar <span class="text-red-500">*</span></label>
+  <FileUpload
+    mode="advanced"
+    name="imgs[]"
+    accept=".jpg,.png"
+    :multiple="true"
+    :auto="true"
+    customUpload
+    :maxFileSize="10000000"
+    @uploader="onUploadImage"
+    :chooseLabel="'Seleccionar Imágenes'"
+    :uploadLabel="'Subir'"
+    :cancelLabel="'Cancelar'"
+    class="w-full"
+  />
+
+  <!-- Previsualización -->
+  <div class="mt-3 flex flex-wrap gap-3">
+    <div v-for="(img, index) in previewImgs" :key="index" class="relative">
+      <img :src="img" class="w-32 h-32 object-cover rounded-lg border shadow" />
+      <button
+        type="button"
+        @click="removeImage(index)"
+        class="absolute top-1 right-1 bg-red-500 text-white rounded-full px-2 py-1 text-xs"
+      >
+        ✕
+      </button>
+    </div>
+  </div>
+</div>
+
     </div>
     </div>
     </div>
@@ -106,23 +122,33 @@ const post = ref({
 const products = ref([])
 const selectedProduct = ref(null)
 const categories = ref([])
-const archivoImg = ref(null)
+const archivoImgs = ref([])       // para guardar archivos
+const previewImgs = ref([])    
 
 function cancelar() {
   window.history.back()
 }
 
 function onUploadImage(event) {
-  const file = event.files[0]
   const allowedTypes = ['image/jpeg', 'image/png']
-  if (file && allowedTypes.includes(file.type)) {
-    archivoImg.value = file
-    toast.add({ severity: 'success', summary: 'Imagen cargada', detail: `Archivo "${file.name}" listo para enviar`, life: 3000 })
-  } else {
-    toast.add({ severity: 'error', summary: 'Archivo inválido', detail: 'Debe subir un archivo JPG o PNG.', life: 4000 })
+  for (const file of event.files) {
+    if (file && allowedTypes.includes(file.type)) {
+      archivoImgs.value.push(file)
+      previewImgs.value.push(URL.createObjectURL(file))
+      toast.add({ severity: 'success', summary: 'Imagen cargada', detail: `Archivo "${file.name}" listo para enviar`, life: 3000 })
+    } else {
+      toast.add({ severity: 'error', summary: 'Archivo inválido', detail: 'Debe subir un archivo JPG o PNG.', life: 4000 })
+    }
   }
 }
 
+// Eliminar imagen de la lista
+function removeImage(index) {
+  archivoImgs.value.splice(index, 1)
+  previewImgs.value.splice(index, 1)
+}
+
+// Guardar post con múltiples imágenes
 function guardarPost() {
   const formData = new FormData()
   formData.append('user_id', 1)
@@ -132,7 +158,11 @@ function guardarPost() {
   formData.append('contenido', post.value.contenido)
   formData.append('fecha_programada', formatDateRequest(post.value.fecha_programada))
   formData.append('state_id', 1)
-  formData.append('imagen', archivoImg.value)
+
+  // Agregar todas las imágenes
+  archivoImgs.value.forEach((img, i) => {
+    formData.append('imagenes[]', img)
+  })
 
   axios.post('/api/blog/guardar', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
     .then(() => {

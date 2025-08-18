@@ -45,4 +45,8 @@ class Post extends Model
     {
         return $this->belongsTo(State::class);
     }
+    public function images()
+{
+    return $this->hasMany(PostImage::class, 'post_id');
+}
 }

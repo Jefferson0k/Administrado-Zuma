@@ -14,6 +14,7 @@ use App\Models\Post;
 use App\Models\PostCategory;
 use App\Models\PostProduct;
 use App\Models\PostRating;
+use App\Models\PostImage;
 use App\Models\Product;
 use App\Models\Rating;
 use Illuminate\Http\Request;
@@ -83,48 +84,89 @@ class BlogController extends Controller
         return response()->json($categories);
     }
 
-    public function guardar(Request $request){
-        $validated = $request->validate([
-                  'user_id' => 'required|exists:users,id',
-            'updated_user_id' => 'nullable|integer',
-            'titulo' => 'required|string|max:255',
-            'contenido' => 'required|string',
-            'resumen' => 'nullable|string|max:1000',
-            'imagen' => 'required|image|max:2048', // ajusta si no es imagen
-            //'imagen' => 'nullable|string|max:255',
-            //'product_id' => 'required|exists:products,id',
-            'category_id' => 'required|exists:categories,id',
-            'state_id' => 'required|exists:states,id',
-            'fecha_programada' => 'nullable|date_format:Y-m-d H:i:s',
-            'fecha_publicacion'=> 'nullable|date_format:Y-m-d H:i:s',
-        ]);
-        if ($request->hasFile('imagen')) {
-            $img = $request->file('imagen');
-            Log::debug($img);
-            $allowedMimeTypes = ['image/jpeg', 'image/png'];
-            if ($img->isValid() && in_array($img->getMimeType(), $allowedMimeTypes)) {
-                $randomName = Str::random(10) . '.' . $img->getClientOriginalExtension();
-                $img->storeAs('images', $randomName,'public');
-                Log::info("Imagen guardada en: " . $img);
-                $validated['imagen'] = $randomName;
-            } else {
-                return response()->json(['error' => 'Solo se permiten imágenes JPG o PNG válidas'], 422);
-            }
-        }
-        $post = Post::create($validated);
-        $category_ids = explode(',', $validated['category_id']);
-        foreach ($category_ids as $category_id) {
+    public function guardar(Request $request)
+{
+    // Validación base (múltiples imágenes)
+    $validated = $request->validate([
+        'user_id'           => 'required|exists:users,id',
+        'updated_user_id'   => 'nullable|integer',
+        'titulo'            => 'required|string|max:255',
+        'contenido'         => 'required|string',
+        'resumen'           => 'nullable|string|max:1000',
+        'imagenes'          => 'required|array|min:1',
+        'imagenes.*'        => 'image|mimes:jpeg,png|max:10240', // 10MB para coincidir con el frontend
+        'category_id'       => 'required', // puede venir como CSV o como array
+        'state_id'          => 'required|exists:states,id',
+        'fecha_programada'  => 'nullable|date_format:Y-m-d H:i:s',
+        'fecha_publicacion' => 'nullable|date_format:Y-m-d H:i:s',
+    ]);
+
+    // Normalizar categorías a array<int>
+    $categoryIds = $request->input('category_id');
+    if (is_string($categoryIds)) {
+        $categoryIds = collect(explode(',', $categoryIds))
+            ->map(fn ($id) => (int) trim($id))
+            ->filter()
+            ->values()
+            ->all();
+    } elseif (is_array($categoryIds)) {
+        $categoryIds = collect($categoryIds)
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->values()
+            ->all();
+    } else {
+        $categoryIds = [];
+    }
+
+    // Verificar que existan
+    if (Category::whereIn('id', $categoryIds)->count() !== count($categoryIds)) {
+        return response()->json(['error' => 'Una o más categorías no existen.'], 422);
+    }
+
+    $imagenes = $request->file('imagenes');
+
+    return DB::transaction(function () use ($validated, $imagenes, $categoryIds) {
+        // 1) Guardar imagen principal en posts.imagen
+        $principal   = $imagenes[0];
+        $mainName    = Str::random(10) . '.' . $principal->getClientOriginalExtension();
+        $principal->storeAs('images', $mainName, 'public');
+
+        // 2) Crear post (evitar mass-assign de "imagenes")
+        $postData = $validated;
+        unset($postData['imagenes']);
+        $postData['imagen'] = $mainName;
+
+        $post = Post::create($postData);
+
+        // 3) Guardar categorías
+        foreach ($categoryIds as $catId) {
             PostCategory::create([
-                'post_id' => $post->id,
-                'category_id' => (int) trim($category_id),
+                'post_id'    => $post->id,
+                'category_id'=> $catId,
             ]);
         }
 
+        // 4) Guardar imágenes adicionales en post_image
+        if (count($imagenes) > 1) {
+            foreach (array_slice($imagenes, 1) as $img) {
+                $name = Str::random(10) . '.' . $img->getClientOriginalExtension();
+                $img->storeAs('images', $name, 'public');
+
+                PostImage::create([
+                    'post_id'    => $post->id,
+                    'image_path' => $name,
+                ]);
+            }
+        }
+
         return response()->json([
-            'message' => 'Publiación creada exitosamente.',
-            'post' => $post,
+            'message' => 'Publicación creada exitosamente.',
+            'post'    => $post->load('images'), // si defines la relación
         ], 201);
-    }
+    });
+}
+
 
     public function guardar_categoria(CategoryStoreRequest $request)
     {
@@ -276,7 +318,7 @@ class BlogController extends Controller
 
  public function showPost($id)
 {
-    $post = Post::with(['ratings', 'categories'])
+    $post = Post::with(['ratings', 'categories','images'])
         ->where('id', $id)
         ->where('state_id', 2)
         ->first(); // 👈 devuelve un solo post o null
