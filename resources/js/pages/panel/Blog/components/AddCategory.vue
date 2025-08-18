@@ -16,10 +16,20 @@
                 <Select v-model="selectedProduct" :options="products" optionLabel="nombre" optionValue="id"
                     placeholder="Seleccione el producto" class="w-full" />
             </div>
-            <div>
-                <label class="block font-bold mb-3">Nombre de Categoría <span class="text-red-500">*</span></label>
-                <InputText v-model="category.nombre" :useGrouping="false" placeholder="Ingresa el nombre"
-                    inputId="nombre" class="w-full" />
+             <div class="col-span-2">
+            <label class="block font-semibold mb-2">Agregar Categorias</label>
+            <div class="flex gap-2">
+                <InputText v-model="nuevaCategoria" placeholder="Ingresa el nombre" class="w-full" />
+                <Button label="Agregar" icon="pi pi-plus" @click="agregarCategoria" />
+            </div>
+
+            <!-- Lista de enlaces agregados -->
+            <ul class="mt-3 space-y-2">
+                <li v-for="(link, index) in categorias" :key="index" class="flex items-center justify-between bg-gray-100 px-3 py-2 rounded">
+                <a :href="link" target="_blank" class="text-blue-600 underline">{{ link }}</a>
+                <button @click="eliminarCategoria(index)" class="text-red-500 hover:text-red-700">✕</button>
+                </li>
+            </ul>
             </div>
             <!-- <div>
                 <label class="block font-bold mb-3">Categoría(s) <span class="text-red-500">*</span></label>
@@ -75,7 +85,8 @@ const category = ref({
 const products = ref([])
 const selectedProduct = ref()
 const selectedCategories = ref([])
-
+const categorias = ref([])          // lista de categoria
+const nuevaCategoria = ref('')  
 
 function openNew() {
     resetEmpresa()
@@ -85,6 +96,18 @@ function openNew() {
 function hideDialog() {
     AgregarDialog.value = false
     resetEmpresa()
+}
+
+//eliminar un enlace de la lista
+function agregarCategoria() {
+  if (nuevaCategoria.value.trim() !== '') {
+    categorias.value.push(nuevaCategoria.value.trim())
+    nuevaCategoria.value = ''
+  }
+}
+// elimina un enlace de la lista
+function eliminarCategoria(index) {
+  categorias.value.splice(index, 1)
 }
 
 function resetEmpresa() {
@@ -99,12 +122,14 @@ function resetEmpresa() {
 function guardarCategoria() {
     submitted.value = true
 
-    /*axios.post('/api/blog/guardar-categoria', {
-        'categories': selectedCategories.value
-    }).then(() => {
+    axios.post('/api/blog/guardar-categoria', {
+        product_id: selectedProduct.value,   // id del producto
+        categorias: categorias.value        // array con las categorías agregadas
+    })
+    .then(() => {
         toast.add({
             severity: 'success',
-            summary: 'Categoría registrada',
+            summary: 'Categorías registradas',
             detail: 'Los datos se guardaron correctamente',
             life: 3000
         })
@@ -119,32 +144,7 @@ function guardarCategoria() {
             detail: error.response?.data?.message || 'Ocurrió un error al guardar la categoría',
             life: 5000
         })
-    })*/
-
-    const formData = new FormData()
-    formData.append('product_id', selectedProduct.value)
-    formData.append('nombre', category.value.nombre)
-
-    axios.post('/api/blog/guardar-categoria', formData)
-        .then(() => {
-            toast.add({
-                severity: 'success',
-                summary: 'Categoría registrada',
-                detail: 'Los datos se guardaron correctamente',
-                life: 3000
-            })
-            emit('agregado')
-            hideDialog()
-        })
-        .catch((error) => {
-            console.error('Error al guardar la categoría:', error)
-            toast.add({
-                severity: 'error',
-                summary: 'Error',
-                detail: error.response?.data?.message || 'Ocurrió un error al guardar la categoría',
-                life: 5000
-            })
-        })
+    })
 }
 
 function showToast() {

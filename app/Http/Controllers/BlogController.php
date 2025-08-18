@@ -168,19 +168,36 @@ class BlogController extends Controller
 }
 
 
-    public function guardar_categoria(CategoryStoreRequest $request)
-    {
-        $validated = $request->validated();
-        $category = Category::create($validated);
+ public function guardar_categoria(Request $request)
+{
+    $validated = $request->validate([
+        'product_id' => 'required|exists:products,id',
+        'categorias' => 'required|array|min:1',
+        'categorias.*' => 'string|max:255',
+    ]);
+
+    $categoriasCreadas = [];
+
+    foreach ($validated['categorias'] as $nombreCategoria) {
+        $category = Category::create([
+            'nombre' => $nombreCategoria,
+            'product_id' => $request->product_id,
+
+        ]);
+
         CategoryProduct::create([
             'category_id' => $category->id,
             'product_id' => $validated['product_id'],
         ]);
-        return response()->json([
-            'message' => 'Categoría creada correctamente.',
-            'category' => $category,
-        ], 201);
+
+        $categoriasCreadas[] = $category;
     }
+
+    return response()->json([
+        'message' => 'Categorías creadas correctamente.',
+        'categorias' => $categoriasCreadas,
+    ], 201);
+}
 
     /*public function actualizar_categoria(ProductStoreRequest $request, $id){
         $validated = $request->validated();
