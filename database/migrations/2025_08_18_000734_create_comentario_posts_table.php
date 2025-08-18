@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('comentario_posts', function (Blueprint $table) {
             $table->id();
             $table->string('comentario');
+            $table->string('email');
             $table->foreignId('post_id')->constrained('posts')->onDelete('cascade');
             $table->timestamps();
         });
