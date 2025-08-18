@@ -169,9 +169,11 @@ class BlogController extends Controller
 }
 
 
-public function getcomentarios(Request $request){
-    
+public function getcomentarios($id){
 
+   $comentarios = ComentarioPost::where('post_id', $id)->get();
+
+   return response()->json($comentarios);
 }
 
 
