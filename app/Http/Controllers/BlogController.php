@@ -92,7 +92,7 @@ class BlogController extends Controller
         'updated_user_id'   => 'nullable|integer',
         'titulo'            => 'required|string|max:255',
         'contenido'         => 'required|string',
-        'resumen'           => 'nullable|string|max:1000',
+        'enlaces'           => 'nullable|string|max:100000',
         'imagenes'          => 'required|array|min:1',
         'imagenes.*'        => 'image|mimes:jpeg,png|max:10240', // 10MB para coincidir con el frontend
         'category_id'       => 'required', // puede venir como CSV o como array

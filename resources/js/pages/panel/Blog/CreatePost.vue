@@ -32,13 +32,22 @@
         <MultiSelect v-model="post.category_id" display="chip" :options="categories" optionLabel="nombre" optionValue="id" filter placeholder="Seleccione la categoría" :maxSelectedLabels="3" class="w-full" />
       </div>
 
-      <!-- Resumen
-        <div class="col-span-2">
-        <label class="block font-semibold mb-2">Resumen <span class="text-red-500">*</span></label>
-        <InputText v-model="post.resumen" placeholder="Ingresa el resumen" class="w-full" />
-      </div>
-       
-      -->
+     <!-- Enlaces -->
+<div class="col-span-2">
+  <label class="block font-semibold mb-2">Enlaces de referencia</label>
+  <div class="flex gap-2">
+    <InputText v-model="nuevoEnlace" placeholder="https://ejemplo.com" class="w-full" />
+    <Button label="Agregar" icon="pi pi-plus" @click="agregarEnlace" />
+  </div>
+
+  <!-- Lista de enlaces agregados -->
+  <ul class="mt-3 space-y-2">
+    <li v-for="(link, index) in enlaces" :key="index" class="flex items-center justify-between bg-gray-100 px-3 py-2 rounded">
+      <a :href="link" target="_blank" class="text-blue-600 underline">{{ link }}</a>
+      <button @click="eliminarEnlace(index)" class="text-red-500 hover:text-red-700">✕</button>
+    </li>
+  </ul>
+</div>
      
 
       <!-- Contenido -->
@@ -122,7 +131,9 @@ const products = ref([])
 const selectedProduct = ref(null)
 const categories = ref([])
 const archivoImgs = ref([])       // para guardar archivos
-const previewImgs = ref([])    
+const previewImgs = ref([])
+const enlaces = ref([])          // lista de enlaces
+const nuevoEnlace = ref('')      
 
 function cancelar() {
   window.history.back()
@@ -149,19 +160,33 @@ function removeImage(index) {
   previewImgs.value.splice(index, 1)
 }
 
+//eliminar un enlace de la lista
+function agregarEnlace() {
+  if (nuevoEnlace.value.trim() !== '') {
+    enlaces.value.push(nuevoEnlace.value.trim())
+    nuevoEnlace.value = ''
+  }
+}
+// elimina un enlace de la lista
+function eliminarEnlace(index) {
+  enlaces.value.splice(index, 1)
+}
+
 // Guardar post con múltiples imágenes
 function guardarPost() {
   const formData = new FormData()
   formData.append('user_id', 1)
   formData.append('titulo', post.value.titulo)
   formData.append('category_id', post.value.category_id)
-  formData.append('resumen', post.value.resumen)
+
+  // aquí mandamos enlaces concatenados por comas
+  formData.append('enlaces', enlaces.value.join(','))
+
   formData.append('contenido', post.value.contenido)
   formData.append('fecha_programada', formatDateRequest(post.value.fecha_programada))
   formData.append('state_id', 1)
 
-  // Agregar todas las imágenes
-  archivoImgs.value.forEach((img, i) => {
+  archivoImgs.value.forEach((img) => {
     formData.append('imagenes[]', img)
   })
 
