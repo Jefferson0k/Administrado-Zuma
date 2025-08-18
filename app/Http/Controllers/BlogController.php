@@ -83,15 +83,29 @@ class BlogController extends Controller
         return response()->json($categories);
     }
 
-    public function guardar(BlogStoreRequest $request){
-        $validated = $request->validated();
+    public function guardar(Request $request){
+        $validated = $request->validate([
+                  'user_id' => 'required|exists:users,id',
+            'updated_user_id' => 'nullable|integer',
+            'titulo' => 'required|string|max:255',
+            'contenido' => 'required|string',
+            'resumen' => 'nullable|string|max:1000',
+            'imagen' => 'required|image|max:2048', // ajusta si no es imagen
+            //'imagen' => 'nullable|string|max:255',
+            //'product_id' => 'required|exists:products,id',
+            'category_id' => 'required|exists:categories,id',
+            'state_id' => 'required|exists:states,id',
+            'fecha_programada' => 'nullable|date_format:Y-m-d H:i:s',
+            'fecha_publicacion'=> 'nullable|date_format:Y-m-d H:i:s',
+        ]);
         if ($request->hasFile('imagen')) {
             $img = $request->file('imagen');
             Log::debug($img);
             $allowedMimeTypes = ['image/jpeg', 'image/png'];
             if ($img->isValid() && in_array($img->getMimeType(), $allowedMimeTypes)) {
                 $randomName = Str::random(10) . '.' . $img->getClientOriginalExtension();
-                $img->storeAs('public/images', $randomName);
+                $img->storeAs('images', $randomName,'public');
+                Log::info("Imagen guardada en: " . $img);
                 $validated['imagen'] = $randomName;
             } else {
                 return response()->json(['error' => 'Solo se permiten imágenes JPG o PNG válidas'], 422);
@@ -190,8 +204,21 @@ class BlogController extends Controller
         return response()->json(['message' => 'Publicación actualizada correctamente']);
     }*/
     
-    public function actualizar(BlogStoreRequest $request, $id){
-        $validated = $request->validated();
+    public function actualizar(Request $request, $id){
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'updated_user_id' => 'nullable|integer',
+            'titulo' => 'required|string|max:255',
+            'contenido' => 'required|string',
+            'resumen' => 'nullable|string|max:1000',
+            'imagen' => 'required|image|max:2048', // ajusta si no es imagen
+            //'imagen' => 'nullable|string|max:255',
+            //'product_id' => 'required|exists:products,id',
+            'category_id' => 'required|exists:categories,id',
+            'state_id' => 'required|exists:states,id',
+            'fecha_programada' => 'nullable|date_format:Y-m-d H:i:s',
+            'fecha_publicacion'=> 'nullable|date_format:Y-m-d H:i:s',
+        ]);
 
         // Si hay imagen, la procesamos
         if ($request->hasFile('imagen')) {
@@ -242,33 +269,42 @@ class BlogController extends Controller
     }
 
     public function publicaciones(){
-        $posts = Post::with('ratings')->where('state_id', 2)->get();
+        $posts = Post::with(['ratings','categories'])->where('state_id', 2)->get();
         return response()->json($posts);
     }
 
 
-     public function showPost(){
-        $posts = Post::with(['ratings', 'categories'])->where('state_id', 2)->get();
+ public function showPost($id)
+{
+    $post = Post::with(['ratings', 'categories'])
+        ->where('id', $id)
+        ->where('state_id', 2)
+        ->first(); // 👈 devuelve un solo post o null
 
-        // Para cada post, obtenemos artículos relacionados por categoría
-        foreach ($posts as $post) {
-            $categoryIds = $post->categories->pluck('id')->toArray();
-
-            // Busca otros posts en las mismas categorías, excluyendo el actual
-            $related = Post::where('state_id', 2)
-                ->where('id', '!=', $post->id)
-                ->whereHas('categories', function ($query) use ($categoryIds) {
-                    $query->whereIn('categories.id', $categoryIds);
-                })
-                ->limit(5)
-                ->get();
-
-            // Agrega los relacionados al post
-            $post->related_articles = $related;
-        }
-
-        return response()->json($posts);
+    if (!$post) {
+        return response()->json([
+            'message' => 'Post not found'
+        ], 404);
     }
+
+    // Obtiene IDs de categorías
+    $categoryIds = $post->categories->pluck('id')->toArray();
+
+    // Busca posts relacionados
+    $related = Post::where('state_id', 2)
+        ->where('id', '!=', $post->id)
+        ->whereHas('categories', function ($query) use ($categoryIds) {
+            $query->whereIn('categories.id', $categoryIds);
+        })
+        ->limit(5)
+        ->get();
+
+    // Agrega los relacionados al post
+    $post->related_articles = $related;
+
+    return response()->json($post);
+}
+
 
     private function getRealIp(Request $request): string
     {
