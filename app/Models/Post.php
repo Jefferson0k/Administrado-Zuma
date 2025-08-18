@@ -49,4 +49,9 @@ class Post extends Model
 {
     return $this->hasMany(PostImage::class, 'post_id');
 }
+
+   public function comentarios()
+{
+    return $this->hasMany(ComentarioPost::class, 'post_id');
+}
 }
