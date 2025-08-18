@@ -14,7 +14,7 @@ class Post extends Model
         'updated_user_id',
         'titulo',
         'contenido',
-        'resumen',
+        'enlaces',
         'imagen',
         'state_id',
         'fecha_programada',

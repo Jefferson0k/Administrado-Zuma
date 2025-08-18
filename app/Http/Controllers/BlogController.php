@@ -221,11 +221,36 @@ class BlogController extends Controller
         ], 200);
     }
     
-    public function eliminar($id){
-        $post = Post::findOrFail($id);
+   public function eliminar($id)
+{
+    $post = Post::with('images')->findOrFail($id);
+
+    return DB::transaction(function () use ($post) {
+        // Eliminar imagen principal
+        if ($post->imagen && Storage::disk('public')->exists("images/{$post->imagen}")) {
+            Storage::disk('public')->delete("images/{$post->imagen}");
+        }
+
+        // Eliminar imágenes adicionales
+        foreach ($post->images as $img) {
+            if (Storage::disk('public')->exists("images/{$img->image_path}")) {
+                Storage::disk('public')->delete("images/{$img->image_path}");
+            }
+            $img->delete();
+        }
+
+        // Eliminar categorías
+        PostCategory::where('post_id', $post->id)->delete();
+
+        // Eliminar post
         $post->delete();
-        return response()->json(['message' => 'Publicación eliminada correctamente']);
-    }
+
+        return response()->json([
+            'message' => 'Publicación eliminada exitosamente.'
+        ]);
+    });
+}
+
 
     /*public function actualizar(BlogStoreRequest $request, $id){
         $validated = $request->validated();

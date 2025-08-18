@@ -17,7 +17,7 @@ return new class extends Migration
             $table->bigInteger('updated_user_id')->nullable();
             $table->string('titulo')->nullable();
             $table->text('contenido')->nullable();
-            $table->string('resumen')->nullable();
+            $table->string('enlaces')->nullable();
             $table->string('imagen')->nullable();
             $table->string('referencias')->nullable();
             $table->foreignId('state_id')->constrained();
