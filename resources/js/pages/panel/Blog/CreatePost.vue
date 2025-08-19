@@ -58,7 +58,7 @@
 
       <!-- Fecha -->
       <div>
-        <label class="block font-semibold mb-2">Fecha Programada <span class="text-red-500">*</span></label>
+        <label class="block font-semibold mb-2 mt-20">Fecha Programada <span class="text-red-500">*</span></label>
         <Calendar v-model="post.fecha_programada" dateFormat="dd/mm/yy" placeholder="Selecciona la fecha" showIcon showTime hourFormat="12" class="w-full" />
       </div>
 

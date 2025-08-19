@@ -15,13 +15,18 @@
         </IconField>
       </div>
     </template>
-    <Column selectionMode="multiple" style="width: 3rem" :exportable="false" />
     <Column field="titulo" header="Titulo" sortable />
     <!--<Column field="resumen" header="Resumen" sortable />-->
-    <Column field="contenido" header="Contenido" sortable />
+    <Column field="contenido" header="Contenido" sortable>
+  <template #body="{ data }">
+    <div class="line-clamp-4">
+      {{ data.contenido }}
+    </div>
+  </template>
+</Column>
     <Column field="categories" header="Categorías" sortable>
       <template #body="{ data }">
-        <div class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap gap-1">
           <Tag v-for="p in data.categories" :key="p.id" :value="p.nombre" severity="info" rounded />
         </div>
       </template>
