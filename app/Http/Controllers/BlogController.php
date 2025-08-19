@@ -67,12 +67,17 @@ class BlogController extends Controller
         return response()->json($products);
     }
 
-    public function listar_categoria(){
-        $categories = Category::with([
-            'products:id,nombre',
-        ])->get();
-        return response()->json($categories);
-    }
+   public function listar_categoria(Request $request)
+{
+    // cantidad por página, si no envían nada será 10 por defecto
+    $perPage = $request->input('per_page', 10);
+
+    $categories = Category::with([
+        'products:id,nombre',
+    ])->paginate($perPage);
+
+    return response()->json($categories);
+}
 
     public function listar_categoria_filtrada($id){
         $categories = Category::with([
@@ -396,10 +401,37 @@ public function saveComentario(Request $request)
         return response()->json(['message' => 'Publicación actualizada correctamente']);
     }
 
-    public function publicaciones(){
-        $posts = Post::with(['ratings','categories'])->where('state_id', 2)->get();
-        return response()->json($posts);
+public function publicaciones(Request $request)
+{
+    $query = Post::with(['ratings', 'categories'])
+        ->where('state_id', 2);
+
+    // Buscar por texto
+    if ($request->filled('search')) {
+        $search = $request->search;
+        $query->where(function ($q) use ($search) {
+            $q->where('posts.titulo', 'like', "%{$search}%")
+              ->orWhere('posts.contenido', 'like', "%{$search}%")
+              ->orWhereHas('categories', function ($q2) use ($search) {
+                  $q2->where('categories.nombre', 'like', "%{$search}%");
+              });
+        });
     }
+
+    // Filtrar por categorías (uno o varios IDs)
+    if ($request->filled('category_id')) {
+        $categories = (array) $request->category_id; // puede venir como array o single id
+        $query->whereHas('categories', function ($q) use ($categories) {
+            $q->whereIn('categories.id', $categories);
+        });
+    }
+
+    // Paginación
+    $perPage = $request->get('per_page', 10);
+    $posts = $query->paginate($perPage);
+
+    return response()->json($posts);
+}   
 
 
  public function showPost($id)
