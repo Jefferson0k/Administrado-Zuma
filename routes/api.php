@@ -106,7 +106,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/fixed-term-investments/pendientes', [FixedTermInvestmentControllers::class, 'pendingInvestments']);
     });
     
-\
+
     Route::get('/fixed-term-schedules/{id}/cronograma', [FixedTermScheduleController::class, 'showCronograma']);
 
     Route::prefix('reservas')->group(function () {

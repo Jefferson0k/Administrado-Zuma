@@ -34,35 +34,28 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
-use Money\Money;
-use Money\Currency as MoneyCurrency;
 class PropertyControllers extends Controller{
-    public function store(StorePropertyRequest $request)
-    {
+    public function store(StorePropertyRequest $request){
         $data = $request->validated();
-        
-        // Asegurar que currency_id existe
         if (!$data['currency_id']) {
             $data['currency_id'] = Currency::where('codigo', 'PEN')->first()->id;
         }
-        
         $property = Property::create($data);
-        
         if ($request->hasFile('imagenes')) {
             foreach ($request->file('imagenes') as $imagen) {
                 $filename = Str::uuid() . '.' . $imagen->getClientOriginalExtension();
-                $path = "propiedades/{$property->id}/{$filename}";
-                Storage::disk('s3')->put($path, file_get_contents($imagen));
+                $destinationPath = public_path("propiedades/{$property->id}");
+                if (!file_exists($destinationPath)) {
+                    mkdir($destinationPath, 0777, true);
+                }
+                $imagen->move($destinationPath, $filename);
                 $property->images()->create([
                     'imagen' => $filename,
-                    'path'   => $path,
+                    'path'   => "propiedades/{$property->id}/{$filename}",
                 ]);
             }
         }
-
-        // Refrescar desde BD para asegurar que tenemos todos los datos
         $property = Property::with(['images', 'currency'])->find($property->id);
-        
         return response()->json([
             'success'  => true,
             'message'  => 'Propiedad registrada exitosamente.',
@@ -81,9 +74,9 @@ class PropertyControllers extends Controller{
             foreach ($imagenesAEliminar as $imagenId) {
                 $image = $property->images()->find($imagenId);
                 if ($image) {
-                    $imagePath = "propiedades/{$property->id}/{$image->imagen}";
-                    if (Storage::disk('s3')->exists($imagePath)) {
-                        Storage::disk('s3')->delete($imagePath);
+                    $imagePath = public_path("propiedades/{$property->id}/{$image->imagen}");
+                    if (file_exists($imagePath)) {
+                        unlink($imagePath);
                     }
                     $image->delete();
                 }
@@ -92,11 +85,14 @@ class PropertyControllers extends Controller{
         if ($request->hasFile('imagenes')) {
             foreach ($request->file('imagenes') as $imagen) {
                 $filename = Str::uuid() . '.' . $imagen->getClientOriginalExtension();
-                $path = "propiedades/{$property->id}/{$filename}";
-                Storage::disk('s3')->put($path, file_get_contents($imagen));
+                $destinationPath = public_path("propiedades/{$property->id}");
+                if (!file_exists($destinationPath)) {
+                    mkdir($destinationPath, 0777, true);
+                }
+                $imagen->move($destinationPath, $filename);
                 $property->images()->create([
                     'imagen' => $filename,
-                    'path'   => $path,
+                    'path'   => "propiedades/{$property->id}/{$filename}",
                 ]);
             }
         }
@@ -105,6 +101,7 @@ class PropertyControllers extends Controller{
             'message' => 'Propiedad actualizada correctamente.'
         ], 200);
     }
+
     public function delete(string $id){
         $property = Property::findOrFail($id);
         foreach ($property->images as $image) {

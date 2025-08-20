@@ -198,8 +198,21 @@ const cargarPropiedad = async () => {
         form.nombre = property.nombre || '';
         form.direccion = property.direccion || '';
         form.descripcion = property.descripcion || '';
-        form.valor_estimado = property.valor_estimado;
-        form.valor_requerido = property.valor_requerido;
+        
+        // Manejar valor_estimado como objeto o número
+        if (property.valor_estimado && typeof property.valor_estimado === 'object' && property.valor_estimado.amount) {
+            form.valor_estimado = parseFloat(property.valor_estimado.amount);
+        } else {
+            form.valor_estimado = property.valor_estimado || null;
+        }
+        
+        // Manejar valor_requerido como objeto o número
+        if (property.valor_requerido && typeof property.valor_requerido === 'object' && property.valor_requerido.amount) {
+            form.valor_requerido = parseFloat(property.valor_requerido.amount);
+        } else {
+            form.valor_requerido = property.valor_requerido || null;
+        }
+        
         form.currency_id = property.currency_id;
         form.estado = property.estado || '';
         // Guardamos el investor_id de la respuesta
@@ -214,6 +227,7 @@ const cargarPropiedad = async () => {
         })) : [];
 
     } catch (error) {
+        console.error('Error al cargar propiedad:', error);
         toast.add({
             severity: 'error',
             summary: 'Error',
@@ -335,6 +349,7 @@ const actualizarPropiedad = async () => {
         cerrarModal();
 
     } catch (error) {
+        console.error('Error al actualizar propiedad:', error);
         toast.add({
             severity: 'error',
             summary: 'Error',

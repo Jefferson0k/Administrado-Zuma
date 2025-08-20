@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Investor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use App\Models\Alias;
 class InvestorController extends Controller{
     public function store(Request $request){
         $validated = $request->validate([
@@ -88,19 +90,29 @@ class InvestorController extends Controller{
             'telephone' => 'sometimes|string|max:20',
             'password' => 'nullable|string|min:6|confirmed',
         ]);
+        if (!empty($validated['alias'])) {
+            $aliasSlug = Str::slug($validated['alias']);
+            $aliasProhibido = Alias::pluck('slug')->some(function ($prohibido) use ($aliasSlug) {
+                return Str::contains($aliasSlug, $prohibido);
+            });
+            if ($aliasProhibido) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El alias ingresado no está permitido, por favor elige otro.',
+                ], 422);
+            }
+        }
         $investor->fill($validated);
         if (!empty($validated['password'])) {
             $investor->password = Hash::make($validated['password']);
         }
         $wasEmailChanged = $investor->isDirty('email');
         $investor->save();
-        // Enviar email de verificación si se cambió el correo
         if ($wasEmailChanged) {
             $investor->email_verified_at = null;
             $investor->save();
             $investor->sendEmailVerificationNotification();
         }
-
         return response()->json([
             'success' => true,
             'message' => 'Datos actualizados correctamente',
