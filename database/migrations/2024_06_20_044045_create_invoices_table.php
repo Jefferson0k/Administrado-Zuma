@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('invoices', function (Blueprint $table) {
             $table->ulid('id')->primary();
             $table->uuid('invoice_code');
+            $table->string('codigo')->unique();
             $table->char('currency', 3);
             $table->bigInteger('amount')->default(0);
             $table->bigInteger('financed_amount_by_garantia')->default(0);

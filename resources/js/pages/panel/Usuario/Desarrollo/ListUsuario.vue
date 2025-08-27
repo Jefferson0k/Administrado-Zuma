@@ -107,7 +107,7 @@ onMounted(() => {
         :rows="pagination.perPage" :totalRecords="pagination.total" :loading="loading" :lazy="true" @page="onPage"
         :rowsPerPageOptions="[15, 20, 25]"
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} usuarios">
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} usuarios" class="p-datatable-sm">
 
         <template #header>
             <div class="flex flex-wrap gap-2 items-center justify-between">
@@ -126,10 +126,10 @@ onMounted(() => {
 
         <Column selectionMode="multiple" style="width: 1rem" :exportable="false"></Column>
         <Column field="role" header="Rol" sortable style="min-width: 4rem"></Column>
-        <Column field="username" header="Usuario" sortable style="min-width: 12rem"></Column>
+        <Column field="cargo" header="Cargo" sortable style="min-width: 4rem"></Column>
         <Column field="dni" header="DNI" sortable style="min-width: 4rem"></Column>
-        <Column field="name1" header="Nombres y Apellidos" sortable style="min-width: 32rem"></Column>
-        <Column field="email" header="Email" sortable style="min-width: 25rem"></Column>
+        <Column field="name1" header="Nombres y Apellidos" sortable style="min-width: 25rem"></Column>
+        <Column field="email" header="Email" sortable style="min-width: 20rem"></Column>
         <Column field="creacion" header="Creación" sortable style="min-width: 13rem"></Column>
         <Column field="online" header="Online" sortable style="min-width: 9rem">
             <template #body="{ data }">

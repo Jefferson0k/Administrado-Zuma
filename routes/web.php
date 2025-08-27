@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\UsuariosController;
 use App\Http\Controllers\Panel\AmountRangeController;
 use App\Http\Controllers\Panel\BidControllers;
 use App\Http\Controllers\Panel\CalculadoraController;
+use App\Http\Controllers\Panel\CargoController;
 use App\Http\Controllers\Panel\CorporateEntityController;
 use App\Http\Controllers\Panel\CurrencyControllers;
 use App\Http\Controllers\Panel\CustomerController;
@@ -25,6 +26,7 @@ use App\Http\Controllers\Panel\PropertyControllers;
 use App\Http\Controllers\Panel\PropertyLoanDetailController;
 use App\Http\Controllers\Panel\RateTypeController;
 use App\Http\Controllers\Panel\TermPlanController;
+use App\Http\Controllers\Web\Factoring\CompanyWeb;
 use App\Http\Controllers\Web\SubastaHipotecas\ClienteWebController;
 use App\Http\Controllers\Web\SubastaHipotecas\CuentasBancariasWebControler;
 use App\Http\Controllers\Web\SubastaHipotecas\DepositosWebControler;
@@ -68,6 +70,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     #RUTAS DE API
     Route::prefix('api')->group(function () {
         Route::get('/consultar-ruc/{ruc?}', [ConsultasRucController::class, 'consultar'])->name('consultar.ruc');
+    });
+
+    #Cargos
+    Route::prefix('cargos')->group(function(){
+        Route::get('/', [CargoController::class, 'index'])->name('cargos.index');
+    });
+
+    #RUTAS DE WEB EN LA PARTE DE FACTORING
+    Route::prefix('factoring')->group(function(){
+        Route::get('/empresas', [CompanyWeb::class, 'views'])->name('factoring.views');
     });
 
     #RUTAS DE WEB EN LA PARTE DE TASAS FIJAS
@@ -259,6 +271,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dni/{dni?}', [ConsultasDni::class, 'consultar']);
 
 });
+
 
 Route::get('/currencies', [CurrencyControllers::class, 'index']);
 

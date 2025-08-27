@@ -3,53 +3,53 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Models\Cargo;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 
-class UserSeeder extends Seeder
-{
-    public function run(): void
-    {
-        $adminRole = Role::where('name', 'admin')->first();
+class UserSeeder extends Seeder{
+    public function run(): void{
+        $adminRole = Role::where('name', 'administrador')->first();
         $personalRole = Role::where('name', 'personal')->first();
-
-        $users = [
-            [
-                'name' => 'Usuario 1',
-                'email' => 'user1@gmail.com',
-                'role' => $adminRole,
-            ],
-            [
-                'name' => 'Usuario 2',
-                'email' => 'user2@gmail.com',
-                'role' => $adminRole,
-            ],
-            [
-                'name' => 'Usuario 3',
-                'email' => 'user3@gmail.com',
-                'role' => $adminRole,
-            ],
-            [
-                'name' => 'Usuario 4',
-                'email' => 'user4@gmail.com',
-                'role' => $adminRole,
-            ],
-        ];
-
-        foreach ($users as $data) {
-            $user = User::firstOrCreate(
-                ['email' => $data['email']],
-                [
-                    'name' => $data['name'],
-                    'password' => Hash::make('12345678'),
-                ]
-            );
-
-            if ($data['role']) {
-                $user->assignRole($data['role']);
-            }
+        $permissions = Permission::all();
+        if ($adminRole) {
+            $adminRole->syncPermissions($permissions);
+        }
+        $cargoAdmin = Cargo::where('nombre', 'Administrador')->first();
+        $cargoPersonal = Cargo::where('nombre', 'Personal')->first();
+        $admin_1 = User::create([
+            'name'              => 'user1',
+            'dni'               => '12345678',
+            'apellidos'         => 'Admin Test',
+            'email'             => 'user1@gmail.com',
+            'password'          => Hash::make('12345678'),
+            'status'            => true,
+            'restablecimiento'  => 0,
+            'cargo_id'          => $cargoAdmin?->id,
+            'created_by'        => null,
+            'updated_by'        => null,
+            'deleted_by'        => null,
+        ]);
+        $personal_1 = User::create([
+            'name'              => 'user2',
+            'dni'               => '87654321',
+            'apellidos'         => 'Personal Test',
+            'email'             => 'user2@gmail.com',
+            'password'          => Hash::make('12345678'),
+            'status'            => true,
+            'restablecimiento'  => 0,
+            'cargo_id'          => $cargoPersonal?->id,
+            'created_by'        => null,
+            'updated_by'        => null,
+            'deleted_by'        => null,
+        ]);
+        if ($adminRole) {
+            $admin_1->assignRole($adminRole);
+        }
+        if ($personalRole) {
+            $personal_1->assignRole($personalRole);
         }
     }
 }
