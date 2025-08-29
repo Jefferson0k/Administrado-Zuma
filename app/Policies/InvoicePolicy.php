@@ -12,7 +12,7 @@ class InvoicePolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('ver invoice');
+        return $user->can('ver factura');
     }
 
     /**
@@ -20,7 +20,7 @@ class InvoicePolicy
      */
     public function view(User $user, Invoice $invoice): bool
     {
-        return $user->can('ver invoice');
+        return $user->can('ver factura');
     }
 
     /**
@@ -28,7 +28,7 @@ class InvoicePolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('crear invoice');
+        return $user->can('crear factura');
     }
 
     /**
@@ -36,7 +36,7 @@ class InvoicePolicy
      */
     public function update(User $user, Invoice $invoice): bool
     {
-        return $user->can('editar invoice');
+        return $user->can('editar factura');
     }
 
     /**
@@ -44,7 +44,7 @@ class InvoicePolicy
      */
     public function delete(User $user, Invoice $invoice): bool
     {
-        return $user->can('eliminar invoice');
+        return $user->can('eliminar factura');
     }
 
     /**

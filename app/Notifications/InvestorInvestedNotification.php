@@ -47,7 +47,7 @@ class InvestorInvestedNotification extends Notification
             ->line('Tu inversión se registró correctamente.')
             ->line('Empresa: ' . $this->company->name)
             ->line('Factura: ' . $this->invoice->invoice_code)
-            ->line('Monto: ' . MoneyFormatter::formatFromDecimal($this->investment->amount))
+            ->line('Monto: ' . MoneyFormatter::formatFromDecimal($this->investment->amount, $this->invoice->currency))
             ->line('Tasa: ' . $this->investment->rate . '%')
             ->line('Fecha estimada de pago: ' . Carbon::parse($this->investment->due_date)->format('d/m/Y'))
             ->action('Ver detalles', env('CLIENT_APP_URL') . '/mis-inversiones');

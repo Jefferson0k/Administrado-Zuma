@@ -95,7 +95,7 @@ const model = computed(() => [
             },
             {
                 label: 'Cuentas Bancarias',
-                icon: 'pi pi-fw pi-university',
+                icon: 'pi pi-fw pi-briefcase',
                 to: '/factoring/cuentas-bancarias'
             },
             {

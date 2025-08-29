@@ -6,33 +6,48 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('company_finances', function (Blueprint $table) {
             $table->id();
-            $table->string('company_id'); // Cambiar a string para que coincida con el ULID
-            $table->integer('facturas_financiadas')->default(0);
-            $table->decimal('monto_total_financiado', 15, 2)->default(0.00);
-            $table->integer('pagadas')->default(0);
-            $table->integer('pendientes')->default(0);
-            $table->integer('plazo_promedio_pago')->default(0);
-            $table->enum('moneda', ['soles', 'dolares'])->default('soles');
-            $table->enum('status', ['active', 'inactive'])->default('active');
+            $table->char('company_id', 26);
+
+            // Montos generales
+            $table->unsignedInteger('facturas_financiadas')->nullable();
+            $table->decimal('monto_total_financiado', 15, 2)->nullable();
+            $table->unsignedInteger('pagadas')->nullable();
+            $table->unsignedInteger('pendientes')->nullable();
+            $table->unsignedInteger('plazo_promedio_pago')->nullable();
+
+            // Datos en PEN
+            $table->decimal('sales_volume_pen', 15, 2)->nullable();
+            $table->integer('facturas_financiadas_pen')->nullable();
+            $table->decimal('monto_total_financiado_pen', 15, 2)->nullable();
+            $table->integer('pagadas_pen')->nullable();
+            $table->integer('pendientes_pen')->nullable();
+            $table->integer('plazo_promedio_pago_pen')->nullable();
+
+            // Datos en USD
+            $table->decimal('sales_volume_usd', 15, 2)->nullable();
+            $table->integer('facturas_financiadas_usd')->nullable();
+            $table->decimal('monto_total_financiado_usd', 15, 2)->nullable();
+            $table->integer('pagadas_usd')->nullable();
+            $table->integer('pendientes_usd')->nullable();
+            $table->integer('plazo_promedio_pago_usd')->nullable();
+
+            // Auditoría
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->softDeletes();
             $table->timestamps();
 
-            // Índices y relaciones - Especificar el tipo de campo correctamente
+            // Relaciones e índices
             $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
-            $table->index(['company_id', 'moneda']);
-            $table->unique(['company_id', 'moneda']); // Una empresa puede tener solo un registro por moneda
+            $table->index('company_id');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('company_finances');

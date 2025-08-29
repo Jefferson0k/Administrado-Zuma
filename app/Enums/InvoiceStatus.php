@@ -10,4 +10,5 @@ enum InvoiceStatus: string
   case REPROGRAMED = "reprogramed";
   case EXPIRED = "expired";
   case JUDICIALIZED = "judicialized";
+  case DaStandby = 'daStandby';
 }

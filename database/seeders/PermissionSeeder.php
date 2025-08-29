@@ -5,7 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 
-class PermissionSeeder extends Seeder{    
+class PermissionSeeder extends Seeder{
     public function run(): void{
         #Cargos
         Permission::create(['name' => 'crear cargo']);
@@ -23,6 +23,7 @@ class PermissionSeeder extends Seeder{
         Permission::create(['name' => 'eliminar inversionistas']);
         Permission::create(['name' => 'ver inversionistas']);
         // Empresas
+        Permission::create(['name' => 'buscar sector']);
         Permission::create(['name' => 'crear empresas']);
         Permission::create(['name' => 'editar empresas']);
         Permission::create(['name' => 'eliminar empresas']);
@@ -62,6 +63,11 @@ class PermissionSeeder extends Seeder{
         Permission::create(['name' => 'editar sectores']);
         Permission::create(['name' => 'eliminar sectores']);
         Permission::create(['name' => 'ver sectores']);
+        // Sub Sectores
+        Permission::create(['name' => 'crear sub sector']);
+        Permission::create(['name' => 'editar sub sector']);
+        Permission::create(['name' => 'eliminar sub sector']);
+        Permission::create(['name' => 'ver sub sector']);
          // Users/Usuarios
         Permission::create(['name' => 'crear usuarios']);
         Permission::create(['name' => 'editar usuarios']);
