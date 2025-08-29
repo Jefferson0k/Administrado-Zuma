@@ -6,15 +6,20 @@ use App\Enums\MovementStatus;
 use App\Enums\MovementType;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Subastas\Auction\AuctionHistoryResource;
+use App\Http\Resources\Subastas\Investment\InvestmentListResource;
 use App\Http\Resources\Subastas\Investment\InvestmentResource;
-use App\Http\Resources\Subastas\Investment\RecordInvestmentResource;
 use App\Models\Investment;
 use Illuminate\Http\Request;
 use App\Models\Auction;
 use App\Models\Movement;
-use App\Models\Balance;
 use App\Models\Bid;
+use App\Models\Invoice;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use Throwable;
+
 class InvestmentControllers extends Controller {
     public function store(Request $request){
         $request->validate([
@@ -110,5 +115,49 @@ class InvestmentControllers extends Controller {
         ->orderBy('created_at', 'desc')
         ->paginate(10);
         return AuctionHistoryResource::collection($participaciones);
+    }
+    public function show($invoice_id){
+        try {
+            $invoice = Invoice::findOrFail($invoice_id);
+            $investments = Investment::with(['investor', 'invoice'])
+                ->where('invoice_id', $invoice_id)
+                ->get();
+            if ($investments->isNotEmpty()) {
+                Gate::authorize('view', $investments->first());
+            } else {
+                Gate::authorize('viewAny', Investment::class);
+            }
+            if ($investments->isEmpty()) {
+                return response()->json([
+                    'message' => 'No se encontraron inversiones para esta factura.',
+                    'data' => []
+                ], 200);
+            }
+            return InvestmentListResource::collection($investments);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Factura no encontrada.'], 404);
+        } catch (AuthorizationException $e) {
+            return response()->json(['message' => 'No tienes permiso para ver estas inversiones.'], 403);
+        } catch (Throwable $e) {
+            return response()->json(['message' => 'Error al mostrar las inversiones.'], 500);
+        }
+    }
+    public function indexAll(){
+        try {
+            Gate::authorize('viewAny', Investment::class);
+            $investment = Investment::all();
+            return response()->json([
+                'total' => $investment->count(),
+                'data'  => InvestmentListResource::collection($investment),
+            ]);
+        } catch (AuthorizationException $e) {
+            return response()->json([
+                'message' => 'No tienes permiso para ver las inversiones.'
+            ], 403);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'Error al listar las inversiones.'
+            ], 500);
+        }
     }
 }

@@ -48,6 +48,10 @@ class CompanyPolicy
         return $user->can('eliminar empresas');
     }
 
+    public function search(User $user): bool{
+        return $user->can('buscar sector');
+    }
+
     /**
      * Determine whether the user can restore the model.
      */

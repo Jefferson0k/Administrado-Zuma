@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('cc');
             $table->string('cci');
             $table->string('alias')->nullable();
-            $table->enum('status', ['valid', 'invalid'])->default('invalid');
+            $table->enum('status', ['valid', 'invalid', 'pre_approved'])->default('invalid');
             $table->foreignUlid('investor_id')->constrained();
             $table->timestamps();
         });

@@ -4,39 +4,38 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
+use OwenIt\Auditing\Auditable;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
-class CompanyFinance extends Model
-{
-    use HasFactory;
-    
+class CompanyFinance extends Model implements AuditableContract{
+    use HasFactory, Auditable, SoftDeletes;
     protected $table = 'company_finances';
-    
     protected $fillable = [
         'company_id',
-        // Legacy fields (keep for backwards compatibility)
         'facturas_financiadas',
         'monto_total_financiado',
         'pagadas',
         'pendientes',
         'plazo_promedio_pago',
-        
-        // New currency-specific fields for PEN
+
         'sales_volume_pen',
         'facturas_financiadas_pen',
         'monto_total_financiado_pen',
         'pagadas_pen',
         'pendientes_pen',
         'plazo_promedio_pago_pen',
-        
-        // New currency-specific fields for USD
+
         'sales_volume_usd',
         'facturas_financiadas_usd',
         'monto_total_financiado_usd',
         'pagadas_usd',
         'pendientes_usd',
         'plazo_promedio_pago_usd',
-    ];
 
+        'created_by',
+        'updated_by',
+    ];
     protected $casts = [
         'sales_volume_pen' => 'decimal:2',
         'monto_total_financiado_pen' => 'decimal:2',
@@ -44,33 +43,29 @@ class CompanyFinance extends Model
         'monto_total_financiado_usd' => 'decimal:2',
     ];
 
+    /**
+     * Relación con la compañía
+     */
     public function company()
     {
         return $this->belongsTo(Company::class, 'company_id', 'id');
     }
 
     /**
-     * Get total sales volume across all currencies
+     * Total sales volume en PEN (conversión de USD)
      */
     public function getTotalSalesVolumeAttribute()
     {
-        $total = 0;
-        
-        if ($this->sales_volume_pen) {
-            $total += $this->sales_volume_pen;
-        }
-        
+        $total = $this->sales_volume_pen ?? 0;
         if ($this->sales_volume_usd) {
-            // Convert USD to PEN using an exchange rate (you might want to make this configurable)
-            $exchangeRate = 3.75; // Example rate - you should get this from a service
+            $exchangeRate = 3.75; // ejemplo, configurable
             $total += $this->sales_volume_usd * $exchangeRate;
         }
-        
         return $total;
     }
 
     /**
-     * Get total facturas financiadas across all currencies
+     * Total facturas financiadas
      */
     public function getTotalFacturasFinanciadasAttribute()
     {
@@ -78,22 +73,20 @@ class CompanyFinance extends Model
     }
 
     /**
-     * Get total monto financiado in PEN equivalent
+     * Total monto financiado en PEN equivalente
      */
     public function getTotalMontoFinanciadoAttribute()
     {
         $total = $this->monto_total_financiado_pen ?? 0;
-        
         if ($this->monto_total_financiado_usd) {
-            $exchangeRate = 3.75; // Example rate
+            $exchangeRate = 3.75;
             $total += $this->monto_total_financiado_usd * $exchangeRate;
         }
-        
         return $total;
     }
 
     /**
-     * Get total pagadas across all currencies
+     * Total pagadas
      */
     public function getTotalPagadasAttribute()
     {
@@ -101,7 +94,7 @@ class CompanyFinance extends Model
     }
 
     /**
-     * Get total pendientes across all currencies
+     * Total pendientes
      */
     public function getTotalPendientesAttribute()
     {
@@ -109,26 +102,23 @@ class CompanyFinance extends Model
     }
 
     /**
-     * Get average plazo promedio weighted by currency
+     * Promedio ponderado del plazo de pago
      */
     public function getAveragePlazoPromedioAttribute()
     {
         $totalFacturas = $this->getTotalFacturasFinanciadasAttribute();
-        
         if ($totalFacturas == 0) {
             return 0;
         }
-        
+
         $weightedSum = 0;
-        
-        if ($this->facturas_financiadas_pen > 0) {
+        if (($this->facturas_financiadas_pen ?? 0) > 0) {
             $weightedSum += ($this->plazo_promedio_pago_pen ?? 0) * $this->facturas_financiadas_pen;
         }
-        
-        if ($this->facturas_financiadas_usd > 0) {
+        if (($this->facturas_financiadas_usd ?? 0) > 0) {
             $weightedSum += ($this->plazo_promedio_pago_usd ?? 0) * $this->facturas_financiadas_usd;
         }
-        
+
         return round($weightedSum / $totalFacturas, 2);
     }
 }

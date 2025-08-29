@@ -7,9 +7,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Traits\Auditable;
+use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
+use OwenIt\Auditing\Auditable;
 
-class Company extends Model{
+class Company extends Model implements AuditableContract{
     use HasFactory, HasUlids, Auditable;
     protected $fillable = [
         'name',
@@ -18,7 +19,8 @@ class Company extends Model{
         'sector_id',
         'subsector_id',
         'incorporation_year',
-        'sales_volume',
+        'sales_PEN',
+        'sales_USD',
         'document',
         'link_web_page',
         'description',
@@ -29,7 +31,8 @@ class Company extends Model{
     ];
     public $timestamps = true;
     protected $casts = [
-        'sales_volume' => 'decimal:2',
+        'sales_PEN' => 'decimal:2',
+        'sales_USD' => 'decimal:2',
     ];
     public function invoices(): HasMany {
         return $this->hasMany(Invoice::class);
@@ -63,6 +66,7 @@ class Company extends Model{
     public function usesPenCurrency() {
         return in_array($this->moneda, ['PEN', 'BOTH']);
     }
+
     public function usesUsdCurrency() {
         return in_array($this->moneda, ['USD', 'BOTH']);
     }
@@ -87,7 +91,6 @@ class Company extends Model{
             $this->provincia ?? null,
             $this->departamento ?? null
         ]);
-
         return implode(', ', $addressParts);
     }
 }

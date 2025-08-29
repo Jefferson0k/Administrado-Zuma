@@ -125,17 +125,11 @@ onMounted(() => {
         </template>
 
         <Column selectionMode="multiple" style="width: 1rem" :exportable="false"></Column>
-        <Column field="role" header="Rol" sortable style="min-width: 4rem"></Column>
-        <Column field="cargo" header="Cargo" sortable style="min-width: 4rem"></Column>
-        <Column field="dni" header="DNI" sortable style="min-width: 4rem"></Column>
         <Column field="name1" header="Nombres y Apellidos" sortable style="min-width: 25rem"></Column>
+        <Column field="dni" header="DNI" sortable style="min-width: 4rem"></Column>
         <Column field="email" header="Email" sortable style="min-width: 20rem"></Column>
+        <Column field="role" header="Rol" sortable style="min-width: 4rem"></Column>
         <Column field="creacion" header="Creación" sortable style="min-width: 13rem"></Column>
-        <Column field="online" header="Online" sortable style="min-width: 9rem">
-            <template #body="{ data }">
-                <Tag :value="data.online ? 'En línea' : 'Sin conexión'" :severity="getSeverity(data.online)" />
-            </template>
-        </Column>
         <Column field="status" header="Estado" sortable style="min-width: 4rem">
             <template #body="{ data }">
                 <Tag :value="data.status ? 'Activo' : 'Inactivo'" :severity="getSeverity(data.status)" />

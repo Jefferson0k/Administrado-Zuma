@@ -14,13 +14,12 @@ return new class extends Migration {
             $table->foreignId('sector_id')->constrained()->onDelete('cascade');
             $table->foreignId('subsector_id')->nullable()->constrained()->onDelete('cascade');
             $table->year('incorporation_year')->nullable();
-            $table->decimal('sales_volume', 15, 2)->nullable();
             $table->string('document', 11)->unique();
             $table->string('link_web_page');
             $table->longText('description')->nullable();
-
             $table->enum('moneda', ['USD', 'PEN', 'BOTH'])->default('PEN');
-
+            $table->decimal('sales_PEN', 15, 2)->nullable();
+            $table->decimal('sales_USD', 15, 2)->nullable();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
