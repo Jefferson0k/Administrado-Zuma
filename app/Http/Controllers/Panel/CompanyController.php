@@ -17,27 +17,30 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Pipeline\Pipeline;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class CompanyController extends Controller{
     public function index(){
-        try {
+    try {
             Gate::authorize('viewAny', Company::class);
-            $sectors = Company::all();
+            $companies = Company::all();
             return response()->json([
-                'total' => $sectors->count(),
-                'data'  => CompanyResource::collection($sectors),
+                'total' => $companies->count(),
+                'data'  => CompanyResource::collection($companies),
             ]);
         } catch (AuthorizationException $e) {
             return response()->json([
-                'message' => 'No tienes permiso para ver los sectores.'
+                'message' => 'No tienes permiso para ver las compañías.'
             ], 403);
         } catch (Throwable $e) {
+            Log::error('Error al listar las compañías: ' . $e->getMessage());
             return response()->json([
-                'message' => 'Error al listar los sectores.'
+                'message' => 'Error al listar las compañías.'
             ], 500);
         }
     }
+
     public function store(StoreCompanyRequest $request, StoreCompanyFinanceRequest $financeRequest){
         try {
             Gate::authorize('create', Company::class);

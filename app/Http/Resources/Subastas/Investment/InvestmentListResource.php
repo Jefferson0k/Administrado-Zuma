@@ -13,7 +13,7 @@ class InvestmentListResource extends JsonResource{
             'amount' => $this->amount,
             'return' => $this->return,
             'rate' => $this->rate,
-            'codigo' => $this->invoice->codigo,
+            'codigo' => $this->invoice->codigo ?? 'Sin codigo',
             'currency' => $this->currency,
             'due_date'    => Carbon::parse($this->due_date)->format('d-m-Y'),
             'status' => $this->status,
