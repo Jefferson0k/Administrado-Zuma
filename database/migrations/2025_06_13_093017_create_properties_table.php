@@ -15,18 +15,20 @@ return new class extends Migration {
             $table->string('direccion')->nullable();
             $table->string('nombre');
             $table->text('descripcion')->nullable();
-            
             $table->bigInteger('valor_estimado')->default(0);
             $table->bigInteger('valor_subasta')->default(0);
             $table->bigInteger('valor_requerido')->default(0);
-
             $table->foreignId('currency_id')->constrained('currencies');
             $table->enum('estado', [
                 'en_subasta', 'subastada', 'programada', 'desactivada',
                 'activa', 'adquirido', 'pendiente', 'completo', 'espera'
             ])->default('pendiente');
             $table->unsignedTinyInteger('config_total')->default(0);
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
     public function down(): void {

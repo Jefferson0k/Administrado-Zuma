@@ -20,9 +20,6 @@ return new class extends Migration{
             $table->string('solicitud_prestamo_para', 250)->nullable(); // 250 caracteres
             $table->string('garantia', 250)->nullable(); // 250 caracteres
             $table->string('perfil_riesgo', 400)->nullable(); // 400 caracteres
-            
-            $table->timestamps();
-
             // Foreign keys
             $table->foreign('property_id')
                 ->references('id')
@@ -37,6 +34,11 @@ return new class extends Migration{
             // Índices para mejorar performance en consultas
             $table->index(['property_id', 'investor_id']);
             $table->index('config_id');
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->timestamps();
+            $table->softDeletes();
         });
     }
 

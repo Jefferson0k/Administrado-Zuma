@@ -52,63 +52,62 @@ const model = computed(() => [
             }
         ]
     },
-
     // ========== FACTORING ==========
     {
         label: 'Factoring',
         icon: 'pi pi-fw pi-file-invoice',
         items: [
-            {
+            hasPermission('ver empresas') && {
                 label: 'Empresas',
                 icon: 'pi pi-fw pi-building',
                 to: '/factoring/empresas'
             },
-            {
+            hasPermission('ver factura') && {
                 label: 'Facturas',
                 icon: 'pi pi-fw pi-file-edit',
                 to: '/factoring/facturas'
             },
-            {
+            hasPermission('ver inversiones') && {
                 label: 'Inversiones',
                 icon: 'pi pi-fw pi-chart-line',
                 to: '/factoring/inversiones'
             },
-            {
+            hasPermission('ver inversionistas') && {
                 label: 'Inversionistas',
                 icon: 'pi pi-fw pi-users',
                 to: '/factoring/inversionistas'
             },
-            {
+            hasPermission('ver depositos') && {
                 label: 'Depósitos',
                 icon: 'pi pi-fw pi-arrow-down',
                 to: '/factoring/depositos'
             },
-            {
+            hasPermission('ver pagos') && {
                 label: 'Realizar Pagos',
                 icon: 'pi pi-fw pi-send',
                 to: '/factoring/pagos'
             },
-            {
+            hasPermission('ver retiros') && {
                 label: 'Retiros',
                 icon: 'pi pi-fw pi-arrow-up',
                 to: '/factoring/retiros'
             },
-            {
+            hasPermission('ver cuenta bancaria') && {
                 label: 'Cuentas Bancarias',
                 icon: 'pi pi-fw pi-briefcase',
                 to: '/factoring/cuentas-bancarias'
             },
-            {
+            hasPermission('ver tipo cambio') && {
                 label: 'Tipo de Cambio',
                 icon: 'pi pi-fw pi-refresh',
                 to: '/factoring/tipo-cambio'
             },
-            {
+            hasPermission('ver sectores') && {
                 label: 'Sectores',
                 icon: 'pi pi-fw pi-sitemap',
                 to: '/factoring/sectores'
             }
-        ]
+        ].filter(Boolean)
     },
 
     // ========== SUBASTA DE HIPOTECAS ==========
@@ -116,17 +115,17 @@ const model = computed(() => [
         label: 'Subasta de Hipotecas',
         icon: 'pi pi-fw pi-home',
         items: [
-            {
+            hasPermission('ver propiedades') && {
                 label: 'Registro de Inmuebles',
                 icon: 'pi pi-fw pi-building',
                 to: '/subasta-hipotecas/propiedades'
             },
-            {
+            hasPermission('ver reglas del imueble') && {
                 label: 'Reglas del Inmueble',
                 icon: 'pi pi-fw pi-list',
                 to: '/subasta-hipotecas/reglas'
             },
-            {
+            hasPermission('ver informacion del cliente') && {
                 label: 'Información del Cliente',
                 icon: 'pi pi-fw pi-user',
                 to: '/subasta-hipotecas/inversionista'
@@ -156,7 +155,7 @@ const model = computed(() => [
                 icon: 'pi pi-fw pi-arrow-circle-up',
                 to: '/subasta-hipotecas/inversionista/pagos'
             }
-        ]
+        ].filter(Boolean)
     },
 
     // ========== ADMINISTRACIÓN ==========
