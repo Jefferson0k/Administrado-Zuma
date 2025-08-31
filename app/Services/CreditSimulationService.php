@@ -7,8 +7,37 @@ use App\Models\Deadlines;
 use Carbon\Carbon;
 use Money\Money;
 
-class CreditSimulationService{
-    public function generate(Property $property, Deadlines $deadline, int $page = 1, int $perPage = 10): array{
+class CreditSimulationService
+{
+    /**
+     * Convierte un objeto Money a string decimal para BC Math
+     */
+    private function moneyToDecimalString(Money $money): string
+    {
+        $amount = $money->getAmount();
+        return bcdiv($amount, '100', 6);
+    }
+
+    /**
+     * Función para redondear usando BC Math
+     */
+    private function bcround(string $number, int $precision = 0): string
+    {
+        if ($precision < 0) {
+            $precision = 0;
+        }
+        
+        $factor = bcpow('10', (string)$precision, $precision + 2);
+        $rounded = bcdiv(bcadd(bcmul($number, $factor, $precision + 2), '0.5', $precision + 2), $factor, $precision);
+        
+        return $rounded;
+    }
+
+    /**
+     * Cronograma Francés: Cuotas fijas, amortización creciente
+     */
+    public function generate(Property $property, Deadlines $deadline, int $page = 1, int $perPage = 10): array
+    {
         bcscale(6);
         
         // Convertir Money object a string decimal
@@ -17,25 +46,30 @@ class CreditSimulationService{
         $plazoMeses = $deadline->duracion_meses;
         $moneda = $property->currency_id == 1 ? 'Soles' : 'Dólares';
         $simbolo = $property->currency_id == 1 ? 'PEN' : 'USD';
-        // El accessor ya devuelve el valor como porcentaje decimal (ej: 1.50)
-        // Solo necesitamos dividir por 100 para obtener la tasa decimal
-        $tem_sin_igv = bcdiv((string) $property->tem, '100', 6);
+        
+        // Convertir tasa entera a decimal: 125 -> 0.0125 (1.25%)
+        $tem_decimal = bcdiv((string) $property->tem, '10000', 6);
+        
         $fechaDesembolso = Carbon::now()->format('d/m/Y');
         $fechaInicio = Carbon::now()->addMonth()->day(15);
         $saldoInicial = $capital;
         $pagos = [];
         
+        // Calcular cuota fija para sistema francés
+        $cuotaFija = $this->calcularCuotaFijaBC($capital, $tem_decimal, $plazoMeses);
+        
         for ($cuota = 1; $cuota <= $plazoMeses; $cuota++) {
-            $interesSinIGV = bcmul($saldoInicial, $tem_sin_igv, 6);
+            $interesSinIGV = bcmul($saldoInicial, $tem_decimal, 6);
             $igv = '0.00';
-            $capitalPago = $this->calcularCapitalPagoBC($capital, $tem_sin_igv, $plazoMeses, $cuota);
-            $cuotaNeta = bcadd($capitalPago, $interesSinIGV, 6);
+            $capitalPago = bcsub($cuotaFija, $interesSinIGV, 6);
+            $cuotaNeta = $cuotaFija;
             $cuotaTotal = $cuotaNeta;
             $saldoFinal = bcsub($saldoInicial, $capitalPago, 6);
             
-            if ($cuota === $plazoMeses && bccomp($saldoFinal, '0.01', 2) < 0) {
+            // Ajuste para la última cuota (eliminar residuos)
+            if ($cuota === $plazoMeses) {
                 $capitalPago = $saldoInicial;
-                $interesSinIGV = bcmul($capitalPago, $tem_sin_igv, 6);
+                $interesSinIGV = bcmul($saldoInicial, $tem_decimal, 6);
                 $cuotaNeta = bcadd($capitalPago, $interesSinIGV, 6);
                 $cuotaTotal = $cuotaNeta;
                 $saldoFinal = '0.00';
@@ -62,19 +96,24 @@ class CreditSimulationService{
         $offset = ($page - 1) * $perPage;
         $paginatedPagos = array_slice($pagos, $offset, $perPage);
         
+        // Convertir enteros a decimales para mostrar
+        $tea_display = $property->tea / 100; // 1550 -> 15.50
+        $tem_display = $property->tem / 100; // 125 -> 1.25
+        
         return [
             'cliente' => 'CLIENTE SIMULACION',
             'monto_solicitado' => $this->bcround($capital, 2),
             'plazo_credito' => $plazoMeses,
-            'tasa_efectiva_mensual' => number_format($property->tem, 4, '.', '') . '%',
-            'tasa_efectiva_anual' => number_format($property->tea, 4, '.', '') . '%',
+            'tasa_efectiva_mensual' => number_format($tem_display, 3, '.', '') . '%',
+            'tasa_efectiva_anual' => number_format($tea_display, 3, '.', '') . '%',
             'fecha_desembolso' => $fechaDesembolso . ' referencial',
             'cronograma_final' => [
                 'plazo_total' => $plazoMeses,
                 'moneda' => $moneda,
                 'capital_otorgado' => $simbolo . ' ' . number_format((float)$capital, 2, '.', ','),
-                'tea_compensatoria' => number_format($property->tea, 2, '.', '') . ' %',
-                'tem_compensatoria' => number_format($property->tem, 2, '.', '') . ' %',
+                'tea_compensatoria' => number_format($tea_display, 3, '.', '') . ' %',
+                'tem_compensatoria' => number_format($tem_display, 3, '.', '') . ' %',
+                'tipo_cronograma' => 'Frances (Cuotas Fijas)',
                 'pagos' => $paginatedPagos,
                 'pagination' => [
                     'total' => $total,
@@ -87,48 +126,19 @@ class CreditSimulationService{
     }
     
     /**
-     * Convierte un objeto Money a string decimal
+     * Calcula la cuota fija para el sistema francés
      */
-    private function moneyToDecimalString(Money $money): string
+    private function calcularCuotaFijaBC(string $capital, string $tem, int $plazo): string
     {
-        // Obtener las unidades menores (centavos)
-        $amount = $money->getAmount();
-        
-        // Dividir por 100 para obtener el valor decimal
-        // bcscale ya está configurado en 6 decimales
-        return bcdiv($amount, '100', 6);
-    }
-    
-    /**
-     * Redondea un número usando BC Math
-     */
-    private function bcround(string $number, int $precision = 0): string
-    {
-        if ($precision < 0) {
-            $precision = 0;
+        if (bccomp($tem, '0', 6) == 0) {
+            return bcdiv($capital, (string)$plazo, 6);
         }
         
-        $multiply = bcpow('10', (string)$precision, 0);
-        $result = bcadd(bcmul($number, $multiply, 6), '0.5', 6);
-        $result = bcdiv($result, '1', 0); // Truncate to integer
-        return bcdiv($result, $multiply, $precision);
-    }
-    
-    private function calcularCapitalPagoBC(string $capital, string $tem, int $plazo, int $periodo): string{
         $unoPlusTem = bcadd('1', $tem, 6);
         $factor = bcpow($unoPlusTem, (string)$plazo, 6);
         $numerador = bcmul($capital, bcmul($tem, $factor, 6), 6);
         $denominador = bcsub($factor, '1', 6);
-        $cuota = bcdiv($numerador, $denominador, 6);
-        $saldo = $capital;
         
-        for ($i = 1; $i < $periodo; $i++) {
-            $interes = bcmul($saldo, $tem, 6);
-            $capitalPago = bcsub($cuota, $interes, 6);
-            $saldo = bcsub($saldo, $capitalPago, 6);
-        }
-        
-        $interes = bcmul($saldo, $tem, 6);
-        return bcsub($cuota, $interes, 6);
+        return bcdiv($numerador, $denominador, 6);
     }
 }

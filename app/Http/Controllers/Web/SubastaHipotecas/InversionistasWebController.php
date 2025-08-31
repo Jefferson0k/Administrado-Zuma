@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Web\SubastaHipotecas;
 use App\Http\Controllers\Controller;
+use App\Models\PropertyLoanDetail;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 class InversionistasWebController extends Controller{
     public function views(): Response{
-        //Gate::authorize('viewAny', User::class);
+        Gate::authorize('viewAny', PropertyLoanDetail::class);
         return Inertia::render('panel/Subastas/Propiedades/Desarrollo/Inversionista/indexInversionista');
     }
     public function index(): Response{

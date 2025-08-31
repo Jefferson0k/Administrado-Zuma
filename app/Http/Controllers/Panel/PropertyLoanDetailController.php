@@ -52,13 +52,22 @@ class PropertyLoanDetailController extends Controller{
             'data' => new PropertyLoanDetailResource($loanDetail),
         ]);
     }
-
     public function show($id){
         $loanDetail = PropertyLoanDetail::with([
             'investor',
             'property.images',
-            'property.paymentSchedules',
         ])->findOrFail($id);
+        $propertyInvestor = $loanDetail->property
+            ->propertyInvestors()
+            ->where('config_id', $loanDetail->config_id)
+            ->first();
+        if (!$propertyInvestor) {
+            abort(404, 'No se encontró un inversionista con esta configuración.');
+        }
+        $loanDetail->property->setRelation(
+            'paymentSchedules',
+            $propertyInvestor->paymentSchedules
+        );
         return new PropertyLoanDetailResource($loanDetail);
     }
     public function update(StorePropertyLoanDetailRequests $request, $id){

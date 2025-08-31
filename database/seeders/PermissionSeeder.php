@@ -7,6 +7,38 @@ use Spatie\Permission\Models\Permission;
 
 class PermissionSeeder extends Seeder{
     public function run(): void{
+        #Hipotecas
+        #Informacion del cliente
+        Permission::create(['name' => 'crear informacion del cliente']);
+        Permission::create(['name' => 'editar informacion del cliente']);
+        Permission::create(['name' => 'eliminar informacion del cliente']);
+        Permission::create(['name' => 'ver informacion del cliente']);
+        #Calendario de pagos
+        Permission::create(['name' => 'crear calendario de pagos']);
+        Permission::create(['name' => 'editar calendario de pagos']);
+        Permission::create(['name' => 'eliminar calendario de pagos']);
+        Permission::create(['name' => 'ver calendario de pagos']);
+        #Inversionista de Propiedad
+        Permission::create(['name' => 'crear inversionista de propiedad']);
+        Permission::create(['name' => 'editar inversionista de propiedad']);
+        Permission::create(['name' => 'eliminar inversionista de propiedad']);
+        Permission::create(['name' => 'ver inversionista de propiedad']);
+        #Configuracion de propiedades
+        Permission::create(['name' => 'crear reglas del imueble']);
+        Permission::create(['name' => 'editar reglas del imueble']);
+        Permission::create(['name' => 'eliminar reglas del imueble']);
+        Permission::create(['name' => 'ver reglas del imueble']);
+        #Imagenes de Propiedades
+        Permission::create(['name' => 'crear imagenes de propiedades']);
+        Permission::create(['name' => 'editar imagenes de propiedades']);
+        Permission::create(['name' => 'eliminar imagenes de propiedades']);
+        Permission::create(['name' => 'ver imagenes de propiedades']);
+        #Propiedades
+        Permission::create(['name' => 'crear propiedades']);
+        Permission::create(['name' => 'editar propiedades']);
+        Permission::create(['name' => 'eliminar propiedades']);
+        Permission::create(['name' => 'ver propiedades']);
+        #Hipotecas
         #Cargos
         Permission::create(['name' => 'crear cargo']);
         Permission::create(['name' => 'editar cargo']);
