@@ -156,7 +156,10 @@ class InvestmentControllers extends Controller {
             ], 403);
         } catch (Throwable $e) {
             return response()->json([
-                'message' => 'Error al listar las inversiones.'
+                'message' => 'Error al listar las inversiones.',
+                'error'   => $e->getMessage(),  // <- mostrar mensaje real
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
             ], 500);
         }
     }

@@ -20,11 +20,14 @@ class DepositController extends Controller{
             ]);
         } catch (AuthorizationException $e) {
             return response()->json([
-                'message' => 'No tienes permiso para ver los sectores.'
+                'message' => 'No tienes permiso para ver los depositos.'
             ], 403);
-        } catch (Throwable $e) {
+        }catch (Throwable $e) {
             return response()->json([
-                'message' => 'Error al listar los sectores.'
+                'message' => 'Error al listar las inversiones.',
+                'error'   => $e->getMessage(),  // <- mostrar mensaje real
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
             ], 500);
         }
     }

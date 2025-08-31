@@ -133,6 +133,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::prefix('investment')->group(function() {
+        Route::get('/all', [InvestmentControllers::class, 'indexAll']);
         Route::get('/{invoice_id}', [InvestmentControllers::class, 'show']);
     });
 

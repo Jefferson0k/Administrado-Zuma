@@ -11,7 +11,7 @@ class DepositResource extends JsonResource{
         return [
             "id" => $this->id,
             'bank_account_id' => $this->bank_account_id,
-            'nomBanco' => $this->bankAccount->bank->name,
+            'nomBanco' => $this->bankAccount->bank->name ?? 'Sin banco',
             'nro_operation' => $this->nro_operation,
             'currency' => $this->currency,
             'amount' => $this->amount,

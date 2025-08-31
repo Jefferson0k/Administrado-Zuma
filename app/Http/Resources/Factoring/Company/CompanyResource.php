@@ -4,8 +4,11 @@ namespace App\Http\Resources\Factoring\Company;
 
 use Carbon\Carbon;
 use Illuminate\Http\Resources\Json\JsonResource;
-class CompanyResource extends JsonResource{
-    public function toArray($request){
+
+class CompanyResource extends JsonResource
+{
+    public function toArray($request)
+    {
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -19,9 +22,9 @@ class CompanyResource extends JsonResource{
             'moneda' => $this->moneda,
             'sector_id' => $this->sector_id,
             'subsector_id' => $this->subsector_id,
-            'sectornom' =>$this->sector->name,
-            'subsectornom' =>$this->subsector->name,
-            'creacion' => Carbon::parse($this->created_at)->format('d-m-Y H:i:s A'),
+            'sectornom' => $this->sector?->name,
+            'subsectornom' => $this->subsector?->name,
+            'creacion' => $this->created_at ? Carbon::parse($this->created_at)->format('d-m-Y H:i:s A') : null,
         ];
     }
 }
