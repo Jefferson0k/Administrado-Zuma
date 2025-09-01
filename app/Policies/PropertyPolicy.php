@@ -48,6 +48,11 @@ class PropertyPolicy
         return $user->can('eliminar propiedades');
     }
 
+    public function activarSubasta(User $user, Property $property): bool{
+        return $user->can('activar subasta de propiedad');
+    }
+
+
     /**
      * Determine whether the user can restore the model.
      */

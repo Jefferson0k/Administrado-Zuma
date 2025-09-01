@@ -119,10 +119,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     #RUTAS DE WEB EN LA PARTE DE SUBASTA HIPOTECARIA
     Route::prefix('subasta-hipotecas')->group(function(){
-        Route::get('/reserva', [CuentasBancariasWebControler::class, 'views'])->name('cuentas-bancarias.subasta.views');
-        Route::get('/depositos', [DepositosWebControler::class, 'views'])->name('reserva.views');
+        Route::get('/reserva', [CuentasBancariasWebControler::class, 'views'])->name('reserva.views');
+        Route::get('/depositos', [DepositosWebControler::class, 'views'])->name('depositos.views');
         Route::get('/historicos', [HistoricoWebController::class, 'views'])->name('historicos.views');
-        Route::get('/pagos', [PagosWebControler::class, 'views'])->name('pago.views');
+        Route::get('/pagos', [PagosWebControler::class, 'views'])->name('pagos.views');
         Route::get('/propiedades', [PropiedadesWebControler::class, 'views'])->name('propiedades.views');
         Route::get('/retiros', [RetirosWebControler::class, 'views'])->name('retiros.views');
         Route::get('/tipo-cambio', [TipoCambioWebControler::class, 'views'])->name('tipo-cambio.views');

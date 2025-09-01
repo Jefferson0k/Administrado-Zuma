@@ -112,19 +112,19 @@ const toggleMenu = (event: MouseEvent, row: any) => {
 const cancelarReserva = async (row: any) => {
   try {
     await axios.put(`/reservas-propiedades/${row.id}/cancelar`);
-    toast.add({ 
-      severity: 'success', 
-      summary: 'Cancelado', 
-      detail: `Reserva ${row.id} cancelada`, 
-      life: 3000 
+    toast.add({
+      severity: 'success',
+      summary: 'Cancelado',
+      detail: `Reserva ${row.id} cancelada`,
+      life: 3000
     });
     cargarReservas(meta.value.current_page);
   } catch (error) {
-    toast.add({ 
-      severity: 'error', 
-      summary: 'Error', 
-      detail: 'No se pudo cancelar', 
-      life: 3000 
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'No se pudo cancelar',
+      life: 3000
     });
   }
 };
