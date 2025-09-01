@@ -4,15 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
+use OwenIt\Auditing\Auditable;
 
-class Auction extends Model{
-    
-    use HasFactory;
+class Auction extends Model implements AuditableContract{
+    use HasFactory, SoftDeletes, Auditable;
     protected $table = 'auctions';
     protected $fillable = [
         'property_id', 'monto_inicial', 'dia_subasta',
         'hora_inicio', 'hora_fin', 'tiempo_finalizacion',
-        'estado', 'ganador_id'
+        'estado', 'ganador_id', 'created_by', 'updated_by', 'deleted_by'
     ];
     public function propiedad() {
         return $this->belongsTo(Property::class);

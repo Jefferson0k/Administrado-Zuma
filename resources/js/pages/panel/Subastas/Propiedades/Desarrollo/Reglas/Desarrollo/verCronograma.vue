@@ -1,357 +1,328 @@
 <template>
-    <Dialog v-model:visible="visible" modal header="Detalle del Cronograma" :style="{ width: '70vw' }"
-        :breakpoints="{ '960px': '90vw', '640px': '95vw' }">
-        <template v-if="propiedad">
-            <!-- Información de la propiedad -->
-            <div class="mb-4 p-3 bg-gray-50 rounded-lg">
-                <h5 class="m-0 mb-2">{{ propiedad.nombre }}</h5>
-                <div class="grid grid-cols-3 gap-4 text-sm">
-                    <div><strong>Valor:</strong> {{ formatCurrency(propiedad.valor_estimado) }}</div>
-                    <div><strong>Requerido:</strong> {{ formatCurrency(propiedad.requerido) }}</div>
-                    <div><strong>TEA:</strong> {{ propiedad.tea }}%</div>
-                    <div><strong>TEM:</strong> {{ propiedad.tem }}%</div>
+    <Dialog v-model:visible="visible" modal header="Cronograma de Pagos" :style="{ width: '95vw', maxWidth: '1200px' }"
+        :closable="true" :dismissableMask="true">
+
+        <!-- Header Info Card -->
+        <div v-if="propiedadData" class="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="text-center md:text-left">
+                    <h3 class="text-lg font-bold text-gray-800">{{ propiedadData.nombre }}</h3>
+                    <p class="text-sm text-gray-600">{{ propiedadData.departamento }}, {{ propiedadData.provincia }}</p>
+                </div>
+                <div class="text-center">
+                    <span class="text-sm text-gray-600 block">Valor Requerido</span>
+                    <span class="text-2xl font-bold text-blue-600">
+                        {{ formatCurrency(parametros.valor_requerido, propiedadData.currency_symbol) }}
+                    </span>
+                </div>
+                <div class="text-center md:text-right">
+                    <Tag :value="propiedadData.currency" :severity="propiedadData.currency_id === 1 ? 'success' : 'info'" 
+                         class="mb-2" />
+                    <p class="text-sm text-gray-600">
+                        TEM: <strong>{{ parametros.tem }}%</strong> | 
+                        TEA: <strong>{{ parametros.tea }}%</strong>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div v-if="loading" class="flex flex-col justify-center items-center py-12">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+            <span class="text-gray-600">Generando cronograma...</span>
+        </div>
+
+        <!-- Error State -->
+        <div v-else-if="error" class="text-center py-12">
+            <div class="bg-red-50 border border-red-200 rounded-lg p-6 mb-4">
+                <i class="pi pi-exclamation-triangle text-red-500 text-4xl mb-4"></i>
+                <p class="text-red-600 text-lg mb-4">{{ error }}</p>
+                <Button label="Reintentar" icon="pi pi-refresh" severity="danger" outlined @click="generarCronograma" />
+            </div>
+        </div>
+
+        <!-- Cronograma Content -->
+        <div v-else-if="cronograma" class="space-y-6">
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                    <i class="pi pi-calendar text-green-600 text-2xl mb-2"></i>
+                    <p class="text-sm text-gray-600">Plazo Total</p>
+                    <p class="text-lg font-bold text-green-700">{{ cronograma.cronograma_final.plazo_total }} meses</p>
+                </div>
+                
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                    <i class="pi pi-money-bill text-blue-600 text-2xl mb-2"></i>
+                    <p class="text-sm text-gray-600">Capital Otorgado</p>
+                    <p class="text-lg font-bold text-blue-700">{{ cronograma.cronograma_final.capital_otorgado }}</p>
+                </div>
+                
+                <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center">
+                    <i class="pi pi-percentage text-orange-600 text-2xl mb-2"></i>
+                    <p class="text-sm text-gray-600">TEA</p>
+                    <p class="text-lg font-bold text-orange-700">{{ cronograma.cronograma_final.tea_compensatoria }}</p>
+                </div>
+                
+                <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 text-center">
+                    <i class="pi pi-chart-line text-purple-600 text-2xl mb-2"></i>
+                    <p class="text-sm text-gray-600">TEM</p>
+                    <p class="text-lg font-bold text-purple-700">{{ cronograma.cronograma_final.tem_compensatoria }}</p>
                 </div>
             </div>
 
-            <!-- Resumen del cronograma -->
-            <div v-if="resumenData && Object.keys(resumenData).length" class="mb-4 p-3 bg-blue-50 rounded-lg">
-                <h6 class="m-0 mb-2">Resumen del Cronograma</h6>
-                <div class="grid grid-cols-4 gap-4 text-sm">
-                    <div><strong>Total Cuotas:</strong> {{ totalesData.numero_cuotas || 'N/A' }}</div>
-                    <div><strong>Primera Cuota:</strong> {{ resumenData.primera_cuota || 'N/A' }}</div>
-                    <div><strong>Última Cuota:</strong> {{ resumenData.ultima_cuota || 'N/A' }}</div>
-                    <div><strong>Estado:</strong> {{ resumenData.estado_property_investor || 'N/A' }}</div>
+            <!-- Data Table -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <div class="bg-gray-50 px-6 py-3 border-b border-gray-200">
+                    <h4 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <i class="pi pi-table mr-2 text-blue-600"></i>
+                        Cronograma de Pagos - {{ cronograma.cronograma_final.moneda }}
+                    </h4>
                 </div>
-                <div class="grid grid-cols-3 gap-4 text-sm mt-2">
-                    <div><strong>Total Capital:</strong> {{ formatCurrency(totalesData.total_capital) }}</div>
-                    <div><strong>Total Intereses:</strong> {{ formatCurrency(totalesData.total_intereses) }}</div>
-                    <div><strong>Total a Pagar:</strong> {{ formatCurrency(totalesData.total_cuotas) }}</div>
+                
+                <div class="overflow-x-auto">
+                    <DataTable :value="cronograma.cronograma_final.pagos" :paginator="true" :rows="15" 
+                               class="w-full" stripedRows :rowsPerPageOptions="[10, 15, 25, 50]"
+                               currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} cuotas"
+                               paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown">
+                        
+                        <Column field="cuota" header="Nº" :sortable="true" class="w-16 text-center">
+                            <template #body="slotProps">
+                                <Tag :value="slotProps.data.cuota" severity="info" class="font-bold" />
+                            </template>
+                        </Column>
+                        
+                        <Column field="vcmto" header="Fecha Vcmto." :sortable="true" class="text-center">
+                            <template #body="slotProps">
+                                <div>
+                                    <i class="pi pi-calendar text-gray-500 mr-2"></i>
+                                    <span>{{ slotProps.data.vcmto }}</span>
+                                </div>
+                            </template>
+                        </Column>
+                        
+                        <Column field="saldo_inicial" header="Saldo Inicial" :sortable="true" class="text-right">
+                            <template #body="slotProps">
+                                <span class="font-medium text-gray-700">
+                                    {{ formatCurrency(slotProps.data.saldo_inicial, currencySymbol) }}
+                                </span>
+                            </template>
+                        </Column>
+                        
+                        <Column field="cuota_neta" header="Cuota Total" :sortable="true" class="text-right">
+                            <template #body="slotProps">
+                                <div class="bg-blue-100 px-3 py-2 rounded-md">
+                                    <span class="font-bold text-blue-700 text-lg">
+                                        {{ formatCurrency(slotProps.data.cuota_neta, currencySymbol) }}
+                                    </span>
+                                </div>
+                            </template>
+                        </Column>
+                        
+                        <Column field="interes" header="Interés" :sortable="true" class="text-right">
+                            <template #body="slotProps">
+                                <span class="font-semibold text-red-600 bg-red-50 px-2 py-1 rounded">
+                                    {{ formatCurrency(slotProps.data.interes, currencySymbol) }}
+                                </span>
+                            </template>
+                        </Column>
+                        
+                        <Column field="capital" header="Capital" :sortable="true" class="text-right">
+                            <template #body="slotProps">
+                                <span class="font-semibold text-green-600 bg-green-50 px-2 py-1 rounded">
+                                    {{ formatCurrency(slotProps.data.capital, currencySymbol) }}
+                                </span>
+                            </template>
+                        </Column>
+                        
+                        <Column field="saldo_final" header="Saldo Final" :sortable="true" class="text-right">
+                            <template #body="slotProps">
+                                <span class="font-medium text-gray-700">
+                                    {{ formatCurrency(slotProps.data.saldo_final, currencySymbol) }}
+                                </span>
+                            </template>
+                        </Column>
+                    </DataTable>
                 </div>
             </div>
 
-            <DataTable :value="cronogramaData" :paginator="false" 
-                class="p-datatable-sm" scrollable scrollHeight="400px"
-                :loading="loading">
-                
-                <Column field="cuota" header="Cuota" style="width: 80px" frozen>
-                    <template #body="{ data }">
-                        <div class="font-semibold">{{ data.cuota }}</div>
-                    </template>
-                </Column>
-
-                <Column field="vencimiento" header="Vencimiento" style="width: 120px">
-                    <template #body="{ data }">
-                        <div>{{ formatDate(data.vencimiento) }}</div>
-                    </template>
-                </Column>
-
-                <Column field="saldo_inicial" header="Saldo Inicial" style="width: 140px">
-                    <template #body="{ data }">
-                        <div>{{ formatCurrency(data.saldo_inicial) }}</div>
-                    </template>
-                </Column>
-                
-                <Column field="capital" header="Capital" style="width: 140px">
-                    <template #body="{ data }">
-                        <div class="font-semibold text-green-600">{{ formatCurrency(data.capital) }}</div>
-                    </template>
-                </Column>
-                
-                <Column field="intereses" header="Intereses" style="width: 140px">
-                    <template #body="{ data }">
-                        <div class="text-orange-600">{{ formatCurrency(data.intereses) }}</div>
-                    </template>
-                </Column>
-                
-                <Column field="cuota_neta" header="Cuota Neta" style="width: 140px">
-                    <template #body="{ data }">
-                        <div class="font-semibold">{{ formatCurrency(data.cuota_neta) }}</div>
-                    </template>
-                </Column>
-                <Column field="total_cuota" header="Total Cuota" style="width: 140px">
-                    <template #body="{ data }">
-                        <div class="font-bold text-blue-600">{{ formatCurrency(data.total_cuota) }}</div>
-                    </template>
-                </Column>
-
-                <Column field="saldo_final" header="Saldo Final" style="width: 140px">
-                    <template #body="{ data }">
-                        <div>{{ formatCurrency(data.saldo_final) }}</div>
-                    </template>
-                </Column>
-
-                <Column field="estado" header="Estado" style="width: 100px">
-                    <template #body="{ data }">
-                        <Tag :value="data.estado" :severity="getEstadoSeverity(data.estado)" />
-                    </template>
-                </Column>
-            </DataTable>
-
-            <!-- Mensaje si no hay datos -->
-            <div v-if="!loading && cronogramaData.length === 0" class="text-center p-4">
-                <i class="pi pi-info-circle text-4xl text-gray-400 mb-2"></i>
-                <p class="text-gray-600">No hay cronograma disponible para esta propiedad</p>
+            <!-- Totales Summary -->
+            <div class="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg p-6 border border-gray-200">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Total Capital</p>
+                        <p class="text-xl font-bold text-green-600">
+                            {{ formatCurrency(totalCapital, currencySymbol) }}
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Total Intereses</p>
+                        <p class="text-xl font-bold text-red-600">
+                            {{ formatCurrency(totalIntereses, currencySymbol) }}
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Total a Pagar</p>
+                        <p class="text-xl font-bold text-blue-600">
+                            {{ formatCurrency(totalPagar, currencySymbol) }}
+                        </p>
+                    </div>
+                </div>
             </div>
-        </template>
+        </div>
 
         <template #footer>
-            <Button 
-                label="Exportar" 
-                icon="pi pi-download" 
-                @click="exportar" 
-                outlined 
-                class="mr-2" 
-                severity="contrast"
-                :disabled="cronogramaData.length === 0"
-            />
-            <Button label="Cerrar" icon="pi pi-times" @click="cerrar" text severity="secondary"/>
+            <div class="flex justify-between items-center">
+                <div v-if="cronograma" class="text-sm text-gray-500">
+                    Cronograma generado: {{ new Date().toLocaleDateString('es-ES') }}
+                </div>
+                <div class="flex gap-3">
+                    <Button label="Cerrar" icon="pi pi-times" severity="secondary" @click="cerrarDialog" />
+                </div>
+            </div>
         </template>
     </Dialog>
 </template>
 
-<script setup>
-import { ref, watch } from 'vue'
-import axios from 'axios'
-import { useToast } from 'primevue/usetoast'
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue'
 import Dialog from 'primevue/dialog'
-import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
+import Button from 'primevue/button'
 import Tag from 'primevue/tag'
+import { useToast } from 'primevue/usetoast'
+import axios from 'axios'
 
-const props = defineProps({
-    modelValue: Boolean,
-    propiedad: Object
-})
+interface Props {
+    visible: boolean
+    propiedadData: any
+    parametros: {
+        tea: number
+        tem: number
+        cronograma: string
+        duracion_meses: number
+        valor_requerido: number
+        currency_id?: number
+    }
+}
 
-const emit = defineEmits(['update:modelValue', 'cerrar'])
+const props = defineProps<Props>()
+const emit = defineEmits(['update:visible'])
 
 const toast = useToast()
-const visible = ref(props.modelValue)
-const cronogramaData = ref([])
-const totalesData = ref({})
-const resumenData = ref({})
+
 const loading = ref(false)
+const error = ref('')
+const cronograma = ref(null)
 
-watch(() => props.modelValue, (val) => {
-    visible.value = val
-    if (val && props.propiedad) {
-        cargarCronograma()
+const visible = computed({
+    get: () => props.visible,
+    set: (value) => emit('update:visible', value)
+})
+
+// Computed para obtener el símbolo de moneda
+const currencySymbol = computed(() => {
+    if (props.propiedadData?.currency_symbol) {
+        return props.propiedadData.currency_symbol
+    }
+    // Fallback basado en currency_id
+    return props.parametros.currency_id === 1 ? 'S/' : '$'
+})
+
+// Computed para totales
+const totalCapital = computed(() => {
+    if (!cronograma.value?.cronograma_final?.pagos) return 0
+    return cronograma.value.cronograma_final.pagos.reduce((sum, pago) => 
+        sum + parseFloat(pago.capital || 0), 0
+    )
+})
+
+const totalIntereses = computed(() => {
+    if (!cronograma.value?.cronograma_final?.pagos) return 0
+    return cronograma.value.cronograma_final.pagos.reduce((sum, pago) => 
+        sum + parseFloat(pago.interes || 0), 0
+    )
+})
+
+const totalPagar = computed(() => {
+    return totalCapital.value + totalIntereses.value
+})
+
+watch(() => props.visible, (newVal) => {
+    if (newVal && props.propiedadData && props.parametros) {
+        generarCronograma()
     }
 })
 
-watch(visible, (val) => {
-    emit('update:modelValue', val)
-    if (!val) {
-        // Limpiar datos al cerrar
-        cronogramaData.value = []
-        totalesData.value = {}
-        resumenData.value = {}
-        emit('cerrar')
-    }
-})
-
-const cargarCronograma = async () => {
-    // ✅ USAR EL ID NUMÉRICO PARA LA URL
-    const propertyId = props.propiedad?.id
-    
-    if (!propertyId) {
-        console.error('No se encontró id numérico en:', props.propiedad)
-        toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: 'ID de propiedad no válido',
-            life: 3000
-        })
+const generarCronograma = async () => {
+    if (!props.propiedadData || !props.parametros) {
+        error.value = 'Faltan datos para generar el cronograma'
         return
     }
 
     loading.value = true
-    console.log('🔍 Cargando cronograma para ID:', propertyId)
-    console.log('📝 Propiedad completa:', props.propiedad)
-    
+    error.value = ''
+    cronograma.value = null
+
     try {
-        // ✅ USAR EL ID NUMÉRICO EN LA URL
-        const response = await axios.get(`/propiedad/${propertyId}/cronograma`)
-        
-        console.log('✅ Respuesta del cronograma:', response.data)
-        
-        if (response.data.success && response.data.data) {
-            const { cronograma, totales, resumen } = response.data.data
-            
-            cronogramaData.value = cronograma || []
-            totalesData.value = totales || {}
-            resumenData.value = resumen || {}
-            
-            console.log('📊 Cronograma cargado:', {
-                cuotas: cronogramaData.value.length,
-                totales: totalesData.value,
-                resumen: resumenData.value
-            })
-        } else {
-            throw new Error('Estructura de respuesta inválida')
+        // Usar tus endpoints existentes
+        const endpoint = props.parametros.cronograma === 'frances'
+            ? '/simulacion/preview-frances'
+            : '/simulacion/preview-americano'
+
+        // Obtener currency_id de la propiedad
+        const currencyId = props.propiedadData.currency_id || 1
+
+        const payload = {
+            valor_requerido: props.parametros.valor_requerido,
+            tem: props.parametros.tem,
+            tea: props.parametros.tea,
+            plazo: props.parametros.duracion_meses,
+            moneda_id: currencyId // ← Usar la moneda de la propiedad
         }
-        
-    } catch (error) {
-        console.error('❌ Error al cargar cronograma:', error)
-        
-        // Mostrar error más específico
-        let errorMessage = 'No se pudo cargar el cronograma'
-        if (error.response?.status === 404) {
-            errorMessage = 'Cronograma no encontrado para esta propiedad'
-        } else if (error.response?.status === 500) {
-            errorMessage = 'Error interno del servidor'
-        }
-        
+
+        console.log('Payload enviado:', payload)
+
+        const response = await axios.post(endpoint, payload)
+        cronograma.value = response.data
+
+        toast.add({
+            severity: 'success',
+            summary: 'Cronograma generado',
+            detail: `Cronograma ${props.parametros.cronograma} generado exitosamente`,
+            life: 3000
+        })
+
+    } catch (err) {
+        console.error('Error al generar cronograma:', err)
+        error.value = err.response?.data?.message || 'Error al generar el cronograma'
         toast.add({
             severity: 'error',
             summary: 'Error',
-            detail: errorMessage,
-            life: 3000
+            detail: error.value,
+            life: 4000
         })
     } finally {
         loading.value = false
     }
 }
 
-const cerrar = () => {
-    visible.value = false
-}
-
-const formatDate = (dateString) => {
-    if (!dateString) return ''
+const formatCurrency = (value: string | number, symbol: string = 'S/') => {
+    if (!value) return `${symbol} 0.00`
     
-    // Si viene en formato DD-MM-YYYY, convertir
-    if (dateString.includes('-') && dateString.split('-')[0].length === 2) {
-        const [day, month, year] = dateString.split('-')
-        return `${day}/${month}/${year}`
-    }
+    const numValue = typeof value === 'string' ? parseFloat(value) : value
+    if (isNaN(numValue)) return `${symbol} 0.00`
     
-    // Si viene en formato estándar de fecha
-    const date = new Date(dateString)
-    if (isNaN(date.getTime())) return dateString // Si no es válida, devolver original
-    
-    return date.toLocaleDateString('es-PE', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    })
-}
-
-const formatCurrency = (amount) => {
-    if (amount === null || amount === undefined || isNaN(amount)) {
-        return 'S/ 0.00'
-    }
-    
-    return new Intl.NumberFormat('es-PE', {
-        style: 'currency',
-        currency: 'PEN',
+    return `${symbol} ${numValue.toLocaleString('es-PE', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
-    }).format(parseFloat(amount))
+    })}`
 }
 
-const getEstadoSeverity = (estado) => {
-    switch (estado?.toLowerCase()) {
-        case 'pagada':
-        case 'pagado':
-            return 'success'
-        case 'pendiente':
-            return 'warn'
-        case 'vencida':
-        case 'vencido':
-            return 'danger'
-        default:
-            return 'secondary'
-    }
-}
-
-const exportar = async () => {
-    try {
-        if (!cronogramaData.value.length) {
-            toast.add({
-                severity: 'warn',
-                summary: 'Advertencia',
-                detail: 'No hay datos para exportar',
-                life: 3000
-            })
-            return
-        }
-
-        // Crear CSV con mejor formato
-        const headers = [
-            'Cuota', 
-            'Vencimiento', 
-            'Saldo Inicial', 
-            'Capital', 
-            'Intereses', 
-            'Cuota Neta',
-            'IGV', 
-            'Total Cuota', 
-            'Saldo Final', 
-            'Estado'
-        ]
-        
-        const csvRows = cronogramaData.value.map(row => [
-            row.cuota,
-            formatDate(row.vencimiento),
-            parseFloat(row.saldo_inicial || 0).toFixed(2),
-            parseFloat(row.capital || 0).toFixed(2),
-            parseFloat(row.intereses || 0).toFixed(2),
-            parseFloat(row.cuota_neta || 0).toFixed(2),
-            parseFloat(row.igv || 0).toFixed(2),
-            parseFloat(row.total_cuota || 0).toFixed(2),
-            parseFloat(row.saldo_final || 0).toFixed(2),
-            row.estado
-        ])
-        
-        // Agregar fila de totales si existe
-        if (totalesData.value.total_capital) {
-            csvRows.push([
-                'TOTALES',
-                '',
-                '',
-                parseFloat(totalesData.value.total_capital).toFixed(2),
-                parseFloat(totalesData.value.total_intereses).toFixed(2),
-                '',
-                parseFloat(totalesData.value.total_igv || 0).toFixed(2),
-                parseFloat(totalesData.value.total_cuotas).toFixed(2),
-                '',
-                ''
-            ])
-        }
-        
-        const csvContent = [
-            headers.join(','),
-            ...csvRows.map(row => row.join(','))
-        ].join('\n')
-
-        // Descargar archivo
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-        const link = document.createElement('a')
-        const url = URL.createObjectURL(blob)
-        link.setAttribute('href', url)
-        link.setAttribute('download', `cronograma_${props.propiedad?.nombre || 'propiedad'}_${Date.now()}.csv`)
-        link.style.visibility = 'hidden'
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        URL.revokeObjectURL(url)
-
-        toast.add({
-            severity: 'success',
-            summary: 'Exportado',
-            detail: 'El cronograma se exportó correctamente',
-            life: 3000
-        })
-    } catch (error) {
-        console.error('❌ Error al exportar:', error)
-        toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: 'No se pudo exportar el cronograma',
-            life: 3000
-        })
-    }
+const cerrarDialog = () => {
+    visible.value = false
+    cronograma.value = null
+    error.value = ''
+    loading.value = false
 }
 </script>

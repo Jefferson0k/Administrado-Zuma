@@ -8,9 +8,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
 use OwenIt\Auditing\Auditable;
 
-class PropertyLoanDetail extends Model implements AuditableContract{
+class PropertyLoanDetail extends Model implements AuditableContract
+{
     use HasFactory, SoftDeletes, Auditable;
+
     protected $table = 'property_loan_details';
+
     protected $fillable = [
         'property_id',
         'config_id',
@@ -19,23 +22,30 @@ class PropertyLoanDetail extends Model implements AuditableContract{
         'empresa_tasadora',
         'motivo_prestamo',
         'descripcion_financiamiento',
-        'solicitud_prestamo_para',
-        'garantia',
-        'perfil_riesgo',
+        'monto_tasacion',
+        'porcentaje_prestamo',
+        'monto_invertir',
+        'monto_prestamo',
         'created_by',
         'updated_by',
         'deleted_by',
     ];
+
     // -------------------------
     // Relaciones
     // -------------------------
-    public function investor(){
+    public function investor()
+    {
         return $this->belongsTo(Investor::class);
     }
-    public function property(){
+
+    public function property()
+    {
         return $this->belongsTo(Property::class);
     }
-    public function configuracion(){
+
+    public function configuracion()
+    {
         return $this->belongsTo(PropertyConfiguracion::class, 'config_id');
     }
 }

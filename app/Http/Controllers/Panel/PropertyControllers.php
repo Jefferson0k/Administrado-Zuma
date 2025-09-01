@@ -27,6 +27,7 @@ use App\Services\CreditSimulationAmericanoService;
 use App\Services\CreditSimulationService;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -251,7 +252,7 @@ class PropertyControllers extends Controller{
                 ->thenReturn();
 
             return PropertyConfiguracionResource::collection($query->paginate($perPage));
-        } catch (\Throwable $th) {
+        } catch (Throwable $th) {
             return response()->json([
                 'message' => 'Error al cargar los datos',
                 'error' => $th->getMessage(),
@@ -340,192 +341,192 @@ class PropertyControllers extends Controller{
         return new PropertyShowResource($config);
     }
 
-public function update(PropertyUpdateRequest $request, $id)
-{
-    DB::beginTransaction();
+    public function update(PropertyUpdateRequest $request, $id)
+    {
+        DB::beginTransaction();
 
-    try {
-        $property = Property::with('currency')->findOrFail($id);
-        
-        // Obtener usuario autenticado
-        $userId = Auth::id();
-
-        // Validar TEM y TEA
-        if (!$request->filled('tea') || !$request->filled('tem')) {
-            return response()->json([
-                'message' => 'TEM y TEA son requeridos',
-                'errors' => [
-                    'tea' => !$request->filled('tea') ? ['El campo TEA es requerido'] : [],
-                    'tem' => !$request->filled('tem') ? ['El campo TEM es requerido'] : [],
-                ]
-            ], 422);
-        }
-
-        // Verificar si ya existe configuración para este estado
-        $existingConfig = PropertyConfiguracion::where('property_id', $property->id)
-            ->where('estado', $request->estado_configuracion)
-            ->latest()
-            ->first();
-
-        // Convertir tasas decimales a enteros (centésimas de punto porcentual)
-        $tea_entero = (int) round((float) $request->tea * 100); // 15.500 -> 1550
-        $tem_entero = (int) round((float) $request->tem * 100); // 1.250 -> 125
-
-        // Crear o actualizar configuración
-        if (!$existingConfig) {
-            $config = PropertyConfiguracion::create([
-                'property_id' => $property->id,
-                'deadlines_id' => $request->deadlines_id,
-                'tea' => $tea_entero,  // Guardar como entero
-                'tem' => $tem_entero,  // Guardar como entero
-                'tipo_cronograma' => $request->tipo_cronograma,
-                'riesgo' => $request->filled('riesgo') ? $request->riesgo : '-', // Valor por defecto
-                'estado' => $request->estado_configuracion,
-                'created_by' => $userId,
-                'updated_by' => $userId,
-            ]);
-            $property->increment('config_total');
-        } else {
-            $existingConfig->update([
-                'deadlines_id' => $request->deadlines_id,
-                'tea' => $tea_entero,
-                'tem' => $tem_entero,
-                'tipo_cronograma' => $request->tipo_cronograma,
-                'riesgo' => $request->filled('riesgo') ? $request->riesgo : '-',
-                'updated_by' => $userId,
-            ]);
-            $config = $existingConfig;
-        }
-
-        $config->load(['plazo', 'property']);
-
-        // Obtener monto en centavos usando la librería Money
-        $valorRequeridoMoney = $property->valor_requerido;
-        $valorRequeridoCentavos = $valorRequeridoMoney->getAmount();
-
-        // Buscar inversor existente
-        $existingInvestor = PropertyInvestor::where('property_id', $property->id)
-            ->where('config_id', $config->id)
-            ->first();
-
-        if ($existingInvestor) {
-            $existingInvestor->update([
-                'amount' => $valorRequeridoCentavos, // Guardar en centavos
-                'status' => 'pendiente',
-                'updated_by' => $userId,
-            ]);
-
-            // Eliminar cronograma anterior
-            PaymentSchedule::where('property_investor_id', $existingInvestor->id)->delete();
-            $propertyInvestor = $existingInvestor;
-        } else {
-            $propertyInvestor = PropertyInvestor::create([
-                'property_id' => $property->id,
-                'investor_id' => null,
-                'config_id' => $config->id,
-                'amount' => $valorRequeridoCentavos, // Guardar en centavos
-                'status' => 'pendiente',
-                'created_by' => $userId,
-                'updated_by' => $userId,
-            ]);
-        }
-
-        // Generar cronograma según tipo de configuración
-        $this->generatePaymentScheduleByType($propertyInvestor->id, $config);
-
-        // Actualizar estado de la propiedad si ya tiene 2 configuraciones distintas
-        if ($property->config_total >= 2 && $property->estado !== 'completo') {
-            $property->update([
-                'estado' => 'completo',
-                'updated_by' => $userId,
-            ]);
-        }
-
-        DB::commit();
-
-        return response()->json([
-            'message' => 'Configuración registrada correctamente.',
-            'property' => $property->fresh()->load('currency'),
-            'property_investor_id' => $propertyInvestor->id,
-        ]);
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-
-        return response()->json([
-            'message' => 'Error interno del servidor',
-            'error' => $e->getMessage(),
-        ], 500);
-    }
-}
-
-private function generatePaymentScheduleByType($propertyInvestorId, $config)
-{
-    $deadline = $config->plazo;
-    if (!$deadline) {
-        throw new Exception('No se encontró configuración o plazo asociado a la propiedad.');
-    }
-    
-    $property = $config->property;
-    // Asignar las tasas enteras desde la configuración
-    $property->tem = $config->tem;  // Valor entero (ej: 125 = 1.25%)
-    $property->tea = $config->tea;  // Valor entero (ej: 1550 = 15.50%)
-    $property->tipo_cronograma = $config->tipo_cronograma;
-    
-    if ($property->tipo_cronograma === 'americano') {
-        $service = new CreditSimulationAmericanoService();
-    } else {
-        $service = new CreditSimulationService();
-    }
-    
-    $simulation = $service->generate($property, $deadline, 1, $deadline->duracion_meses);
-    
-    if (!isset($simulation['cronograma_final']['pagos']) || !is_array($simulation['cronograma_final']['pagos'])) {
-        throw new Exception('La simulación no generó un cronograma válido.');
-    }
-
-    $pagos = $simulation['cronograma_final']['pagos'];
-    foreach ($pagos as $pago) {
         try {
-            $fechaVencimiento = Carbon::createFromFormat('d/m/Y', $pago['vcmto']);
-            PaymentSchedule::create([
-                'property_investor_id' => $propertyInvestorId,
-                'cuota' => (int) $pago['cuota'],
-                'vencimiento' => $fechaVencimiento->format('Y-m-d'),
-                'saldo_inicial' => $this->cleanNumericValue($pago['saldo_inicial']),
-                'capital' => $this->cleanNumericValue($pago['capital']),
-                'intereses' => $this->cleanNumericValue($pago['interes']),
-                'cuota_neta' => $this->cleanNumericValue($pago['cuota_neta']),
-                'igv' => $this->cleanNumericValue($pago['igv'] ?? 0),
-                'total_cuota' => $this->cleanNumericValue($pago['total_cuota']),
-                'saldo_final' => $this->cleanNumericValue($pago['saldo_final']),
-                'estado' => 'pendiente',
-                'created_by' => Auth::id(),
-                'updated_by' => Auth::id(),
+            $property = Property::with('currency')->findOrFail($id);
+            Gate::authorize('update', new PropertyConfiguracion());
+            // Obtener usuario autenticado
+            $userId = Auth::id();
+
+            // Validar TEM y TEA
+            if (!$request->filled('tea') || !$request->filled('tem')) {
+                return response()->json([
+                    'message' => 'TEM y TEA son requeridos',
+                    'errors' => [
+                        'tea' => !$request->filled('tea') ? ['El campo TEA es requerido'] : [],
+                        'tem' => !$request->filled('tem') ? ['El campo TEM es requerido'] : [],
+                    ]
+                ], 422);
+            }
+
+            // Verificar si ya existe configuración para este estado
+            $existingConfig = PropertyConfiguracion::where('property_id', $property->id)
+                ->where('estado', $request->estado_configuracion)
+                ->latest()
+                ->first();
+
+            // Convertir tasas decimales a enteros (centésimas de punto porcentual)
+            $tea_entero = (int) round((float) $request->tea * 100); // 15.500 -> 1550
+            $tem_entero = (int) round((float) $request->tem * 100); // 1.250 -> 125
+
+            // Crear o actualizar configuración
+            if (!$existingConfig) {
+                $config = PropertyConfiguracion::create([
+                    'property_id' => $property->id,
+                    'deadlines_id' => $request->deadlines_id,
+                    'tea' => $tea_entero,  // Guardar como entero
+                    'tem' => $tem_entero,  // Guardar como entero
+                    'tipo_cronograma' => $request->tipo_cronograma,
+                    'riesgo' => $request->filled('riesgo') ? $request->riesgo : '-', // Valor por defecto
+                    'estado' => $request->estado_configuracion,
+                    'created_by' => $userId,
+                    'updated_by' => $userId,
+                ]);
+                $property->increment('config_total');
+            } else {
+                $existingConfig->update([
+                    'deadlines_id' => $request->deadlines_id,
+                    'tea' => $tea_entero,
+                    'tem' => $tem_entero,
+                    'tipo_cronograma' => $request->tipo_cronograma,
+                    'riesgo' => $request->filled('riesgo') ? $request->riesgo : '-',
+                    'updated_by' => $userId,
+                ]);
+                $config = $existingConfig;
+            }
+
+            $config->load(['plazo', 'property']);
+
+            // Obtener monto en centavos usando la librería Money
+            $valorRequeridoMoney = $property->valor_requerido;
+            $valorRequeridoCentavos = $valorRequeridoMoney->getAmount();
+
+            // Buscar inversor existente
+            $existingInvestor = PropertyInvestor::where('property_id', $property->id)
+                ->where('config_id', $config->id)
+                ->first();
+
+            if ($existingInvestor) {
+                $existingInvestor->update([
+                    'amount' => $valorRequeridoCentavos, // Guardar en centavos
+                    'status' => 'pendiente',
+                    'updated_by' => $userId,
+                ]);
+
+                // Eliminar cronograma anterior
+                PaymentSchedule::where('property_investor_id', $existingInvestor->id)->delete();
+                $propertyInvestor = $existingInvestor;
+            } else {
+                $propertyInvestor = PropertyInvestor::create([
+                    'property_id' => $property->id,
+                    'investor_id' => null,
+                    'config_id' => $config->id,
+                    'amount' => $valorRequeridoCentavos, // Guardar en centavos
+                    'status' => 'pendiente',
+                    'created_by' => $userId,
+                    'updated_by' => $userId,
+                ]);
+            }
+
+            // Generar cronograma según tipo de configuración
+            $this->generatePaymentScheduleByType($propertyInvestor->id, $config);
+
+            // Actualizar estado de la propiedad si ya tiene 2 configuraciones distintas
+            if ($property->config_total >= 2 && $property->estado !== 'completo') {
+                $property->update([
+                    'estado' => 'completo',
+                    'updated_by' => $userId,
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Configuración registrada correctamente.',
+                'property' => $property->fresh()->load('currency'),
+                'property_investor_id' => $propertyInvestor->id,
             ]);
-            
-        } catch (Exception $e) {
-            Log::error("Error creando pago {$pago['cuota']}: " . $e->getMessage(), [
-                'pago' => $pago,
-                'property_investor_id' => $propertyInvestorId
-            ]);
-            throw new Exception("Error procesando la cuota {$pago['cuota']}: " . $e->getMessage());
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'Error interno del servidor',
+                'error' => $e->getMessage(),
+            ], 500);
         }
     }
-}
 
-private function cleanNumericValue($value): float
-{
-    if ($value === null || $value === '') {
-        return 0.0;
+    private function generatePaymentScheduleByType($propertyInvestorId, $config)
+    {
+        $deadline = $config->plazo;
+        if (!$deadline) {
+            throw new Exception('No se encontró configuración o plazo asociado a la propiedad.');
+        }
+        
+        $property = $config->property;
+        // Asignar las tasas enteras desde la configuración
+        $property->tem = $config->tem;  // Valor entero (ej: 125 = 1.25%)
+        $property->tea = $config->tea;  // Valor entero (ej: 1550 = 15.50%)
+        $property->tipo_cronograma = $config->tipo_cronograma;
+        
+        if ($property->tipo_cronograma === 'americano') {
+            $service = new CreditSimulationAmericanoService();
+        } else {
+            $service = new CreditSimulationService();
+        }
+        
+        $simulation = $service->generate($property, $deadline, 1, $deadline->duracion_meses);
+        
+        if (!isset($simulation['cronograma_final']['pagos']) || !is_array($simulation['cronograma_final']['pagos'])) {
+            throw new Exception('La simulación no generó un cronograma válido.');
+        }
+
+        $pagos = $simulation['cronograma_final']['pagos'];
+        foreach ($pagos as $pago) {
+            try {
+                $fechaVencimiento = Carbon::createFromFormat('d/m/Y', $pago['vcmto']);
+                PaymentSchedule::create([
+                    'property_investor_id' => $propertyInvestorId,
+                    'cuota' => (int) $pago['cuota'],
+                    'vencimiento' => $fechaVencimiento->format('Y-m-d'),
+                    'saldo_inicial' => $this->cleanNumericValue($pago['saldo_inicial']),
+                    'capital' => $this->cleanNumericValue($pago['capital']),
+                    'intereses' => $this->cleanNumericValue($pago['interes']),
+                    'cuota_neta' => $this->cleanNumericValue($pago['cuota_neta']),
+                    'igv' => $this->cleanNumericValue($pago['igv'] ?? 0),
+                    'total_cuota' => $this->cleanNumericValue($pago['total_cuota']),
+                    'saldo_final' => $this->cleanNumericValue($pago['saldo_final']),
+                    'estado' => 'pendiente',
+                    'created_by' => Auth::id(),
+                    'updated_by' => Auth::id(),
+                ]);
+                
+            } catch (Exception $e) {
+                Log::error("Error creando pago {$pago['cuota']}: " . $e->getMessage(), [
+                    'pago' => $pago,
+                    'property_investor_id' => $propertyInvestorId
+                ]);
+                throw new Exception("Error procesando la cuota {$pago['cuota']}: " . $e->getMessage());
+            }
+        }
     }
-    if (is_string($value)) {
-        $cleaned = preg_replace('/[^0-9.-]/', '', $value);
-        $value = $cleaned;
+
+    private function cleanNumericValue($value): float
+    {
+        if ($value === null || $value === '') {
+            return 0.0;
+        }
+        if (is_string($value)) {
+            $cleaned = preg_replace('/[^0-9.-]/', '', $value);
+            $value = $cleaned;
+        }
+        
+        return (float) $value;
     }
-    
-    return (float) $value;
-}
     public function subastadas(Request $request){
         try {
             $perPage = $request->input('per_page', 15);
@@ -567,7 +568,7 @@ private function cleanNumericValue($value): float
                 'success' => true,
                 'orden_monto' => $ordenMonto,
             ]);
-        } catch (\Throwable $th) {
+        } catch (Throwable $th) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error al cargar configuraciones en subasta',
@@ -699,22 +700,34 @@ private function cleanNumericValue($value): float
             ], 500);
         }
     }
+    
     public function listReglas(Request $request){
-        $perPage = $request->get('per_page', 10);
-        $estado = $request->get('estado', 1);
-        $configuraciones = PropertyConfiguracion::with(['property', 'plazo'])
-            ->where('estado', $estado)
-            ->orderBy('created_at', 'desc')
-            ->paginate($perPage);
-        return PropertyConfiguracionResource::collection($configuraciones);
+        try {
+            Gate::authorize('viewAny', PropertyConfiguracion::class);
+
+            $perPage = $request->get('per_page', 10);
+            $estado = $request->get('estado', 1);
+
+            $configuraciones = PropertyConfiguracion::with(['property', 'plazo'])
+                ->where('estado', $estado)
+                ->orderBy('created_at', 'desc')
+                ->paginate($perPage);
+            return PropertyConfiguracionResource::collection($configuraciones);
+        } catch (AuthorizationException $e) {
+            return response()->json([
+                'message' => 'No tienes permiso para ver las reglas del inmueble.'
+            ], 403);
+        }
     }
     public function showReglas($id){
         $regla = PropertyConfiguracion::find($id);
         if (!$regla) {
             return response()->json(['message' => 'Configuración no encontrada'], 404);
         }
+        Gate::authorize('view', $regla);
         return new PropertyReglaResource($regla);
     }
+
     public function showConfig($configId, Request $request){
         $perPage = $request->input('per_page', 15);
         $propertyInvestorIds = PropertyInvestor::where('config_id', $configId)->pluck('id');

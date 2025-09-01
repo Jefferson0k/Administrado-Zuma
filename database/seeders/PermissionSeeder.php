@@ -8,6 +8,11 @@ use Spatie\Permission\Models\Permission;
 class PermissionSeeder extends Seeder{
     public function run(): void{
         #Hipotecas
+        // Subastas
+        Permission::create(['name' => 'activar subasta']);
+        Permission::create(['name' => 'editar subasta']);
+        Permission::create(['name' => 'eliminar subasta']);
+        Permission::create(['name' => 'ver subasta']);
         #Informacion del cliente
         Permission::create(['name' => 'crear informacion del cliente']);
         Permission::create(['name' => 'editar informacion del cliente']);

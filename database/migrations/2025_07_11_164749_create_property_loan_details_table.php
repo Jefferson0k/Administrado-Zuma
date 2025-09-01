@@ -14,12 +14,16 @@ return new class extends Migration{
             
             // Campos con límites específicos según el frontend
             $table->string('ocupacion_profesion', 200)->nullable(); // 200 caracteres
-            $table->string('empresa_tasadora', 150)->nullable(); // 150 caracteres - NUEVO CAMPO
+            $table->string('empresa_tasadora', 150)->nullable(); // 150 caracteres
             $table->string('motivo_prestamo', 300)->nullable(); // 300 caracteres
             $table->text('descripcion_financiamiento')->nullable(); // 500 caracteres (text para mayor flexibilidad)
-            $table->string('solicitud_prestamo_para', 250)->nullable(); // 250 caracteres
-            $table->string('garantia', 250)->nullable(); // 250 caracteres
-            $table->string('perfil_riesgo', 400)->nullable(); // 400 caracteres
+
+            // === NUEVOS CAMPOS ===
+            $table->unsignedBigInteger('monto_tasacion')->nullable();     // Monto de la tasación
+            $table->unsignedInteger('porcentaje_prestamo')->nullable();   // % para préstamo (entero 0-100)
+            $table->unsignedBigInteger('monto_invertir')->nullable();     // Monto a invertir
+            $table->unsignedBigInteger('monto_prestamo')->nullable();     // Monto del préstamo
+
             // Foreign keys
             $table->foreign('property_id')
                 ->references('id')
@@ -31,7 +35,6 @@ return new class extends Migration{
                 ->on('investors')
                 ->onDelete('cascade');
                 
-            // Índices para mejorar performance en consultas
             $table->index(['property_id', 'investor_id']);
             $table->index('config_id');
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();

@@ -234,15 +234,15 @@ const generatePDF = async () => {
         pdf.text(pdf.splitTextToSize(monto, colWidth - 2), headerStartX + (colWidth * 3), 25);
 
         // LÍNEA SEPARADORA DEBAJO DE LOS VALORES (centrada y más fina)
-        const lineY = 21; // Posición Y de la líne  a
-        const totalHeaderWidth = colWidth * 4; // Ancho total del header
-        const lineWidth = totalHeaderWidth * 0.8; // Línea al 80% del ancho total (más corta)
-        const lineStartX = headerStartX + (totalHeaderWidth - lineWidth) / 50; // Centrada
-        const lineEndX = lineStartX + lineWidth; // Final de la línea
+        const lineY = 21; 
+        const totalHeaderWidth = colWidth * 4;
+        const lineWidth = totalHeaderWidth * 0.8;
+        const lineStartX = headerStartX + (totalHeaderWidth - lineWidth) / 50;
+        const lineEndX = lineStartX + lineWidth;
 
-        pdf.setLineWidth(0.2); // Línea más fina
-        pdf.setDrawColor(0, 0, 0); // Color negro para la línea
-        pdf.line(lineStartX, lineY, lineEndX, lineY); // Dibuja la línea horizontal
+        pdf.setLineWidth(0.2);
+        pdf.setDrawColor(0, 0, 0);
+        pdf.line(lineStartX, lineY, lineEndX, lineY);
         y = 55;
 
         const col1X = margin;
@@ -250,13 +250,11 @@ const generatePDF = async () => {
         const sectionWidth = (contentWidth / 2) - 5;
 
         const addSection = (title, content, x, startY, width) => {
-            // Título
             pdf.setFontSize(11);
             pdf.setFont("helvetica", "bold");
-            pdf.setTextColor(255, 102, 51); // Naranja
+            pdf.setTextColor(255, 102, 51);
             pdf.text(title, x, startY);
             
-            // Contenido
             pdf.setFontSize(8);
             pdf.setFont("helvetica", "normal");
             pdf.setTextColor(0, 0, 0);
@@ -270,52 +268,36 @@ const generatePDF = async () => {
             return currentY + 4;
         };
 
-        // Guardamos la posición Y inicial
         const initialY = y;
 
-        // Columna izquierda: "Sobre el solicitante" arriba
         const solicitanteContent = `Profesión u ocupación: ${data.ocupacion_profesion || '---'}\n\nIngresos mensuales promedio: ${data.inversionista?.documento || '---'}\n\nRiesgo: ${data.riesgo || '---'}`;
         const solicitanteEndY = addSection("Sobre el solicitante:", solicitanteContent, col1X, initialY, sectionWidth);
 
-        // Columna izquierda: "Sobre la garantía" abajo (después de un pequeño espacio)
         const garantiaContent = `Tipo de inmueble: ${data.Property || '---'}\n\nUbicación: ${data.garantia || '---'}\n\nDescripción de la garantía: ${data.garantia || '---'}`;
         const garantiaEndY = addSection("Sobre la garantía:", garantiaContent, col1X, solicitanteEndY + 1, sectionWidth);
 
-        // Columna derecha: "Sobre el financiamiento" (ocupa toda la altura)
         const financiamientoContent = `Importe del financiamiento: ${data.Monto?.amount ? `S/${parseFloat(data.Monto.amount).toLocaleString()}` : '---'}\n\nMoneda del financiamiento: ${data.Monto?.currency || '---'}\n\nPlazo: ${data.Plazo || '---'}\n\nSistema de amortización: ${data.Esquema || '---'}\n\nDestino de fondos: ${data.solicitud_prestamo_para || '---'}\n\nTasa efectiva anual: ${data.tea ? data.tea + '%' : '---'}\n\nTotal de intereses proyectados: ${data.tem ? data.tem + '%' : '---'}`;
         const financiamientoEndY = addSection("Sobre el financiamiento:", financiamientoContent, col2X, initialY, sectionWidth);
 
-        // Actualizamos la posición Y para el siguiente contenido
         y = Math.max(garantiaEndY, financiamientoEndY);
-
-        y += 2; // Espaciado antes de las fotos
+        y += 2;
         
-        // SECCIÓN DE FOTOS CON ALTA CALIDAD
+        // SECCIÓN DE FOTOS
         pdf.setFontSize(12);
         pdf.setFont("helvetica", "bold");
         pdf.setTextColor(255, 102, 51);
         pdf.text("Fotos de la propiedad", col1X, y);
         y += 10;
 
-        // PIE DE PÁGINA PRIMERA PÁGINA
         pdf.setFontSize(8);
         pdf.setTextColor(0, 0, 0);
         
         // ===== SEGUNDA PÁGINA - CRONOGRAMA =====
         pdf.addPage();
         
-        // Header con fecha y hora (esquina superior derecha)
-        const now = new Date();
-        const fechaActual = now.toLocaleDateString("es-PE");
-        const horaActual = now.toLocaleTimeString("es-PE", { 
-            hour: '2-digit', 
-            minute: '2-digit', 
-            hour12: true 
-        });
-        
         y = 5;
         
-        // LOGO HIPOTECAS CON MÁXIMA CALIDAD
+        // LOGO HIPOTECAS
         if (data.hipotecas) {
             try {
                 const base64Hipotecas = await loadImageAsBase64(data.hipotecas);
@@ -331,12 +313,6 @@ const generatePDF = async () => {
             }
         }
 
-        pdf.setFontSize(9);
-        pdf.setFont("helvetica", "normal");
-        pdf.setTextColor(0, 0, 0);
-        pdf.text(`Fecha: ${fechaActual}`, pageWidth - margin, 15, { align: "right" });
-        pdf.text(`Hora: ${horaActual}`, pageWidth - margin, 22, { align: "right" });
-
         y = 75;
         
         pdf.setFontSize(11);
@@ -347,9 +323,7 @@ const generatePDF = async () => {
         const garantiaTotal = data.Monto?.amount ? `${parseFloat(data.Monto.amount).toLocaleString()}` : 'xxxx';
         const montoOtorgado = data.Monto?.amount ? `${parseFloat(data.Monto.amount).toLocaleString()}` : 'xxxx';
 
-        const lineSpacing = 8; // más abierto que 8
-
-        // Margen lateral extra para que no se pegue tanto a los costados
+        const lineSpacing = 8;
         const sidePadding = -5;
 
         // ---- Línea 1 ----
@@ -359,8 +333,6 @@ const generatePDF = async () => {
 
         let line1 = text1 + text2 + text3;
         let textWidth = pdf.getTextWidth(line1);
-
-        // centrado pero con padding lateral
         let startX = (pageWidth - textWidth) / 2 + sidePadding;
 
         pdf.setFont("helvetica", "bold");
@@ -406,46 +378,51 @@ const generatePDF = async () => {
 
         y += lineSpacing;
 
-        const headers = ["Cuota", "Vencimiento", "Saldo inicial", "Intereses", "Capital", "Cuota Neta", "Saldo final"];
-        const colWidths = [20, 25, 28, 26, 26, 28, 30];
+        // FUNCIÓN PARA CREAR HEADER DE TABLA (REUTILIZABLE)
+        const drawTableHeader = (startY) => {
+            const headers = ["Cuota", "Vencimiento", "Saldo inicial", "Intereses", "Capital", "Cuota Neta", "Saldo final"];
+            const colWidths = [20, 25, 28, 26, 26, 28, 30];
+            const totalTableWidth = colWidths.reduce((sum, width) => sum + width, 0);
+            const tableStartX = margin + (contentWidth - totalTableWidth) / 2;
+            const headerHeight = 12;
 
-        const totalTableWidth = colWidths.reduce((sum, width) => sum + width, 0);
-        const tableStartX = margin + (contentWidth - totalTableWidth) / 2;
+            // Fondo azul del header (MISMO COLOR que el original)
+            pdf.setFillColor(103, 144, 255); // ✅ Color consistente
+            pdf.rect(tableStartX, startY, totalTableWidth, headerHeight, 'F');
 
-        const headerHeight = 12;
-        pdf.setFillColor(103, 144, 255); // Azul del diseño
-        pdf.rect(tableStartX, y, totalTableWidth, headerHeight, 'F');
+            // Líneas negras arriba y abajo del header
+            pdf.setDrawColor(0, 0, 0);
+            pdf.setLineWidth(0.5);
+            pdf.line(tableStartX, startY, tableStartX + totalTableWidth, startY); // Línea superior
+            pdf.line(tableStartX, startY + headerHeight, tableStartX + totalTableWidth, startY + headerHeight); // Línea inferior
 
-        pdf.setFontSize(9);
-        pdf.setFont("helvetica", "bold");
-        pdf.setTextColor(255, 255, 255);
+            // Texto del header
+            pdf.setFontSize(9);
+            pdf.setFont("helvetica", "bold");
+            pdf.setTextColor(255, 255, 255);
 
-        let headerX = tableStartX;
-        headers.forEach((header, i) => {
-            pdf.text(header, headerX + colWidths[i] / 2, y + 7, { align: "center" });
-            headerX += colWidths[i];
-        });
+            let headerX = tableStartX;
+            headers.forEach((header, i) => {
+                pdf.text(header, headerX + colWidths[i] / 2, startY + 7, { align: "center" });
+                headerX += colWidths[i];
+            });
 
-        // 🔹 Líneas negras arriba y abajo del header
-        pdf.setDrawColor(0, 0, 0); // Negro
-        pdf.setLineWidth(0.5);
+            return { tableStartX, totalTableWidth, colWidths, headerHeight };
+        };
 
-        // Línea superior
-        pdf.line(tableStartX, y, tableStartX + totalTableWidth, y);
-
-        // Línea inferior
-        pdf.line(tableStartX, y + headerHeight, tableStartX + totalTableWidth, y + headerHeight);
-
-        y += headerHeight; // avanzar después del header
-
+        // Crear el header inicial
+        const tableConfig = drawTableHeader(y);
+        const { tableStartX, totalTableWidth, colWidths, headerHeight } = tableConfig;
         
+        y += headerHeight; // Avanzar después del header inicial
+
         // Restablecer color para el contenido
         pdf.setTextColor(0, 0, 0);
-
-        // Filas de datos del cronograma (COMPLETAMENTE SIN RAYAS/BORDES)
-        const cuotas = data.cronograma || [];
         pdf.setFont("helvetica", "normal");
         pdf.setFontSize(8);
+
+        // Filas de datos del cronograma
+        const cuotas = data.cronograma || [];
 
         cuotas.forEach((item, index) => {
             const rowData = [
@@ -458,28 +435,19 @@ const generatePDF = async () => {
                 item.saldo_final ? `${parseFloat(item.saldo_final).toLocaleString()}` : 'S/10,000'
             ];
 
-            const rowHeight = 5; // Espaciado entre filas
+            const rowHeight = 5;
 
             // Nueva página si es necesario
             if (y + rowHeight > pageHeight - 30) {
                 pdf.addPage();
-                y = margin + 20;
+                y = margin + 10; // ✅ Posición consistente
                 
-                // Reimprimir header en nueva página
-                pdf.setFillColor(100, 149, 237);
-                pdf.rect(tableStartX, y, totalTableWidth, headerHeight, 'F');
+                // Reimprimir header con configuración idéntica
+                drawTableHeader(y);
                 
-                pdf.setFontSize(9);
-                pdf.setFont("helvetica", "bold");
-                pdf.setTextColor(255, 255, 255);
+                y += headerHeight; // ✅ Solo el headerHeight, sin espaciado extra
                 
-                let reHeaderX = tableStartX;
-                headers.forEach((header, i) => {
-                    pdf.text(header, reHeaderX + colWidths[i]/2, y + 7, { align: "center" });
-                    reHeaderX += colWidths[i];
-                });
-                
-                y += headerHeight + 5;
+                // Restaurar configuración de texto para las filas
                 pdf.setTextColor(0, 0, 0);
                 pdf.setFont("helvetica", "normal");
                 pdf.setFontSize(8);
@@ -505,7 +473,6 @@ const generatePDF = async () => {
             const footerY = pageHeight - 8;
             pdf.text(window.location.href, pageWidth - margin, footerY, { align: "right" });
             pdf.text(`Página ${i} de ${totalPages}`, margin, footerY);
-            pdf.text(`Ref: ${data.id || 'REF-001'}`, centerX, footerY, { align: "center" });
             
             pdf.setTextColor(0, 0, 0);
         }
