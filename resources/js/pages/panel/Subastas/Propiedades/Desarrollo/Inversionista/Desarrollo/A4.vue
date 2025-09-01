@@ -207,40 +207,45 @@ const generatePDF = async () => {
         }
 
         // INFORMACIÓN EN EL HEADER (lado derecho)
-        const headerStartX = 90;
-        const colWidth = 30;
+        const headerStartX = 70;
+        const colWidth = 23;
 
         // Encabezados en azul
         pdf.setFontSize(8);
         pdf.setFont("helvetica", "bold");
         pdf.setTextColor(103, 144, 255); // Azul
-        pdf.text("PROPIEDAD:", headerStartX, 18);
-        pdf.text("ESQUEMA:", headerStartX + colWidth, 18);
-        pdf.text("PLAZO:", headerStartX + (colWidth * 2), 18);
-        pdf.text("MONTO:", headerStartX + (colWidth * 3), 18);
+        pdf.text("Rentabilidad Anual:", headerStartX, 18);
+        pdf.text("ESQUEMA:", headerStartX + (colWidth * 1.2), 18);
+        pdf.text("Plazo (meses):", headerStartX + (colWidth * 2.4), 18);
+        pdf.text("Ratio LTV:", headerStartX + (colWidth * 3.6), 18);
+        pdf.text("Riesgo:", headerStartX + (colWidth * 4.8), 18);
+        pdf.text("MONTO:", headerStartX + (colWidth * 6), 18);
 
-        // Valores en negro
+        // Valores en negro - todos en cero
         pdf.setFontSize(9);
         pdf.setFont("helvetica", "bold");
         pdf.setTextColor(0, 0, 0);
-        const propertyName = data.Property || '---';
-        const esquema = data.Esquema || '---';
-        const plazo = data.Plazo || '---';
-        const monto = data.Monto?.amount ? `${parseFloat(data.Monto.amount).toLocaleString()}` : '---';
+        const rentabilidadAnual = '0';
+        const esquema = '0';
+        const plazo = '0';
+        const ratioLTV = '0';
+        const riesgo = '0';
+        const monto = '0';
 
-        pdf.text(pdf.splitTextToSize(propertyName, colWidth - 2), headerStartX, 25);
-        pdf.text(pdf.splitTextToSize(esquema, colWidth - 2), headerStartX + colWidth, 25);
-        pdf.text(pdf.splitTextToSize(plazo, colWidth - 2), headerStartX + (colWidth * 2), 25);
-        pdf.text(pdf.splitTextToSize(monto, colWidth - 2), headerStartX + (colWidth * 3), 25);
+        pdf.text(pdf.splitTextToSize(rentabilidadAnual, colWidth - 2), headerStartX, 25);
+        pdf.text(pdf.splitTextToSize(esquema, colWidth - 2), headerStartX + (colWidth * 1.2), 25);
+        pdf.text(pdf.splitTextToSize(plazo, colWidth - 2), headerStartX + (colWidth * 2.4), 25);
+        pdf.text(pdf.splitTextToSize(ratioLTV, colWidth - 2), headerStartX + (colWidth * 3.6), 25);
+        pdf.text(pdf.splitTextToSize(riesgo, colWidth - 2), headerStartX + (colWidth * 4.8), 25);
+        pdf.text(pdf.splitTextToSize(monto, colWidth - 2), headerStartX + (colWidth * 6), 25);
 
-        // LÍNEA SEPARADORA DEBAJO DE LOS VALORES (centrada y más fina)
-        const lineY = 21; 
-        const totalHeaderWidth = colWidth * 4;
-        const lineWidth = totalHeaderWidth * 0.8;
-        const lineStartX = headerStartX + (totalHeaderWidth - lineWidth) / 50;
-        const lineEndX = lineStartX + lineWidth;
+        // LÍNEA SEPARADORA DEBAJO DE LOS VALORES - mejor distribuida
+        const lineY = 27; 
+        const totalHeaderWidth = colWidth * 6.5;
+        const lineStartX = headerStartX;
+        const lineEndX = headerStartX + totalHeaderWidth;
 
-        pdf.setLineWidth(0.2);
+        pdf.setLineWidth(0.3);
         pdf.setDrawColor(0, 0, 0);
         pdf.line(lineStartX, lineY, lineEndX, lineY);
         y = 55;
@@ -258,7 +263,7 @@ const generatePDF = async () => {
             pdf.setFontSize(8);
             pdf.setFont("helvetica", "normal");
             pdf.setTextColor(0, 0, 0);
-            const lines = pdf.splitTextToSize(content || '---', width);
+            const lines = pdf.splitTextToSize(content || '0', width);
             let currentY = startY + 6;
             lines.forEach(line => {
                 pdf.text(line, x, currentY);
@@ -270,13 +275,13 @@ const generatePDF = async () => {
 
         const initialY = y;
 
-        const solicitanteContent = `Profesión u ocupación: ${data.ocupacion_profesion || '---'}\n\nIngresos mensuales promedio: ${data.inversionista?.documento || '---'}\n\nRiesgo: ${data.riesgo || '---'}`;
+        const solicitanteContent = `Profesión u ocupación: ${data.ocupacion_profesion || '0'}\n\nIngresos mensuales promedio: ${data.inversionista?.documento || '0'}\n\nRiesgo: ${data.riesgo || '0'}`;
         const solicitanteEndY = addSection("Sobre el solicitante:", solicitanteContent, col1X, initialY, sectionWidth);
 
-        const garantiaContent = `Tipo de inmueble: ${data.Property || '---'}\n\nUbicación: ${data.garantia || '---'}\n\nDescripción de la garantía: ${data.garantia || '---'}`;
+        const garantiaContent = `Tipo de inmueble: ${data.Property || '0'}\n\nUbicación: ${data.garantia || '0'}\n\nDescripción de la garantía: ${data.garantia || '0'}`;
         const garantiaEndY = addSection("Sobre la garantía:", garantiaContent, col1X, solicitanteEndY + 1, sectionWidth);
 
-        const financiamientoContent = `Importe del financiamiento: ${data.Monto?.amount ? `S/${parseFloat(data.Monto.amount).toLocaleString()}` : '---'}\n\nMoneda del financiamiento: ${data.Monto?.currency || '---'}\n\nPlazo: ${data.Plazo || '---'}\n\nSistema de amortización: ${data.Esquema || '---'}\n\nDestino de fondos: ${data.solicitud_prestamo_para || '---'}\n\nTasa efectiva anual: ${data.tea ? data.tea + '%' : '---'}\n\nTotal de intereses proyectados: ${data.tem ? data.tem + '%' : '---'}`;
+        const financiamientoContent = `Importe del financiamiento: ${data.Monto?.amount || '0'}\n\nMoneda del financiamiento: ${data.Monto?.currency || '0'}\n\nPlazo: ${data.Plazo || '0'}\n\nSistema de amortización: ${data.Esquema || '0'}\n\nDestino de fondos: ${data.solicitud_prestamo_para || '0'}\n\nTasa efectiva anual: ${data.tea || '0'}%\n\nTotal de intereses proyectados: ${data.tem || '0'}%`;
         const financiamientoEndY = addSection("Sobre el financiamiento:", financiamientoContent, col2X, initialY, sectionWidth);
 
         y = Math.max(garantiaEndY, financiamientoEndY);
@@ -318,17 +323,17 @@ const generatePDF = async () => {
         pdf.setFontSize(11);
         pdf.setTextColor(0, 0, 0);
 
-        const tem = data.tem ? `${parseFloat(data.tem).toFixed(4)}%` : '3.2000%';
-        const tea = data.tea ? `${parseFloat(data.tea).toFixed(4)}%` : '5.5000%';
-        const garantiaTotal = data.Monto?.amount ? `${parseFloat(data.Monto.amount).toLocaleString()}` : 'xxxx';
-        const montoOtorgado = data.Monto?.amount ? `${parseFloat(data.Monto.amount).toLocaleString()}` : 'xxxx';
+        const tem = data.tem || '0';
+        const tea = data.tea || '0';
+        const garantiaTotal = data.Monto?.amount || '0';
+        const montoOtorgado = data.Monto?.amount || '0';
 
         const lineSpacing = 8;
         const sidePadding = -5;
 
         // ---- Línea 1 ----
         let text1 = `Tasa efectiva Mensual: `;
-        let text2 = `${tem}      Garantía Total: `;
+        let text2 = `${tem}%      Garantía Total: `;
         let text3 = `${garantiaTotal}`;
 
         let line1 = text1 + text2 + text3;
@@ -340,9 +345,9 @@ const generatePDF = async () => {
 
         let x1 = startX + pdf.getTextWidth(text1);
         pdf.setFont("helvetica", "normal");
-        pdf.text(tem, x1, y);
+        pdf.text(tem + '%', x1, y);
 
-        let x2 = x1 + pdf.getTextWidth(tem + "      ");
+        let x2 = x1 + pdf.getTextWidth(tem + "%      ");
         pdf.setFont("helvetica", "bold");
         pdf.text("Garantía Total: ", x2, y);
 
@@ -354,7 +359,7 @@ const generatePDF = async () => {
 
         // ---- Línea 2 ----
         text1 = `Tasa efectiva Anual: `;
-        text2 = `${tea}      Monto Otorgado: `;
+        text2 = `${tea}%      Monto Otorgado: `;
         text3 = `${montoOtorgado}`;
 
         line1 = text1 + text2 + text3;
@@ -366,9 +371,9 @@ const generatePDF = async () => {
 
         x1 = startX + pdf.getTextWidth(text1);
         pdf.setFont("helvetica", "normal");
-        pdf.text(tea, x1, y);
+        pdf.text(tea + '%', x1, y);
 
-        x2 = x1 + pdf.getTextWidth(tea + "      ");
+        x2 = x1 + pdf.getTextWidth(tea + "%      ");
         pdf.setFont("helvetica", "bold");
         pdf.text("Monto Otorgado: ", x2, y);
 
@@ -427,12 +432,12 @@ const generatePDF = async () => {
         cuotas.forEach((item, index) => {
             const rowData = [
                 item.cuota?.toString() || (index + 1).toString(),
-                item.vencimiento || '25/09/2015',
-                item.saldo_inicial ? `${parseFloat(item.saldo_inicial).toLocaleString()}` : 'S/10,000',
-                item.intereses ? `${parseFloat(item.intereses).toLocaleString()}` : 'S/10,000',
-                item.capital ? `${parseFloat(item.capital).toLocaleString()}` : 'S/10,000',
-                item.total_cuota ? `${parseFloat(item.total_cuota).toLocaleString()}` : 'S/10,000',
-                item.saldo_final ? `${parseFloat(item.saldo_final).toLocaleString()}` : 'S/10,000'
+                item.vencimiento || '0',
+                item.saldo_inicial || '0',
+                item.intereses || '0',
+                item.capital || '0',
+                item.total_cuota || '0',
+                item.saldo_final || '0'
             ];
 
             const rowHeight = 5;
