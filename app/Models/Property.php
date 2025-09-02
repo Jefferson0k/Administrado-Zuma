@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Money\Money;
 use Money\Currency as MoneyCurrency;
 use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
@@ -211,24 +212,24 @@ class Property extends Model implements AuditableContract
     }
 
     public function getImagenes(): array
-    {
-        $rutaCarpeta = public_path("Propiedades/{$this->id}");
-        $imagenes = [];
-
-        if (File::exists($rutaCarpeta)) {
-            $archivos = File::files($rutaCarpeta);
-            foreach ($archivos as $archivo) {
-                $imagenes[] = asset("Propiedades/{$this->id}/" . $archivo->getFilename());
-            }
-        }
-
-        if (empty($imagenes)) {
-            $imagenes[] = asset('Propiedades/no-image.png');
-        }
-
-        return $imagenes;
+{
+    $rutaCarpeta = "Propiedades/{$this->id}";
+    $imagenes = [];
+    
+    // Obtener archivos de S3
+    $archivos = Storage::disk('s3')->files($rutaCarpeta);
+    
+    foreach ($archivos as $archivo) {
+        // Generar URL temporal (válida por 1 hora por defecto)
+        $imagenes[] = Storage::disk('s3')->temporaryUrl($archivo, now()->addHours(1));
     }
-
+    
+    if (empty($imagenes)) {
+        $imagenes[] = asset('Propiedades/no-image.png'); // o una imagen por defecto en S3
+    }
+    
+    return $imagenes;
+}
     public function paymentSchedules()
     {
         return $this->hasManyThrough(

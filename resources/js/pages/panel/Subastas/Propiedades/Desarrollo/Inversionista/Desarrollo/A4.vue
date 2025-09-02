@@ -115,16 +115,14 @@ const loadImageAsBase64 = (url, timeout = 10000) => {
                             ctx.imageSmoothingEnabled = true;
                             ctx.imageSmoothingQuality = 'high';
                             
-                            // Fondo blanco para mejor contraste
-                            ctx.fillStyle = 'white';
-                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                            // NO agregar fondo blanco para SVGs - mantener transparencia
                             
                             // Escalar el contexto para dibujar a alta resolución
                             ctx.scale(scale, scale);
                             ctx.drawImage(img, 0, 0, originalWidth, originalHeight);
 
-                            // Convertir a JPEG con máxima calidad
-                            const base64 = canvas.toDataURL("image/jpeg", 1.0);
+                            // Convertir a PNG para mantener transparencia
+                            const base64 = canvas.toDataURL("image/png", 1.0);
                             URL.revokeObjectURL(urlBlob);
                             resolve(base64);
                         };
@@ -194,9 +192,9 @@ const generatePDF = async () => {
         if (data.logo) {
             try {
                 const base64Hipotecas = await loadImageAsBase64(data.logo);
-                const imgWidth = 210;
-                const imgHeight = 40;
-                pdf.addImage(base64Hipotecas, 'JPEG', margin + -15, y, imgWidth, imgHeight);
+                const imgWidth = 215;
+                const imgHeight = 45;
+                pdf.addImage(base64Hipotecas, 'JPEG', margin + -20, y, imgWidth, imgHeight);
             } catch (error) {
                 console.error('Error al cargar logo hipotecas:', error);
                 pdf.setFontSize(24);
@@ -206,48 +204,51 @@ const generatePDF = async () => {
             }
         }
 
-        // INFORMACIÓN EN EL HEADER (lado derecho)
-        const headerStartX = 70;
-        const colWidth = 23;
+        // ENCABEZADO CORREGIDO
+        const headerStartX = 75;
+        const colWidth = 22;
 
-        // Encabezados en azul
+        // Títulos en azul
         pdf.setFontSize(8);
         pdf.setFont("helvetica", "bold");
         pdf.setTextColor(103, 144, 255); // Azul
-        pdf.text("Rentabilidad Anual:", headerStartX, 18);
-        pdf.text("ESQUEMA:", headerStartX + (colWidth * 1.2), 18);
-        pdf.text("Plazo (meses):", headerStartX + (colWidth * 2.4), 18);
-        pdf.text("Ratio LTV:", headerStartX + (colWidth * 3.6), 18);
-        pdf.text("Riesgo:", headerStartX + (colWidth * 4.8), 18);
-        pdf.text("MONTO:", headerStartX + (colWidth * 6), 18);
+        pdf.text("Importe", headerStartX, 18);
+        pdf.text("Rentabilidad Anual", headerStartX + colWidth, 18);
+        pdf.text("Plazo", headerStartX + (colWidth * 2.5), 18);
+        pdf.text("Ratio LTV", headerStartX + (colWidth * 3.4), 18);
+        pdf.text("Riesgo", headerStartX + (colWidth * 4.2), 18);
 
-        // Valores en negro - todos en cero
+        // Valores en negro - USANDO DATOS REALES
         pdf.setFontSize(9);
         pdf.setFont("helvetica", "bold");
         pdf.setTextColor(0, 0, 0);
-        const rentabilidadAnual = '0';
-        const esquema = '0';
-        const plazo = '0';
-        const ratioLTV = '0';
-        const riesgo = '0';
-        const monto = '0';
+        
+        // Extraer valores reales de los datos
+        const importe = data.Monto || 'N/A';
+        const rentabilidadAnual = data.tea ? `${data.tea}%` : '0%';
+        const plazo = data.Plazo || 'N/A';
+        const ratioLTV = data.Valor_Estimado && data.Monto_raw 
+            ? `${((data.Monto_raw / parseFloat(data.Valor_Estimado.replace(/[^\d.-]/g, ''))) * 100).toFixed(1)}%` 
+            : '0%';
+        const riesgo = data.riesgo || 'N/A';
 
-        pdf.text(pdf.splitTextToSize(rentabilidadAnual, colWidth - 2), headerStartX, 25);
-        pdf.text(pdf.splitTextToSize(esquema, colWidth - 2), headerStartX + (colWidth * 1.2), 25);
-        pdf.text(pdf.splitTextToSize(plazo, colWidth - 2), headerStartX + (colWidth * 2.4), 25);
-        pdf.text(pdf.splitTextToSize(ratioLTV, colWidth - 2), headerStartX + (colWidth * 3.6), 25);
-        pdf.text(pdf.splitTextToSize(riesgo, colWidth - 2), headerStartX + (colWidth * 4.8), 25);
-        pdf.text(pdf.splitTextToSize(monto, colWidth - 2), headerStartX + (colWidth * 6), 25);
+        // Posicionar valores directamente debajo de cada encabezado
+        pdf.text(pdf.splitTextToSize(importe, colWidth - 2), headerStartX, 25);
+        pdf.text(pdf.splitTextToSize(rentabilidadAnual, colWidth - 2), headerStartX + colWidth, 25);
+        pdf.text(pdf.splitTextToSize(plazo, colWidth - 2), headerStartX + (colWidth * 2.5), 25);
+        pdf.text(pdf.splitTextToSize(ratioLTV, colWidth - 2), headerStartX + (colWidth * 3.4), 25);
+        pdf.text(pdf.splitTextToSize(riesgo, colWidth - 2), headerStartX + (colWidth * 4.2), 25);
 
-        // LÍNEA SEPARADORA DEBAJO DE LOS VALORES - mejor distribuida
-        const lineY = 27; 
-        const totalHeaderWidth = colWidth * 6.5;
+        // LÍNEA SEPARADORA DEBAJO DE LOS VALORES
+        const lineY = 20;
+        const totalHeaderWidth = colWidth * 5.2;
         const lineStartX = headerStartX;
         const lineEndX = headerStartX + totalHeaderWidth;
 
         pdf.setLineWidth(0.3);
         pdf.setDrawColor(0, 0, 0);
         pdf.line(lineStartX, lineY, lineEndX, lineY);
+        
         y = 55;
 
         const col1X = margin;
@@ -263,7 +264,7 @@ const generatePDF = async () => {
             pdf.setFontSize(8);
             pdf.setFont("helvetica", "normal");
             pdf.setTextColor(0, 0, 0);
-            const lines = pdf.splitTextToSize(content || '0', width);
+            const lines = pdf.splitTextToSize(content || 'N/A', width);
             let currentY = startY + 6;
             lines.forEach(line => {
                 pdf.text(line, x, currentY);
@@ -275,28 +276,167 @@ const generatePDF = async () => {
 
         const initialY = y;
 
-        const solicitanteContent = `Profesión u ocupación: ${data.ocupacion_profesion || '0'}\n\nIngresos mensuales promedio: ${data.inversionista?.documento || '0'}\n\nRiesgo: ${data.riesgo || '0'}`;
+        // CONTENIDO CON DATOS REALES
+        const solicitanteContent = `Profesión u ocupación: ${data.ocupacion_profesion || 'N/A'}\n\nIngresos mensuales promedio: ${data.inversionista?.documento || 'N/A'}\n\nRiesgo: ${data.riesgo || 'N/A'}`;
         const solicitanteEndY = addSection("Sobre el solicitante:", solicitanteContent, col1X, initialY, sectionWidth);
 
-        const garantiaContent = `Tipo de inmueble: ${data.Property || '0'}\n\nUbicación: ${data.garantia || '0'}\n\nDescripción de la garantía: ${data.garantia || '0'}`;
+        const garantiaContent = `Tipo de inmueble: ${data.Property || 'N/A'}\n\nUbicación: ${data.garantia || 'N/A'}\n\nDescripción de la garantía: ${data.garantia || 'N/A'}`;
         const garantiaEndY = addSection("Sobre la garantía:", garantiaContent, col1X, solicitanteEndY + 1, sectionWidth);
 
-        const financiamientoContent = `Importe del financiamiento: ${data.Monto?.amount || '0'}\n\nMoneda del financiamiento: ${data.Monto?.currency || '0'}\n\nPlazo: ${data.Plazo || '0'}\n\nSistema de amortización: ${data.Esquema || '0'}\n\nDestino de fondos: ${data.solicitud_prestamo_para || '0'}\n\nTasa efectiva anual: ${data.tea || '0'}%\n\nTotal de intereses proyectados: ${data.tem || '0'}%`;
+        const financiamientoContent = `Importe del financiamiento: ${data.Monto || 'N/A'}\n\nMoneda del financiamiento: ${data.Monto ? 'PEN' : 'N/A'}\n\nPlazo: ${data.Plazo || 'N/A'}\n\nSistema de amortización: ${data.Esquema || 'N/A'}\n\nDestino de fondos: ${data.solicitud_prestamo_para || 'N/A'}\n\nTasa efectiva anual: ${data.tea || '0'}%\n\nTotal de intereses proyectados: ${data.tem || '0'}%`;
         const financiamientoEndY = addSection("Sobre el financiamiento:", financiamientoContent, col2X, initialY, sectionWidth);
 
         y = Math.max(garantiaEndY, financiamientoEndY);
         y += 2;
         
-        // SECCIÓN DE FOTOS
+        // ===== SECCIÓN DE FOTOS =====
         pdf.setFontSize(12);
         pdf.setFont("helvetica", "bold");
         pdf.setTextColor(255, 102, 51);
         pdf.text("Fotos de la propiedad", col1X, y);
         y += 10;
 
-        pdf.setFontSize(8);
-        pdf.setTextColor(0, 0, 0);
+        // Configuración para las fotos
+        const photoSize = 50;
+        const spacing = 10;
+        const photosPerRow1 = 3;
+        const photosPerRow2 = 2;
+        const sectionPadding = 8;
+
+        // Calcular dimensiones de la sección completa
+        const totalRowWidth1 = (photoSize * photosPerRow1) + (spacing * (photosPerRow1 - 1));
+        const photoSectionWidth = totalRowWidth1 + (sectionPadding * 2);
+        const sectionHeight = (photoSize * 2) + spacing + (sectionPadding * 2);
+        const sectionX = margin + (contentWidth - photoSectionWidth) / 2;
+
+        // Dibujar fondo beige de toda la sección
+        pdf.setFillColor(237, 234, 228);
+        pdf.rect(sectionX, y, photoSectionWidth, sectionHeight, 'F');
+
+        const photoStartX1 = sectionX + sectionPadding;
+        const photoStartX2 = photoStartX1;
+
+        // Obtener las imágenes y filtrar las válidas
+        const imagenes = data.imagenes || [];
+        const imagenesValidas = imagenes.filter(img => img && img !== 'no-image.png');
+
+        // PRIMERA FILA - 3 fotos
+        for (let i = 0; i < 3; i++) {
+            const photoX = photoStartX1 + (i * (photoSize + spacing));
+            const photoY = y + sectionPadding;
+            
+            const frameSize = photoSize * 0.85;
+            const frameX = photoX + (photoSize - frameSize) / 2;
+            const frameY = photoY + (photoSize - frameSize) / 2;
+            
+            pdf.setFillColor(255, 255, 255);
+            pdf.rect(frameX, frameY, frameSize, frameSize, 'F');
+            
+            pdf.setDrawColor(0, 0, 0);
+            pdf.setLineWidth(0.3);
+            pdf.rect(frameX, frameY, frameSize, frameSize);
+            
+            if (i < imagenesValidas.length) {
+                try {
+                    const base64Image = await loadImageAsBase64(imagenesValidas[i]);
+                    
+                    const imageSize = frameSize * 0.8;
+                    const imageCenterX = frameX + (frameSize - imageSize) / 2;
+                    const imageCenterY = frameY + (frameSize - imageSize) / 2;
+                    
+                    const format = imagenesValidas[i].toLowerCase().includes('.svg') ? 'PNG' : 'JPEG';
+                    pdf.addImage(base64Image, format, imageCenterX, imageCenterY, imageSize, imageSize);
+                    
+                } catch (error) {
+                    console.error(`Error al cargar imagen ${i + 1}:`, error);
+                    pdf.setFontSize(6);
+                    pdf.setTextColor(150, 150, 150);
+                    pdf.text("Sin imagen", frameX + frameSize/2, frameY + frameSize/2, { align: "center" });
+                }
+            } else {
+                pdf.setFontSize(6);
+                pdf.setTextColor(150, 150, 150);
+                pdf.text("Sin imagen", frameX + frameSize/2, frameY + frameSize/2, { align: "center" });
+            }
+        }
+
+        // SEGUNDA FILA - 2 fotos
+        const secondRowY = y + sectionPadding + photoSize + spacing;
+
+        for (let i = 3; i < 5; i++) {
+            const photoIndex = i - 3;
+            const photoX = photoStartX2 + (photoIndex * (photoSize + spacing));
+            const photoY = secondRowY;
+            
+            const frameSize = photoSize * 0.85;
+            const frameX = photoX + (photoSize - frameSize) / 2;
+            const frameY = photoY + (photoSize - frameSize) / 2;
+            
+            pdf.setFillColor(255, 255, 255);
+            pdf.rect(frameX, frameY, frameSize, frameSize, 'F');
+            
+            pdf.setDrawColor(0, 0, 0);
+            pdf.setLineWidth(0.3);
+            pdf.rect(frameX, frameY, frameSize, frameSize);
+            
+            if (i < imagenesValidas.length) {
+                try {
+                    const base64Image = await loadImageAsBase64(imagenesValidas[i]);
+                    
+                    const imageSize = frameSize * 0.8;
+                    const imageCenterX = frameX + (frameSize - imageSize) / 2;
+                    const imageCenterY = frameY + (frameSize - imageSize) / 2;
+                    
+                    const format = imagenesValidas[i].toLowerCase().includes('.svg') ? 'PNG' : 'JPEG';
+                    pdf.addImage(base64Image, format, imageCenterX, imageCenterY, imageSize, imageSize);
+                    
+                } catch (error) {
+                    console.error(`Error al cargar imagen ${i + 1}:`, error);
+                    pdf.setFontSize(6);
+                    pdf.setTextColor(150, 150, 150);
+                    pdf.text("Sin imagen", frameX + frameSize/2, frameY + frameSize/2, { align: "center" });
+                }
+            } else {
+                pdf.setFontSize(6);
+                pdf.setTextColor(150, 150, 150);
+                pdf.text("Sin imagen", frameX + frameSize/2, frameY + frameSize/2, { align: "center" });
+            }
+        }
+
+        // IMAGEN PRINCIPAL EN LA ESQUINA INFERIOR DERECHA
+        const logoSize = photoSize * 0.85;
+const logoX = photoStartX1 + (2 * (photoSize + spacing));
+const logoY = secondRowY;
+
+if (data.principal) {
+    try {
+        const base64Principal = await loadImageAsBase64(data.principal);
+        const frameX = logoX + (photoSize - logoSize) / 3;
+        const frameY = logoY + (photoSize - logoSize) / 2;
+        const imageCenterX = frameX + (logoSize * 0.1);
+        const imageCenterY = frameY + (logoSize * 0.1);
         
+        // Hacer la imagen un poco más ancha
+        const finalImageWidth = logoSize * 1.0;   // Un poco más ancho
+        const finalImageHeight = logoSize * 0.7;  // Mantener la altura original
+        
+        pdf.addImage(base64Principal, 'PNG', imageCenterX, imageCenterY, finalImageWidth, finalImageHeight);
+    } catch (error) {
+        console.error('Error al cargar imagen principal:', error);
+        pdf.setFontSize(8);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(0, 0, 0);
+        pdf.text("LOGO", logoX + photoSize/2, logoY + photoSize/2, { align: "center" });
+    }
+} else {
+    pdf.setFontSize(8);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(0, 0, 0);
+    pdf.text("LOGO", logoX + photoSize/2, logoY + photoSize/2, { align: "center" });
+}
+y = y + sectionHeight + 10;
+pdf.setTextColor(0, 0, 0);
+
         // ===== SEGUNDA PÁGINA - CRONOGRAMA =====
         pdf.addPage();
         
@@ -325,8 +465,8 @@ const generatePDF = async () => {
 
         const tem = data.tem || '0';
         const tea = data.tea || '0';
-        const garantiaTotal = data.Monto?.amount || '0';
-        const montoOtorgado = data.Monto?.amount || '0';
+        const garantiaTotal = data.Valor_Estimado || data.Monto || '0';
+        const montoOtorgado = data.Monto || '0';
 
         const lineSpacing = 8;
         const sidePadding = -5;
@@ -383,7 +523,7 @@ const generatePDF = async () => {
 
         y += lineSpacing;
 
-        // FUNCIÓN PARA CREAR HEADER DE TABLA (REUTILIZABLE)
+        // FUNCIÓN PARA CREAR HEADER DE TABLA
         const drawTableHeader = (startY) => {
             const headers = ["Cuota", "Vencimiento", "Saldo inicial", "Intereses", "Capital", "Cuota Neta", "Saldo final"];
             const colWidths = [20, 25, 28, 26, 26, 28, 30];
@@ -391,15 +531,15 @@ const generatePDF = async () => {
             const tableStartX = margin + (contentWidth - totalTableWidth) / 2;
             const headerHeight = 12;
 
-            // Fondo azul del header (MISMO COLOR que el original)
-            pdf.setFillColor(103, 144, 255); // ✅ Color consistente
+            // Fondo azul del header
+            pdf.setFillColor(103, 144, 255);
             pdf.rect(tableStartX, startY, totalTableWidth, headerHeight, 'F');
 
             // Líneas negras arriba y abajo del header
             pdf.setDrawColor(0, 0, 0);
             pdf.setLineWidth(0.5);
-            pdf.line(tableStartX, startY, tableStartX + totalTableWidth, startY); // Línea superior
-            pdf.line(tableStartX, startY + headerHeight, tableStartX + totalTableWidth, startY + headerHeight); // Línea inferior
+            pdf.line(tableStartX, startY, tableStartX + totalTableWidth, startY);
+            pdf.line(tableStartX, startY + headerHeight, tableStartX + totalTableWidth, startY + headerHeight);
 
             // Texto del header
             pdf.setFontSize(9);
@@ -417,9 +557,9 @@ const generatePDF = async () => {
 
         // Crear el header inicial
         const tableConfig = drawTableHeader(y);
-        const { tableStartX, totalTableWidth, colWidths, headerHeight } = tableConfig;
+        const { tableStartX, colWidths, headerHeight } = tableConfig;
         
-        y += headerHeight; // Avanzar después del header inicial
+        y += headerHeight;
 
         // Restablecer color para el contenido
         pdf.setTextColor(0, 0, 0);
@@ -432,11 +572,11 @@ const generatePDF = async () => {
         cuotas.forEach((item, index) => {
             const rowData = [
                 item.cuota?.toString() || (index + 1).toString(),
-                item.vencimiento || '0',
-                item.saldo_inicial || '0',
-                item.intereses || '0',
-                item.capital || '0',
-                item.total_cuota || '0',
+                item.vencimiento || 'N/A',
+                item.saldo_inicial_formatted || item.saldo_inicial || '0',
+                item.intereses_formatted || item.intereses || '0',
+                item.capital_formatted || item.capital || '0',
+                item.total_cuota_formatted || item.total_cuota || '0',
                 item.saldo_final || '0'
             ];
 
@@ -445,12 +585,11 @@ const generatePDF = async () => {
             // Nueva página si es necesario
             if (y + rowHeight > pageHeight - 30) {
                 pdf.addPage();
-                y = margin + 10; // ✅ Posición consistente
+                y = margin + 10;
                 
-                // Reimprimir header con configuración idéntica
+                // Reimprimir header
                 drawTableHeader(y);
-                
-                y += headerHeight; // ✅ Solo el headerHeight, sin espaciado extra
+                y += headerHeight;
                 
                 // Restaurar configuración de texto para las filas
                 pdf.setTextColor(0, 0, 0);
@@ -458,7 +597,7 @@ const generatePDF = async () => {
                 pdf.setFontSize(8);
             }
 
-            // Dibujar SOLO el texto de la fila (SIN fondos, SIN líneas, SIN bordes)
+            // Dibujar texto de la fila
             let cellX = tableStartX;
             rowData.forEach((text, i) => {
                 pdf.text(text, cellX + colWidths[i]/2, y + 6, { align: "center" });

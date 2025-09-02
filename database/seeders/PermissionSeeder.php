@@ -27,6 +27,7 @@ class PermissionSeeder extends Seeder{
         Permission::create(['name' => 'crear inversionista de propiedad']);
         Permission::create(['name' => 'editar inversionista de propiedad']);
         Permission::create(['name' => 'eliminar inversionista de propiedad']);
+        Permission::create(['name' => 'activar subasta de propiedad']);
         Permission::create(['name' => 'ver inversionista de propiedad']);
         #Configuracion de propiedades
         Permission::create(['name' => 'crear reglas del imueble']);

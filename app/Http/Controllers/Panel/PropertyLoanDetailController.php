@@ -113,7 +113,7 @@ class PropertyLoanDetailController extends Controller{
                     'hora_inicio'        => $horaInicio,
                     'hora_fin'           => $horaFin,
                     'tiempo_finalizacion'=> $fechaFin,
-                    'estado'             => 'activa',
+                    'estado'             => 'en_subasta',
                     'created_by'         => Auth::id(),
                 ]);
             }

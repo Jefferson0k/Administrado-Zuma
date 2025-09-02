@@ -81,6 +81,7 @@ class PropertyLoanDetailResource extends JsonResource
             
             'logo' => url('/imagenes/cabecera.svg'),
             'hipotecas' => url('/imagenes/hipotecas.svg'),
+            'principal' => url('/imagenes/principal.svg'),
         ];
     }
 
