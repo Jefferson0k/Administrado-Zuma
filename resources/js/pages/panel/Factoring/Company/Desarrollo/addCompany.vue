@@ -4,7 +4,7 @@
             <Button label="Nueva Empresa" icon="pi pi-plus" severity="secondary" class="mr-2" @click="openNew" />
         </template>
         <template #end>
-            <Button label="Exportar" icon="pi pi-upload" severity="secondary" @click="showToast" />
+                <Button label="Exportar" icon="pi pi-upload" severity="secondary" @click="$emit('export')" />
         </template>
     </Toolbar>
 
@@ -64,15 +64,22 @@
             <div>
                 <label class="block font-bold mb-2">Descripción <span class="text-red-500">*</span></label>
                 <Textarea v-model.trim="empresa.description" rows="2" placeholder="Breve descripción de la empresa"
-                    class="w-full" maxlength="500"
+                    class="w-full" maxlength="250"
                     :class="{ 'p-invalid': submitted && (!empresa.description || serverErrors.description) }"
                     :disabled="!rucConsultado" />
-                <small v-if="submitted && !empresa.description && rucConsultado" class="text-red-500">
-                    La descripción es obligatoria.
-                </small>
-                <small v-else-if="serverErrors.description" class="text-red-500">
-                    {{ serverErrors.description[0] }}
-                </small>
+                <div class="flex justify-between items-center">
+                    <div>
+                        <small v-if="submitted && !empresa.description && rucConsultado" class="text-red-500">
+                            La descripción es obligatoria.
+                        </small>
+                        <small v-else-if="serverErrors.description" class="text-red-500">
+                            {{ serverErrors.description[0] }}
+                        </small>
+                    </div>
+                    <small class="text-gray-500">
+                        {{ empresa.description ? empresa.description.length : 0 }}/250
+                    </small>
+                </div>
             </div>
             
             <!-- Riesgo, Sector y Año en grid -->
@@ -85,16 +92,12 @@
                         :disabled="!rucConsultado">
                         <template #value="slotProps">
                             <div v-if="slotProps.value !== null && slotProps.value !== undefined" class="flex items-center">
-                                <span class="px-2 py-1 bg-gray-100 rounded text-sm font-semibold">
-                                    {{ getRiesgoLabel(slotProps.value) }}
-                                </span>
+                                <Tag :value="getRiesgoLabel(slotProps.value)" :severity="getRiesgoSeverity(slotProps.value)" />
                             </div>
                             <span v-else>{{ slotProps.placeholder }}</span>
                         </template>
                         <template #option="slotProps">
-                            <span class="px-2 py-1 bg-gray-100 rounded text-sm font-semibold">
-                                {{ slotProps.option.label }}
-                            </span>
+                            <Tag :value="slotProps.option.label" :severity="getRiesgoSeverity(slotProps.option.value)" />
                         </template>
                     </Select>
                     <small v-if="submitted && (empresa.risk === null || empresa.risk === '') && rucConsultado" class="text-red-500">
@@ -157,8 +160,8 @@
             <!-- Moneda -->
             <div>
                 <label class="block font-bold mb-2">Moneda <span class="text-red-500">*</span></label>
-                <Select v-model="empresa.moneda" :options="monedas" placeholder="Seleccione la moneda" 
-                    class="w-full" 
+                <Select v-model="empresa.moneda" :options="monedas" optionLabel="label" optionValue="value"
+                    placeholder="Seleccione la moneda" class="w-full" 
                     :class="{ 'p-invalid': submitted && (!empresa.moneda || serverErrors.moneda) }"
                     :disabled="!rucConsultado" />
                 <small v-if="submitted && !empresa.moneda && rucConsultado" class="text-red-500">
@@ -176,10 +179,21 @@
                     <label class="block font-bold mb-2">
                         Volumen de ventas PEN <span class="text-red-500">*</span>
                     </label>
-                    <InputNumber v-model="empresa.sales_PEN" mode="decimal" :minFractionDigits="2" :min="0"
-                        placeholder="Ej: 500000.00" class="w-full" 
+                    <div class="p-inputgroup">
+                    <InputNumber 
+                        v-model="empresa.sales_PEN" 
+                        mode="currency" 
+                        currency="PEN" 
+                        locale="es-PE"
+                        :minFractionDigits="2" 
+                        :min="0"
+                        placeholder="Ej: 500000.00" 
+                        class="w-full" 
                         :class="{ 'p-invalid': submitted && (!empresa.sales_PEN && empresa.sales_PEN !== 0 || serverErrors.sales_PEN) }"
-                        :disabled="!rucConsultado" />
+                        :disabled="!rucConsultado" 
+                    />
+                    </div>
+
                     <small v-if="submitted && !empresa.sales_PEN && empresa.sales_PEN !== 0 && (empresa.moneda === 'PEN' || empresa.moneda === 'BOTH')" class="text-red-500">
                         El volumen de ventas en PEN es obligatorio.
                     </small>
@@ -193,10 +207,12 @@
                     <label class="block font-bold mb-2">
                         Volumen de ventas USD <span class="text-red-500">*</span>
                     </label>
-                    <InputNumber v-model="empresa.sales_USD" mode="decimal" :minFractionDigits="2" :min="0"
-                        placeholder="Ej: 150000.00" class="w-full" 
-                        :class="{ 'p-invalid': submitted && (!empresa.sales_USD && empresa.sales_USD !== 0 || serverErrors.sales_USD) }"
-                        :disabled="!rucConsultado" />
+                    <div class="p-inputgroup">
+                        <InputNumber v-model="empresa.sales_USD" mode="currency" currency="USD" locale="en-US" :minFractionDigits="2" :min="0"
+                            placeholder="Ej: 150000.00" class="w-full" 
+                            :class="{ 'p-invalid': submitted && (!empresa.sales_USD && empresa.sales_USD !== 0 || serverErrors.sales_USD) }"
+                            :disabled="!rucConsultado" />
+                    </div>
                     <small v-if="submitted && !empresa.sales_USD && empresa.sales_USD !== 0 && (empresa.moneda === 'USD' || empresa.moneda === 'BOTH')" class="text-red-500">
                         El volumen de ventas en USD es obligatorio.
                     </small>
@@ -216,17 +232,19 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
                             <label class="block font-medium mb-1">Facturas Financiadas <span class="text-red-500">*</span></label>
-                            <InputNumber v-model="empresa.facturas_financiadas_pen" :min="0" placeholder="0" class="w-full" 
+                            <InputNumber v-model="empresa.facturas_financiadas_pen"  :min="0" placeholder="0" class="w-full" 
                                 :class="{ 'p-invalid': submitted && (empresa.facturas_financiadas_pen === null || empresa.facturas_financiadas_pen === undefined) }"
                                 :disabled="!rucConsultado" />
                         </div>
                         
                         <div>
                             <label class="block font-medium mb-1">Monto Financiado <span class="text-red-500">*</span></label>
-                            <InputNumber v-model="empresa.monto_total_financiado_pen" mode="decimal" :minFractionDigits="2" :min="0" 
-                                placeholder="0.00" class="w-full" 
-                                :class="{ 'p-invalid': submitted && (empresa.monto_total_financiado_pen === null || empresa.monto_total_financiado_pen === undefined) }"
-                                :disabled="!rucConsultado" />
+                            <div class="p-inputgroup">
+                                <InputNumber v-model="empresa.monto_total_financiado_pen" mode="currency" currency="PEN"  locale="es-PE" :minFractionDigits="2" :min="0" 
+                                    placeholder="0.00" class="w-full" 
+                                    :class="{ 'p-invalid': submitted && (empresa.monto_total_financiado_pen === null || empresa.monto_total_financiado_pen === undefined) }"
+                                    :disabled="!rucConsultado" />
+                            </div>
                         </div>
                         
                         <div>
@@ -265,10 +283,12 @@
                         
                         <div>
                             <label class="block font-medium mb-1">Monto Financiado <span class="text-red-500">*</span></label>
-                            <InputNumber v-model="empresa.monto_total_financiado_usd" mode="decimal" :minFractionDigits="2" :min="0" 
-                                placeholder="0.00" class="w-full" 
-                                :class="{ 'p-invalid': submitted && (empresa.monto_total_financiado_usd === null || empresa.monto_total_financiado_usd === undefined) }"
-                                :disabled="!rucConsultado" />
+                            <div class="p-inputgroup">
+                                <InputNumber v-model="empresa.monto_total_financiado_usd" mode="currency" currency="USD" locale="en-US" :minFractionDigits="2" :min="0" 
+                                    placeholder="0.00" class="w-full" 
+                                    :class="{ 'p-invalid': submitted && (empresa.monto_total_financiado_usd === null || empresa.monto_total_financiado_usd === undefined) }"
+                                    :disabled="!rucConsultado" />
+                            </div>
                         </div>
                         
                         <div>
@@ -328,7 +348,8 @@ import Select from 'primevue/select';
 import { defineEmits } from 'vue';
 
 const toast = useToast();
-const emit = defineEmits(['agregado']);
+
+const emit = defineEmits(['agregado', 'export']);
 
 const AgregarDialog = ref(false);
 const rucConsultado = ref(false);
@@ -344,7 +365,13 @@ const riesgos = [
     { label: 'E', value: 4 }
 ];
 
-const monedas = ['USD', 'PEN', 'BOTH'];
+// Opciones de moneda actualizadas para manejar BOTH
+const monedas = [
+    { label: 'Soles (PEN)', value: 'PEN' },
+    { label: 'Dólares (USD)', value: 'USD' },
+    { label: 'Ambas Monedas', value: 'BOTH' }
+];
+
 const sectores = ref([]);
 const subsectores = ref([]);
 
@@ -382,6 +409,18 @@ function getRiesgoLabel(value) {
     return riesgo ? riesgo.label : '';
 }
 
+// Función para determinar el color del tag según el riesgo
+function getRiesgoSeverity(value) {
+    switch (value) {
+        case 0: return 'success';    // A - Verde
+        case 1: return 'info';       // B - Azul
+        case 2: return 'warn';       // C - Amarillo
+        case 3: return 'danger';     // D - Rojo
+        case 4: return 'contrast';   // E - Negro/Gris
+        default: return 'secondary';
+    }
+}
+
 // Validación de URL
 function isValidUrl(url) {
     if (!url) return false;
@@ -390,6 +429,18 @@ function isValidUrl(url) {
     } catch {
         return false;
     }
+}
+
+// Función para transformar moneda antes del envío
+function transformMonedaForSubmit(moneda) {
+    // El backend espera BOTH, no AMBAS
+    return moneda;
+}
+
+// Función para transformar moneda desde el servidor
+function transformMonedaFromServer(moneda) {
+    // El backend usa BOTH, no AMBAS
+    return moneda;
 }
 
 // Validación del formulario
@@ -444,7 +495,7 @@ function isFormValid() {
     // Validar longitudes
     if (empresa.value.business_name.length > 255) return false;
     if (empresa.value.name.length > 255) return false;
-    if (empresa.value.description && empresa.value.description.length > 500) return false;
+    if (empresa.value.description && empresa.value.description.length > 250) return false;
     if (empresa.value.link_web_page.length > 255) return false;
     
     // Validar URL
@@ -582,12 +633,14 @@ function resetEmpresa() {
         sector_id: null,
         subsector_id: null,
         incorporation_year: null,
-        sales_volume_pen: null,
-        sales_volume_usd: null,
+        sales_PEN: null,
+        sales_USD: null,
         link_web_page: '',
         moneda: '',
         description: '',
         // Campos financieros integrados
+        sales_volume_pen: null,
+        sales_volume_usd: null,
         facturas_financiadas_pen: null,
         monto_total_financiado_pen: null,
         pagadas_pen: null,
@@ -611,15 +664,49 @@ function hideDialog() {
     resetEmpresa();
 }
 
+// Función para cargar datos desde el JSON (útil para edición)
+function loadEmpresaData(data) {
+    // No necesitamos transformar la moneda, el backend ya usa BOTH
+    empresa.value = {
+        document: data.document,
+        name: data.name,
+        business_name: data.business_name,
+        risk: data.risk,
+        sector_id: data.sector_id,
+        subsector_id: data.subsector_id,
+        incorporation_year: data.incorporation_year,
+        sales_PEN: data.sales_PEN,
+        sales_USD: data.sales_USD,
+        link_web_page: data.link_web_page,
+        moneda: data.moneda,
+        description: data.description,
+        // Campos financieros
+        sales_volume_pen: data.sales_PEN,
+        sales_volume_usd: data.sales_USD,
+        facturas_financiadas_pen: data.facturas_financiadas_pen,
+        monto_total_financiado_pen: data.monto_total_financiado_pen,
+        pagadas_pen: data.pagadas_pen,
+        pendientes_pen: data.pendientes_pen,
+        plazo_promedio_pago_pen: data.plazo_promedio_pago_pen,
+        facturas_financiadas_usd: data.facturas_financiadas_usd,
+        monto_total_financiado_usd: data.monto_total_financiado_usd,
+        pagadas_usd: data.pagadas_usd,
+        pendientes_usd: data.pendientes_usd,
+        plazo_promedio_pago_usd: data.plazo_promedio_pago_usd
+    };
+    
+    rucConsultado.value = true;
+}
+
 async function guardarEmpresa() {
     submitted.value = true;
     serverErrors.value = {};
     loading.value = true;
 
     try {
-        // Enviar directamente el objeto empresa que ya contiene todos los campos
-        await axios.post('/companies', empresa.value);
-        
+        const empresaParaEnvio = { ...empresa.value };
+        empresaParaEnvio.moneda = transformMonedaForSubmit(empresa.value.moneda);
+        await axios.post('/companies', empresaParaEnvio);
         toast.add({
             severity: 'success',
             summary: 'Éxito',
@@ -652,4 +739,18 @@ function showToast() {
         life: 3000
     });
 }
+
+// Exponer funciones útiles para uso externo
+defineExpose({
+    openNew,
+    loadEmpresaData,
+    hideDialog
+});
 </script>
+
+<style scoped>
+/* Estilos adicionales si son necesarios */
+.p-tag {
+    font-weight: 600;
+}
+</style>

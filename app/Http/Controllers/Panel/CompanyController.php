@@ -14,7 +14,6 @@ use App\Models\Invoice;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Pipeline\Pipeline;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -73,7 +72,8 @@ class CompanyController extends Controller{
     }
     public function show($id){
         try {
-            $company = Company::findOrFail($id);
+            $company = Company::with(['sector', 'subsector', 'finances'])
+                ->findOrFail($id);
             Gate::authorize('view', $company);
             return new CompanyResource($company);
         } catch (ModelNotFoundException $e) {
