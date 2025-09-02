@@ -126,7 +126,7 @@
           </div>
 
           <div>
-            <label class="block font-bold mb-1">Imágenes</label>
+            <label class="block font-bold mb-1">Imágenes <span class="text-red-500">*</span></label>
             <FileUpload ref="fileUpload" name="imagenes[]" :multiple="true" accept="image/*" :maxFileSize="1000000"
               customUpload :auto="false" @select="onSelectedFiles" @upload="onTemplatedUpload" />
           </div>
@@ -427,6 +427,29 @@ const saveProperty = async () => {
     return
   }
 
+  // Validación específica de imágenes en el frontend
+  if (!archivos.value || archivos.value.length === 0) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Imágenes requeridas',
+      detail: 'Debes subir al menos 5 imágenes de la propiedad',
+      life: 4000
+    })
+    guardandoPropiedad.value = false
+    return
+  }
+
+  if (archivos.value.length < 5) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Imágenes insuficientes',
+      detail: `Has subido ${archivos.value.length} imagen(es). Se requieren al menos 5 imágenes.`,
+      life: 4000
+    })
+    guardandoPropiedad.value = false
+    return
+  }
+
   try {
     const formData = new FormData()
 
@@ -476,13 +499,70 @@ const saveProperty = async () => {
     emit('agregado')
 
   } catch (error: any) {
-    const errorMessage = error.response?.data?.message || 'Error al guardar la propiedad'
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: errorMessage,
-      life: 3000
-    })
+    console.error('Error al guardar propiedad:', error)
+    
+    // Manejo específico de errores de validación del backend
+    if (error.response?.status === 422 && error.response?.data?.errors) {
+      const errors = error.response.data.errors
+      
+      // Verificar si hay errores relacionados con imágenes
+      if (errors.imagenes || errors['imagenes.*']) {
+        let imageErrorMessage = ''
+        
+        if (errors.imagenes) {
+          // Errores del array de imágenes
+          errors.imagenes.forEach(msg => {
+            if (msg.includes('menos 5') || msg.includes('min:5')) {
+              imageErrorMessage = 'Se requieren al menos 5 imágenes de la propiedad'
+            } else if (msg.includes('obligatori') || msg.includes('required')) {
+              imageErrorMessage = 'Las imágenes son obligatorias'
+            } else {
+              imageErrorMessage = msg
+            }
+          })
+        }
+        
+        if (errors['imagenes.*']) {
+          // Errores de imágenes individuales
+          errors['imagenes.*'].forEach(msg => {
+            if (msg.includes('imagen válida') || msg.includes('image')) {
+              imageErrorMessage = imageErrorMessage || 'Una o más imágenes no tienen un formato válido'
+            } else if (msg.includes('2MB') || msg.includes('max')) {
+              imageErrorMessage = imageErrorMessage || 'Una o más imágenes superan el tamaño máximo de 2MB'
+            } else if (msg.includes('jpeg') || msg.includes('mimes')) {
+              imageErrorMessage = imageErrorMessage || 'Las imágenes deben ser de tipo: JPEG, PNG, JPG, GIF o WEBP'
+            }
+          })
+        }
+        
+        toast.add({
+          severity: 'warn',
+          summary: 'Error en las imágenes',
+          detail: imageErrorMessage || 'Verifica las imágenes seleccionadas',
+          life: 5000
+        })
+      } else {
+        // Otros errores de validación
+        const firstError = Object.values(errors)[0]
+        const errorMessage = Array.isArray(firstError) ? firstError[0] : firstError
+        
+        toast.add({
+          severity: 'warn',
+          summary: 'Error de validación',
+          detail: errorMessage || 'Verifica los datos ingresados',
+          life: 4000
+        })
+      }
+    } else {
+      // Errores generales
+      const errorMessage = error.response?.data?.message || 'Error al guardar la propiedad'
+      toast.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: errorMessage,
+        life: 3000
+      })
+    }
   } finally {
     guardandoPropiedad.value = false
   }

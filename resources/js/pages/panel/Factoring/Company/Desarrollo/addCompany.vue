@@ -101,18 +101,6 @@
                         El riesgo es obligatorio.
                     </small>
                 </div>
-
-                <div>
-                    <label class="block font-bold mb-2">Sector <span class="text-red-500">*</span></label>
-                    <Select v-model="empresa.sector_id" :options="sectores" optionLabel="name" optionValue="id"
-                        placeholder="Seleccionar" class="w-full" 
-                        :class="{ 'p-invalid': submitted && (!empresa.sector_id || serverErrors.sector_id) }"
-                        :disabled="!rucConsultado" />
-                    <small v-if="submitted && !empresa.sector_id && rucConsultado" class="text-red-500">
-                        El sector es obligatorio.
-                    </small>
-                </div>
-
                 <div>
                     <label class="block font-bold mb-2">Año constitución <span class="text-red-500">*</span></label>
                     <InputNumber v-model="empresa.incorporation_year" :useGrouping="false" :maxlength="4"
@@ -127,6 +115,16 @@
                     </small>
                     <small v-else-if="serverErrors.incorporation_year" class="text-red-500">
                         {{ serverErrors.incorporation_year[0] }}
+                    </small>
+                </div>
+                <div>
+                    <label class="block font-bold mb-2">Sector <span class="text-red-500">*</span></label>
+                    <Select v-model="empresa.sector_id" :options="sectores" optionLabel="name" optionValue="id"
+                        placeholder="Seleccionar" class="w-full" 
+                        :class="{ 'p-invalid': submitted && (!empresa.sector_id || serverErrors.sector_id) }"
+                        :disabled="!rucConsultado" />
+                    <small v-if="submitted && !empresa.sector_id && rucConsultado" class="text-red-500">
+                        El sector es obligatorio.
                     </small>
                 </div>
             </div>
@@ -306,9 +304,9 @@
                     Los campos marcados con <span class="text-red-500">*</span> son obligatorios.
                 </small>
                 <div class="flex gap-2">
-                    <Button label="Cancelar" icon="pi pi-times" text @click="hideDialog" />
+                    <Button label="Cancelar" icon="pi pi-times" text @click="hideDialog" severity="secondary" />
                     <Button label="Guardar" icon="pi pi-check" :loading="loading" 
-                        :disabled="!rucConsultado || !isFormValid()" @click="guardarEmpresa" />
+                        :disabled="!rucConsultado || !isFormValid()" @click="guardarEmpresa" severity="contrast"/>
                 </div>
             </div>
         </template>
@@ -319,7 +317,7 @@
 import { ref, onMounted, watch } from 'vue';
 import axios from 'axios';
 import { useToast } from 'primevue/usetoast';
-
+import Tag from 'primevue/tag';
 import Toolbar from 'primevue/toolbar';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';

@@ -210,26 +210,46 @@ class Property extends Model implements AuditableContract
     {
         return $this->hasOne(PropertyLoanDetail::class, 'property_id');
     }
-
-    public function getImagenes(): array
-{
-    $rutaCarpeta = "Propiedades/{$this->id}";
-    $imagenes = [];
-    
-    // Obtener archivos de S3
-    $archivos = Storage::disk('s3')->files($rutaCarpeta);
-    
-    foreach ($archivos as $archivo) {
-        // Generar URL temporal (válida por 1 hora por defecto)
-        $imagenes[] = Storage::disk('s3')->temporaryUrl($archivo, now()->addHours(1));
+    public function getImagenes(): array{
+        $propertyId = $this->getKey();
+        $rutaCarpeta = "propiedades/{$propertyId}";
+        $imagenes = [];
+        try {
+            if (!Storage::disk('s3')->exists($rutaCarpeta)) {
+                Log::info("Carpeta no existe en S3: {$rutaCarpeta}");
+                return [asset('Propiedades/no-image.png')];
+            }
+            $archivos = Storage::disk('s3')->files($rutaCarpeta);
+            if (empty($archivos)) {
+                Log::info("No se encontraron archivos en: {$rutaCarpeta}");
+                return [asset('Propiedades/no-image.png')];
+            }
+            foreach ($archivos as $archivo) {
+                $extension = strtolower(pathinfo($archivo, PATHINFO_EXTENSION));
+                if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+                    try {
+                        $imagenes[] = url("s3/{$archivo}");
+                    } catch (Exception $e) {
+                        Log::error("Error generando URL para: {$archivo}", [
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+                }
+            }
+            if (empty($imagenes)) {
+                Log::info("No se encontraron imágenes válidas en: {$rutaCarpeta}");
+                return [asset('Propiedades/no-image.png')];
+            }
+            Log::info("Imágenes encontradas para propiedad {$propertyId}: " . count($imagenes));
+            return $imagenes;
+        } catch (Exception $e) {
+            Log::error("Error obteniendo imágenes de S3 para propiedad {$propertyId}", [
+                'error' => $e->getMessage(),
+                'carpeta' => $rutaCarpeta
+            ]);
+            return [asset('Propiedades/no-image.png')];
+        }
     }
-    
-    if (empty($imagenes)) {
-        $imagenes[] = asset('Propiedades/no-image.png'); // o una imagen por defecto en S3
-    }
-    
-    return $imagenes;
-}
     public function paymentSchedules()
     {
         return $this->hasManyThrough(

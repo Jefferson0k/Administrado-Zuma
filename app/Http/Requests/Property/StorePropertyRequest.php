@@ -28,12 +28,15 @@ class StorePropertyRequest extends FormRequest
             'investor_id'     => 'required|exists:investors,id',
             'estado'          => 'nullable|string|in:activa,inactiva,vendida',
             
-            'imagenes'        => 'nullable|array',
-            'imagenes.*'      => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'imagenes'        => 'required|array|min:5',
+            'imagenes.*'      => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ];
         
         // Si es UPDATE (tiene parámetro de ruta), agregar reglas para eliminación
         if ($this->route('property') || $this->isMethod('put') || $this->isMethod('patch')) {
+            // Para updates, las imágenes nuevas son opcionales pero si se envían deben cumplir las reglas
+            $rules['imagenes'] = 'nullable|array';
+            $rules['imagenes.*'] = 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048';
             $rules['imagenes_eliminar'] = 'nullable|array';
             $rules['imagenes_eliminar.*'] = 'nullable|string|exists:property_images,imagen';
         }
@@ -68,7 +71,10 @@ class StorePropertyRequest extends FormRequest
             'investor_id.required' => 'El inversionista es obligatorio.',
             'investor_id.exists' => 'El inversionista seleccionado no es válido.',
             
+            'imagenes.required' => 'Las imágenes son obligatorias.',
             'imagenes.array' => 'Las imágenes deben ser un array.',
+            'imagenes.min' => 'Debes subir al menos 5 imágenes.',
+            'imagenes.*.required' => 'Cada imagen es obligatoria.',
             'imagenes.*.image' => 'Cada archivo debe ser una imagen válida.',
             'imagenes.*.mimes' => 'Las imágenes deben ser de tipo: jpeg, png, jpg, gif o webp.',
             'imagenes.*.max' => 'Cada imagen no debe superar los 2MB.',
