@@ -31,6 +31,7 @@ class PropertyLoanDetailResource extends JsonResource
                 'email' => $this->investor->email ?? null,
                 'telefono' => $this->investor->telephone ?? null,
             ],
+            'property_id' => $this->property_id,
             'ocupacion_profesion' => $this->ocupacion_profesion,
             'motivo_prestamo' => $this->motivo_prestamo,
             'descripcion_financiamiento' => $this->descripcion_financiamiento,
@@ -41,22 +42,17 @@ class PropertyLoanDetailResource extends JsonResource
             'Plazo' => $config?->plazo?->nombre ?? '-',
             'Esquema' => $this->getEsquemaDetalle($config?->tipo_cronograma),
             
-            // Usar librería Money para mostrar montos correctamente
             'Monto' => $this->formatMoneyWithCurrency($this->property->valor_requerido, $this->property->currency),
-            'Monto_raw' => $this->formatMoney($this->property->valor_requerido), // Solo número
+            'Monto_raw' => $this->formatMoney($this->property->valor_requerido),
             'Valor_Estimado' => $this->formatMoneyWithCurrency($this->property->valor_estimado, $this->property->currency),
             
             'riesgo' => $config?->riesgo ?? 'medio',
-            
-            // Convertir tasas enteras a decimales para mostrar
+
             'tea' => $config?->tea ? number_format($config->tea / 100, 3, '.', '') . '%' : null, // 1550 -> "15.500%"
             'tem' => $config?->tem ? number_format($config->tem / 100, 3, '.', '') . '%' : null, // 125 -> "1.250%"
             'tea_raw' => $config?->tea ? $config->tea / 100 : null, // Para cálculos frontend
             'tem_raw' => $config?->tem ? $config->tem / 100 : null, // Para cálculos frontend
-            
             'imagenes' => $this->property->getImagenes(),
-            
-            // Cronograma con formato Money
             'cronograma' => $this->property->paymentSchedules->map(function($item) {
                 return [
                     'cuota' => $item->cuota,
@@ -68,7 +64,6 @@ class PropertyLoanDetailResource extends JsonResource
                     'total_cuota' => $this->formatDecimal($item->total_cuota),
                     'saldo_final' => $this->formatDecimal($item->saldo_final),
                     'estado' => $item->estado,
-                    // Formato con símbolo de moneda
                     'saldo_inicial_formatted' => $this->property->currency->simbolo . ' ' . number_format($item->saldo_inicial, 2, '.', ','),
                     'capital_formatted' => $this->property->currency->simbolo . ' ' . number_format($item->capital, 2, '.', ','),
                     'intereses_formatted' => $this->property->currency->simbolo . ' ' . number_format($item->intereses, 2, '.', ','),
@@ -76,19 +71,12 @@ class PropertyLoanDetailResource extends JsonResource
                     'total_cuota_formatted' => $this->property->currency->simbolo . ' ' . number_format($item->total_cuota, 2, '.', ','),
                 ];
             }),
-            
-
-            
             'logo' => url('/imagenes/cabecera.svg'),
             'hipotecas' => url('/imagenes/hipotecas.svg'),
+            'principal' => url('/imagenes/principal.svg'),
         ];
     }
-
-    /**
-     * Convierte un objeto Money a decimal
-     */
-    private function formatMoney($money): float
-    {
+    private function formatMoney($money): float{
         if (!$money instanceof Money) {
             return 0.0;
         }
@@ -97,12 +85,7 @@ class PropertyLoanDetailResource extends JsonResource
         $formatter = new DecimalMoneyFormatter($currencies);
         return (float) $formatter->format($money);
     }
-
-    /**
-     * Formatea Money con símbolo de moneda
-     */
-    private function formatMoneyWithCurrency($money, $currency): string
-    {
+    private function formatMoneyWithCurrency($money, $currency): string{
         if (!$money instanceof Money) {
             return $currency?->simbolo . ' 0.00';
         }
@@ -112,20 +95,10 @@ class PropertyLoanDetailResource extends JsonResource
         
         return $simbolo . ' ' . number_format($amount, 2, '.', ',');
     }
-
-    /**
-     * Formatea decimales consistentemente
-     */
-    private function formatDecimal($value): string
-    {
+    private function formatDecimal($value): string{
         return number_format((float) $value, 2, '.', '');
     }
-
-    /**
-     * Obtiene descripción detallada del esquema
-     */
-    private function getEsquemaDetalle($tipoChronograma): string
-    {
+    private function getEsquemaDetalle($tipoChronograma): string{
         return match($tipoChronograma) {
             'americano' => 'Sistema Americano (Solo Intereses)',
             'frances' => 'Sistema Francés (Cuotas Fijas)',
