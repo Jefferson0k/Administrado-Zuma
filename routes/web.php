@@ -155,6 +155,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('companies')->group(function () {
         Route::get('/',        [CompanyController::class, 'index'])->name('companies.index');
         Route::post('/',       [CompanyController::class, 'store'])->name('companies.store');
+        Route::get('/search',  [CompanyController::class, 'searchCompany'])->name('companies.searchCompany');
         Route::get('{id}',     [CompanyController::class, 'show'])->name('companies.show');
         Route::put('{id}',     [CompanyController::class, 'update'])->name('companies.update');
         Route::delete('{id}',  [CompanyController::class, 'delete'])->name('companies.delete');
@@ -212,6 +213,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/{id}/standby', [InvoiceController::class, 'standby']);
         Route::patch('/{id}/activacion', [InvoiceController::class, 'activacion']);
         Route::get('/{id}', [InvoiceController::class, 'show']);
+        Route::delete('/{id}', [RolesController::class, 'delete'])->name('invoices.delete');
     });
 
     #PROPERTY => BACKEND (SOLO ADMINISTRADOR MAS NO CLIENTE)

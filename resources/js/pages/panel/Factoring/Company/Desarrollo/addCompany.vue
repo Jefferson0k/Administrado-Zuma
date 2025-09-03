@@ -177,7 +177,7 @@
                 <!-- Campo PEN -->
                 <div v-if="empresa.moneda === 'PEN' || empresa.moneda === 'BOTH'">
                     <label class="block font-bold mb-2">
-                        Volumen de ventas PEN <span class="text-red-500">*</span>
+                        Facturado del año anterior PEN <span class="text-red-500">*</span>
                     </label>
                     <div class="p-inputgroup">
                     <InputNumber 
@@ -195,7 +195,7 @@
                     </div>
 
                     <small v-if="submitted && !empresa.sales_PEN && empresa.sales_PEN !== 0 && (empresa.moneda === 'PEN' || empresa.moneda === 'BOTH')" class="text-red-500">
-                        El volumen de ventas en PEN es obligatorio.
+                        Facturado del Año Anterior en PEN es obligatorio.
                     </small>
                     <small v-else-if="serverErrors.sales_PEN" class="text-red-500">
                         {{ serverErrors.sales_PEN[0] }}
@@ -205,7 +205,7 @@
                 <!-- Campo USD -->
                 <div v-if="empresa.moneda === 'USD' || empresa.moneda === 'BOTH'">
                     <label class="block font-bold mb-2">
-                        Volumen de ventas USD <span class="text-red-500">*</span>
+                        Facturado del año anterior  USD <span class="text-red-500">*</span>
                     </label>
                     <div class="p-inputgroup">
                         <InputNumber v-model="empresa.sales_USD" mode="currency" currency="USD" locale="en-US" :minFractionDigits="2" :min="0"
@@ -214,7 +214,7 @@
                             :disabled="!rucConsultado" />
                     </div>
                     <small v-if="submitted && !empresa.sales_USD && empresa.sales_USD !== 0 && (empresa.moneda === 'USD' || empresa.moneda === 'BOTH')" class="text-red-500">
-                        El volumen de ventas en USD es obligatorio.
+                        Facturado del año anterior  en USD es obligatorio.
                     </small>
                     <small v-else-if="serverErrors.sales_USD" class="text-red-500">
                         {{ serverErrors.sales_USD[0] }}
@@ -262,7 +262,7 @@
                         </div>
                         
                         <div>
-                            <label class="block font-medium mb-1">Plazo Pago (días) <span class="text-red-500">*</span></label>
+                            <label class="block font-medium mb-1">Plazo Promedio (días) <span class="text-red-500">*</span></label>
                             <InputNumber v-model="empresa.plazo_promedio_pago_pen" :min="0" placeholder="30" class="w-full" 
                                 :class="{ 'p-invalid': submitted && (empresa.plazo_promedio_pago_pen === null || empresa.plazo_promedio_pago_pen === undefined) }"
                                 :disabled="!rucConsultado" />
@@ -306,7 +306,7 @@
                         </div>
                         
                         <div>
-                            <label class="block font-medium mb-1">Plazo Pago (días) <span class="text-red-500">*</span></label>
+                            <label class="block font-medium mb-1">Plazo Promedio (días) <span class="text-red-500">*</span></label>
                             <InputNumber v-model="empresa.plazo_promedio_pago_usd" :min="0" placeholder="30" class="w-full" 
                                 :class="{ 'p-invalid': submitted && (empresa.plazo_promedio_pago_usd === null || empresa.plazo_promedio_pago_usd === undefined) }"
                                 :disabled="!rucConsultado" />

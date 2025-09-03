@@ -112,22 +112,47 @@ class InvoiceController extends Controller{
             return response()->json(['message' => 'Error al mostrar la factura.'], 500);
         }
     }
-    public function activacion(Request $request, $id){
+    public function activacion(Request $request, $id)
+{
+    try {
+        $invoice = Invoice::findOrFail($id);
+
+        Gate::authorize('update', $invoice); // ✅ Pasar la instancia
+
+        $invoice->update([
+            'status' => 'active',
+            'updated_by' => Auth::id(),
+        ]);
+
+        return response()->json([
+            'message' => 'Factura activada correctamente.',
+            'data' => $invoice
+        ], 200);
+
+    } catch (AuthorizationException $e) {
+        return response()->json(['message' => 'No tienes permiso para actualizar esta factura.'], 403);
+    } catch (Throwable $e) {
+        return response()->json([
+            'message' => 'Error al actualizar la factura.',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+
+    public function delete($id){
         try {
-            //Gate::authorize('update', Invoice::class);
             $invoice = Invoice::findOrFail($id);
-            $invoice->update([
-                'status' => 'active',
-                'updated_by' => Auth::id(),
-            ]);
-            return response()->json([
-                'message' => 'Factura puesta en standby correctamente.',
-                'data' => $invoice
-            ], 200);
+            Gate::authorize('delete', $invoice);
+            $invoice->deleted_by = Auth::id();
+            $invoice->save();
+            $invoice->delete();
+            return response()->json(['message' => 'Factura eliminada correctamente.']);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Factura no encontrada.'], 404);
         } catch (AuthorizationException $e) {
-            return response()->json(['message' => 'No tienes permiso para actualizar esta factura.'], 403);
+            return response()->json(['message' => 'No tienes permiso para eliminar esta factura.'], 403);
         } catch (Throwable $e) {
-            return response()->json(['message' => 'Error al actualizar la factura.', 'error' => $e->getMessage()], 500);
+            return response()->json(['message' => 'Error al eliminar la factura.'], 500);
         }
     }
 }

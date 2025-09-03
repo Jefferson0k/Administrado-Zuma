@@ -7,7 +7,7 @@
             </template>
             <template v-else>
                 <div class="card">
-                    <addPayments/>
+                    <adjuntarExcel/>
                     <listPayments/>
                 </div>
             </template>
@@ -20,7 +20,7 @@ import { ref, onMounted } from 'vue';
 import AppLayout from '@/layout/AppLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import Espera from '@/components/Espera.vue';
-import addPayments from './Desarrollo/addPayments.vue';
+import adjuntarExcel from './Desarrollo/adjuntarExcel.vue';
 import listPayments from './Desarrollo/listPayments.vue';
 
 const isLoading = ref(true);

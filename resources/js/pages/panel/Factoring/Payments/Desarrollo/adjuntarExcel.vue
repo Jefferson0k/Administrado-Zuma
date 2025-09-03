@@ -11,20 +11,9 @@
       <div class="grid grid-cols-12 gap-4">
         <!-- FileUpload automático -->
         <div class="col-span-12">
-          <FileUpload 
-            mode="basic" 
-            name="excel_file" 
-            :multiple="false" 
-            accept=".xlsx,.xls,.csv" 
-            :maxFileSize="10000000"
-            :auto="true"
-            chooseLabel="Seleccionar archivo Excel/CSV"
-            class="w-full"
-            @upload="handleFileUpload"
-            @select="handleFileSelect"
-            :disabled="loading"
-            :customUpload="true"
-          >
+          <FileUpload mode="basic" name="excel_file" :multiple="false" accept=".xlsx,.xls,.csv" :maxFileSize="10000000"
+            :auto="true" chooseLabel="Seleccionar archivo Excel/CSV" class="w-full" @upload="handleFileUpload"
+            @select="handleFileSelect" :disabled="loading" :customUpload="true">
             <template #empty>
               <div class="flex flex-col items-center justify-center py-8">
                 <i class="pi pi-cloud-upload text-4xl text-gray-400 mb-4"></i>
@@ -35,7 +24,7 @@
               </div>
             </template>
           </FileUpload>
-          
+
           <!-- Barra de progreso -->
           <div class="mt-4" v-if="loading">
             <div class="flex items-center gap-3 mb-2">
@@ -83,13 +72,13 @@
               </div>
             </template>
 
-            <Column field="document" header="Cliente o Proveedor RUC / Razon Social" sortable style="min-width: 5rem">
+            <Column field="document" header="RUC Proveedor" sortable style="min-width: 3rem">
               <template #body="slotProps">
                 <span class="font-mono">{{ slotProps.data.document }}</span>
               </template>
             </Column>
 
-            <Column field="RUC_client" header="Aceptante RUC / Razon Social" sortable style="min-width: 13rem">
+            <Column field="RUC_client" header="RUC Cliente" sortable style="min-width: 13rem">
               <template #body="slotProps">
                 <span class="font-mono">{{ slotProps.data.RUC_client }}</span>
               </template>
@@ -113,6 +102,13 @@
                 <span class="font-mono font-semibold">
                   {{ formatCurrency(slotProps.data.amount, slotProps.data.currency) }}
                 </span>
+              </template>
+            </Column>
+
+            <!-- Nueva columna para Tipo de Pago -->
+            <Column field="tipo_pago" header="Tipo de Pago" sortable style="min-width: 10rem">
+              <template #body="slotProps">
+                <Tag :value="slotProps.data.tipo_pago || 'Transferencia'" severity="info" icon="pi pi-credit-card" />
               </template>
             </Column>
 
@@ -142,11 +138,16 @@
           Los campos marcados con <span class="text-red-500">*</span> son obligatorios.
         </small>
         <div class="flex gap-2">
-          <Button label="Cancelar" icon="pi pi-times" text @click="hideDialog" />
+          <Button label="Cancelar" icon="pi pi-times" text severity="secondary" @click="hideDialog" />
         </div>
       </div>
     </template>
   </Dialog>
+
+  <!-- Componente de procesamiento de pago -->
+  <addPaymensts :visible="showPaymentDialog" :payment-data="selectedPaymentData"
+    @update:visible="showPaymentDialog = $event" @payment-processed="onPaymentProcessed"
+    @cancelled="onPaymentCancelled" />
 </template>
 
 <script setup>
@@ -165,6 +166,7 @@ import InputIcon from 'primevue/inputicon';
 import ProgressBar from 'primevue/progressbar';
 import { useToast } from 'primevue/usetoast';
 import { defineEmits } from 'vue';
+import addPaymensts from './addPaymensts.vue';
 
 const toast = useToast();
 const emit = defineEmits(['agregado']);
@@ -174,6 +176,8 @@ const loading = ref(false);
 const extractedData = ref([]);
 const selectedFile = ref(null);
 const globalFilterValue = ref('');
+const showPaymentDialog = ref(false);
+const selectedPaymentData = ref({});
 
 // Computed properties para estadísticas
 const coincidencias = computed(() => {
@@ -216,29 +220,29 @@ function formatCurrency(amount, currency) {
   return `${symbol} ${Number(amount).toLocaleString('es-PE', { minimumFractionDigits: 2 })}`;
 }
 
-// Función para realizar un pago individual
+// Función actualizada para realizar pago
 function realizarPago(record) {
-  toast.add({
-    severity: 'success',
-    summary: 'Pago realizado',
-    detail: `Pago procesado para ${record.document} por ${formatCurrency(record.amount, record.currency)}`,
-    life: 3000,
-  });
-  // Aquí implementas la lógica para realizar el pago individual
+  selectedPaymentData.value = record;
+  showPaymentDialog.value = true;
 }
 
-// Función para realizar todos los pagos que coinciden
-function realizarTodosLosPagos() {
-  const pagosARealizados = extractedData.value.filter(item => item.estado === 'Coincide');
-  
-  toast.add({
-    severity: 'success',
-    summary: 'Realizando pagos',
-    detail: `Se realizarán ${pagosARealizados.length} pagos que coinciden`,
-    life: 3000,
-  });
-  
-  // Aquí implementas la lógica para realizar todos los pagos
+// Función para manejar cuando se procesa un pago
+function onPaymentProcessed(data) {
+  // Actualizar el estado del registro en la tabla
+  const index = extractedData.value.findIndex(item =>
+    item.document === data.document && item.amount === data.amount
+  );
+
+  if (index !== -1) {
+    extractedData.value[index].estado = 'Pagado';
+  }
+
+  emit('agregado'); // Emitir evento para refrescar datos padre si es necesario
+}
+
+// Función para manejar cancelación
+function onPaymentCancelled() {
+  showPaymentDialog.value = false;
 }
 
 // Función para procesar todos los pagos (validación)
@@ -249,24 +253,17 @@ function procesarPagos() {
     detail: `Se procesarán ${extractedData.value.length} registros`,
     life: 3000,
   });
-  // Aquí implementas la lógica para procesar los pagos
 }
 
-// Función cuando se selecciona un archivo (automático)
 function handleFileSelect(event) {
   selectedFile.value = event.files[0];
-  // Procesar automáticamente
   processFile();
 }
 
-// Función para el evento upload del FileUpload
 function handleFileUpload(event) {
-  // Esta función se ejecuta cuando FileUpload intenta subir automáticamente
-  // Interceptamos para usar nuestro processFile
   processFile();
 }
 
-// Función para procesar el archivo seleccionado
 async function processFile() {
   if (!selectedFile.value) return;
 
@@ -288,7 +285,6 @@ async function processFile() {
       },
     });
 
-    // Guardar los datos extraídos para mostrar en la tabla
     if (response.data.success && response.data.data) {
       extractedData.value = response.data.data;
 
@@ -316,9 +312,7 @@ async function processFile() {
   }
 }
 
-// Función para búsqueda global
 function onGlobalSearch() {
   // Implementar lógica de filtrado global si es necesario
 }
-
 </script>
