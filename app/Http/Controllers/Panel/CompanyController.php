@@ -13,6 +13,7 @@ use App\Models\CompanyFinance;
 use App\Models\Invoice;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +22,7 @@ use Throwable;
 
 class CompanyController extends Controller{
     public function index(){
-    try {
+        try {
             Gate::authorize('viewAny', Company::class);
             $companies = Company::all();
             return response()->json([
@@ -39,7 +40,6 @@ class CompanyController extends Controller{
             ], 500);
         }
     }
-
     public function store(StoreCompanyRequest $request, StoreCompanyFinanceRequest $financeRequest){
         try {
             Gate::authorize('create', Company::class);
@@ -232,4 +232,49 @@ class CompanyController extends Controller{
 			], 500);
 		}
 	}
+    public function searchCompany(Request $request){
+        try {
+            Gate::authorize('viewAny', Company::class);
+            $perPage = $request->input('per_page', 10);
+            $search  = $request->input('search');
+            $query = Company::query()
+                ->when($search, function ($query) use ($search) {
+                    return $query->where(function ($q) use ($search) {
+                        $q->where('name', 'LIKE', "%{$search}%")
+                            ->orWhere('business_name', 'LIKE', "%{$search}%")
+                            ->orWhere('id', 'LIKE', "%{$search}%")
+                            ->orWhere('document', 'LIKE', "%{$search}%")
+                            ->orWhere('incorporation_year', 'LIKE', "%{$search}%")
+                            ->orWhere('description', 'LIKE', "%{$search}%");
+                    });
+                })
+                ->with(['sector', 'subsector', 'finances']);
+            $companies = $query->paginate($perPage);
+            return response()->json([
+                'data' => $companies->map(function ($company) {
+                    return [
+                        'id'                => $company->id,
+                        'name'              => $company->name,
+                        'business_name'     => $company->business_name,
+                        'document'          => $company->document,
+                        'risk'              => $company->risk,
+                        'incorporation_year'=> $company->incorporation_year,
+                    ];
+                }),
+                'pagination' => [
+                    'total'        => $companies->total(),
+                    'current_page' => $companies->currentPage(),
+                    'per_page'     => $companies->perPage(),
+                    'last_page'    => $companies->lastPage(),
+                    'from'         => $companies->firstItem(),
+                    'to'           => $companies->lastItem(),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error'   => 'Error al buscar empresas',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }

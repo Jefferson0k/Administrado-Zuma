@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Casts\MoneyCast;
 use App\Helpers\MoneyConverter;
 use App\Traits\ConvertsPercent;
 use DateTime;
@@ -11,13 +10,13 @@ use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
 use OwenIt\Auditing\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use IntlDateFormatter;
 use Money\Money;
 
-
 class Invoice extends Model implements AuditableContract{
-    use HasFactory, HasUlids, Auditable, ConvertsPercent;
+    use HasFactory, HasUlids, Auditable, ConvertsPercent, SoftDeletes;
     protected $fillable = [
         'invoice_code',
         'codigo',
@@ -93,28 +92,24 @@ class Invoice extends Model implements AuditableContract{
             $this->attributes['currency']
         );
     }
-
     public function getFinancedAmountAttribute(): string{
         return MoneyConverter::fromSubunitToDecimal(
         $this->attributes['financed_amount'],
         $this->attributes['currency']
         );
     }
-
     public function getFinancedAmountByGarantiaAttribute(): string  {
         return MoneyConverter::fromSubunitToDecimal(
         $this->attributes['financed_amount_by_garantia'],
         $this->attributes['currency']
         );
     }
-
     public function getPaidAmountAttribute(): string{
         return MoneyConverter::fromSubunitToDecimal(
         $this->attributes['paid_amount'],
         $this->attributes['currency']
         );
     }
-
     public function getAvailablePaidAmount(): Money{
         $amountMoney = MoneyConverter::fromDecimal(
         $this->amount,
@@ -124,18 +119,14 @@ class Invoice extends Model implements AuditableContract{
         $this->paid_amount,
         $this->attributes['currency']
         );
-
         return $amountMoney->subtract($paidAmountMoney);
     }
-
     public function containPartialPayments(): bool{
         return $this->payments()->where('pay_type', 'partial')->exists();
     }
-
   // ========================
   // Accesores (setters)
   // ========================
-
     public function setAmountAttribute(float | Money $value): void{
         if (!isset($this->attributes['currency'])) {
         throw new \RuntimeException('Currency must be set before amount');

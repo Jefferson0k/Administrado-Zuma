@@ -65,8 +65,8 @@
 
         <!-- Botones de acción -->
         <template #footer>
-            <Button label="Cancelar" severity="secondary" outlined @click="onCancel" :disabled="loading" />
-            <Button label="Sí, activar factura" @click="onConfirm" :loading="loading" icon="pi pi-check-circle" />
+            <Button label="Cancelar" severity="secondary" text @click="onCancel" :disabled="loading" />
+            <Button label="Sí, activar factura" @click="onConfirm" :loading="loading" icon="pi pi-check-circle" severity="contrast" />
         </template>
 
     </Dialog>
