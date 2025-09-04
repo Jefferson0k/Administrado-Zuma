@@ -4,7 +4,13 @@
       <Button label="Nueva Factura" icon="pi pi-plus" severity="contrast" class="mr-2" @click="openNew" />
     </template>
     <template #end>
-      <Button label="Export" icon="pi pi-upload" severity="secondary" />
+      <Button 
+        label="Export" 
+        icon="pi pi-upload" 
+        severity="secondary" 
+        :loading="exportLoading"
+        @click="exportToExcel" 
+      />
     </template>
   </Toolbar>
 
@@ -226,11 +232,12 @@ import { useToast } from 'primevue/usetoast'
 import DatePicker from 'primevue/datepicker';
 import Message from 'primevue/message';
 
-const emit = defineEmits(['agregado']);
+const emit = defineEmits(['agregado', 'export-requested']);
 
 const facturaDialog = ref(false);
 const submitted = ref(false);
 const loading = ref(false);
+const exportLoading = ref(false);
 const errors = ref({});
 const inversionistaGuardado = ref(false)
 const clienteGuardado = ref(false)
@@ -339,6 +346,20 @@ function hideDialog() {
   facturaDialog.value = false;
   resetFactura();
 }
+
+// Función para exportar
+async function exportToExcel() {
+  exportLoading.value = true;
+  try {
+    emit('export-requested');
+    await new Promise(resolve => setTimeout(resolve, 500));
+  } catch (error) {
+    console.error('Error al exportar:', error);
+  } finally {
+    exportLoading.value = false;
+  }
+}
+
 
 function isFormValid() {
   const requiredFields = [

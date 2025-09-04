@@ -1,7 +1,7 @@
 <template>
     <Toolbar class="mb-6">
         <template #start>
-            <Button label="Nuevo Sector" icon="pi pi-plus" severity="secondary" class="mr-2" @click="openNew" />
+            <Button label="Nuevo Sector" icon="pi pi-plus" severity="contrast" class="mr-2" @click="openNew" />
         </template>
     </Toolbar>
     <Dialog v-model:visible="sectorDialog" :style="{ width: '600px' }" header="Registro de sectores" :modal="true">
@@ -28,8 +28,8 @@
                     Los campos marcados con <span class="text-red-500">*</span> son obligatorios.
                 </small>
                 <div class="flex gap-2">
-                    <Button label="Cancelar" icon="pi pi-times" text @click="hideDialog" />
-                    <Button label="Guardar" icon="pi pi-check" :loading="loading"
+                    <Button label="Cancelar" icon="pi pi-times" severity="secondary" text @click="hideDialog" />
+                    <Button label="Guardar" icon="pi pi-check" severity="contrast" :loading="loading"
                         :disabled="!sector.name || sector.name.length > 255" @click="guardarSector" />
                 </div>
             </div>

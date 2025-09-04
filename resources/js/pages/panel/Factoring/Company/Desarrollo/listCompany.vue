@@ -8,20 +8,61 @@
             
             <!-- Header -->
             <template #header>
-                <div class="flex flex-wrap gap-2 items-center justify-between">
-                    <h4 class="m-0">
-                        Empresas
-                        <Tag severity="contrast" :value="totalRecords" />
-                    </h4>
-                    <div class="flex flex-wrap gap-2">
-                        <IconField>
-                            <InputIcon>
-                                <i class="pi pi-search" />
-                            </InputIcon>
-                            <InputText v-model="globalFilter" @input="onGlobalSearch"
-                                placeholder="Buscar por RUC, nombre, razón social..." />
-                        </IconField>
-                        <Button icon="pi pi-refresh" outlined rounded aria-label="Refresh" @click="refreshData" />
+                <div class="flex flex-col gap-4">
+                    <div class="flex flex-wrap gap-2 items-center justify-between">
+                        <h4 class="m-0">
+                            Empresas
+                            <Tag severity="contrast" :value="totalRecords" />
+                        </h4>
+                        <div class="flex flex-wrap gap-2">
+                            <Select 
+                                v-model="selectedSector" 
+                                :options="sectors" 
+                                optionLabel="name" 
+                                optionValue="id"
+                                placeholder="Todos los sectores"
+                                :loading="loadingSectors"
+                                showClear
+                                @change="onSectorChange"
+                                class="w-15"
+                            />
+                            <Select 
+                                v-model="selectedSubsector" 
+                                :options="subsectors" 
+                                optionLabel="name" 
+                                optionValue="id"
+                                placeholder="Todos los subsectores"
+                                :loading="loadingSubsectors"
+                                :disabled="!selectedSector"
+                                showClear
+                                @change="onSubsectorChange"
+                                class="w-15"
+                            />
+                            <Select 
+                                v-model="selectedRisk" 
+                                :options="riskOptions" 
+                                optionLabel="label" 
+                                optionValue="value"
+                                placeholder="Todas las calificaciones"
+                                showClear
+                                @change="onRiskChange"
+                                class="w-15"
+                            />
+                            <IconField>
+                                <InputIcon>
+                                    <i class="pi pi-search" />
+                                </InputIcon>
+                                <InputText v-model="globalFilter" @input="onGlobalSearch"
+                                    placeholder="Buscar por RUC, nombre, razón social..." />
+                            </IconField>
+                            <Button 
+                                icon="pi pi-filter-slash" 
+                                outlined 
+                                severity="contrast"
+                                @click="clearFilters"
+                            />
+                            <Button icon="pi pi-refresh" severity="contrast" outlined rounded aria-label="Refresh" @click="refreshData" />
+                        </div>
                     </div>
                 </div>
             </template>
@@ -124,7 +165,7 @@ import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
-
+import Select from 'primevue/select';
 // Componentes personalizados
 import ShowCompany from './showCompany.vue';
 import UpdateCompany from './updateCompany.vue';
@@ -138,11 +179,29 @@ const loading = ref(false);
 const totalRecords = ref(0);
 const globalFilter = ref('');
 const first = ref(0);
-const rows = ref(15); // Cambiado a 15 por defecto
+const rows = ref(15);
 const viewDialog = ref(false);
 const editDialog = ref(false);
 const deleteDialog = ref(false);
 const selectedCompany = ref(null);
+
+// Filtros
+const sectors = ref([]);
+const subsectors = ref([]);
+const selectedSector = ref(null);
+const selectedSubsector = ref(null);
+const selectedRisk = ref(null);
+const loadingSectors = ref(false);
+const loadingSubsectors = ref(false);
+
+// Opciones de riesgo
+const riskOptions = ref([
+    { label: 'A', value: 0 },
+    { label: 'B', value: 1 },
+    { label: 'C', value: 2 },
+    { label: 'D', value: 3 },
+    { label: 'E', value: 4 }
+]);
 
 const props = defineProps({
     refresh: { type: Number, required: true }
@@ -160,6 +219,87 @@ const getRiskSeverity = (risk) => {
 const getRiskLabel = (risk) => {
     const labels = ['A', 'B', 'C', 'D', 'E'];
     return labels[parseInt(risk)] || 'N/A';
+};
+
+// Cargar sectores
+const loadSectors = async () => {
+    loadingSectors.value = true;
+    try {
+        const response = await axios.get('/sectors/search');
+        sectors.value = response.data.data || [];
+    } catch (error) {
+        console.error('Error al cargar sectores:', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Error al cargar los sectores',
+            life: 5000
+        });
+        sectors.value = [];
+    } finally {
+        loadingSectors.value = false;
+    }
+};
+
+// Cargar subsectores según el sector seleccionado
+const loadSubsectors = async (sectorId) => {
+    if (!sectorId) {
+        subsectors.value = [];
+        return;
+    }
+    
+    loadingSubsectors.value = true;
+    try {
+        const response = await axios.get(`/subsectors/search/${sectorId}`);
+        subsectors.value = response.data.data || [];
+    } catch (error) {
+        console.error('Error al cargar subsectores:', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Error al cargar los subsectores',
+            life: 5000
+        });
+        subsectors.value = [];
+    } finally {
+        loadingSubsectors.value = false;
+    }
+};
+
+// Eventos de cambio de filtros
+const onSectorChange = (event) => {
+    selectedSubsector.value = null; // Limpiar subsector cuando cambie el sector
+    if (event.value) {
+        loadSubsectors(event.value);
+    } else {
+        subsectors.value = [];
+    }
+    applyFilters();
+};
+
+const onSubsectorChange = () => {
+    applyFilters();
+};
+
+const onRiskChange = () => {
+    applyFilters();
+};
+
+// Aplicar filtros con debounce
+const applyFilters = debounce(() => {
+    first.value = 0; // Resetear a la primera página
+    loadCompanies();
+}, 300);
+
+// Limpiar todos los filtros
+const clearFilters = () => {
+    globalFilter.value = '';
+    selectedSector.value = null;
+    selectedSubsector.value = null;
+    selectedRisk.value = null;
+    subsectors.value = [];
+    first.value = 0;
+    loadCompanies();
 };
 
 // Acciones para mostrar diálogos
@@ -223,13 +363,26 @@ const loadCompanies = async () => {
     const currentPage = Math.floor(first.value / rows.value) + 1;
     
     try {
-        const response = await axios.get('/companies', {
-            params: {
-                search: globalFilter.value || '',
-                page: currentPage,
-                per_page: rows.value // Cambiado a per_page para que coincida con el controlador
-            }
-        });
+        const params = {
+            search: globalFilter.value || '',
+            page: currentPage,
+            per_page: rows.value
+        };
+
+        // Agregar filtros si están seleccionados
+        if (selectedSector.value !== null) {
+            params.sector_id = selectedSector.value;
+        }
+        
+        if (selectedSubsector.value !== null) {
+            params.subsector_id = selectedSubsector.value;
+        }
+        
+        if (selectedRisk.value !== null) {
+            params.risk = selectedRisk.value;
+        }
+
+        const response = await axios.get('/companies', { params });
         
         console.log('Response:', response.data); // Para debugging
         
@@ -256,7 +409,7 @@ const onGlobalSearch = debounce(() => {
     console.log('Buscando:', globalFilter.value); // Para debugging
     first.value = 0; // Resetear a la primera página
     loadCompanies();
-}, 800); // Aumenté el tiempo a 800ms para evitar demasiadas peticiones
+}, 800);
 
 // Evento de paginación
 const onPage = (event) => {
@@ -269,9 +422,70 @@ const onPage = (event) => {
 // Función para refrescar datos
 const refreshData = () => {
     globalFilter.value = '';
+    selectedSector.value = null;
+    selectedSubsector.value = null;
+    selectedRisk.value = null;
+    subsectors.value = [];
     first.value = 0;
     rows.value = 15;
     loadCompanies();
+};
+
+const exportToExcel = async () => {
+    try {
+        loading.value = true;
+        const params = {
+            search: globalFilter.value || '',
+        };
+        if (selectedSector.value !== null) {
+            params.sector_id = selectedSector.value;
+        }
+        
+        if (selectedSubsector.value !== null) {
+            params.subsector_id = selectedSubsector.value;
+        }
+        
+        if (selectedRisk.value !== null) {
+            params.risk = selectedRisk.value;
+        }
+
+        const response = await axios.get('/companies/export-excel', {
+            params: params,
+            responseType: 'blob',
+            headers: {
+                'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            }
+        });
+        const blob = new Blob([response.data], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `empresas_${new Date().toISOString().split('T')[0]}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        toast.add({
+            severity: 'success',
+            summary: 'Éxito',
+            detail: 'El archivo Excel se ha descargado correctamente',
+            life: 3000
+        });
+
+    } catch (error) {
+        console.error('Error al exportar:', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: error.response?.data?.message || 'No se pudo generar el archivo Excel',
+            life: 5000
+        });
+    } finally {
+        loading.value = false;
+    }
 };
 
 const exportCSV = () => {
@@ -279,8 +493,9 @@ const exportCSV = () => {
 };
 
 onMounted(() => {
+    loadSectors();
     loadCompanies();
 });
 
-defineExpose({ exportCSV });
+defineExpose({ exportCSV, exportToExcel });
 </script>

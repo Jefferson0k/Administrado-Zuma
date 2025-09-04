@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Panel;
 
+use App\Exports\CompaniesExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\StoreCompanyRequest;
 use App\Http\Requests\Company\UpdateCompanyRequest;
@@ -11,9 +12,11 @@ use App\Http\Resources\Factoring\Company\CompanyResource;
 use App\Models\Company;
 use App\Models\CompanyFinance;
 use App\Models\Invoice;
+use App\Pipelines\RiskFilter;
 use App\Pipelines\SearchCompanyFilter;
 use App\Pipelines\SectorFilter;
 use App\Pipelines\SubsectorFilter;
+use Carbon\Carbon;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
@@ -22,6 +25,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
 use Throwable;
 
 class CompanyController extends Controller{
@@ -32,12 +36,14 @@ class CompanyController extends Controller{
             $search      = $request->input('search', '');
             $sectorId    = $request->input('sector_id');
             $subsectorId = $request->input('subsector_id');
+            $risk        = $request->input('risk');
             $query = app(Pipeline::class)
                 ->send(Company::query()->with(['sector', 'subsector']))
                 ->through([
                     new SearchCompanyFilter($search),
                     new SectorFilter($sectorId),
                     new SubsectorFilter($subsectorId),
+                    new RiskFilter($risk),
                 ])
                 ->thenReturn();
             $companies = $query->paginate($perPage);
@@ -292,5 +298,25 @@ class CompanyController extends Controller{
                 'message' => $e->getMessage(),
             ], 500);
         }
+    }
+    public function exportExcel(Request $request){
+        Gate::authorize('export', Company::class);
+        $search = $request->input('search', '');
+        $sectorId = $request->input('sector_id');
+        $subsectorId = $request->input('subsector_id');
+        $risk = $request->input('risk');
+        $query = app(Pipeline::class)
+            ->send(Company::query()->with(['sector', 'subsector']))
+            ->through([
+                new SearchCompanyFilter($search),
+                new SectorFilter($sectorId),
+                new SubsectorFilter($subsectorId),
+                new RiskFilter($risk),
+            ])
+            ->thenReturn();
+        $companies = $query->get();
+        $currentDateTime = Carbon::now()->format('d-m-Y_H-i-s');
+        $fileName = "empresas_{$currentDateTime}.xlsx";
+        return Excel::download(new CompaniesExport($companies), $fileName);
     }
 }

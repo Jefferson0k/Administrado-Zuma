@@ -55,17 +55,19 @@ class PermissionSeeder extends Seeder{
         Permission::create(['name' => 'editar factura']);
         Permission::create(['name' => 'eliminar factura']);
         Permission::create(['name' => 'ver factura']);
+        Permission::create(['name' => 'exportar factura']);
         // Inversionistas
         Permission::create(['name' => 'crear inversionistas']);
         Permission::create(['name' => 'editar inversionistas']);
         Permission::create(['name' => 'eliminar inversionistas']);
         Permission::create(['name' => 'ver inversionistas']);
         // Empresas
-        Permission::create(['name' => 'buscar sector']);
+        Permission::create(['name' => 'ver empresas']);
         Permission::create(['name' => 'crear empresas']);
         Permission::create(['name' => 'editar empresas']);
         Permission::create(['name' => 'eliminar empresas']);
-        Permission::create(['name' => 'ver empresas']);
+        Permission::create(['name' => 'buscar sector']);
+        Permission::create(['name' => 'exportar empresas']);
         // Cuentas Bancarias
         Permission::create(['name' => 'crear cuenta bancaria']);
         Permission::create(['name' => 'editar cuenta bancaria']);

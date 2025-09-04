@@ -77,7 +77,6 @@ import { ref, watch } from 'vue';
 import axios from 'axios';
 import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
-import Tag from 'primevue/tag';
 import { useToast } from 'primevue/usetoast';
 
 const toast = useToast();
@@ -192,19 +191,5 @@ const formatCurrency = (value, moneda) => {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     })}`;
-};
-
-const getStatusSeverity = (status) => {
-    switch (status) {
-        case 'inactive': return 'secondary';
-        case 'active': return 'success';
-        case 'expired': return 'danger';
-        case 'judicialized': return 'warn';
-        case 'reprogramed': return 'info';
-        case 'paid': return 'contrast';
-        case 'canceled': return 'danger';
-        case 'daStandby': return 'warn';
-        default: return 'secondary';
-    }
 };
 </script>

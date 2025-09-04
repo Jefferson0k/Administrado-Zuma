@@ -3,11 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\Invoices\InvoiceResource;
 use App\Models\Invoice;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 
 class InvoiceController extends Controller{
     public function index(Request $request){
@@ -28,7 +26,7 @@ class InvoiceController extends Controller{
                 'companies.sector_id as company_sector_id'
             )
             ->join('companies', 'invoices.company_id', '=', 'companies.id')
-            ->whereIn('invoices.status', ['active', 'daStandby']) // ← Aquí incluimos ambos estados
+            ->whereIn('invoices.status', ['active', 'daStandby'])
             ->where('invoices.due_date', '>=', Carbon::now());
 
             if (!empty($monedas) && is_array($monedas)) {
@@ -102,7 +100,6 @@ class InvoiceController extends Controller{
             ], 500);
         }
     }
-
     public function getSectors(Request $request){
         try {
             $monedas = $request->moneda;

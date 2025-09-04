@@ -151,11 +151,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/',        [InvestorController::class, 'index'])->name('investor.index');
     });
 
-    #COMPANIA -> BACKEND
+    # COMPANIA -> BACKEND
     Route::prefix('companies')->group(function () {
         Route::get('/',        [CompanyController::class, 'index'])->name('companies.index');
         Route::post('/',       [CompanyController::class, 'store'])->name('companies.store');
         Route::get('/search',  [CompanyController::class, 'searchCompany'])->name('companies.searchCompany');
+        Route::get('/export-excel', [CompanyController::class, 'exportExcel'])->name('companies.exportExcel');
         Route::get('{id}',     [CompanyController::class, 'show'])->name('companies.show');
         Route::put('{id}',     [CompanyController::class, 'update'])->name('companies.update');
         Route::delete('{id}',  [CompanyController::class, 'delete'])->name('companies.delete');
@@ -210,10 +211,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/filtrado', [InvoiceController::class, 'indexfilter']);
         Route::get('/', [InvoiceController::class, 'index'])->name('invoices.index');
         Route::post('/', [InvoiceController::class, 'store'])->name('invoices.store');
+        Route::put('/{id}', [InvoiceController::class, 'update'])->name('invoices.update');
         Route::patch('/{id}/standby', [InvoiceController::class, 'standby']);
         Route::patch('/{id}/activacion', [InvoiceController::class, 'activacion']);
-        Route::get('/{id}', [InvoiceController::class, 'show']);
+        Route::get('/{id}', [InvoiceController::class, 'show'])->name('invoices.show');
         Route::delete('/{id}', [InvoiceController::class, 'delete'])->name('invoices.delete');
+        # Exportación a Excel
+        Route::get('/export/excel', [InvoiceController::class, 'exportExcel'])->name('invoices.export');
     });
 
     #PROPERTY => BACKEND (SOLO ADMINISTRADOR MAS NO CLIENTE)
