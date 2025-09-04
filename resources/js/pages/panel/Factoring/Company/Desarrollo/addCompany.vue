@@ -112,7 +112,7 @@
                 <div>
                     <label class="block font-bold mb-2">Año constitución <span class="text-red-500">*</span></label>
                     <InputNumber v-model="empresa.incorporation_year" :useGrouping="false" :maxlength="4" :min="1800"
-                        :max="2030" placeholder="2005" class="w-full"
+                        :max="2030"  class="w-full"
                         :class="{ 'p-invalid': submitted && (!empresa.incorporation_year || serverErrors.incorporation_year || (empresa.incorporation_year && (empresa.incorporation_year < 1800 || empresa.incorporation_year > 2030))) }"
                         :disabled="!rucConsultado" />
                     <small v-if="submitted && !empresa.incorporation_year && rucConsultado" class="text-red-500">
@@ -427,7 +427,6 @@ function getRiesgoLabel(value) {
     return riesgo ? riesgo.label : '';
 }
 
-// Función para determinar el color del tag según el riesgo
 function getRiesgoSeverity(value) {
     switch (value) {
         case 0: return 'success';    // A - Verde
@@ -538,7 +537,6 @@ const cargarSectores = async () => {
     }
 };
 
-// Función optimizada para cargar subsectores
 const cargarSubsectores = async (sectorId) => {
     if (!sectorId) {
         subsectores.value = [];
@@ -550,7 +548,6 @@ const cargarSubsectores = async (sectorId) => {
     try {
         const response = await axios.get(`/subsectors/search/${sectorId}`);
         subsectores.value = response.data.data;
-        // Reset subsector cuando cambia el sector
         empresa.value.subsector_id = null;
     } catch (error) {
         console.error('Error al cargar subsectores:', error);
@@ -566,13 +563,10 @@ const cargarSubsectores = async (sectorId) => {
     }
 };
 
-/* Cargar sectores al montar el componente - SOLO UNA VEZ */
 onMounted(cargarSectores);
 
-/* Watch OPTIMIZADO para subsectores - sin immediate para evitar ejecución innecesaria */
 watch(() => empresa.value.sector_id, cargarSubsectores, { immediate: false });
 
-// Watch para resetear campos de ventas cuando cambia la moneda
 watch(() => empresa.value.moneda, (nuevaMoneda) => {
     if (nuevaMoneda !== 'PEN' && nuevaMoneda !== 'BOTH') {
         empresa.value.sales_PEN = null;
@@ -676,7 +670,6 @@ function resetEmpresa() {
         link_web_page: '',
         moneda: '',
         description: '',
-        // Campos financieros integrados
         sales_volume_pen: null,
         sales_volume_usd: null,
         facturas_financiadas_pen: null,
@@ -694,7 +687,6 @@ function resetEmpresa() {
 
 function openNew() {
     resetEmpresa();
-    // Cargar sectores si es necesario (lazy loading)
     cargarSectores();
     AgregarDialog.value = true;
 }
@@ -704,9 +696,7 @@ function hideDialog() {
     resetEmpresa();
 }
 
-// Función para cargar datos desde el JSON (útil para edición)
 function loadEmpresaData(data) {
-    // No necesitamos transformar la moneda, el backend ya usa BOTH
     empresa.value = {
         document: data.document,
         name: data.name,
@@ -720,7 +710,6 @@ function loadEmpresaData(data) {
         link_web_page: data.link_web_page,
         moneda: data.moneda,
         description: data.description,
-        // Campos financieros
         sales_volume_pen: data.sales_PEN,
         sales_volume_usd: data.sales_USD,
         facturas_financiadas_pen: data.facturas_financiadas_pen,
@@ -737,7 +726,6 @@ function loadEmpresaData(data) {
 
     rucConsultado.value = true;
     
-    // Cargar sectores y subsectores si es necesario
     cargarSectores();
     if (data.sector_id) {
         cargarSubsectores(data.sector_id);
@@ -777,7 +765,6 @@ async function guardarEmpresa() {
     }
 }
 
-// Exponer funciones útiles para uso externo
 defineExpose({
     openNew,
     loadEmpresaData,

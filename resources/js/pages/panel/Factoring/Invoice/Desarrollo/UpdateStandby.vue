@@ -7,7 +7,7 @@
         :closable="true"
         @hide="onHide"
     >
-        <div v-if="facturaData" class="p-4">
+        <div v-if="facturaData">
             <!-- Mensaje de confirmación -->
             <div class="mb-4 text-center">
                 <i class="pi pi-exclamation-triangle text-orange-500 text-3xl mb-3"></i>
@@ -72,14 +72,14 @@
             <div class="flex justify-end gap-2">
                 <Button 
                     label="Cancelar" 
-                    severity="secondary" 
+                    severity="secondary" text
                     outlined 
                     @click="onCancel"
                     :disabled="loading"
                 />
                 <Button 
-                    label="Sí, pausar factura" 
-                    severity="warning" 
+                    label="Sí, Standby" 
+                    severity="warn" 
                     @click="onConfirm"
                     :loading="loading"
                     icon="pi pi-pause"
@@ -94,7 +94,6 @@ import { ref, watch } from 'vue';
 import axios from 'axios';
 import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
-import Tag from 'primevue/tag';
 import { useToast } from 'primevue/usetoast';
 
 const toast = useToast();

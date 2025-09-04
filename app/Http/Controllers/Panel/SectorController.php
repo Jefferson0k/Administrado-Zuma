@@ -11,6 +11,7 @@ use App\Models\Company;
 use App\Models\Sector;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Throwable;
@@ -98,12 +99,29 @@ class SectorController extends Controller{
             return response()->json(['message' => 'Error al eliminar la Sector.'], 500);
         }
     }
-    public function searchSector(){
+    public function searchSector(Request $request){
         try {
             Gate::authorize('search', Company::class);
-            $sectors = Sector::all();
+            $perPage = $request->input('per_page', 15);
+            $search  = $request->input('search');
+            $query = Sector::query()
+                ->when($search, function ($query) use ($search) {
+                    $query->where(function ($q) use ($search) {
+                        $q->where('name', 'LIKE', "%{$search}%")
+                        ->orWhere('id', 'LIKE', "%{$search}%");
+                    });
+                });
+            $sectors = $query->paginate($perPage);
             return response()->json([
                 'data' => SearchSectorResource::collection($sectors),
+                'pagination' => [
+                    'total'        => $sectors->total(),
+                    'current_page' => $sectors->currentPage(),
+                    'per_page'     => $sectors->perPage(),
+                    'last_page'    => $sectors->lastPage(),
+                    'from'         => $sectors->firstItem(),
+                    'to'           => $sectors->lastItem(),
+                ],
             ]);
         } catch (AuthorizationException $e) {
             return response()->json([
@@ -111,7 +129,8 @@ class SectorController extends Controller{
             ], 403);
         } catch (Throwable $e) {
             return response()->json([
-                'message' => 'Error al listar los sectores.'
+                'message' => 'Error al listar los sectores.',
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }

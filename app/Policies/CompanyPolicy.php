@@ -52,6 +52,11 @@ class CompanyPolicy
         return $user->can('buscar sector');
     }
 
+    public function export(User $user): bool{
+        return $user->can('exportar empresas');
+    }
+
+
     /**
      * Determine whether the user can restore the model.
      */

@@ -1,4 +1,5 @@
 <template>
+
     <Head title="Facturas" />
     <AppLayout>
         <div>
@@ -7,8 +8,8 @@
             </template>
             <template v-else>
                 <div class="card">
-                    <addInvoice @agregado="refrescarListado"/>
-                    <listInvoice :refresh="refreshKey"/>
+                    <addInvoice @agregado="refrescarListado" @export-requested="handleExportRequest" />
+                    <listInvoice ref="listInvoiceRef" :refresh="refreshKey" @filters-changed="onFiltersChanged" />
                 </div>
             </template>
         </div>
@@ -25,10 +26,23 @@ import addInvoice from './Desarrollo/addInvoice.vue';
 
 const isLoading = ref(true);
 const refreshKey = ref(0);
+const listInvoiceRef = ref(null);
+const currentFilters = ref({});
 
 function refrescarListado() {
     refreshKey.value++;
 }
+
+function onFiltersChanged(filters: any) {
+    currentFilters.value = filters;
+}
+
+function handleExportRequest() {
+    if (listInvoiceRef.value && listInvoiceRef.value.exportToExcel) {
+        listInvoiceRef.value.exportToExcel();
+    }
+}
+
 onMounted(() => {
     setTimeout(() => {
         isLoading.value = false;

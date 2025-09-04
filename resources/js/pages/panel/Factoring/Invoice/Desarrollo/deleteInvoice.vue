@@ -1,59 +1,64 @@
 <template>
-    <Dialog v-model:visible="visible" modal :header="'Eliminar Factura'" :style="{ width: '32rem' }" :closable="false">
-        <div class="flex items-center gap-4 mb-4">
-            <i class="pi pi-exclamation-triangle text-red-500 text-3xl"></i>
-            <div>
-                <p class="font-semibold mb-2">¿Está seguro de que desea eliminar esta factura?</p>
-                <p class="text-sm text-gray-600 mb-2">
-                    <strong>Código:</strong> {{ facturaData?.codigo || 'N/A' }}
-                </p>
-                <p class="text-sm text-gray-600">
-                    <strong>Razón Social:</strong> {{ facturaData?.razonSocial || 'N/A' }}
-                </p>
-                <p class="text-red-600 text-sm mt-2">
-                    Esta acción no se puede deshacer.
-                </p>
+    <Dialog v-model:visible="visible" modal :header="'Eliminar Factura'" :style="{ width: '32rem' }" :closable="false" >
+        <div class="mb-4 text-center">
+            <i class="pi pi-exclamation-triangle text-orange-500 text-3xl mb-3"></i>
+            <p class="text-lg font-medium mb-2">¿Está seguro de que desea eliminar esta factura?</p>
+        </div>
+
+        <div v-if="facturaData" class="mb-4">
+            <div class="grid grid-cols-1 gap-2 text-sm">
+                <div>
+                    <span class="font-medium">Código:</span>
+                    <span class="ml-2">{{ facturaData.codigo || 'N/A' }}</span>
+                </div>
+                <div>
+                    <span class="font-medium">Razón Social:</span>
+                    <span class="ml-2">{{ facturaData.razonSocial || 'N/A' }}</span>
+                </div>
+                <div v-if="facturaData.moneda && facturaData.montoFactura">
+                    <span class="font-medium">Monto:</span>
+                    <span class="ml-2">{{ formatCurrency(facturaData.montoFactura, facturaData.moneda) }}</span>
+                </div>
             </div>
         </div>
 
+        <div class="text-center">
+            <p class="text-red-600 text-sm font-medium">
+                Esta acción no se puede deshacer.
+            </p>
+        </div>
+
         <template #footer>
-            <Button label="Cancelar" icon="pi pi-times" @click="handleCancel" severity="secondary"
+            <Button label="No" text icon="pi pi-times" @click="handleCancel" severity="secondary"
                 :disabled="loading" />
-            <Button label="Eliminar" icon="pi pi-trash" @click="handleDelete" severity="danger" :loading="loading" />
+            <Button label="Eliminar" @click="handleDelete" severity="danger" :loading="loading" />
         </template>
     </Dialog>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, watch, computed } from 'vue';
 import axios from 'axios';
 import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
 import { useToast } from 'primevue/usetoast';
 
-interface FacturaData {
-    id: string;
-    codigo: string;
-    razonSocial: string;
-    moneda: string;
-    montoFactura: string;
-    estado: string;
-}
+const props = defineProps({
+    modelValue: {
+        type: Boolean,
+        default: false
+    },
+    facturaId: {
+        type: [String, Number],
+        default: null
+    },
+    facturaData: {
+        type: Object,
+        default: null
+    }
+});
 
-interface Props {
-    modelValue: boolean;
-    facturaId: string | null;
-    facturaData?: FacturaData | null;
-}
-
-interface Emits {
-    (e: 'update:modelValue', value: boolean): void;
-    (e: 'confirmed', response: any): void;
-    (e: 'cancelled'): void;
-}
-
-const props = defineProps<Props>();
-const emit = defineEmits<Emits>();
+const emit = defineEmits(['update:modelValue', 'confirmed', 'cancelled']);
 const toast = useToast();
 
 const loading = ref(false);
@@ -95,7 +100,7 @@ const handleDelete = async () => {
         visible.value = false;
         emit('confirmed', response.data);
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('Error al eliminar factura:', error);
 
         const errorMessage = error.response?.data?.message ||
@@ -119,4 +124,16 @@ watch(visible, (newValue) => {
         loading.value = false;
     }
 });
+
+const formatCurrency = (value, moneda) => {
+    if (!value) return '';
+    const number = parseFloat(value);
+    let currencySymbol = '';
+    if (moneda === 'PEN') currencySymbol = 'S/';
+    if (moneda === 'USD') currencySymbol = 'US$';
+    return `${currencySymbol} ${number.toLocaleString('es-PE', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    })}`;
+};
 </script>

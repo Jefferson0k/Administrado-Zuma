@@ -1,22 +1,22 @@
 <template>
-    <Toolbar class="mb-6 p-3 border-round shadow-2 flex justify-content-between align-items-center">
+    <Toolbar class="mb-6 p-4 border-round shadow-2 flex justify-content-between align-items-center">
         <template #start>
-            <div v-if="invoice" class="flex flex-wrap gap-4">
-                <div class="p-3 surface-card border-round flex flex-column">
-                    <strong>Código:</strong>
-                    <span>{{ invoice.codigo || '-' }}</span>
+            <div v-if="invoice" class="flex flex-wrap gap-6">
+                <div class="p-4 surface-card border-round flex flex-column shadow-1">
+                    <b class="text-900 mb-2">Código: </b>
+                    <span class="text-700">{{ invoice.codigo || '-' }}</span>
                 </div>
-                <div class="p-3 surface-card border-round flex flex-column">
-                    <strong>Monto Factura:</strong>
-                    <span>{{ formatNumber(invoice.amount) }}</span>
+                <div class="p-4 surface-card border-round flex flex-column shadow-1">
+                    <b class="text-900 mb-2">Monto Factura:</b>
+                    <span class="text-700">{{ formatNumber(invoice.amount) }}</span>
                 </div>
-                <div class="p-3 surface-card border-round flex flex-column">
-                    <strong>Estado:</strong>
-                    <span>{{ invoice.status || '-' }}</span>
+                <div class="p-4 surface-card border-round flex flex-column shadow-1">
+                    <b class="text-900 mb-2">Estado:</b>
+                    <Tag :value="getStatusText(invoice.status)" :severity="getStatusSeverity(invoice.status)" />
                 </div>
-                <div class="p-3 surface-card border-round flex flex-column">
-                    <strong>Fecha de Pago Estimada:</strong>
-                    <span>{{ formatDate(invoice.estimated_pay_date) }}</span>
+                <div class="p-4 surface-card border-round flex flex-column shadow-1">
+                    <b class="text-900 mb-2">Fecha de Pago Estimada:</b>
+                    <span class="text-700">{{ formatDate(invoice.estimated_pay_date) }}</span>
                 </div>
             </div>
         </template>
@@ -26,15 +26,64 @@
     </Toolbar>
 
     <!-- Tabla de inversiones -->
-    <DataTable v-if="investmentData && investmentData.data" :value="investmentData.data" class="mt-4" responsiveLayout="scroll">
-        <Column field="inversionista" header="Inversionista"></Column>
-        <Column field="amount" header="Monto"></Column>
-        <Column field="return" header="Retorno"></Column>
-        <Column field="rate" header="Tasa"></Column>
-        <Column field="currency" header="Moneda"></Column>
-        <Column field="status" header="Estado"></Column>
-        <Column field="due_date" header="Fecha Vencimiento"></Column>
-        <Column field="creacion" header="Creación"></Column>
+    <DataTable 
+        ref="dt"
+        v-if="investmentData && investmentData.data" 
+        :value="investmentData.data" 
+        dataKey="id"
+        :paginator="true"
+        :rows="10"
+        :filters="filters"
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        :rowsPerPageOptions="[5, 10, 25]"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} inversiones"
+        responsiveLayout="scroll"
+        class="p-datatable-sm" 
+    >
+        <template #header>
+            <div class="flex flex-wrap gap-2 items-center justify-between">
+                <h4 class="m-0 text-900">Inversionistas</h4>
+                <IconField>
+                    <InputIcon>
+                        <i class="pi pi-search" />
+                    </InputIcon>
+                    <InputText v-model="filters['global'].value" placeholder="Buscar..." />
+                </IconField>
+            </div>
+        </template>
+        <Column selectionMode="multiple" style="width: 1rem" />
+        <Column field="inversionista" header="Inversionista" sortable style="min-width: 12rem"></Column>
+        <Column field="amount" header="Monto" sortable style="min-width: 10rem">
+            <template #body="slotProps">
+                {{ formatNumber(slotProps.data.amount) }}
+            </template>
+        </Column>
+        <Column field="return" header="Retorno" sortable style="min-width: 10rem">
+            <template #body="slotProps">
+                {{ formatNumber(slotProps.data.return) }}
+            </template>
+        </Column>
+        <Column field="rate" header="Tasa" sortable style="min-width: 8rem">
+            <template #body="slotProps">
+                {{ slotProps.data.rate }}%
+            </template>
+        </Column>
+        <Column field="currency" header="Moneda" sortable style="min-width: 8rem"></Column>
+        <Column field="status" header="Estado" sortable style="min-width: 10rem">
+            <template #body="slotProps">
+                <Tag :value="getStatusText(slotProps.data.status)" :severity="getStatusSeverity(slotProps.data.status)" />
+            </template>
+        </Column>
+        <Column field="due_date" header="Fecha Vencimiento" sortable style="min-width: 12rem">
+            <template #body="slotProps">
+                {{ slotProps.data.due_date }}
+            </template>
+        </Column>
+        <Column field="creacion" header="Creación" sortable style="min-width: 12rem">
+            <template #body="slotProps">
+                {{ slotProps.data.creacion }}
+            </template>
+        </Column>
     </DataTable>
 </template>
 
@@ -43,8 +92,13 @@ import Toolbar from 'primevue/toolbar';
 import Button from 'primevue/button';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
+import Tag from 'primevue/tag';
+import InputText from 'primevue/inputtext';
+import IconField from 'primevue/iconfield';
+import InputIcon from 'primevue/inputicon';
 import { router } from '@inertiajs/vue3';
 import { onMounted, ref } from 'vue';
+import { FilterMatchMode } from '@primevue/core/api';
 import axios from 'axios';
 
 const props = defineProps<{
@@ -54,6 +108,11 @@ const props = defineProps<{
 
 const invoice = props.invoice;
 const investmentData = ref<any>(null);
+
+// Filtros para la tabla
+const filters = ref({
+    global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+});
 
 const volver = () => {
     router.get('/factoring/facturas');
@@ -78,9 +137,30 @@ const formatDate = (dateStr: any) => {
     return `${day}/${month}/${year}`;
 };
 
+// Función para obtener el texto del estado en español
+const getStatusText = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+        'inactive': 'Inactivo',
+        'active': 'Activo',
+        'paid': 'Pagado',
+        'reprogramed': 'Reprogramado'
+    };
+    return statusMap[status] || status;
+};
+
+// Función para obtener la severidad del estado para el componente Tag
+const getStatusSeverity = (status: string) => {
+    const severityMap: { [key: string]: string } = {
+        'inactive': 'secondary',
+        'active': 'info',
+        'paid': 'success',
+        'reprogramed': 'warning'
+    };
+    return severityMap[status] || 'secondary';
+};
+
 onMounted(async () => {
     if (!invoice || !invoice.id) return;
-
     try {
         const response = await axios.get(`/investment/${invoice.id}`);
         investmentData.value = response.data;
