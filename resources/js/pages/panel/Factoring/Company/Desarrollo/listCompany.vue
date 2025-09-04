@@ -1,10 +1,10 @@
 <template>
     <div>
-        <DataTable  ref="dt" v-model:selection="selectedCompanies" :value="companies" dataKey="id" :paginator="true" :rows="rows"
-            :totalRecords="totalRecords" :first="first" :loading="loading" :rowsPerPageOptions="[25, 50, 100]"
+        <DataTable ref="dt" v-model:selection="selectedCompanies" :value="companies" dataKey="id" :paginator="true" :rows="rows"
+            :totalRecords="totalRecords" :first="first" :loading="loading" :rowsPerPageOptions="[15, 25, 50, 100]"
             paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
             currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} empresas" @page="onPage" scrollable
-            scrollHeight="574px" class="p-datatable-sm">
+            scrollHeight="574px" class="p-datatable-sm" :lazy="true">
             
             <!-- Header -->
             <template #header>
@@ -21,7 +21,7 @@
                             <InputText v-model="globalFilter" @input="onGlobalSearch"
                                 placeholder="Buscar por RUC, nombre, razón social..." />
                         </IconField>
-                        <Button icon="pi pi-refresh" outlined rounded aria-label="Refresh" @click="loadCompanies" />
+                        <Button icon="pi pi-refresh" outlined rounded aria-label="Refresh" @click="refreshData" />
                     </div>
                 </div>
             </template>
@@ -138,7 +138,7 @@ const loading = ref(false);
 const totalRecords = ref(0);
 const globalFilter = ref('');
 const first = ref(0);
-const rows = ref(25);
+const rows = ref(15); // Cambiado a 15 por defecto
 const viewDialog = ref(false);
 const editDialog = ref(false);
 const deleteDialog = ref(false);
@@ -149,7 +149,7 @@ const props = defineProps({
 });
 
 // Actualiza la lista si cambia la prop refresh
-watch(() => props.refresh, () => loadCompanies());
+watch(() => props.refresh, () => refreshData());
 
 // Funciones auxiliares de calificación
 const getRiskSeverity = (risk) => {
@@ -167,7 +167,7 @@ const showCompanyDetails = async (company) => {
     try {
         loading.value = true;
         const response = await axios.get(`/companies/${company.id}`);
-        selectedCompany.value = response.data.data; // 👈 aquí los datos del backend
+        selectedCompany.value = response.data.data;
         viewDialog.value = true;
     } catch (error) {
         console.error("Error al cargar detalles:", error);
@@ -216,22 +216,26 @@ const onCompanyDeleted = () => {
 };
 
 // Cargar empresas desde API (paginado y filtrado)
-const loadCompanies = async (event = { page: 0, rows: 25 }) => {
+const loadCompanies = async () => {
     loading.value = true;
-    const page = event.page ? event.page + 1 : 1;
-    const perPage = Number(event.rows) || 25;
-
+    
+    // Calcular la página actual basada en first y rows
+    const currentPage = Math.floor(first.value / rows.value) + 1;
+    
     try {
         const response = await axios.get('/companies', {
             params: {
-                search: globalFilter.value,
-                page,
-                perPage
+                search: globalFilter.value || '',
+                page: currentPage,
+                per_page: rows.value // Cambiado a per_page para que coincida con el controlador
             }
         });
-        companies.value = response.data.data;
-        totalRecords.value = response.data.total;
-        first.value = (page - 1) * perPage;
+        
+        console.log('Response:', response.data); // Para debugging
+        
+        companies.value = response.data.data || [];
+        totalRecords.value = response.data.total || 0;
+        
     } catch (error) {
         console.error('Error al cargar empresas:', error);
         toast.add({
@@ -240,18 +244,34 @@ const loadCompanies = async (event = { page: 0, rows: 25 }) => {
             detail: 'Error al cargar las empresas',
             life: 5000
         });
+        companies.value = [];
+        totalRecords.value = 0;
     } finally {
         loading.value = false;
     }
 };
 
+// Función para búsqueda con debounce
 const onGlobalSearch = debounce(() => {
-    first.value = 0;
+    console.log('Buscando:', globalFilter.value); // Para debugging
+    first.value = 0; // Resetear a la primera página
     loadCompanies();
-}, 500);
+}, 800); // Aumenté el tiempo a 800ms para evitar demasiadas peticiones
 
+// Evento de paginación
 const onPage = (event) => {
-    loadCompanies(event);
+    console.log('Page event:', event); // Para debugging
+    first.value = event.first;
+    rows.value = event.rows;
+    loadCompanies();
+};
+
+// Función para refrescar datos
+const refreshData = () => {
+    globalFilter.value = '';
+    first.value = 0;
+    rows.value = 15;
+    loadCompanies();
 };
 
 const exportCSV = () => {
@@ -261,5 +281,6 @@ const exportCSV = () => {
 onMounted(() => {
     loadCompanies();
 });
+
 defineExpose({ exportCSV });
 </script>

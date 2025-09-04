@@ -9,22 +9,13 @@ use Illuminate\Support\Str;
 
 class InvoiceService{
     public function save(array $data, ?string $id = null): Invoice{
-        // Buscar empresa
         $company = Company::findOrFail($data['company_id']);
-
-        // Status por defecto
         $status = $data['status'] ?? 'inactive';
-
-        // Fecha de vencimiento (25 días antes de estimated_pay_date)
         $dueDate = Carbon::parse($data['estimated_pay_date'])->subDays(25);
-
-        // Generar código único
         $prefix = $data['currency'] === 'PEN' ? '01' : '02';
         $companyCode = strtoupper(substr(preg_replace('/\s+/', '', $company->name), 0, 4));
         $suffix = strtoupper(Str::random(3));
         $codigo = $prefix . $companyCode . $suffix;
-
-        // Guardar / actualizar
         return Invoice::updateOrCreate(
             ['id' => $id],
             [

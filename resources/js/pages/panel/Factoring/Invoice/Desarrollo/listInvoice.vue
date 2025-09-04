@@ -12,6 +12,7 @@ import Tag from 'primevue/tag';
 import Menu from 'primevue/menu';
 import UpdateStandby from './UpdateStandby.vue';
 import updateActive from './updateActive.vue';
+import deleteInvoice from './deleteInvoice.vue';
 
 const props = defineProps({
     refresh: {
@@ -35,6 +36,21 @@ const currentPage = ref(1);
 const showStandbyDialog = ref(false);
 const showActiveDialog = ref(false);
 const selectedFacturaId = ref(null);
+
+// Función para traducir estados al español
+function getStatusLabel(status) {
+    const statusLabels = {
+        'inactive': 'Inactivo',
+        'active': 'Activo',
+        'expired': 'Vencido',
+        'judicialized': 'Judicializado',
+        'reprogramed': 'Reprogramado',
+        'paid': 'Pagado',
+        'canceled': 'Cancelado',
+        'daStandby': 'En Espera'
+    };
+    return statusLabels[status] || status;
+}
 
 function editFactura(factura) {
     console.log('Editar factura:', factura);
@@ -119,7 +135,7 @@ const formatCurrency = (value, moneda) => {
 const toggleMenu = (event, factura) => {
     let items = [];
 
-    if (factura.estado === 'inactive') {
+    if (factura.estado?.toLowerCase().trim() === 'inactive') {
         items = [
             {
                 label: 'Ver detalles',
@@ -150,13 +166,6 @@ const toggleMenu = (event, factura) => {
                 label: 'Poner en standby',
                 icon: 'pi pi-pause',
                 command: () => ponerEnStandby(factura)
-            },
-            { separator: true },
-            {
-                label: 'Eliminar',
-                icon: 'pi pi-trash',
-                command: () => confirmDelete(factura),
-                class: 'p-menuitem-link-danger'
             }
         ];
     } else if (factura.estado === 'daStandby') {
@@ -172,24 +181,23 @@ const toggleMenu = (event, factura) => {
                 command: () => gestionarPago(factura)
             }
         ];
-    } else {
+    } else if (factura.estado === 'reprogramed') {
+        // Para estado reprogramado: solo ver detalles, sin editar
         items = [
             {
                 label: 'Ver detalles',
                 icon: 'pi pi-eye',
                 command: () => verDetalles(factura)
-            },
+            }
+        ];
+    } else {
+        // Para todos los otros estados: expired, judicialized, paid, canceled
+        // Sin opción de editar
+        items = [
             {
-                label: 'Editar',
-                icon: 'pi pi-pencil',
-                command: () => editFactura(factura)
-            },
-            { separator: true },
-            {
-                label: 'Eliminar',
-                icon: 'pi pi-trash',
-                command: () => confirmDelete(factura),
-                class: 'p-menuitem-link-danger'
+                label: 'Ver detalles',
+                icon: 'pi pi-eye',
+                command: () => verDetalles(factura)
             }
         ];
     }
@@ -258,10 +266,10 @@ onMounted(() => {
             <Column field="tasa" header="Tasa (%)" sortable style="min-width: 8rem" />
             <Column field="fechaPago" header="Fecha de Pago" sortable style="min-width: 10rem" />
             <Column field="fechaCreacion" header="Fecha Creación" sortable style="min-width: 13rem" />
-            <!-- Estado con colores -->
+            <!-- Estado con colores y traducido al español -->
             <Column field="estado" header="Estado" sortable style="min-width: 8rem">
                 <template #body="slotProps">
-                    <Tag :value="slotProps.data.estado" :severity="getStatusSeverity(slotProps.data.estado)" />
+                    <Tag :value="getStatusLabel(slotProps.data.estado)" :severity="getStatusSeverity(slotProps.data.estado)" />
                 </template>
             </Column>
 
@@ -291,6 +299,13 @@ onMounted(() => {
             :factura-id="selectedFacturaId"
             @confirmed="onStandbyConfirmed"
             @cancelled="onStandbyCancelled"
+        />
+        <deleteInvoice
+            v-model="showDeleteDialog"
+            :factura-id="selectedFacturaId"
+            :factura-data="selectedFacturaData"
+            @confirmed="onDeleteConfirmed"
+            @cancelled="onDeleteCancelled"
         />
     </div>
 </template>

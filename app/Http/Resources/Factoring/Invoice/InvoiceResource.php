@@ -16,7 +16,7 @@ class InvoiceResource extends JsonResource
             'moneda'             => $this->currency,
             'montoFactura'       => $this->amount,
             'montoAsumidoZuma'   => $this->financed_amount_by_garantia,
-            'montoDisponible'    => $this->getAvailablePaidAmount()->getAmount(),
+            'montoDisponible'    => $this->financed_amount,
             'tasa'               => $this->rate,
             'estado'             => $this->status,
             'fechaPago' => Carbon::parse($this->estimated_pay_date)->format('d-m-Y'),

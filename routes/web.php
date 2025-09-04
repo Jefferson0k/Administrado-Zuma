@@ -213,7 +213,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/{id}/standby', [InvoiceController::class, 'standby']);
         Route::patch('/{id}/activacion', [InvoiceController::class, 'activacion']);
         Route::get('/{id}', [InvoiceController::class, 'show']);
-        Route::delete('/{id}', [RolesController::class, 'delete'])->name('invoices.delete');
+        Route::delete('/{id}', [InvoiceController::class, 'delete'])->name('invoices.delete');
     });
 
     #PROPERTY => BACKEND (SOLO ADMINISTRADOR MAS NO CLIENTE)

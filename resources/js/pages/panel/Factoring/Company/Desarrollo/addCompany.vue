@@ -1,10 +1,11 @@
 <template>
     <Toolbar class="mb-6">
         <template #start>
-            <Button label="Nueva Empresa" icon="pi pi-plus" severity="secondary" class="mr-2" @click="openNew" />
+            <Button label="Nueva Empresa" icon="pi pi-plus" severity="contrast" class="mr-2" @click="openNew" />
         </template>
+
         <template #end>
-                <Button label="Exportar" icon="pi pi-upload" severity="secondary" @click="$emit('export')" />
+            <Button label="Export" icon="pi pi-upload" severity="secondary" @click="$emit('export')" />
         </template>
     </Toolbar>
 
@@ -15,13 +16,14 @@
             <div>
                 <label class="block font-bold mb-2">RUC <span class="text-red-500">*</span></label>
                 <InputNumber v-model="empresa.document" :useGrouping="false" :maxlength="11"
-                    placeholder="Nº 12345678910" inputId="document" class="w-full" 
+                    placeholder="Nº 12345678910" inputId="document" class="w-full"
                     :class="{ 'p-invalid': submitted && (!empresa.document || serverErrors.document) }"
                     @keydown.enter="consultarRuc" />
                 <small v-if="submitted && !empresa.document" class="text-red-500">
                     El RUC es obligatorio.
                 </small>
-                <small v-else-if="submitted && empresa.document && empresa.document.toString().length !== 11" class="text-red-500">
+                <small v-else-if="submitted && empresa.document && empresa.document.toString().length !== 11"
+                    class="text-red-500">
                     El RUC debe tener 11 dígitos.
                 </small>
                 <small v-else-if="serverErrors.document" class="text-red-500">
@@ -33,8 +35,8 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block font-bold mb-2">Razón social <span class="text-red-500">*</span></label>
-                    <InputText v-model.trim="empresa.business_name" placeholder="Razón social completa" 
-                        class="w-full" maxlength="255"
+                    <InputText v-model.trim="empresa.business_name" placeholder="Razón social completa" class="w-full"
+                        maxlength="255"
                         :class="{ 'p-invalid': submitted && (!empresa.business_name || serverErrors.business_name) }"
                         :disabled="!rucConsultado" />
                     <small v-if="submitted && !empresa.business_name && rucConsultado" class="text-red-500">
@@ -47,9 +49,8 @@
 
                 <div>
                     <label class="block font-bold mb-2">Nombre comercial <span class="text-red-500">*</span></label>
-                    <InputText v-model.trim="empresa.name" placeholder="Nombre corto de la empresa" 
-                        class="w-full" maxlength="255"
-                        :class="{ 'p-invalid': submitted && (!empresa.name || serverErrors.name) }"
+                    <InputText v-model.trim="empresa.name" placeholder="Nombre corto de la empresa" class="w-full"
+                        maxlength="255" :class="{ 'p-invalid': submitted && (!empresa.name || serverErrors.name) }"
                         :disabled="!rucConsultado" />
                     <small v-if="submitted && !empresa.name && rucConsultado" class="text-red-500">
                         El nombre comercial es obligatorio.
@@ -81,39 +82,45 @@
                     </small>
                 </div>
             </div>
-            
+
             <!-- Riesgo, Sector y Año en grid -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                     <label class="block font-bold mb-2">Riesgo <span class="text-red-500">*</span></label>
                     <Select v-model="empresa.risk" :options="riesgos" optionLabel="label" optionValue="value"
-                        placeholder="Seleccionar" class="w-full" 
+                        placeholder="Seleccionar" class="w-full"
                         :class="{ 'p-invalid': submitted && (empresa.risk === null || empresa.risk === '' || serverErrors.risk) }"
                         :disabled="!rucConsultado">
                         <template #value="slotProps">
-                            <div v-if="slotProps.value !== null && slotProps.value !== undefined" class="flex items-center">
-                                <Tag :value="getRiesgoLabel(slotProps.value)" :severity="getRiesgoSeverity(slotProps.value)" />
+                            <div v-if="slotProps.value !== null && slotProps.value !== undefined"
+                                class="flex items-center">
+                                <Tag :value="getRiesgoLabel(slotProps.value)"
+                                    :severity="getRiesgoSeverity(slotProps.value)" />
                             </div>
                             <span v-else>{{ slotProps.placeholder }}</span>
                         </template>
                         <template #option="slotProps">
-                            <Tag :value="slotProps.option.label" :severity="getRiesgoSeverity(slotProps.option.value)" />
+                            <Tag :value="slotProps.option.label"
+                                :severity="getRiesgoSeverity(slotProps.option.value)" />
                         </template>
                     </Select>
-                    <small v-if="submitted && (empresa.risk === null || empresa.risk === '') && rucConsultado" class="text-red-500">
+                    <small v-if="submitted && (empresa.risk === null || empresa.risk === '') && rucConsultado"
+                        class="text-red-500">
                         El riesgo es obligatorio.
                     </small>
                 </div>
                 <div>
                     <label class="block font-bold mb-2">Año constitución <span class="text-red-500">*</span></label>
-                    <InputNumber v-model="empresa.incorporation_year" :useGrouping="false" :maxlength="4"
-                        :min="1800" :max="2030" placeholder="2005" class="w-full" 
+                    <InputNumber v-model="empresa.incorporation_year" :useGrouping="false" :maxlength="4" :min="1800"
+                        :max="2030" placeholder="2005" class="w-full"
                         :class="{ 'p-invalid': submitted && (!empresa.incorporation_year || serverErrors.incorporation_year || (empresa.incorporation_year && (empresa.incorporation_year < 1800 || empresa.incorporation_year > 2030))) }"
                         :disabled="!rucConsultado" />
                     <small v-if="submitted && !empresa.incorporation_year && rucConsultado" class="text-red-500">
                         El año de constitución es obligatorio.
                     </small>
-                    <small v-else-if="submitted && empresa.incorporation_year && (empresa.incorporation_year < 1800 || empresa.incorporation_year > 2030)" class="text-red-500">
+                    <small
+                        v-else-if="submitted && empresa.incorporation_year && (empresa.incorporation_year < 1800 || empresa.incorporation_year > 2030)"
+                        class="text-red-500">
                         El año debe estar entre 1800 y {{ new Date().getFullYear() }}.
                     </small>
                     <small v-else-if="serverErrors.incorporation_year" class="text-red-500">
@@ -123,7 +130,7 @@
                 <div>
                     <label class="block font-bold mb-2">Sector <span class="text-red-500">*</span></label>
                     <Select v-model="empresa.sector_id" :options="sectores" optionLabel="name" optionValue="id"
-                        placeholder="Seleccionar" class="w-full" 
+                        placeholder="Seleccionar" class="w-full"
                         :class="{ 'p-invalid': submitted && (!empresa.sector_id || serverErrors.sector_id) }"
                         :disabled="!rucConsultado" />
                     <small v-if="submitted && !empresa.sector_id && rucConsultado" class="text-red-500">
@@ -137,21 +144,21 @@
                 <div>
                     <label class="block font-bold mb-2">Subsector</label>
                     <Select v-model="empresa.subsector_id" :options="subsectores" optionLabel="name" optionValue="id"
-                        placeholder="Seleccionar" class="w-full" 
-                        :class="{ 'p-invalid': serverErrors.subsector_id }"
-                        :disabled="!rucConsultado || !empresa.sector_id" />
+                        placeholder="Seleccionar" class="w-full" :class="{ 'p-invalid': serverErrors.subsector_id }"
+                        :disabled="!rucConsultado || !empresa.sector_id" :loading="loadingSubsectors" />
                 </div>
 
                 <div>
                     <label class="block font-bold mb-2">Página web <span class="text-red-500">*</span></label>
-                    <InputText v-model.trim="empresa.link_web_page" placeholder="https://www.miempresa.com" 
+                    <InputText v-model.trim="empresa.link_web_page" placeholder="https://www.miempresa.com"
                         class="w-full" maxlength="255"
                         :class="{ 'p-invalid': submitted && (!empresa.link_web_page || serverErrors.link_web_page || !isValidUrl(empresa.link_web_page)) }"
                         :disabled="!rucConsultado" />
                     <small v-if="submitted && !empresa.link_web_page && rucConsultado" class="text-red-500">
                         La página web es obligatoria.
                     </small>
-                    <small v-else-if="submitted && empresa.link_web_page && !isValidUrl(empresa.link_web_page)" class="text-red-500">
+                    <small v-else-if="submitted && empresa.link_web_page && !isValidUrl(empresa.link_web_page)"
+                        class="text-red-500">
                         Ingrese una URL válida.
                     </small>
                 </div>
@@ -161,7 +168,7 @@
             <div>
                 <label class="block font-bold mb-2">Moneda <span class="text-red-500">*</span></label>
                 <Select v-model="empresa.moneda" :options="monedas" optionLabel="label" optionValue="value"
-                    placeholder="Seleccione la moneda" class="w-full" 
+                    placeholder="Seleccione la moneda" class="w-full"
                     :class="{ 'p-invalid': submitted && (!empresa.moneda || serverErrors.moneda) }"
                     :disabled="!rucConsultado" />
                 <small v-if="submitted && !empresa.moneda && rucConsultado" class="text-red-500">
@@ -180,21 +187,15 @@
                         Facturado del año anterior PEN <span class="text-red-500">*</span>
                     </label>
                     <div class="p-inputgroup">
-                    <InputNumber 
-                        v-model="empresa.sales_PEN" 
-                        mode="currency" 
-                        currency="PEN" 
-                        locale="es-PE"
-                        :minFractionDigits="2" 
-                        :min="0"
-                        placeholder="Ej: 500000.00" 
-                        class="w-full" 
-                        :class="{ 'p-invalid': submitted && (!empresa.sales_PEN && empresa.sales_PEN !== 0 || serverErrors.sales_PEN) }"
-                        :disabled="!rucConsultado" 
-                    />
+                        <InputNumber v-model="empresa.sales_PEN" mode="currency" currency="PEN" locale="es-PE"
+                            :minFractionDigits="2" :min="0" placeholder="Ej: 500000.00" class="w-full"
+                            :class="{ 'p-invalid': submitted && (!empresa.sales_PEN && empresa.sales_PEN !== 0 || serverErrors.sales_PEN) }"
+                            :disabled="!rucConsultado" />
                     </div>
 
-                    <small v-if="submitted && !empresa.sales_PEN && empresa.sales_PEN !== 0 && (empresa.moneda === 'PEN' || empresa.moneda === 'BOTH')" class="text-red-500">
+                    <small
+                        v-if="submitted && !empresa.sales_PEN && empresa.sales_PEN !== 0 && (empresa.moneda === 'PEN' || empresa.moneda === 'BOTH')"
+                        class="text-red-500">
                         Facturado del Año Anterior en PEN es obligatorio.
                     </small>
                     <small v-else-if="serverErrors.sales_PEN" class="text-red-500">
@@ -205,16 +206,18 @@
                 <!-- Campo USD -->
                 <div v-if="empresa.moneda === 'USD' || empresa.moneda === 'BOTH'">
                     <label class="block font-bold mb-2">
-                        Facturado del año anterior  USD <span class="text-red-500">*</span>
+                        Facturado del año anterior USD <span class="text-red-500">*</span>
                     </label>
                     <div class="p-inputgroup">
-                        <InputNumber v-model="empresa.sales_USD" mode="currency" currency="USD" locale="en-US" :minFractionDigits="2" :min="0"
-                            placeholder="Ej: 150000.00" class="w-full" 
+                        <InputNumber v-model="empresa.sales_USD" mode="currency" currency="USD" locale="en-US"
+                            :minFractionDigits="2" :min="0" placeholder="Ej: 150000.00" class="w-full"
                             :class="{ 'p-invalid': submitted && (!empresa.sales_USD && empresa.sales_USD !== 0 || serverErrors.sales_USD) }"
                             :disabled="!rucConsultado" />
                     </div>
-                    <small v-if="submitted && !empresa.sales_USD && empresa.sales_USD !== 0 && (empresa.moneda === 'USD' || empresa.moneda === 'BOTH')" class="text-red-500">
-                        Facturado del año anterior  en USD es obligatorio.
+                    <small
+                        v-if="submitted && !empresa.sales_USD && empresa.sales_USD !== 0 && (empresa.moneda === 'USD' || empresa.moneda === 'BOTH')"
+                        class="text-red-500">
+                        Facturado del año anterior en USD es obligatorio.
                     </small>
                     <small v-else-if="serverErrors.sales_USD" class="text-red-500">
                         {{ serverErrors.sales_USD[0] }}
@@ -225,45 +228,52 @@
             <!-- Campos financieros según moneda seleccionada -->
             <div v-if="empresa.moneda && empresa.moneda !== ''" class="border p-4 rounded bg-gray-50">
                 <h4 class="font-bold mb-4">Información Financiera</h4>
-                
+
                 <!-- Si es PEN o BOTH -->
                 <div v-if="empresa.moneda === 'PEN' || empresa.moneda === 'BOTH'" class="mb-6">
                     <h5 class="font-semibold mb-3 text-green-700">Datos en PEN (Soles)</h5>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
-                            <label class="block font-medium mb-1">Facturas Financiadas <span class="text-red-500">*</span></label>
-                            <InputNumber v-model="empresa.facturas_financiadas_pen"  :min="0" placeholder="0" class="w-full" 
+                            <label class="block font-medium mb-1">Facturas Financiadas <span
+                                    class="text-red-500">*</span></label>
+                            <InputNumber v-model="empresa.facturas_financiadas_pen" :min="0" placeholder="0"
+                                class="w-full"
                                 :class="{ 'p-invalid': submitted && (empresa.facturas_financiadas_pen === null || empresa.facturas_financiadas_pen === undefined) }"
                                 :disabled="!rucConsultado" />
                         </div>
-                        
+
                         <div>
-                            <label class="block font-medium mb-1">Monto Financiado <span class="text-red-500">*</span></label>
+                            <label class="block font-medium mb-1">Monto Financiado <span
+                                    class="text-red-500">*</span></label>
                             <div class="p-inputgroup">
-                                <InputNumber v-model="empresa.monto_total_financiado_pen" mode="currency" currency="PEN"  locale="es-PE" :minFractionDigits="2" :min="0" 
-                                    placeholder="0.00" class="w-full" 
+                                <InputNumber v-model="empresa.monto_total_financiado_pen" mode="currency" currency="PEN"
+                                    locale="es-PE" :minFractionDigits="2" :min="0" placeholder="0.00" class="w-full"
                                     :class="{ 'p-invalid': submitted && (empresa.monto_total_financiado_pen === null || empresa.monto_total_financiado_pen === undefined) }"
                                     :disabled="!rucConsultado" />
                             </div>
                         </div>
-                        
+
                         <div>
-                            <label class="block font-medium mb-1">Facturas Pagadas <span class="text-red-500">*</span></label>
-                            <InputNumber v-model="empresa.pagadas_pen" :min="0" placeholder="0" class="w-full" 
+                            <label class="block font-medium mb-1">Facturas Pagadas <span
+                                    class="text-red-500">*</span></label>
+                            <InputNumber v-model="empresa.pagadas_pen" :min="0" placeholder="0" class="w-full"
                                 :class="{ 'p-invalid': submitted && (empresa.pagadas_pen === null || empresa.pagadas_pen === undefined) }"
                                 :disabled="!rucConsultado" />
                         </div>
-                        
+
                         <div>
-                            <label class="block font-medium mb-1">Facturas Pendientes <span class="text-red-500">*</span></label>
-                            <InputNumber v-model="empresa.pendientes_pen" :min="0" placeholder="0" class="w-full" 
+                            <label class="block font-medium mb-1">Facturas Pendientes <span
+                                    class="text-red-500">*</span></label>
+                            <InputNumber v-model="empresa.pendientes_pen" :min="0" placeholder="0" class="w-full"
                                 :class="{ 'p-invalid': submitted && (empresa.pendientes_pen === null || empresa.pendientes_pen === undefined) }"
                                 :disabled="!rucConsultado" />
                         </div>
-                        
+
                         <div>
-                            <label class="block font-medium mb-1">Plazo Promedio (días) <span class="text-red-500">*</span></label>
-                            <InputNumber v-model="empresa.plazo_promedio_pago_pen" :min="0" placeholder="30" class="w-full" 
+                            <label class="block font-medium mb-1">Plazo Promedio (días) <span
+                                    class="text-red-500">*</span></label>
+                            <InputNumber v-model="empresa.plazo_promedio_pago_pen" :min="0" placeholder="30"
+                                class="w-full"
                                 :class="{ 'p-invalid': submitted && (empresa.plazo_promedio_pago_pen === null || empresa.plazo_promedio_pago_pen === undefined) }"
                                 :disabled="!rucConsultado" />
                         </div>
@@ -275,39 +285,46 @@
                     <h5 class="font-semibold mb-3 text-blue-700">Datos en USD (Dólares)</h5>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
-                            <label class="block font-medium mb-1">Facturas Financiadas <span class="text-red-500">*</span></label>
-                            <InputNumber v-model="empresa.facturas_financiadas_usd" :min="0" placeholder="0" class="w-full" 
+                            <label class="block font-medium mb-1">Facturas Financiadas <span
+                                    class="text-red-500">*</span></label>
+                            <InputNumber v-model="empresa.facturas_financiadas_usd" :min="0" placeholder="0"
+                                class="w-full"
                                 :class="{ 'p-invalid': submitted && (empresa.facturas_financiadas_usd === null || empresa.facturas_financiadas_usd === undefined) }"
                                 :disabled="!rucConsultado" />
                         </div>
-                        
+
                         <div>
-                            <label class="block font-medium mb-1">Monto Financiado <span class="text-red-500">*</span></label>
+                            <label class="block font-medium mb-1">Monto Financiado <span
+                                    class="text-red-500">*</span></label>
                             <div class="p-inputgroup">
-                                <InputNumber v-model="empresa.monto_total_financiado_usd" mode="currency" currency="USD" locale="en-US" :minFractionDigits="2" :min="0" 
-                                    placeholder="0.00" class="w-full" 
+                                <InputNumber v-model="empresa.monto_total_financiado_usd" mode="currency" currency="USD"
+                                    locale="en-US" :minFractionDigits="2" :min="0" placeholder="0.00" class="w-full"
                                     :class="{ 'p-invalid': submitted && (empresa.monto_total_financiado_usd === null || empresa.monto_total_financiado_usd === undefined) }"
                                     :disabled="!rucConsultado" />
                             </div>
                         </div>
-                        
+
                         <div>
-                            <label class="block font-medium mb-1">Facturas Pagadas <span class="text-red-500">*</span></label>
-                            <InputNumber v-model="empresa.pagadas_usd" :min="0" placeholder="0" class="w-full" 
+                            <label class="block font-medium mb-1">Facturas Pagadas <span
+                                    class="text-red-500">*</span></label>
+                            <InputNumber v-model="empresa.pagadas_usd" :min="0" placeholder="0" class="w-full"
                                 :class="{ 'p-invalid': submitted && (empresa.pagadas_usd === null || empresa.pagadas_usd === undefined) }"
                                 :disabled="!rucConsultado" />
                         </div>
-                        
+
                         <div>
-                            <label class="block font-medium mb-1">Facturas Pendientes <span class="text-red-500">*</span></label>
-                            <InputNumber v-model="empresa.pendientes_usd" :min="0" placeholder="0" class="w-full" 
+                            <label class="block font-medium mb-1">Facturas Pendientes <span
+                                    class="text-red-500">*</span></label>
+                            <InputNumber v-model="empresa.pendientes_usd" :min="0" placeholder="0" class="w-full"
                                 :class="{ 'p-invalid': submitted && (empresa.pendientes_usd === null || empresa.pendientes_usd === undefined) }"
                                 :disabled="!rucConsultado" />
                         </div>
-                        
+
                         <div>
-                            <label class="block font-medium mb-1">Plazo Promedio (días) <span class="text-red-500">*</span></label>
-                            <InputNumber v-model="empresa.plazo_promedio_pago_usd" :min="0" placeholder="30" class="w-full" 
+                            <label class="block font-medium mb-1">Plazo Promedio (días) <span
+                                    class="text-red-500">*</span></label>
+                            <InputNumber v-model="empresa.plazo_promedio_pago_usd" :min="0" placeholder="30"
+                                class="w-full"
                                 :class="{ 'p-invalid': submitted && (empresa.plazo_promedio_pago_usd === null || empresa.plazo_promedio_pago_usd === undefined) }"
                                 :disabled="!rucConsultado" />
                         </div>
@@ -325,8 +342,8 @@
                 </small>
                 <div class="flex gap-2">
                     <Button label="Cancelar" icon="pi pi-times" text @click="hideDialog" severity="secondary" />
-                    <Button label="Guardar" icon="pi pi-check" :loading="loading" 
-                        :disabled="!rucConsultado || !isFormValid()" @click="guardarEmpresa" severity="contrast"/>
+                    <Button label="Guardar" icon="pi pi-check" :loading="loading"
+                        :disabled="!rucConsultado || !isFormValid()" @click="guardarEmpresa" severity="contrast" />
                 </div>
             </div>
         </template>
@@ -356,6 +373,7 @@ const rucConsultado = ref(false);
 const submitted = ref(false);
 const loading = ref(false);
 const serverErrors = ref({});
+const loadingSubsectors = ref(false);
 
 const riesgos = [
     { label: 'A', value: 0 },
@@ -437,102 +455,122 @@ function transformMonedaForSubmit(moneda) {
     return moneda;
 }
 
-// Función para transformar moneda desde el servidor
-function transformMonedaFromServer(moneda) {
-    // El backend usa BOTH, no AMBAS
-    return moneda;
-}
-
 // Validación del formulario
 function isFormValid() {
     if (!rucConsultado.value) return false;
-    
+
     // Verificar campos básicos requeridos
     const requiredFields = [
         'document', 'business_name', 'name', 'link_web_page', 'moneda', 'sector_id', 'description', 'incorporation_year'
     ];
-    
+
     for (const field of requiredFields) {
         if (!empresa.value[field]) return false;
     }
-    
+
     // Verificar riesgo (puede ser 0)
     if (empresa.value.risk === null || empresa.value.risk === '') return false;
-    
+
     // Verificar campos de ventas según moneda
     if (empresa.value.moneda === 'PEN' || empresa.value.moneda === 'BOTH') {
         if (empresa.value.sales_PEN === null || empresa.value.sales_PEN === undefined) return false;
     }
-    
+
     if (empresa.value.moneda === 'USD' || empresa.value.moneda === 'BOTH') {
         if (empresa.value.sales_USD === null || empresa.value.sales_USD === undefined) return false;
     }
-    
+
     // Validar campos financieros específicos según moneda
     if (empresa.value.moneda === 'PEN' || empresa.value.moneda === 'BOTH') {
         const requiredPenFields = [
-            'facturas_financiadas_pen', 'monto_total_financiado_pen', 
+            'facturas_financiadas_pen', 'monto_total_financiado_pen',
             'pagadas_pen', 'pendientes_pen', 'plazo_promedio_pago_pen'
         ];
         for (const field of requiredPenFields) {
             if (empresa.value[field] === null || empresa.value[field] === undefined) return false;
         }
     }
-    
+
     if (empresa.value.moneda === 'USD' || empresa.value.moneda === 'BOTH') {
         const requiredUsdFields = [
-            'facturas_financiadas_usd', 'monto_total_financiado_usd', 
+            'facturas_financiadas_usd', 'monto_total_financiado_usd',
             'pagadas_usd', 'pendientes_usd', 'plazo_promedio_pago_usd'
         ];
         for (const field of requiredUsdFields) {
             if (empresa.value[field] === null || empresa.value[field] === undefined) return false;
         }
     }
-    
+
     // Validar RUC
     if (!empresa.value.document || empresa.value.document.toString().length !== 11) return false;
-    
+
     // Validar longitudes
     if (empresa.value.business_name.length > 255) return false;
     if (empresa.value.name.length > 255) return false;
     if (empresa.value.description && empresa.value.description.length > 250) return false;
     if (empresa.value.link_web_page.length > 255) return false;
-    
+
     // Validar URL
     if (!isValidUrl(empresa.value.link_web_page)) return false;
-    
+
     // Validar año
     if (empresa.value.incorporation_year && (empresa.value.incorporation_year < 1800 || empresa.value.incorporation_year > 2030)) return false;
-    
+
     return true;
 }
 
-/* Cargar sectores al montar */
-onMounted(async () => {
+// Función optimizada para cargar sectores (evita duplicaciones)
+const cargarSectores = async () => {
+    // Evitar carga duplicada
+    if (sectores.value.length > 0) return;
+    
     try {
         const response = await axios.get('/sectors/search');
         sectores.value = response.data.data;
     } catch (error) {
         console.error('Error al cargar sectores:', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'No se pudieron cargar los sectores',
+            life: 3000
+        });
     }
-});
+};
 
-/* Cada vez que se selecciona un sector, cargar subsectores */
-watch(() => empresa.value.sector_id, async (nuevoSector) => {
-    if (!nuevoSector) {
+// Función optimizada para cargar subsectores
+const cargarSubsectores = async (sectorId) => {
+    if (!sectorId) {
         subsectores.value = [];
         empresa.value.subsector_id = null;
         return;
     }
 
+    loadingSubsectors.value = true;
     try {
-        const response = await axios.get(`/subsectors/search/${nuevoSector}`);
+        const response = await axios.get(`/subsectors/search/${sectorId}`);
         subsectores.value = response.data.data;
+        // Reset subsector cuando cambia el sector
+        empresa.value.subsector_id = null;
     } catch (error) {
         console.error('Error al cargar subsectores:', error);
         subsectores.value = [];
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'No se pudieron cargar los subsectores',
+            life: 3000
+        });
+    } finally {
+        loadingSubsectors.value = false;
     }
-});
+};
+
+/* Cargar sectores al montar el componente - SOLO UNA VEZ */
+onMounted(cargarSectores);
+
+/* Watch OPTIMIZADO para subsectores - sin immediate para evitar ejecución innecesaria */
+watch(() => empresa.value.sector_id, cargarSubsectores, { immediate: false });
 
 // Watch para resetear campos de ventas cuando cambia la moneda
 watch(() => empresa.value.moneda, (nuevaMoneda) => {
@@ -546,7 +584,7 @@ watch(() => empresa.value.moneda, (nuevaMoneda) => {
         empresa.value.pendientes_pen = null;
         empresa.value.plazo_promedio_pago_pen = null;
     }
-    
+
     if (nuevaMoneda !== 'USD' && nuevaMoneda !== 'BOTH') {
         empresa.value.sales_USD = null;
         empresa.value.sales_volume_usd = null;
@@ -557,7 +595,7 @@ watch(() => empresa.value.moneda, (nuevaMoneda) => {
         empresa.value.pendientes_usd = null;
         empresa.value.plazo_promedio_pago_usd = null;
     }
-    
+
     // Sincronizar los campos de ventas
     if (nuevaMoneda === 'PEN' || nuevaMoneda === 'BOTH') {
         empresa.value.sales_volume_pen = empresa.value.sales_PEN;
@@ -606,7 +644,7 @@ async function consultarRuc() {
         });
     } catch (error) {
         rucConsultado.value = false;
-        
+
         empresa.value.business_name = '';
         empresa.value.name = '';
         empresa.value.description = '';
@@ -656,6 +694,8 @@ function resetEmpresa() {
 
 function openNew() {
     resetEmpresa();
+    // Cargar sectores si es necesario (lazy loading)
+    cargarSectores();
     AgregarDialog.value = true;
 }
 
@@ -694,8 +734,14 @@ function loadEmpresaData(data) {
         pendientes_usd: data.pendientes_usd,
         plazo_promedio_pago_usd: data.plazo_promedio_pago_usd
     };
-    
+
     rucConsultado.value = true;
+    
+    // Cargar sectores y subsectores si es necesario
+    cargarSectores();
+    if (data.sector_id) {
+        cargarSubsectores(data.sector_id);
+    }
 }
 
 async function guardarEmpresa() {
@@ -731,15 +777,6 @@ async function guardarEmpresa() {
     }
 }
 
-function showToast() {
-    toast.add({
-        severity: 'info',
-        summary: 'Información',
-        detail: 'Funcionalidad en desarrollo',
-        life: 3000
-    });
-}
-
 // Exponer funciones útiles para uso externo
 defineExpose({
     openNew,
@@ -747,10 +784,3 @@ defineExpose({
     hideDialog
 });
 </script>
-
-<style scoped>
-/* Estilos adicionales si son necesarios */
-.p-tag {
-    font-weight: 600;
-}
-</style>
