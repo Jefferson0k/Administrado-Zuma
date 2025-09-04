@@ -31,18 +31,18 @@ class PaymentsController extends Controller
         $headers = array_map('strval', $sheet[0]);
         $jsonData = [];
 
+        // Procesar desde la fila 2 (índice 1)
         foreach (array_slice($sheet, 1) as $row) {
             $rowData = array_combine($headers, $row);
-
-            $document     = trim(strval($rowData['document'] ?? ''));
-            $rucClient    = trim(strval($rowData['RUC_client'] ?? ''));
-            $loanNumber   = trim(strval($rowData['loan_number'] ?? ''));
-            $invoiceNum   = trim(strval($rowData['invoice_number'] ?? ''));
-            $currencyExcel = strtoupper(trim(strval($rowData['currency'] ?? '')));
-            $amountExcel   = floatval($rowData['amount'] ?? 0);
-
-            // Fecha en formato Excel (dd/mm/yyyy)
+            
+            // ======= Extraer datos del Excel con nuevos campos =======
+            $document = trim(strval($rowData['document'] ?? ''));
+            $rucClient = trim(strval($rowData['RUC_client'] ?? ''));
             $estimatedPayDateExcel = strval($rowData['estimated_pay_date'] ?? '');
+            $currencyExcel = strtoupper(trim(strval($rowData['currency'] ?? '')));
+            $amountExcel = floatval($rowData['amount'] ?? 0);
+
+            // ======= Convertir fecha de Excel (dd/mm/yyyy) a formato BD (yyyy-mm-dd) =======
             $fechaExcelFormatted = null;
             if (!empty($estimatedPayDateExcel)) {
                 $fechaParts = explode('/', $estimatedPayDateExcel);
@@ -51,21 +51,22 @@ class PaymentsController extends Controller
                 }
             }
 
-            // Buscar en BD
+            // ======= Buscar compañía e invoice =======
             $company = Company::where('document', $document)->first();
             $invoice = $company ? $company->invoices()->where('RUC_client', $rucClient)->first() : null;
 
             $detalle = [];
-            $estado  = 'Coincide';
+            $estado = 'Coincide';
 
             if (!$company) {
                 $estado = 'No coincide';
-                $detalle[] = "Empresa no registrada (document: '{$document}')";
+                $detalle[] = "Empresa no registrada (Buscando documento: '{$document}')";
             } elseif (!$invoice) {
                 $estado = 'No coincide';
                 $detalle[] = "Factura no encontrada (RUC Cliente: '{$rucClient}')";
             } else {
-                // Comparación Monto
+                // ======= Comparar datos =======
+                
                 $amountInvoice = floatval($invoice->amount);
                 if (abs($amountInvoice - $amountExcel) < 0.01) {
                     $detalle[] = 'Monto: OK';
@@ -74,7 +75,7 @@ class PaymentsController extends Controller
                     $estado = 'No coincide';
                 }
 
-                // Comparación Fecha estimada
+                // Fecha estimada de pago
                 if ($fechaExcelFormatted && $invoice->estimated_pay_date === $fechaExcelFormatted) {
                     $detalle[] = 'Fecha estimada: OK';
                 } else {
@@ -82,7 +83,7 @@ class PaymentsController extends Controller
                     $estado = 'No coincide';
                 }
 
-                // Comparación Moneda
+                // Moneda
                 $currencyInvoice = strtoupper($invoice->currency);
                 if ($currencyInvoice === $currencyExcel) {
                     $detalle[] = 'Moneda: OK';
@@ -90,29 +91,13 @@ class PaymentsController extends Controller
                     $detalle[] = "Moneda: Diferente (BD: {$currencyInvoice} vs Excel: {$currencyExcel})";
                     $estado = 'No coincide';
                 }
-
-                // Comparación Invoice Number
-                if ($invoice->invoice_number === $invoiceNum) {
-                    $detalle[] = 'Nro Factura: OK';
-                } else {
-                    $detalle[] = "Nro Factura: Diferente (BD: {$invoice->invoice_number} vs Excel: {$invoiceNum})";
-                    $estado = 'No coincide';
-                }
-
-                // Comparación Loan Number (si existe en el modelo)
-                if (property_exists($invoice, 'loan_number') && $invoice->loan_number === $loanNumber) {
-                    $detalle[] = 'Nro Préstamo: OK';
-                } else {
-                    $detalle[] = "Nro Préstamo: Diferente (BD: {$invoice->loan_number} vs Excel: {$loanNumber})";
-                    $estado = 'No coincide';
-                }
-
+                
+                // Debug info
                 $detalle[] = "DEBUG: ID Factura: {$invoice->id}";
             }
 
-            $rowData['estado']  = $estado;
+            $rowData['estado'] = $estado;
             $rowData['detalle'] = implode(' | ', $detalle);
-
             $jsonData[] = $rowData;
         }
 

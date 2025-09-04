@@ -1,39 +1,32 @@
 <template>
   <Toolbar class="mb-6">
     <template #start>
-      <Button label="Nueva Factura" icon="pi pi-plus" severity="secondary" class="mr-2" @click="openNew" />
+      <Button label="Nueva Factura" icon="pi pi-plus" severity="contrast" class="mr-2" @click="openNew" />
+    </template>
+    <template #end>
+      <Button label="Export" icon="pi pi-upload" severity="secondary" />
     </template>
   </Toolbar>
 
   <Dialog v-model:visible="facturaDialog" :style="{ width: '600px' }" header="Registro de facturas" :modal="true">
     <div class="flex flex-col gap-4">
-      <!-- Empresa -->
+      <!-- Empresa (solo ocupa toda la fila) -->
       <div>
         <label for="company_id" class="block font-bold mb-2">
           Empresa <span class="text-red-500">*</span>
         </label>
-        <Select 
-          v-model="factura.company_id" 
-          :options="empresas" 
-          class="w-full" 
+        <Select v-model="factura.company_id" :options="empresas" class="w-full"
           :class="{ 'p-invalid': submitted && (!factura.company_id || errors.company_id) }"
-          :disabled="camposGeneralesBloqueados"
-          editable 
-          optionLabel="label" 
-          optionValue="value" 
-          showClear 
-          placeholder="Buscar empresas..."
-          @update:modelValue="onEmpresaSelected" 
-          @filter="onInputChange"
-          :virtualScrollerOptions="{ itemSize: 60 }" 
-          scrollHeight="300px">
-          
+          :disabled="camposGeneralesBloqueados" editable optionLabel="label" optionValue="value" showClear
+          placeholder="Buscar empresas..." @update:modelValue="onEmpresaSelected" @filter="onInputChange"
+          :virtualScrollerOptions="{ itemSize: 60 }" scrollHeight="300px">
+
           <template #value="{ value }">
             <div class="flex items-center">
               <span class="truncate">{{ getEmpresaLabel(value) }}</span>
             </div>
           </template>
-          
+
           <template #option="{ option }">
             <div class="flex justify-between items-center py-2 px-1">
               <div class="flex-1 min-w-0 mr-2">
@@ -44,7 +37,7 @@
                 class="flex-shrink-0" />
             </div>
           </template>
-          
+
           <template #empty>
             <div class="text-center py-2">Empresa no encontrada</div>
           </template>
@@ -54,21 +47,15 @@
         </small>
       </div>
 
-      <!-- Grid para campos en 2 columnas -->
+      <!-- Grid para Moneda y Tasa (2 columnas) -->
       <div class="grid grid-cols-2 gap-4">
         <!-- Moneda -->
         <div>
           <label for="currency" class="block font-bold mb-2">
             Moneda <span class="text-red-500">*</span>
           </label>
-          <Select 
-            id="currency" 
-            v-model="factura.currency" 
-            :options="monedas" 
-            optionLabel="name" 
-            optionValue="code"
-            placeholder="Seleccionar moneda" 
-            class="w-full" 
+          <Select id="currency" v-model="factura.currency" :options="monedas" optionLabel="name" optionValue="code"
+            placeholder="Seleccionar moneda" class="w-full"
             :class="{ 'p-invalid': submitted && (!factura.currency || errors.currency) }" />
           <small v-if="submitted && (!factura.currency || errors.currency)" class="text-red-500">
             {{ errors.currency || 'La moneda es obligatoria.' }}
@@ -80,16 +67,8 @@
           <label for="rate" class="block font-bold mb-2">
             Tasa % <span class="text-red-500">*</span>
           </label>
-          <InputNumber 
-            id="rate" 
-            v-model="factura.rate" 
-            mode="decimal" 
-            :minFractionDigits="2" 
-            :maxFractionDigits="4"
-            :min="0.01" 
-            :max="6" 
-            suffix="%" 
-            class="w-full"
+          <InputNumber id="rate" v-model="factura.rate" mode="decimal" :minFractionDigits="2" :maxFractionDigits="4"
+            :min="0.01" :max="6" suffix="%" class="w-full"
             :class="{ 'p-invalid': submitted && (!factura.rate || factura.rate <= 0 || factura.rate > 6 || errors.rate) }" />
           <small v-if="submitted && (!factura.rate || factura.rate <= 0)" class="text-red-500">
             {{ errors.rate || 'La tasa es obligatoria y debe ser mayor a 0.' }}
@@ -100,123 +79,121 @@
         </div>
       </div>
 
-      <!-- Monto Factura -->
-      <div>
-        <label for="amount" class="block font-bold mb-2">
-          Monto Factura <span class="text-red-500">*</span>
-        </label>
-        <InputNumber 
-          id="amount" 
-          v-model="factura.amount" 
-          mode="currency" 
-          :currency="factura.currency || 'PEN'"
-          :locale="currencyLocale" 
-          :minFractionDigits="2" 
-          :maxFractionDigits="2" 
-          :min="0.01" 
-          class="w-full"
-          :class="{ 'p-invalid': submitted && (!factura.amount || factura.amount <= 0 || errors.amount) }" />
-        <small v-if="submitted && (!factura.amount || factura.amount <= 0 || errors.amount)" class="text-red-500">
-          {{ errors.amount || 'El monto de factura debe ser mayor a 0.' }}
-        </small>
-      </div>
-
-      <!-- Monto Financiado por Garantía -->
-      <div>
-        <label for="financed_amount_by_garantia" class="block font-bold mb-2">
-          Monto Financiado por Garantía <span class="text-red-500">*</span>
-        </label>
-        <InputNumber 
-          id="financed_amount_by_garantia" 
-          v-model="factura.financed_amount_by_garantia" 
-          mode="currency"
-          :currency="factura.currency || 'PEN'" 
-          :locale="currencyLocale" 
-          :minFractionDigits="2" 
-          :maxFractionDigits="2"
-          :min="0.01" 
-          :max="factura.amount || undefined" 
-          class="w-full"
-          :class="{ 'p-invalid': submitted && (!factura.financed_amount_by_garantia || factura.financed_amount_by_garantia <= 0 || (factura.amount && factura.financed_amount_by_garantia > factura.amount) || errors.financed_amount_by_garantia) }" />
-        <small v-if="submitted && (!factura.financed_amount_by_garantia || factura.financed_amount_by_garantia <= 0)" class="text-red-500">
-          {{ errors.financed_amount_by_garantia || 'El monto financiado por garantía es obligatorio.' }}
-        </small>
-        <small v-else-if="submitted && factura.amount && factura.financed_amount_by_garantia > factura.amount" class="text-red-500">
-          {{ errors.financed_amount_by_garantia || 'El monto financiado no puede ser mayor al monto de la factura.' }}
-        </small>
-      </div>
-
-      <!-- Fecha Estimada de Pago -->
-      <div>
-        <label for="estimated_pay_date" class="block font-bold mb-2">
-          Fecha Estimada de Pago <span class="text-red-500">*</span>
-        </label>
-        <DatePicker 
-          id="estimated_pay_date" 
-          v-model="factura.estimated_pay_date" 
-          dateFormat="dd/mm/yy" 
-          class="w-full"
-          :minDate="minDate" 
-          :class="{ 'p-invalid': submitted && (!factura.estimated_pay_date || errors.estimated_pay_date) }" />
-        <small v-if="submitted && (!factura.estimated_pay_date || errors.estimated_pay_date)" class="text-red-500">
-          {{ errors.estimated_pay_date || 'La fecha estimada de pago es obligatoria.' }}
-        </small>
-      </div>
-
-      <!-- Grid para campos en 2 columnas -->
+      <!-- Grid para Monto Factura y Monto Financiado (2 columnas) -->
       <div class="grid grid-cols-2 gap-4">
-        <!-- Número del Préstamo (opcional) -->
+        <!-- Monto Factura -->
+        <div>
+          <label for="amount" class="block font-bold mb-2">
+            Monto Factura <span class="text-red-500">*</span>
+          </label>
+          <InputNumber id="amount" v-model="factura.amount" mode="currency" :currency="factura.currency || 'PEN'"
+            :locale="currencyLocale" :minFractionDigits="2" :maxFractionDigits="2" :min="0.01" class="w-full"
+            :class="{ 'p-invalid': submitted && (!factura.amount || factura.amount <= 0 || errors.amount) }" />
+          <small v-if="submitted && (!factura.amount || factura.amount <= 0 || errors.amount)" class="text-red-500">
+            {{ errors.amount || 'El monto de factura es obligatorio y debe ser mayor a 0.' }}
+          </small>
+        </div>
+
+        <!-- Monto Financiado por Garantía -->
+        <div>
+          <label for="financed_amount_by_garantia" class="block font-bold mb-2">
+            Monto Financiado por Garantía <span class="text-red-500">*</span>
+          </label>
+          <InputNumber id="financed_amount_by_garantia" v-model="factura.financed_amount_by_garantia" mode="currency"
+            :currency="factura.currency || 'PEN'" :locale="currencyLocale" :minFractionDigits="2" :maxFractionDigits="2"
+            :min="0.01" :max="factura.amount || undefined" class="w-full"
+            :class="{ 'p-invalid': submitted && (!factura.financed_amount_by_garantia || factura.financed_amount_by_garantia <= 0 || (factura.amount && factura.financed_amount_by_garantia > factura.amount) || errors.financed_amount_by_garantia) }" />
+          <small v-if="submitted && (!factura.financed_amount_by_garantia || factura.financed_amount_by_garantia <= 0)"
+            class="text-red-500">
+            {{ errors.financed_amount_by_garantia || 'El monto financiado por garantía es obligatorio y debe ser mayor a 0.' }}
+          </small>
+          <small v-else-if="submitted && factura.amount && factura.financed_amount_by_garantia > factura.amount"
+            class="text-red-500">
+            {{ errors.financed_amount_by_garantia || 'El monto financiado no puede ser mayor al monto de la factura.' }}
+          </small>
+        </div>
+      </div>
+
+      <!-- Grid para Fecha y Número del Préstamo (2 columnas) -->
+      <div class="grid grid-cols-2 gap-4">
+        <!-- Fecha Estimada de Pago -->
+        <div>
+          <label for="estimated_pay_date" class="block font-bold mb-2">
+            Fecha Estimada de Pago <span class="text-red-500">*</span>
+          </label>
+          <DatePicker id="estimated_pay_date" v-model="factura.estimated_pay_date" dateFormat="dd/mm/yy" class="w-full"
+            :minDate="minDate"
+            :class="{ 'p-invalid': submitted && (!factura.estimated_pay_date || errors.estimated_pay_date) }" />
+          <small v-if="submitted && (!factura.estimated_pay_date || errors.estimated_pay_date)" class="text-red-500">
+            {{ errors.estimated_pay_date || 'La fecha estimada de pago es obligatoria.' }}
+          </small>
+        </div>
+
+        <!-- Número del Préstamo -->
         <div>
           <label for="loan_number" class="block font-bold mb-2">
-            Número del Préstamo
+            Número del Préstamo <span class="text-red-500">*</span>
           </label>
-          <InputText 
-            id="loan_number" 
-            v-model.trim="factura.loan_number" 
-            maxlength="50" 
-            class="w-full"
-            :class="{ 'p-invalid': submitted && errors.loan_number }" />
-          <small v-if="submitted && errors.loan_number" class="text-red-500">
-            {{ errors.loan_number }}
+          <InputText id="loan_number" v-model.trim="factura.loan_number" maxlength="50" class="w-full"
+            :class="{ 'p-invalid': submitted && (!factura.loan_number || errors.loan_number) }" />
+          <small v-if="submitted && (!factura.loan_number || errors.loan_number)" class="text-red-500">
+            {{ errors.loan_number || 'El número del préstamo es obligatorio.' }}
           </small>
         </div>
+      </div>
 
-        <!-- Número de la Factura (opcional) -->
+      <!-- Grid para Número de Factura y RUC del Cliente (2 columnas) -->
+      <div class="grid grid-cols-2 gap-4">
+        <!-- Número de la Factura -->
         <div>
           <label for="invoice_number" class="block font-bold mb-2">
-            Número de la Factura
+            Número de la Factura <span class="text-red-500">*</span>
           </label>
-          <InputText 
-            id="invoice_number" 
-            v-model.trim="factura.invoice_number" 
-            maxlength="50" 
-            class="w-full"
-            :class="{ 'p-invalid': submitted && errors.invoice_number }" />
-          <small v-if="submitted && errors.invoice_number" class="text-red-500">  
-            {{ errors.invoice_number }}
+          <InputText id="invoice_number" v-model.trim="factura.invoice_number" maxlength="50" class="w-full"
+            :class="{ 'p-invalid': submitted && (!factura.invoice_number || errors.invoice_number) }" />
+          <small v-if="submitted && (!factura.invoice_number || errors.invoice_number)" class="text-red-500">
+            {{ errors.invoice_number || 'El número de la factura es obligatorio.' }}
+          </small>
+        </div>
+
+        <!-- RUC del Cliente con botón de consulta -->
+        <div>
+          <label for="RUC_client" class="block font-bold mb-2">
+            RUC del Cliente <span class="text-red-500">*</span>
+          </label>
+          <div class="flex gap-2">
+            <InputText id="RUC_client" v-model.trim="factura.RUC_client" maxlength="11" placeholder="11 dígitos"
+              class="flex-1"
+              :class="{ 'p-invalid': submitted && (!factura.RUC_client || errors.RUC_client || (factura.RUC_client && !/^[0-9]{11}$/.test(factura.RUC_client))) }"
+              @input="onRucChange" />
+            <Button icon="pi pi-search" severity="secondary" :disabled="!isValidRuc || consultingRuc" 
+              :loading="consultingRuc" @click="consultarRuc" />
+          </div>
+          <small v-if="submitted && (!factura.RUC_client || errors.RUC_client)" class="text-red-500">
+            {{ errors.RUC_client || 'El RUC del cliente es obligatorio.' }}
+          </small>
+          <small v-else-if="submitted && factura.RUC_client && !/^[0-9]{11}$/.test(factura.RUC_client)"
+            class="text-red-500">
+            El RUC del cliente debe tener exactamente 11 dígitos.
           </small>
         </div>
       </div>
 
-      <!-- RUC del Cliente (opcional) -->
-      <div>
-        <label for="RUC_client" class="block font-bold mb-2">
-          RUC del Cliente
-        </label>
-        <InputText 
-          id="RUC_client" 
-          v-model.trim="factura.RUC_client" 
-          maxlength="11" 
-          placeholder="11 dígitos (opcional)"
-          class="w-full"
-          :class="{ 'p-invalid': submitted && (errors.RUC_client || (factura.RUC_client && !/^[0-9]{11}$/.test(factura.RUC_client))) }" />
-        <small v-if="submitted && errors.RUC_client" class="text-red-500">
-          {{ errors.RUC_client }}
-        </small>
-        <small v-else-if="submitted && factura.RUC_client && !/^[0-9]{11}$/.test(factura.RUC_client)" class="text-red-500">
-          El RUC del cliente debe tener exactamente 11 dígitos.
-        </small>
-      </div>
+      <!-- Mensajes de consulta RUC -->
+      <Message v-if="rucData.razonSocial" severity="info" class="mt-2">
+        <div class="flex flex-col gap-1">
+          <div><b>Razón Social:</b> {{ rucData.razonSocial }}</div>
+          <div><b>Estado: </b> 
+            <span :class="rucData.estado === 'ACTIVO' ? 'font-semibold' : 'text-red-600 font-semibold'">
+              {{ rucData.estado }}
+            </span>
+          </div>
+        </div>
+      </Message>
+      
+      <Message v-if="rucError" severity="error" class="mt-2">
+        {{ rucError }}
+      </Message>
     </div>
 
     <template #footer>
@@ -247,6 +224,7 @@ import { debounce } from 'lodash'
 import Tag from 'primevue/tag';
 import { useToast } from 'primevue/usetoast'
 import DatePicker from 'primevue/datepicker';
+import Message from 'primevue/message';
 
 const emit = defineEmits(['agregado']);
 
@@ -259,6 +237,9 @@ const clienteGuardado = ref(false)
 const empresaSeleccionada = ref(null)
 const toast = useToast()
 const empresas = ref([])
+const consultingRuc = ref(false)
+const rucData = ref({})
+const rucError = ref('')
 
 const monedas = ref([
   { name: 'Soles (PEN)', code: 'PEN' },
@@ -283,6 +264,11 @@ const factura = ref({
   loan_number: '',
   invoice_number: '',
   RUC_client: ''
+});
+
+// Computed para validar RUC
+const isValidRuc = computed(() => {
+  return factura.value.RUC_client && /^[0-9]{11}$/.test(factura.value.RUC_client);
 });
 
 // Computed para el locale de moneda
@@ -318,6 +304,9 @@ function resetFactura() {
   submitted.value = false;
   loading.value = false;
   errors.value = {};
+  consultingRuc.value = false;
+  rucData.value = {};
+  rucError.value = '';
 }
 
 const onEmpresaSelected = (valor) => {
@@ -326,7 +315,7 @@ const onEmpresaSelected = (valor) => {
     buscarEmpresas(valor);
     return;
   }
-  
+
   // Si es un número/ID (selección de empresa), asignar
   if (valor) {
     factura.value.company_id = valor;
@@ -352,14 +341,16 @@ function hideDialog() {
 }
 
 function isFormValid() {
-  // Validaciones principales requeridas (según el FormRequest)
   const requiredFields = [
     'company_id',
     'currency',
     'amount',
     'financed_amount_by_garantia',
     'rate',
-    'estimated_pay_date'
+    'estimated_pay_date',
+    'loan_number',
+    'invoice_number',
+    'RUC_client'
   ];
 
   // Verificar campos requeridos
@@ -376,8 +367,8 @@ function isFormValid() {
   // Validar moneda
   if (!['PEN', 'USD'].includes(factura.value.currency)) return false;
 
-  // Validar RUC si está presente (es opcional pero debe ser válido si se proporciona)
-  if (factura.value.RUC_client && !/^[0-9]{11}$/.test(factura.value.RUC_client)) {
+  // Validar RUC (ahora es obligatorio)
+  if (!factura.value.RUC_client || !/^[0-9]{11}$/.test(factura.value.RUC_client)) {
     return false;
   }
 
@@ -391,7 +382,7 @@ function isFormValid() {
 
 async function guardarFactura() {
   submitted.value = true;
-  
+
   // Limpiar errores previos
   errors.value = {};
 
@@ -440,7 +431,7 @@ async function guardarFactura() {
       // Errores de validación del backend
       errors.value = error.response.data.errors || {};
       console.log('Errores de validación:', errors.value);
-      
+
       toast.add({
         severity: 'error',
         summary: 'Error de validación',
@@ -546,10 +537,63 @@ const buscarEmpresas = debounce(async (texto) => {
 }, 500)
 
 const onInputChange = (event) => {
-  const texto = event.value || event; // Para manejar diferentes tipos de eventos
+  const texto = event.value || event;
   if (typeof texto === 'string' && !camposGeneralesBloqueados.value) {
     buscarEmpresas(texto);
   }
 }
 
+// Función para limpiar datos de RUC cuando cambia
+const onRucChange = () => {
+  rucData.value = {};
+  rucError.value = '';
+}
+
+// Función para consultar RUC
+const consultarRuc = async () => {
+  if (!isValidRuc.value) return;
+  
+  consultingRuc.value = true;
+  rucError.value = '';
+  rucData.value = {};
+  
+  try {
+    const response = await axios.get(`/api/consultar-ruc/${factura.value.RUC_client}`);
+    
+    if (response.data) {
+      rucData.value = {
+        razonSocial: response.data.razonSocial,
+        estado: response.data.estado,
+        condicion: response.data.condicion
+      };
+      
+      // Mostrar toast de éxito
+      toast.add({
+        severity: 'success',
+        summary: 'Consulta exitosa',
+        detail: `RUC encontrado: ${response.data.razonSocial}`,
+        life: 3000
+      });
+    }
+  } catch (error) {
+    console.error('Error al consultar RUC:', error);
+    
+    if (error.response?.status === 404) {
+      rucError.value = 'RUC no encontrado en la base de datos de SUNAT';
+    } else if (error.response?.status === 400) {
+      rucError.value = 'RUC inválido o formato incorrecto';
+    } else {
+      rucError.value = 'Error al consultar el RUC. Intente nuevamente.';
+    }
+    
+    toast.add({
+      severity: 'error',
+      summary: 'Error en consulta',
+      detail: rucError.value,
+      life: 4000
+    });
+  } finally {
+    consultingRuc.value = false;
+  }
+}
 </script>

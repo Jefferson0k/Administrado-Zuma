@@ -11,9 +11,13 @@ use App\Http\Resources\Factoring\Company\CompanyResource;
 use App\Models\Company;
 use App\Models\CompanyFinance;
 use App\Models\Invoice;
+use App\Pipelines\SearchCompanyFilter;
+use App\Pipelines\SectorFilter;
+use App\Pipelines\SubsectorFilter;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
+use Illuminate\Pipeline\Pipeline;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -21,14 +25,26 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class CompanyController extends Controller{
-    public function index(){
+    public function index(Request $request){
         try {
             Gate::authorize('viewAny', Company::class);
-            $companies = Company::all();
-            return response()->json([
-                'total' => $companies->count(),
-                'data'  => CompanyResource::collection($companies),
-            ]);
+            $perPage     = $request->input('per_page', 15);
+            $search      = $request->input('search', '');
+            $sectorId    = $request->input('sector_id');
+            $subsectorId = $request->input('subsector_id');
+            $query = app(Pipeline::class)
+                ->send(Company::query()->with(['sector', 'subsector']))
+                ->through([
+                    new SearchCompanyFilter($search),
+                    new SectorFilter($sectorId),
+                    new SubsectorFilter($subsectorId),
+                ])
+                ->thenReturn();
+            $companies = $query->paginate($perPage);
+            return CompanyResource::collection($companies)
+                ->additional([
+                    'total' => $companies->total(),
+                ]);
         } catch (AuthorizationException $e) {
             return response()->json([
                 'message' => 'No tienes permiso para ver las compañías.'
