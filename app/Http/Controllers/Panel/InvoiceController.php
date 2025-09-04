@@ -111,10 +111,10 @@ class InvoiceController extends Controller{
             return response()->json(['message' => 'Error al crear la factura.', 'error' => $e->getMessage()], 500);
         }
     }
-    public function standby(Request $request, $id){
+   public function standby(Request $request, $id){
         try {
-            Gate::authorize('update', Invoice::class);
             $invoice = Invoice::findOrFail($id);
+            Gate::authorize('update', $invoice);
             $invoice->update([
                 'status' => 'daStandby',
                 'updated_by' => Auth::id(),
@@ -129,6 +129,7 @@ class InvoiceController extends Controller{
             return response()->json(['message' => 'Error al actualizar la factura.', 'error' => $e->getMessage()], 500);
         }
     }
+
     public function show($id){
         try {
             $invoice = Invoice::findOrFail($id);
