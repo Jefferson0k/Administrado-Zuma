@@ -8,33 +8,36 @@ use App\Rules\ValidateEmailVerified;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 
-class LoginInvestorRequest extends FormRequest{
-    public function authorize(): bool{
+class LoginInvestorRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
         return true;
     }
     public function rules(): array
     {
         return [
-            'document' => [
+            'email' => [
                 'required',
-                'numeric',
-                'digits:8',
-                'exists:investors,document',
-                new ValidateEmailVerified($this->document),
+                'string',
+                'email',
+                'exists:investors,email',
+                new ValidateEmailVerified($this->email),
             ],
+
             'password' => [
                 'required',
                 'string',
-                new LoginValidatePassword($this->document),
+                new LoginValidatePassword($this->email),
             ],
         ];
     }
-    public function messages(): array{
+    public function messages(): array
+    {
         return [
-            'document.required' => 'Documento es obligatorio.',
-            'document.numeric' => 'Documento debe ser numérico.',
-            'document.digits' => 'Documento debe tener 8 dígitos.',
-            'document.exists' => 'Este documento no se encuentra registrado.',
+            'email.required' => 'Correo es obligatorio.',
+            'email.email' => 'Correo no es válido.',
+            'email.exists' => 'Este correo no se encuentra registrado.',
             'password.required' => 'Contraseña es obligatoria.',
             'required' => 'El :attribute es obligatorio.',
             'min' => 'El :attribute debe tener al menos :min caracteres.',
@@ -43,10 +46,11 @@ class LoginInvestorRequest extends FormRequest{
             'string' => 'El :attribute debe ser una cadena de caracteres.',
         ];
     }
-    protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator){
+    protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator)
+    {
         $errors = $validator->errors();
-        if ($errors->has('document')) {
-            $investor = Investor::where('document', $this->document)->first();
+        if ($errors->has('email')) {
+            $investor = Investor::where('email', $this->email)->first();
             if ($investor && !$investor->hasVerifiedEmail()) {
                 $response = response()->json([
                     'success' => false,
@@ -56,7 +60,7 @@ class LoginInvestorRequest extends FormRequest{
                     'user_email' => $investor->email,
                     'errors' => $errors
                 ], 403);
-                
+
                 throw new HttpResponseException($response);
             }
         }

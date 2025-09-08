@@ -11,7 +11,7 @@ class LoginValidatePassword implements ValidationRule
 {
 
     public function __construct(
-        private readonly string $document
+        private readonly string $email
     ) {
     }
     /**
@@ -21,7 +21,7 @@ class LoginValidatePassword implements ValidationRule
      */
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        $investor = Investor::where('document',  $this->document)->first();
+        $investor = Investor::where('email',  $this->email)->first();
         if (!$investor || !Hash::check($value, $investor->password)) {
             $fail('La contraseña es incorrecta.');
         }

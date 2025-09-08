@@ -48,6 +48,13 @@ class InvestorPolicy
         return $user->can('eliminar inversionistas');
     }
 
+    public function approve(User $user, Investor $investor): bool{
+        return $user->can('aprobar inversionistas');
+    }
+    public function reject(User $user, Investor $investor): bool{
+        return $user->can('rechazar inversionistas');
+    }
+
     /**
      * Determine whether the user can restore the model.
      */

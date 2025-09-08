@@ -27,6 +27,7 @@ class BankAccountResource extends JsonResource
             'valid'        => 'Válido',
             'invalid'      => 'Inválido',
             'pre_approved' => 'Preaprobado',
+            'rejected'     => 'Inválido',
             default        => 'Desconocido',
         };
     }

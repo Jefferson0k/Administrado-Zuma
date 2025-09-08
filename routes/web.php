@@ -18,6 +18,7 @@ use App\Http\Controllers\Panel\CurrencyControllers;
 use App\Http\Controllers\Panel\CustomerController;
 use App\Http\Controllers\Panel\DeadlinesControllers;
 use App\Http\Controllers\Panel\DepositController;
+use App\Http\Controllers\Panel\ExchangeController;
 use App\Http\Controllers\Panel\FixedTermRateController;
 use App\Http\Controllers\Panel\InvestmentControllers;
 use App\Http\Controllers\Panel\InvestorController;
@@ -33,15 +34,18 @@ use App\Http\Controllers\Panel\RateTypeController;
 use App\Http\Controllers\Panel\SectorController;
 use App\Http\Controllers\Panel\SubSectorController;
 use App\Http\Controllers\Panel\TermPlanController;
+use App\Http\Controllers\Panel\WithdrawController;
 use App\Http\Controllers\Web\Factoring\BankAccountsWeb;
 use App\Http\Controllers\Web\Factoring\CompanyWeb;
 use App\Http\Controllers\Web\Factoring\DepositsWeb;
+use App\Http\Controllers\Web\Factoring\ExchangeWebControler;
 use App\Http\Controllers\Web\Factoring\InvestmentWeb;
 use App\Http\Controllers\Web\Factoring\InvestorWeb;
 use App\Http\Controllers\Web\Factoring\InvoiceWeb;
 use App\Http\Controllers\Web\Factoring\PaymentsWeb;
 use App\Http\Controllers\Web\Factoring\SectorWeb;
 use App\Http\Controllers\Web\Factoring\SubSectorWeb;
+use App\Http\Controllers\Web\Factoring\WithdrawWeb;
 use App\Http\Controllers\Web\SubastaHipotecas\ClienteWebController;
 use App\Http\Controllers\Web\SubastaHipotecas\CuentasBancariasWebControler;
 use App\Http\Controllers\Web\SubastaHipotecas\DepositosWebControler;
@@ -106,6 +110,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/{invoice_id}/inversionistas', [InvestmentWeb::class, 'views'])->name('inversionistas.views');
         Route::get('/inversiones', [InvestmentWeb::class, 'viewsGeneral'])->name('inversiones.viewsGeneral');
         Route::get('/pagos', [PaymentsWeb::class, 'views'])->name('inversiones.views');
+        Route::get('/tipo-cambio', [ExchangeWebControler::class, 'views'])->name('tipo-cambio.views');
+        Route::get('/retiros', [WithdrawWeb::class, 'views'])->name('retiros.views');
     });
 
     #RUTAS DE WEB EN LA PARTE DE TASAS FIJAS
@@ -132,23 +138,68 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/cliente/pagos', [ClienteWebController::class, 'views']);
     });
 
+    #TIPO DE CAMBIP => BACKEND
+    Route::prefix('exchange')->group(function () {
+        Route::get('/', [ExchangeController::class, 'index'])->name('exchange.index');
+        Route::get('/{id}', [ExchangeController::class, 'show'])->name('exchange.show');
+        Route::post('/', [ExchangeController::class, 'store'])->name('exchange.store');
+        Route::put('/{id}', [ExchangeController::class, 'update'])->name('exchange.update');
+        Route::delete('/{id}', [ExchangeController::class, 'destroy'])->name('exchange.destroy');
+        // Cambiar estado
+        Route::put('/{id}/activacion', [ExchangeController::class, 'activacion'])->name('exchange.activacion');
+        Route::post('/{id}/inactivo', [ExchangeController::class, 'inactivo'])->name('exchange.inactivo');
+    });
+
+    Route::prefix('withdraws')->group(function () {
+        Route::get('/', [WithdrawController::class, 'index'])->name('withdraws.index');
+        Route::get('/{id}', [WithdrawController::class, 'show'])->name('withdraws.show');
+        Route::post('/', [WithdrawController::class, 'store'])->name('withdraws.store');
+        Route::put('/{id}', [WithdrawController::class, 'update'])->name('withdraws.update');
+        Route::delete('/{id}', [WithdrawController::class, 'destroy'])->name('withdraws.destroy');
+
+        Route::put('/{id}/approve', [WithdrawController::class, 'approve'])->name('withdraws.approve');
+        Route::put('/{id}/reject', [WithdrawController::class, 'reject'])->name('withdraws.reject');
+    });
+
     Route::prefix('investment')->group(function() {
         Route::get('/all', [InvestmentControllers::class, 'indexAll']);
         Route::get('/{invoice_id}', [InvestmentControllers::class, 'show']);
     });
 
+    Route::prefix('deposit')->group(function () {
+        Route::get('/', [DepositController::class, 'index'])->name('deposits.index');
+        Route::get('/{id}', [DepositController::class, 'show'])->name('deposits.show');
 
-    Route::prefix('deposit')->group(function(){
-        Route::get('/',        [DepositController::class, 'index'])->name('deposit.index');
+        Route::post('/{movementId}/validate', [DepositController::class, 'validateDeposit'])
+            ->name('deposits.validate');
+
+        Route::post('/{depositId}/{movementId}/reject', [DepositController::class, 'rejectDeposit'])
+            ->name('deposits.reject');
+
+        Route::post('/{depositId}/{movementId}/approve', [DepositController::class, 'approveDeposit'])
+            ->name('deposits.approve');
+
+        Route::post('/{depositId}/{movementId}/reject-confirm', [DepositController::class, 'rejectConfirmDeposit'])
+            ->name('deposits.rejectConfirm');
     });
 
-    Route::prefix('ban')->group(function(){
-        Route::get('/',        [BankAccountsController::class, 'index'])->name('investor.index');
+    Route::prefix('ban')->group(function () {
+        Route::get('/', [BankAccountsController::class, 'index'])->name('bankaccounts.index');
+
+        // Rutas más específicas SIEMPRE van antes
+        Route::get('/{bankAccountId}/filtrar', [BankAccountsController::class, 'showBank'])->name('bankaccounts.filtrar');
+
+        Route::get('/{id}', [BankAccountsController::class, 'show'])->name('bankaccounts.show');
+        Route::post('/{id}/validate', [BankAccountsController::class, 'validateBankAccount'])->name('bankaccounts.validate');
+        Route::post('/{id}/reject', [BankAccountsController::class, 'rejectBankAccount'])->name('bankaccounts.reject');
     });
 
-    #INVERSIONISTA -> BACKEND
-    Route::prefix('investor')->group(function(){
-        Route::get('/',        [InvestorController::class, 'index'])->name('investor.index');
+    # INVERSIONISTA -> BACKEND
+    Route::prefix('investor')->group(function () {
+        Route::get('/', [InvestorController::class, 'index'])->name('investor.index');
+        Route::get('/{id}', [InvestorController::class, 'showInvestor'])->name('investor.showInvestor');
+        Route::put('/{id}/aprobar', [InvestorController::class, 'aprobar'])->name('investor.aprobar');
+        Route::put('/{id}/rechazar', [InvestorController::class, 'rechazar'])->name('investor.rechazar');
     });
 
     # COMPANIA -> BACKEND
@@ -321,8 +372,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{id}/aceptar-pago/cliente', [MovementController::class, 'aceptarPagosCliente']);
 
         Route::post('/{id}/rechazar-tasas-fijas', [MovementController::class, 'rechazarTasasFijas']);
-        Route::post('/{id}/rechazar-hipotecas', [MovementController::class, 'rechazarhipotecas']);
+        Route::post('/{id}/rechazar-hipotecas', [MovementController::class, 'rechazarHipotecas']);
         Route::post('/{id}/rechazar/pago/cliente', [MovementController::class, 'rechazarPagosCliente']);
+
+        Route::post('{id}/validate', [MovementController::class, 'validateMovement']);
     });
 
     Route::prefix('pagos')->group(function () {
@@ -360,6 +413,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dni/{dni?}', [ConsultasDni::class, 'consultar']);
 
     Route::post('/payments/extraer', [PaymentsController::class, 'comparacion'])->name('payments.comparacion');
+    Route::post('/payments/{invoiceId}', [PaymentsController::class, 'store'])->name('payments.store');
 
 });
 

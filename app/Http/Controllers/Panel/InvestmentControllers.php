@@ -14,8 +14,13 @@ use App\Models\Auction;
 use App\Models\Movement;
 use App\Models\Bid;
 use App\Models\Invoice;
+use App\Pipelines\CurrencyFilter;
+use App\Pipelines\SearchInvestmentFilter;
+use App\Pipelines\StatusFilter;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Pipeline\Pipeline;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Throwable;
@@ -27,7 +32,7 @@ class InvestmentControllers extends Controller {
             'amount' => 'required|numeric|min:0.01',
         ]);
 
-        $investor = auth()->user();
+        $investor = Auth::user();
         $auction = Auction::with('property')->findOrFail($request->auction_id);
 
         $currencyMap = [
@@ -142,14 +147,26 @@ class InvestmentControllers extends Controller {
             return response()->json(['message' => 'Error al mostrar las inversiones.'], 500);
         }
     }
-    public function indexAll(){
+    public function indexAll(Request $request){
         try {
             Gate::authorize('viewAny', Investment::class);
-            $investment = Investment::all();
-            return response()->json([
-                'total' => $investment->count(),
-                'data'  => InvestmentListResource::collection($investment),
-            ]);
+            $perPage     = $request->input('per_page', 15);
+            $search      = $request->input('razon_social', '');
+            $currency    = $request->input('currency');
+            $status      = $request->input('status');
+            $query = app(Pipeline::class)
+                ->send(Investment::query()->with(['invoice.company', 'investor']))
+                ->through([
+                    new SearchInvestmentFilter($search),
+                    new CurrencyFilter($currency),
+                    new StatusFilter($status),
+                ])
+                ->thenReturn();
+            $investments = $query->orderByDesc('created_at')->paginate($perPage);
+            return InvestmentListResource::collection($investments)
+                ->additional([
+                    'total' => $investments->total(),
+                ]);
         } catch (AuthorizationException $e) {
             return response()->json([
                 'message' => 'No tienes permiso para ver las inversiones.'
@@ -157,9 +174,7 @@ class InvestmentControllers extends Controller {
         } catch (Throwable $e) {
             return response()->json([
                 'message' => 'Error al listar las inversiones.',
-                'error'   => $e->getMessage(),  // <- mostrar mensaje real
-                'line'    => $e->getLine(),
-                'file'    => $e->getFile(),
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }

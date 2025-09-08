@@ -61,6 +61,8 @@ class PermissionSeeder extends Seeder{
         Permission::create(['name' => 'editar inversionistas']);
         Permission::create(['name' => 'eliminar inversionistas']);
         Permission::create(['name' => 'ver inversionistas']);
+        Permission::create(['name' => 'aprobar inversionistas']);
+        Permission::create(['name' => 'rechazar inversionistas']);
         // Empresas
         Permission::create(['name' => 'ver empresas']);
         Permission::create(['name' => 'crear empresas']);

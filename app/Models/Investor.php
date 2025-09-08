@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Enums\MovementStatus;
 use App\Enums\MovementType;
 use App\Notifications\InvestorAccountActivateNotification;
+use App\Notifications\InvestorAccountApprovedNotification;
+use App\Notifications\InvestorAccountRejectedNotification;
 use App\Notifications\InvestorDepositApprovalNotification;
 use App\Notifications\InvestorDepositPendingNotification;
 use App\Notifications\InvestorDepositRejectedNotification;
@@ -50,6 +52,7 @@ class Investor extends Authenticatable implements MustVerifyEmail{
         'type',
         'asignado',
         'codigo',
+        'updated_by',
     ];
     protected $hidden = [
         'password',
@@ -187,5 +190,13 @@ class Investor extends Authenticatable implements MustVerifyEmail{
     }
     public function sendPasswordResetNotification($token){
         $this->notify(new InvestorPasswordResetNotification($token));
+    }
+    public function sendAccountRejectedEmailNotification(){
+        $this->notify(new InvestorAccountRejectedNotification());
+    }
+
+    public function sendAccountApprovedEmailNotification()
+    {
+        $this->notify(new InvestorAccountApprovedNotification());
     }
 }

@@ -19,6 +19,7 @@ use App\Models\InvestorCode;
 use App\Models\Movement;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\Events\Verified;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -27,8 +28,10 @@ use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\PersonalAccessToken;
 use Throwable;
 
-class InvestorController extends Controller{
-    public function index(){
+class InvestorController extends Controller
+{
+    public function index()
+    {
         try {
             Gate::authorize('viewAny', Investor::class);
             $investor = Investor::all();
@@ -46,7 +49,29 @@ class InvestorController extends Controller{
             ], 500);
         }
     }
-    public function store(Request $request){
+    public function showInvestor($id){
+        try {
+            $investor = Investor::findOrFail($id);
+            Gate::authorize('view', $investor);
+            return response()->json([
+                'data' => new InvestorResources($investor),
+            ]);
+        } catch (AuthorizationException $e) {
+            return response()->json([
+                'message' => 'No tienes permiso para ver este inversionista.'
+            ], 403);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Inversionista no encontrado.'
+            ], 404);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'Error al obtener el inversionista.'
+            ], 500);
+        }
+    }
+    public function store(Request $request)
+    {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'first_last_name' => 'required|string|max:255',
@@ -61,7 +86,8 @@ class InvestorController extends Controller{
             'data' => $investor
         ], 201);
     }
-    public function resendEmailVerification(Request $request, string $id){
+    public function resendEmailVerification(Request $request, string $id)
+    {
         try {
             $investor = Investor::find(htmlspecialchars($id));
             if (!$investor) {
@@ -91,7 +117,8 @@ class InvestorController extends Controller{
             ], 500);
         }
     }
-    public function show($id){
+    public function show($id)
+    {
         $investor = Investor::select([
             'id',
             'name',
@@ -110,7 +137,8 @@ class InvestorController extends Controller{
             'data' => $investor
         ]);
     }
-    public function update(Request $request, $id){
+    public function update(Request $request, $id)
+    {
         $investor = Investor::find($id);
         if (!$investor) {
             return response()->json([
@@ -161,7 +189,8 @@ class InvestorController extends Controller{
             ]),
         ]);
     }
-    public function register(StoreInvestorRequest $request){
+    public function register(StoreInvestorRequest $request)
+    {
         try {
             $validatedData = $request->validated();
             $aliasSlug = Str::slug($validatedData['alias']);
@@ -216,21 +245,20 @@ class InvestorController extends Controller{
             ], 500);
         }
     }
-    public function login(LoginInvestorRequest $request){
+    public function login(LoginInvestorRequest $request)
+    {
         try {
             $validatedData = $request->validated();
-            $investor = Investor::where('document', $request->document)->first();
-            
-            if (!$investor->hasVerifiedEmail()) {
+            $investor = Investor::where('email', $request->email)->first();
+
+            if (!$investor || !Hash::check($request->password, $investor->password)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Tu cuenta no ha sido verificada. Revisa tu correo electrónico y haz clic en el enlace de verificación.',
-                    'error_type' => 'email_not_verified',
-                    'user_id' => $investor->id,
-                    'user_email' => $investor->email
-                ], 403);
+                    'message' => 'Credenciales inválidas'
+                ], 401);
             }
-            
+
+
             return response()->json([
                 'success' => true,
                 'message' => "Bienvenido {$investor->name}",
@@ -239,7 +267,6 @@ class InvestorController extends Controller{
                 'user_type' => $investor->type,
                 'redirect_route' => $this->getRedirectRoute($investor->type)
             ]);
-            
         } catch (Throwable $th) {
             return response()->json([
                 'success' => false,
@@ -248,7 +275,8 @@ class InvestorController extends Controller{
             ], 500);
         }
     }
-    private function getRedirectRoute($userType) {
+    private function getRedirectRoute($userType)
+    {
         switch ($userType) {
             case 'cliente':
                 return '/cliente';
@@ -259,7 +287,8 @@ class InvestorController extends Controller{
                 return '/hipotecas';
         }
     }
-    public function logout(Request $request){
+    public function logout(Request $request)
+    {
         $token = PersonalAccessToken::findToken($request->bearerToken());
         $investor = $token->tokenable;
         $investor->tokens()->delete();
@@ -267,7 +296,8 @@ class InvestorController extends Controller{
             'logout' => true,
         ]);
     }
-    public function profile(Request $request){
+    public function profile(Request $request)
+    {
         try {
             $investor = Auth::user();
             $investor->loadCount('bankAccounts');
@@ -285,7 +315,8 @@ class InvestorController extends Controller{
             ], 500);
         }
     }
-    public function updateAvatar(UpdateInvestorAvatarRequest $request){
+    public function updateAvatar(UpdateInvestorAvatarRequest $request)
+    {
         $validatedData = $request->validated();
         $avatar = $validatedData['avatar'];
         try {
@@ -367,7 +398,8 @@ class InvestorController extends Controller{
         }
     }
 
-    public function resetPassword(Request $request){
+    public function resetPassword(Request $request)
+    {
         $request->validate([
             'email' => 'required|email',
         ], [
@@ -436,7 +468,8 @@ class InvestorController extends Controller{
             ], $errorCode);
         }
     }
-    public function resetPasswordRequest(Request $request){
+    public function resetPasswordRequest(Request $request)
+    {
         $request->validate([
             'email' => 'required|email',
             'token' => 'required',
@@ -496,7 +529,8 @@ class InvestorController extends Controller{
         }
     }
 
-    public function emailVerification(UpdateInvestorEmailVerificationRequest $request, $id, $hash){
+    public function emailVerification(UpdateInvestorEmailVerificationRequest $request, $id, $hash)
+    {
         try {
             $validatedData = $request->validated();
             $investor = Investor::find($id);
@@ -533,7 +567,8 @@ class InvestorController extends Controller{
             ], 500);
         }
     }
-    public function updateConfirmAccount(UpdateInvestorConfirmAccountRequest $request){
+    public function updateConfirmAccount(UpdateInvestorConfirmAccountRequest $request)
+    {
         try {
             $validatedData = $request->validated();
             $document_front_path = Storage::putFile('inversores/documentos', $validatedData['document_front']);
@@ -562,7 +597,8 @@ class InvestorController extends Controller{
             ], 500);
         }
     }
-    public function lastInvoiceInvested(){
+    public function lastInvoiceInvested()
+    {
         /** @var \App\Models\Investor $investor */
         $investor = Auth::user();
         try {
@@ -596,7 +632,8 @@ class InvestorController extends Controller{
             ], 500);
         }
     }
-    public function showcliente($id){
+    public function showcliente($id)
+    {
         $investor = Investor::select([
             'id',
             'name',
@@ -615,7 +652,8 @@ class InvestorController extends Controller{
             'data' => $investor
         ]);
     }
-    public function updatecliente(Request $request, $id){
+    public function updatecliente(Request $request, $id)
+    {
         $investor = Investor::find($id);
         if (!$investor) {
             return response()->json([
@@ -654,5 +692,53 @@ class InvestorController extends Controller{
                 'telephone',
             ]),
         ]);
+    }
+    public function rechazar(Request $request, $id){
+        try {
+            //Gate::authorize('update', Investor::class);
+            $investor = Investor::findOrFail($id);
+            $investor->update([
+                'status' => 'rejected',
+                'district' => null,
+                'province' => null,
+                'department' => null,
+                'address'  => null,
+                'document_front' => null,
+                'document_back' => null,
+                'updated_by' => Auth::id(),
+            ]);
+            $investor->sendAccountRejectedEmailNotification();
+            return response()->json([
+                'message' => 'Inversionista rechazado y notificación enviada correctamente.',
+                'data' => $investor
+            ], 200);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al rechazar inversionista.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+    public function aprobar(Request $request, $id){
+        try {
+            //Gate::authorize('update', Investor::class);
+            $investor = Investor::findOrFail($id);
+            $investor->update([
+                'status' => 'validated',
+                'updated_by' => Auth::id(),
+            ]);
+            $investor->sendAccountApprovedEmailNotification();
+            return response()->json([
+                'message' => 'Inversionista validado y notificación enviada correctamente.',
+                'data' => $investor
+            ], 200);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al validar inversionista.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

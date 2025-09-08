@@ -99,11 +99,6 @@ const model = computed(() => {
                     icon: 'pi pi-fw pi-briefcase',
                     to: '/factoring/cuentas-bancarias'
                 },
-                hasPermission('ver tipo cambio') && {
-                    label: 'Tipo de Cambio',
-                    icon: 'pi pi-fw pi-refresh',
-                    to: '/factoring/tipo-cambio'
-                },
                 hasPermission('ver sectores') && {
                     label: 'Sectores',
                     icon: 'pi pi-fw pi-sitemap',
@@ -175,7 +170,12 @@ const model = computed(() => {
                     label: 'Roles y Permisos',
                     icon: 'pi pi-fw pi-id-card',
                     to: '/roles'
-                }
+                },
+                hasPermission('ver tipo cambio') && {
+                    label: 'Tipo de Cambio',
+                    icon: 'pi pi-fw pi-refresh',
+                    to: '/factoring/tipo-cambio'
+                },
             ].filter(Boolean)
         }
     ];

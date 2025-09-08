@@ -58,17 +58,20 @@ class Withdraw extends Model
         );
     }
 
-    public function getResourcePathAttribute(): ?string
-    {
-        $disk = Storage::disk('s3');
-        if (isset($this->attributes['resource_path']) && $disk->exists($this->attributes['resource_path'])) {
-            return $disk->temporaryUrl(
-                $this->attributes['profile_photo_path'],
-                now()->addMinutes(10) // URL válida por 10 minutos
-            );
-        }
-        return null;
+public function getResourcePathAttribute(): ?string
+{
+    $disk = Storage::disk('s3');
+
+    if (!empty($this->attributes['resource_path']) && $disk->exists($this->attributes['resource_path'])) {
+        return $disk->temporaryUrl(
+            $this->attributes['resource_path'],
+            now()->addMinutes(10)
+        );
     }
+
+    return null; // si no existe archivo -> null
+}
+
 
     // ========================
     // Accesores (setters)

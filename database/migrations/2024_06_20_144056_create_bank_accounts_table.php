@@ -19,9 +19,12 @@ return new class extends Migration
             $table->string('cc');
             $table->string('cci');
             $table->string('alias')->nullable();
-            $table->enum('status', ['valid', 'invalid', 'pre_approved'])->default('invalid');
+            $table->enum('status', ['valid', 'invalid', 'pre_approved','rejected'])->default('invalid');
             $table->foreignUlid('investor_id')->constrained();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 
