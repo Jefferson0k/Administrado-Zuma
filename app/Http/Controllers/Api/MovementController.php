@@ -539,12 +539,21 @@ class MovementController extends Controller{
                 'data' => null,
             ], 201);
             
-        } catch (\Throwable $th) {
+        } catch (Throwable $th) {
             DB::rollBack();
             return response()->json([
                 'success' => false,
                 'message' => $th->getMessage(),
             ], 500);
         }
+    }
+    public function validateMovement($id){
+        $movement = Movement::findOrFail($id);
+        $movement->status = MovementStatus::VALID->value;
+        $movement->save();
+        return response()->json([
+            'message' => 'Movimiento validado correctamente.',
+            'data'    => $movement
+        ], 200);
     }
 }

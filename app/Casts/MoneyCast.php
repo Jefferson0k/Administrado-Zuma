@@ -2,27 +2,29 @@
 
 namespace App\Casts;
 
-use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 use Money\Money;
 use App\Helpers\MoneyConverter;
+use App\Helpers\MoneyFormatter;
 
-class MoneyCast implements CastsAttributes
+class MoneyCast
 {
-    public function get($model, string $key, $value, array $attributes): ?Money
-    {
-        if ($value === null) {
-            return null;
-        }
+    public function __construct(
+        public Money $money,
+    ) {}
 
-        return MoneyConverter::fromDecimal($value, $attributes['currency'] ?? 'PEN');
+    public function toArray(): array
+    {
+        return [
+            'amount'    => $this->money->getAmount(),
+            'currency'  => $this->money->getCurrency()->getCode(),
+            'formatted' => MoneyFormatter::format($this->money),
+            'value'     => MoneyConverter::getValue($this->money),
+        ];
     }
 
-    public function set($model, string $key, $value, array $attributes): ?string
+    public static function fromArray(array $value): static
     {
-        if ($value instanceof Money) {
-            return MoneyConverter::toDecimal($value);
-        }
-
-        return $value;
+        $money = MoneyConverter::fromDecimal($value['value'], $value['currency']);
+        return new self($money);
     }
 }

@@ -25,12 +25,18 @@ class Movement extends Model{
         'description',
         'investor_id',
         'currency',
+        'aprobacion_1',
+        'aprobado_por_1',
+        'aprobacion_2',
+        'aprobado_por_2',
     ];
     protected $casts = [
         'type' => MovementType::class,
         'status' => MovementStatus::class,
         'confirm_status' => MovementStatus::class,
         'amount' => 'decimal:2',
+        'aprobacion_1' => 'datetime',
+        'aprobacion_2' => 'datetime',
     ];
     public function investor(){
         return $this->belongsTo(Investor::class);
@@ -68,6 +74,14 @@ class Movement extends Model{
 
     public function bank_account(){
         return $this->belongsTo(BankAccount::class);
+    }
+    // NUEVO: Relaciones para usuarios que aprobaron
+    public function aprobadoPor1(){
+        return $this->belongsTo(User::class, 'aprobado_por_1');
+    }
+
+    public function aprobadoPor2(){
+        return $this->belongsTo(User::class, 'aprobado_por_2');
     }
 
     // ========================
@@ -110,5 +124,65 @@ class Movement extends Model{
     }
     public function sendDepositRejectedEmail(string $message){
         $this->investor->sendDepositRejectedEmail($this, $message);
+    }
+      public function getTiempoAprobacion1HorasAttribute(): ?float
+    {
+        if (!$this->aprobacion_1) {
+            return null;
+        }
+        return $this->created_at->diffInHours($this->aprobacion_1);
+    }
+
+    public function getTiempoAprobacion2HorasAttribute(): ?float
+    {
+        if (!$this->aprobacion_1 || !$this->aprobacion_2) {
+            return null;
+        }
+        return $this->aprobacion_1->diffInHours($this->aprobacion_2);
+    }
+
+    public function getTiempoTotalHorasAttribute(): ?float
+    {
+        if (!$this->aprobacion_2) {
+            return null;
+        }
+        return $this->created_at->diffInHours($this->aprobacion_2);
+    }
+
+    public function registrarAprobacion1(string $usuarioId): void
+    {
+        $this->update([
+            'aprobacion_1' => now(),
+            'aprobado_por_1' => $usuarioId
+        ]);
+    }
+
+    public function registrarAprobacion2(string $usuarioId): void
+    {
+        $this->update([
+            'aprobacion_2' => now(),
+            'aprobado_por_2' => $usuarioId
+        ]);
+    }
+
+    public function scopePendienteAprobacion1($query)
+    {
+        return $query->whereNull('aprobacion_1')
+                    ->where('status', MovementStatus::PENDING);
+    }
+
+    public function scopePendienteAprobacion2($query)
+    {
+        return $query->whereNotNull('aprobacion_1')
+                    ->whereNull('aprobacion_2')
+                    ->where('status', MovementStatus::VALID)
+                    ->where('confirm_status', MovementStatus::PENDING);
+    }
+
+    public function scopeCompletamenteAprobado($query)
+    {
+        return $query->whereNotNull('aprobacion_1')
+                    ->whereNotNull('aprobacion_2')
+                    ->where('confirm_status', MovementStatus::VALID);
     }
 }

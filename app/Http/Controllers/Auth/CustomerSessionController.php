@@ -10,11 +10,11 @@ use Illuminate\Support\Facades\Hash;
 class CustomerSessionController extends Controller{
     public function login(Request $request){
         $request->validate([
-            'document' => ['required', 'size:8'],
+            'email' => ['required', 'email'],
             'password' => ['required'],
         ]);
 
-        $customer = Customer::where('document', $request->document)->first();
+        $customer = Customer::where('email', $request->email)->first();
 
         if (! $customer || ! Hash::check($request->password, $customer->password)) {
             return response()->json(['message' => 'Credenciales incorrectas'], 401);

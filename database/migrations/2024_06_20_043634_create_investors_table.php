@@ -19,7 +19,7 @@ return new class extends Migration {
             $table->string('document_front')->nullable();
             $table->string('document_back')->nullable();
             $table->string('profile_photo_path', 2048)->nullable();
-            $table->enum('status', ['not validated', 'validated'])->default('not validated');
+            $table->enum('status', ['not validated', 'validated','rejected'])->default('not validated');
             $table->timestamp('email_verified_at')->nullable();
             $table->boolean('is_pep')->default(false);
             $table->boolean('has_relationship_pep')->default(false);
@@ -31,6 +31,7 @@ return new class extends Migration {
             $table->string('codigo')->unique()->nullable()->comment('Código único del inversionista');
             $table->enum('type', ['inversionista', 'cliente', 'mixto'])->default('inversionista');
             $table->integer('asignado')->default(0);
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
         });
     }

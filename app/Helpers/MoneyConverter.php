@@ -36,7 +36,7 @@ class MoneyConverter
 
         $currencyObj = new Currency($currency);
         if (!(new ISOCurrencies())->contains($currencyObj)) {
-            throw new \InvalidArgumentException("Divisa no soportada: $currency");
+            throw new \InvalidArgumentException(message: "Divisa no soportada: $currency");
         }
 
         $subunits = (int) strval(round($amount, $decimals) * (10 ** $decimals));

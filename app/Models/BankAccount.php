@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Notifications\BankAccountRejected;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -45,5 +46,14 @@ class BankAccount extends Model
     public function deposits()
     {
         return $this->hasMany(Deposit::class);
+    }
+    public function sendBankAccountValidationEmail()
+    {
+        $this->investor->sendBankAccountValidationEmailNotification($this);
+    }
+    public function sendBankAccountRejectionEmail(){
+        if ($this->investor && $this->investor->email) {
+            $this->investor->notify(new BankAccountRejected($this));
+        }
     }
 }

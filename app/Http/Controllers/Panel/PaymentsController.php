@@ -2,16 +2,24 @@
 
 namespace App\Http\Controllers\Panel;
 
+use App\Casts\MoneyCast;
+use App\Enums\MovementStatus;
+use App\Enums\MovementType;
+use App\Helpers\MoneyConverter;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
+use App\Models\Investment;
+use App\Models\Invoice;
+use App\Models\Movement;
+use App\Models\Payment;
+use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Excel as ExcelType;
 
-class PaymentsController extends Controller
-{
-    public function comparacion(Request $request)
-    {
+class PaymentsController extends Controller{
+    public function comparacion(Request $request){
         $request->validate([
             'excel_file' => 'required|file|mimes:xlsx,xls,csv',
         ]);
@@ -29,44 +37,107 @@ class PaymentsController extends Controller
         }
 
         $headers = array_map('strval', $sheet[0]);
+        
+        // Validar que existan las columnas requeridas
+        $requiredColumns = ['document', 'RUC_client', 'invoice_number', 'loan_number', 
+                           'estimated_pay_date', 'currency', 'amount', 'status', 'saldo'];
+        
+        $missingColumns = array_diff($requiredColumns, $headers);
+        if (!empty($missingColumns)) {
+            return response()->json([
+                'success' => false,
+                'data' => [],
+                'message' => 'Faltan las siguientes columnas en el archivo: ' . implode(', ', $missingColumns),
+            ]);
+        }
+
         $jsonData = [];
 
-        // Procesar desde la fila 2 (índice 1)
         foreach (array_slice($sheet, 1) as $row) {
             $rowData = array_combine($headers, $row);
-            
-            // ======= Extraer datos del Excel con nuevos campos =======
-            $document = trim(strval($rowData['document'] ?? ''));
-            $rucClient = trim(strval($rowData['RUC_client'] ?? ''));
-            $estimatedPayDateExcel = strval($rowData['estimated_pay_date'] ?? '');
-            $currencyExcel = strtoupper(trim(strval($rowData['currency'] ?? '')));
-            $amountExcel = floatval($rowData['amount'] ?? 0);
 
-            // ======= Convertir fecha de Excel (dd/mm/yyyy) a formato BD (yyyy-mm-dd) =======
+            // Campos desde Excel
+            $documentExcel          = trim(strval($rowData['document'] ?? ''));
+            $rucClientExcel         = trim(strval($rowData['RUC_client'] ?? ''));
+            $invoiceNumberExcel     = trim(strval($rowData['invoice_number'] ?? ''));
+            $loanNumberExcel        = trim(strval($rowData['loan_number'] ?? ''));
+            $estimatedPayDateExcel  = strval($rowData['estimated_pay_date'] ?? '');
+            $currencyExcel          = strtoupper(trim(strval($rowData['currency'] ?? '')));
+            $amountExcel            = floatval($rowData['amount'] ?? 0);
+            $statusExcel            = strtolower(trim(strval($rowData['status'] ?? '')));
+            $saldoExcel             = floatval($rowData['saldo'] ?? 0);
+
+            // Normalizar fecha Excel a formato Y-m-d
             $fechaExcelFormatted = null;
             if (!empty($estimatedPayDateExcel)) {
                 $fechaParts = explode('/', $estimatedPayDateExcel);
                 if (count($fechaParts) === 3) {
-                    $fechaExcelFormatted = $fechaParts[2] . '-' . str_pad($fechaParts[1], 2, '0', STR_PAD_LEFT) . '-' . str_pad($fechaParts[0], 2, '0', STR_PAD_LEFT);
+                    $fechaExcelFormatted = $fechaParts[2] . '-' .
+                        str_pad($fechaParts[1], 2, '0', STR_PAD_LEFT) . '-' .
+                        str_pad($fechaParts[0], 2, '0', STR_PAD_LEFT);
                 }
             }
 
-            // ======= Buscar compañía e invoice =======
-            $company = Company::where('document', $document)->first();
-            $invoice = $company ? $company->invoices()->where('RUC_client', $rucClient)->first() : null;
+            // Buscar empresa
+            $company = Company::where('document', $documentExcel)->first();
+            $invoice = null;
+            $invoiceId = null; // Initialize invoice ID variable
+            
+            if ($company) {
+                $invoice = $company->invoices()
+                    ->where('RUC_client', $rucClientExcel)
+                    ->where('invoice_number', $invoiceNumberExcel)
+                    ->where('loan_number', $loanNumberExcel)
+                    ->first();
+                
+                if ($invoice) {
+                    $invoiceId = $invoice->id; // Set the invoice ID
+                }
+            }
 
             $detalle = [];
             $estado = 'Coincide';
 
             if (!$company) {
                 $estado = 'No coincide';
-                $detalle[] = "Empresa no registrada (Buscando documento: '{$document}')";
+                $detalle[] = "Empresa no registrada (Documento: '{$documentExcel}')";
             } elseif (!$invoice) {
                 $estado = 'No coincide';
-                $detalle[] = "Factura no encontrada (RUC Cliente: '{$rucClient}')";
+                $detalle[] = "Factura no encontrada (RUC Cliente: '{$rucClientExcel}', Nro Factura: '{$invoiceNumberExcel}', Loan: '{$loanNumberExcel}')";
             } else {
-                // ======= Comparar datos =======
-                
+                // Comparar document (Company)
+                if ($company->document === $documentExcel) {
+                    $detalle[] = "Documento empresa: OK";
+                } else {
+                    $detalle[] = "Documento empresa: Diferente (BD: {$company->document} vs Excel: {$documentExcel})";
+                    $estado = 'No coincide';
+                }
+
+                // Comparar RUC_client (Invoice)
+                if ($invoice->RUC_client === $rucClientExcel) {
+                    $detalle[] = "RUC Cliente: OK";
+                } else {
+                    $detalle[] = "RUC Cliente: Diferente (BD: {$invoice->RUC_client} vs Excel: {$rucClientExcel})";
+                    $estado = 'No coincide';
+                }
+
+                // Comparar invoice_number
+                if ($invoice->invoice_number === $invoiceNumberExcel) {
+                    $detalle[] = "Nro Factura: OK";
+                } else {
+                    $detalle[] = "Nro Factura: Diferente (BD: {$invoice->invoice_number} vs Excel: {$invoiceNumberExcel})";
+                    $estado = 'No coincide';
+                }
+
+                // Comparar loan_number
+                if ($invoice->loan_number === $loanNumberExcel) {
+                    $detalle[] = "Loan Number: OK";
+                } else {
+                    $detalle[] = "Loan Number: Diferente (BD: {$invoice->loan_number} vs Excel: {$loanNumberExcel})";
+                    $estado = 'No coincide';
+                }
+
+                // Comparar amount
                 $amountInvoice = floatval($invoice->amount);
                 if (abs($amountInvoice - $amountExcel) < 0.01) {
                     $detalle[] = 'Monto: OK';
@@ -75,7 +146,7 @@ class PaymentsController extends Controller
                     $estado = 'No coincide';
                 }
 
-                // Fecha estimada de pago
+                // Comparar fecha estimada
                 if ($fechaExcelFormatted && $invoice->estimated_pay_date === $fechaExcelFormatted) {
                     $detalle[] = 'Fecha estimada: OK';
                 } else {
@@ -83,7 +154,7 @@ class PaymentsController extends Controller
                     $estado = 'No coincide';
                 }
 
-                // Moneda
+                // Comparar currency
                 $currencyInvoice = strtoupper($invoice->currency);
                 if ($currencyInvoice === $currencyExcel) {
                     $detalle[] = 'Moneda: OK';
@@ -91,13 +162,43 @@ class PaymentsController extends Controller
                     $detalle[] = "Moneda: Diferente (BD: {$currencyInvoice} vs Excel: {$currencyExcel})";
                     $estado = 'No coincide';
                 }
-                
-                // Debug info
+
+                // Comparar status
+                $statusInvoice = strtolower($invoice->status);
+                if ($statusInvoice === $statusExcel) {
+                    $detalle[] = "Estado: OK";
+                } else {
+                    $detalle[] = "Estado: Diferente (BD: {$statusInvoice} vs Excel: {$statusExcel})";
+                    $estado = 'No coincide';
+                }
+
                 $detalle[] = "DEBUG: ID Factura: {$invoice->id}";
             }
 
+            // Determinar tipo de pago basado en saldo vs amount
+            $tipoPago = 'Sin determinar';
+            if ($saldoExcel > 0 && $amountExcel > 0) {
+                if (abs($saldoExcel - $amountExcel) < 0.01) {
+                    $tipoPago = 'Pago normal';
+                    $detalle[] = "Tipo pago: Normal (Saldo: {$saldoExcel} = Amount: {$amountExcel})";
+                } else {
+                    $tipoPago = 'Pago parcial';
+                    $detalle[] = "Tipo pago: Parcial (Saldo: {$saldoExcel} ≠ Amount: {$amountExcel})";
+                }
+            } elseif ($saldoExcel == 0 && $amountExcel > 0) {
+                $tipoPago = 'Pago normal';
+                $detalle[] = "Tipo pago: Normal (Saldo pagado completamente)";
+            } else {
+                $detalle[] = "Tipo pago: Sin determinar (Saldo: {$saldoExcel}, Amount: {$amountExcel})";
+            }
+
+            // Agregar los campos al resultado
+            $rowData['saldo'] = $saldoExcel;
             $rowData['estado'] = $estado;
+            $rowData['tipo_pago'] = $tipoPago;
+            $rowData['id_pago'] = $invoiceId; // Use the correctly defined variable
             $rowData['detalle'] = implode(' | ', $detalle);
+
             $jsonData[] = $rowData;
         }
 
@@ -105,5 +206,128 @@ class PaymentsController extends Controller
             'success' => true,
             'data' => $jsonData,
         ]);
+    }
+    public function store(Request $request, $invoiceId){
+        $request->validate([
+            "amount_to_be_paid" => "required|numeric",
+            "pay_date" => "required|date",
+            "pay_type" => "required|in:total,partial",
+            "reprogramation_date" => "nullable|date|required_if:pay_type,partial",
+            "reprogramation_rate" => "nullable|numeric|required_if:pay_type,partial",
+        ]);
+
+        try {
+            $invoice = Invoice::findOrFail($invoiceId);
+            $company = $invoice->company()->first();
+            $amountToBePaidMoney = MoneyConverter::fromDecimal(
+                $request->amount_to_be_paid,
+                $invoice->currency
+            );
+
+            DB::beginTransaction();
+
+            $payment = new Payment();
+            $payment->invoice_id = $invoice->id;
+            $payment->pay_type = $request->pay_type;
+            $payment->pay_date = $request->pay_date;
+            $payment->amount_to_be_paid = MoneyConverter::getValue($amountToBePaidMoney);
+            $payment->reprogramation_date = $request->reprogramation_date;
+            $payment->reprogramation_rate = $request->reprogramation_rate;
+
+            // Actualizar monto pagado
+            $invoicePaidAmountMoney = MoneyConverter::fromDecimal($invoice->paid_amount, $invoice->currency);
+            $invoice->paid_amount = $invoicePaidAmountMoney->add($amountToBePaidMoney);
+
+            if ($request->pay_type == "partial") {
+                $invoice->status = "reprogramed";
+
+                [$error, $partialPayment] = $payment->createPartialPayments(
+                    $invoice,
+                    $invoice->convertToDecimalPercent($request->input("apportioment_percentage", 0)),
+                    $invoice->convertToDecimalPercent($request->reprogramation_rate)
+                );
+
+                if ($error) {
+                    DB::rollBack();
+                    return response()->json(["error" => $error->getMessage()], 422);
+                }
+
+                foreach ($partialPayment["items"] as $item) {
+                    $investment = $item["investment"];
+                    $investor = $item["investor"];
+                    $amountToPay = new MoneyCast($item["amountToPay"]);
+                    $newExpectedReturn = new MoneyCast($item["newExpectedReturn"]);
+                    $newInvestmentAmount = new MoneyCast($item["newInvestmentAmount"]);
+
+                    $investment->status = "reprogramed";
+                    $investment->save();
+
+                    $movement = new Movement();
+                    $movement->currency = $invoice->currency;
+                    $movement->amount = $amountToPay->money;
+                    $movement->type = MovementType::PAYMENT;
+                    $movement->status = MovementStatus::VALID;
+                    $movement->confirm_status = MovementStatus::VALID;
+                    $movement->investor_id = $investor->id;
+                    $movement->description = "Pago parcial";
+                    $movement->save();
+
+                    $reprogramedInvestment = new Investment();
+                    $reprogramedInvestment->currency = $invoice->currency;
+                    $reprogramedInvestment->amount = $newInvestmentAmount->money;
+                    $reprogramedInvestment->return = $newExpectedReturn->money;
+                    $reprogramedInvestment->rate = $request->reprogramation_rate;
+                    $reprogramedInvestment->due_date = $request->reprogramation_date;
+                    $reprogramedInvestment->status = "active";
+                    $reprogramedInvestment->investor_id = $investor->id;
+                    $reprogramedInvestment->invoice_id = $invoice->id;
+                    $reprogramedInvestment->previous_investment_id = $investment->id;
+                    $reprogramedInvestment->original_investment_id = $investment->original_investment_id ?? $investment->id;
+                    $reprogramedInvestment->movement_id = $movement->id;
+                    $reprogramedInvestment->save();
+
+                    $wallet = $investor->getBalance($invoice->currency);
+                    $walletAmountMoney = MoneyConverter::fromDecimal($wallet->amount, $invoice->currency);
+                    $walletInvestedAmountMoney = MoneyConverter::fromDecimal($wallet->invested_amount, $invoice->currency);
+                    $wallet->amount = $walletAmountMoney->add($amountToPay->money);
+                    $wallet->invested_amount = $walletInvestedAmountMoney->subtract($amountToPay->money);
+                    $wallet->save();
+
+                    $investor->sendInvestmentPartialEmailNotification($payment, $investment, $amountToPay->money);
+                }
+            } else {
+                $invoice->status = "paid";
+
+                [$_, $items] = $payment->createTotalPayments($invoice);
+
+                foreach ($items["items"] as $item) {
+                    $investor = $item["investor"];
+                    $investment = $item["investment"];
+                    $netExpectedReturn = $item["net_expected_return"];
+                    $itfAmount = $item["itf_amount"];
+
+                    $investor->sendInvestmentFullyPaidEmailNotification(
+                        $payment,
+                        $investment,
+                        $netExpectedReturn,
+                        $itfAmount
+                    );
+                }
+            }
+
+            $invoice->save();
+            $payment->save();
+
+            DB::commit();
+
+            return response()->json([
+                "message" => $request->pay_type === "partial" ? "Pago parcial creado." : "Pago total creado.",
+                "payment" => $payment,
+                "invoice" => $invoice
+            ]);
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            throw new Exception($th->getMessage());
+        }
     }
 }
