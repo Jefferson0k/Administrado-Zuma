@@ -23,6 +23,9 @@ class Exchange extends Model{
             ->orderBy('created_at', 'desc')
             ->first();
     }
+    public function movement(){
+        return $this->belongsTo(Movement::class, 'movement_id');
+    }
 
     /**
      * The attributes that should be cast.

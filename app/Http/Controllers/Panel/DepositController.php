@@ -11,6 +11,7 @@ use App\Models\Investor;
 use App\Models\Movement;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -81,69 +82,96 @@ class DepositController extends Controller{
         }
         return response()->json(['message' => 'Depósito validado correctamente']);
     }
-    public function rejectDeposit($depositId, $movementId){
-        $movement = Movement::findOrFail($movementId);
-        if ($movement->status !== 'pending') {
-            return response()->json(['message' => 'El movimiento ya fue procesado'], 400);
-        }
-        $movement->status = 'rejected';
-        $movement->confirm_status = 'rejected';
-        $movement->save();
-        $deposit = Deposit::findOrFail($depositId);
-        $deposit->update([
-            'estado' => 'rejected',
-            'estadoConfig' => 'rejected'
-        ]);
-        return response()->json(['message' => 'Depósito rechazado correctamente']);
+    public function rejectDeposit(Request $request, $depositId, $movementId)
+{
+    $movement = Movement::findOrFail($movementId);
+
+    if ($movement->status !== 'pending') {
+        return response()->json(['message' => 'El movimiento ya fue procesado'], 400);
     }
-    public function approveDeposit($depositId, $movementId){
-        try {
-            DB::beginTransaction();
-            $movement = Movement::findOrFail($movementId);
-            if ($movement->status !== MovementStatus::VALID ||
-                $movement->confirm_status === MovementStatus::VALID) {
-                return response()->json(['message' => 'El movimiento no es válido para aprobar'], 400);
-            }
-            $movement->confirm_status = MovementStatus::VALID;
-            $movement->registrarAprobacion2(Auth::id());
-            $investor = Investor::findOrFail($movement->investor_id);
-            $balance = $investor->getBalance($movement->currency);
-            $balanceAmountMoney = MoneyConverter::fromDecimal($balance->amount, $balance->currency);
-            $movementAmountMoney = MoneyConverter::fromDecimal($movement->amount, $movement->currency);
-            $balance->amount = $balanceAmountMoney->add($movementAmountMoney);
-            $balance->save();
-            $deposit = Deposit::findOrFail($depositId);
-            $deposit->update([
-                'aprobacion_2' => now(),
-                'aprobado_por_2' => Auth::id(),
-                'estadoConfig' => 'confirmed'
-            ]);
-            $investor->sendDepositApprovalEmailNotification($deposit);
-            $movement->save();
-            DB::commit();
-            return response()->json(['message' => 'Depósito aprobado y saldo actualizado']);
-        } catch (Throwable $th) {
-            DB::rollBack();
-            return response()->json([
-                'message' => 'Error al aprobar el depósito',
-                'error' => $th->getMessage(),
-                'file' => $th->getFile(),
-                'line' => $th->getLine(),
-            ], 500);
-        }
-    }
-    public function rejectConfirmDeposit($depositId, $movementId){
+
+    $movement->status = 'rejected';
+    $movement->confirm_status = 'rejected';
+    $movement->save();
+
+    $deposit = Deposit::findOrFail($depositId);
+    $deposit->update([
+        'estado' => 'rejected',
+        'estadoConfig' => 'rejected',
+        'conclusion' => $request->input('conclusion') // 👈 opcional (puede ser null)
+    ]);
+
+    return response()->json(['message' => 'Depósito rechazado correctamente']);
+}
+
+
+public function approveDeposit(Request $request, $depositId, $movementId)
+{
+    try {
+        DB::beginTransaction();
+
         $movement = Movement::findOrFail($movementId);
         if ($movement->status !== MovementStatus::VALID ||
-            $movement->confirm_status !== MovementStatus::PENDING) {
-            return response()->json(['message' => 'El movimiento no es válido para rechazar'], 400);
+            $movement->confirm_status === MovementStatus::VALID) {
+            return response()->json(['message' => 'El movimiento no es válido para aprobar'], 400);
         }
-        $movement->confirm_status = MovementStatus::REJECTED;
-        $movement->save();
+
+        $movement->confirm_status = MovementStatus::VALID;
+        $movement->registrarAprobacion2(Auth::id());
+
+        $investor = Investor::findOrFail($movement->investor_id);
+        $balance = $investor->getBalance($movement->currency);
+
+        $balanceAmountMoney = MoneyConverter::fromDecimal($balance->amount, $balance->currency);
+        $movementAmountMoney = MoneyConverter::fromDecimal($movement->amount, $movement->currency);
+
+        $balance->amount = $balanceAmountMoney->add($movementAmountMoney);
+        $balance->save();
+
         $deposit = Deposit::findOrFail($depositId);
         $deposit->update([
-            'estadoConfig' => 'rejected'
+            'aprobacion_2' => now(),
+            'aprobado_por_2' => Auth::id(),
+            'estadoConfig' => 'confirmed',
+            'conclusion' => $request->input('conclusion') // 👈 opcional
         ]);
-        return response()->json(['message' => 'Depósito rechazado en confirmación']);
+
+        $investor->sendDepositApprovalEmailNotification($deposit);
+        $movement->save();
+
+        DB::commit();
+        return response()->json(['message' => 'Depósito aprobado y saldo actualizado']);
+    } catch (Throwable $th) {
+        DB::rollBack();
+        return response()->json([
+            'message' => 'Error al aprobar el depósito',
+            'error' => $th->getMessage(),
+            'file' => $th->getFile(),
+            'line' => $th->getLine(),
+        ], 500);
     }
+}
+
+
+public function rejectConfirmDeposit(Request $request, $depositId, $movementId)
+{
+    $movement = Movement::findOrFail($movementId);
+
+    if ($movement->status !== MovementStatus::VALID ||
+        $movement->confirm_status !== MovementStatus::PENDING) {
+        return response()->json(['message' => 'El movimiento no es válido para rechazar'], 400);
+    }
+
+    $movement->confirm_status = MovementStatus::REJECTED;
+    $movement->save();
+
+    $deposit = Deposit::findOrFail($depositId);
+    $deposit->update([
+        'estadoConfig' => 'rejected',
+        'conclusion' => $request->input('conclusion') // 👈 opcional
+    ]);
+
+    return response()->json(['message' => 'Depósito rechazado en confirmación']);
+}
+
 }

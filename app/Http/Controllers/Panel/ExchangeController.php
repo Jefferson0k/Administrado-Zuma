@@ -7,7 +7,9 @@ use App\Http\Requests\Exchange\StoreExchangeRequest;
 use App\Http\Requests\Exchange\UpdateExchangeRequest;
 use App\Http\Resources\Factoring\Exchange\ExchangeResource;
 use App\Models\Exchange;
+use App\Models\Movement;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 class ExchangeController extends Controller{
@@ -74,4 +76,19 @@ class ExchangeController extends Controller{
             'data'    => new ExchangeResource($exchange),
         ]);
     }
+    public function indexList(Request $request){
+        $movements = Movement::with(['investor:id,name,email'])
+            ->whereIn('type', ['exchange', 'exchange_up', 'exchange_down']) // solo los de tipo cambio
+            ->orderBy('created_at', 'desc')
+            ->paginate(10) // puedes ajustar el número de items por página
+            ->withPath('')
+            ->setPageName($request->input('pageName') ?: 'page');
+
+        return response()->json([
+            'success' => true,
+            'data' => $movements,
+            'message' => null
+        ]);
+    }
+
 }

@@ -24,7 +24,8 @@ class Deposit extends Model{
         'created_by',
         'updated_by',
         'fixed_term_investment_id',
-        'property_reservations_id'
+        'property_reservations_id',
+        'conclusion'
     ];
 
     protected $casts = [

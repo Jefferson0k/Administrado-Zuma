@@ -103,6 +103,11 @@ const model = computed(() => {
                     label: 'Sectores',
                     icon: 'pi pi-fw pi-sitemap',
                     to: '/factoring/sectores'
+                },
+                ('ver sectores') && {
+                    label: 'Tipo cambio',
+                    icon: 'pi pi-fw pi-sitemap',
+                    to: '/factoring/tipo-cambio'
                 }
             ].filter(Boolean)
         },

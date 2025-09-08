@@ -209,7 +209,7 @@ const getTiempoDescripcion = (categoria: string | undefined) => {
     'normal': 'Normal',                // 1h
     'tardando': 'Estás tardando',      // >1h-2h
     'critico': 'Crítico',              // >2h
-    'sin_datos': 'N/A',
+    'sin_datos': '00:00:00',
     // Mantengo compatibilidad con los nombres antiguos por si acaso
     'muy_rapido': '¡Excelente!',
     'rapido': 'Muy bien',
@@ -217,21 +217,6 @@ const getTiempoDescripcion = (categoria: string | undefined) => {
     'muy_lento': 'Crítico'
   };
   return descripciones[categoria as keyof typeof descripciones] || 'N/A';
-};
-
-// Función auxiliar para categorizar tiempo basado en minutos (si la necesitas en el frontend)
-const categorizarTiempo = (minutos: number) => {
-  if (minutos <= 30) {
-    return { categoria: 'excelente', color: 'green' };
-  } else if (minutos <= 60) {
-    return { categoria: 'muy_bien', color: 'blue' };
-  } else if (minutos <= 120) { // hasta 2 horas
-    return { categoria: 'normal', color: 'yellow' };
-  } else if (minutos <= 240) { // más de 2 horas pero menos de 4 (ajustable)
-    return { categoria: 'tardando', color: 'orange' };
-  } else {
-    return { categoria: 'critico', color: 'red' };
-  }
 };
 
 function obtenerColorEstado(estado: string) {
