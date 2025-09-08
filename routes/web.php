@@ -38,6 +38,7 @@ use App\Http\Controllers\Panel\WithdrawController;
 use App\Http\Controllers\Web\Factoring\BankAccountsWeb;
 use App\Http\Controllers\Web\Factoring\CompanyWeb;
 use App\Http\Controllers\Web\Factoring\DepositsWeb;
+use App\Http\Controllers\Web\Factoring\ExchangeWeb;
 use App\Http\Controllers\Web\Factoring\ExchangeWebControler;
 use App\Http\Controllers\Web\Factoring\InvestmentWeb;
 use App\Http\Controllers\Web\Factoring\InvestorWeb;
@@ -112,6 +113,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/pagos', [PaymentsWeb::class, 'views'])->name('inversiones.views');
         Route::get('/tipo-cambio', [ExchangeWebControler::class, 'views'])->name('tipo-cambio.views');
         Route::get('/retiros', [WithdrawWeb::class, 'views'])->name('retiros.views');
+        Route::get('/tipo-cambio', [ExchangeWeb::class, 'views'])->name('retiros.views');
     });
 
     #RUTAS DE WEB EN LA PARTE DE TASAS FIJAS
@@ -141,6 +143,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     #TIPO DE CAMBIP => BACKEND
     Route::prefix('exchange')->group(function () {
         Route::get('/', [ExchangeController::class, 'index'])->name('exchange.index');
+        Route::get('/list', [ExchangeController::class, 'indexList']);
         Route::get('/{id}', [ExchangeController::class, 'show'])->name('exchange.show');
         Route::post('/', [ExchangeController::class, 'store'])->name('exchange.store');
         Route::put('/{id}', [ExchangeController::class, 'update'])->name('exchange.update');

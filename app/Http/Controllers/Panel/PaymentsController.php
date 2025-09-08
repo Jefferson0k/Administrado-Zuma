@@ -15,8 +15,11 @@ use App\Models\Payment;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Excel as ExcelType;
+use Illuminate\Support\Str;
 
 class PaymentsController extends Controller{
     public function comparacion(Request $request){
@@ -214,6 +217,7 @@ class PaymentsController extends Controller{
             "pay_type" => "required|in:total,partial",
             "reprogramation_date" => "nullable|date|required_if:pay_type,partial",
             "reprogramation_rate" => "nullable|numeric|required_if:pay_type,partial",
+            "evidencia" => "required|file|mimes:pdf,jpg,jpeg,png,gif,doc,docx|max:10240", // 10MB máximo
         ]);
 
         try {
@@ -233,6 +237,46 @@ class PaymentsController extends Controller{
             $payment->amount_to_be_paid = MoneyConverter::getValue($amountToBePaidMoney);
             $payment->reprogramation_date = $request->reprogramation_date;
             $payment->reprogramation_rate = $request->reprogramation_rate;
+
+            // Subir evidencia a S3
+            if ($request->hasFile('evidencia')) {
+                $disk = Storage::disk('s3');
+                $evidenceFile = $request->file('evidencia');
+                $filename = Str::uuid() . '.' . $evidenceFile->getClientOriginalExtension();
+                $path = "pagos/evidencias/{$invoice->id}/{$filename}";
+                
+                try {
+                    $disk->putFileAs("pagos/evidencias/{$invoice->id}", $evidenceFile, $filename);
+                    
+                    // Guardar información de la evidencia en el payment
+                    $payment->evidencia = $filename;
+                    $payment->evidencia_path = $path;
+                    $payment->evidencia_original_name = $evidenceFile->getClientOriginalName();
+                    $payment->evidencia_size = $evidenceFile->getSize();
+                    $payment->evidencia_mime_type = $evidenceFile->getMimeType();
+                    
+                    Log::info('Evidencia de pago subida exitosamente a S3', [
+                        'invoice_id' => $invoice->id,
+                        'filename' => $filename,
+                        'path' => $path,
+                        'original_name' => $evidenceFile->getClientOriginalName(),
+                        'size' => $evidenceFile->getSize()
+                    ]);
+                    
+                } catch (Exception $e) {
+                    Log::error('Error al subir evidencia de pago a S3', [
+                        'error' => $e->getMessage(),
+                        'invoice_id' => $invoice->id,
+                        'fileName' => $filename,
+                        'path' => $path,
+                    ]);
+                    
+                    DB::rollBack();
+                    return response()->json([
+                        "error" => "No se pudo subir la evidencia de pago. Intente nuevamente."
+                    ], 422);
+                }
+            }
 
             // Actualizar monto pagado
             $invoicePaidAmountMoney = MoneyConverter::fromDecimal($invoice->paid_amount, $invoice->currency);
@@ -269,7 +313,7 @@ class PaymentsController extends Controller{
                     $movement->status = MovementStatus::VALID;
                     $movement->confirm_status = MovementStatus::VALID;
                     $movement->investor_id = $investor->id;
-                    $movement->description = "Pago parcial";
+                    $movement->description = "Pago parcial - Factura #{$invoice->invoice_number}";
                     $movement->save();
 
                     $reprogramedInvestment = new Investment();
@@ -321,12 +365,24 @@ class PaymentsController extends Controller{
             DB::commit();
 
             return response()->json([
-                "message" => $request->pay_type === "partial" ? "Pago parcial creado." : "Pago total creado.",
+                "message" => $request->pay_type === "partial" ? "Pago parcial creado exitosamente." : "Pago total creado exitosamente.",
                 "payment" => $payment,
-                "invoice" => $invoice
+                "invoice" => $invoice,
+                "evidencia_info" => [
+                    "filename" => $payment->evidencia,
+                    "original_name" => $payment->evidencia_original_name,
+                    "size" => $payment->evidencia_size,
+                    "uploaded" => true
+                ]
             ]);
         } catch (\Throwable $th) {
             DB::rollBack();
+            Log::error('Error en el procesamiento de pago', [
+                'error' => $th->getMessage(),
+                'trace' => $th->getTraceAsString(),
+                'invoice_id' => $invoiceId,
+                'request_data' => $request->except(['evidencia'])
+            ]);
             throw new Exception($th->getMessage());
         }
     }

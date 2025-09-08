@@ -307,6 +307,28 @@
                     </div>
 
                 </div>
+
+                <!-- Sección de Conclusión -->
+                <div class="mt-8">
+                    <div class="bg-white border border-gray-200 rounded-xl p-6">
+                        <h4 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                            <i class="pi pi-file-edit text-indigo-600"></i>
+                            Observaciones
+                        </h4>
+                        <div class="space-y-4">
+                            <textarea
+                                v-model="conclusion"
+                                class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
+                                rows="4"
+                                placeholder="Escriba aquí las observaciones o notas adicionales sobre este depósito..."
+                            ></textarea>
+                            <div class="text-sm text-gray-500">
+                                <span v-if="conclusion">{{ conclusion.length }} caracteres</span>
+                                <span v-else>Estas observaciones se enviarán junto con la acción de validar/aprobar/rechazar</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -323,12 +345,18 @@
         <div class="space-y-4">
             <div class="bg-red-50 border border-red-200 rounded-lg p-4">
                 <div class="flex items-start gap-3">
-                                        <i class="pi pi-exclamation-triangle text-red-600 mt-1"></i>
+                    <i class="pi pi-exclamation-triangle text-red-600 mt-1"></i>
                     <div>
                         <p class="font-medium text-red-900">¿Confirmar rechazo del movimiento?</p>
                         <p class="text-sm text-red-700 mt-1">Esta acción marcará el movimiento como rechazado.</p>
                     </div>
                 </div>
+            </div>
+            
+            <!-- Campo para observaciones en el rechazo -->
+            <div v-if="conclusion.trim()" class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h5 class="font-medium text-blue-900 mb-2">Observaciones a incluir:</h5>
+                <p class="text-sm text-blue-800 italic">"{{ conclusion }}"</p>
             </div>
         </div>
         <template #footer>
@@ -351,6 +379,12 @@
                         <p class="text-sm text-red-700 mt-1">Esta acción rechazará la confirmación del depósito.</p>
                     </div>
                 </div>
+            </div>
+            
+            <!-- Campo para observaciones en el rechazo -->
+            <div v-if="conclusion.trim()" class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h5 class="font-medium text-blue-900 mb-2">Observaciones a incluir:</h5>
+                <p class="text-sm text-blue-800 italic">"{{ conclusion }}"</p>
             </div>
         </div>
         <template #footer>
@@ -403,28 +437,27 @@ const showRejectMovementDialog = ref(false);
 const showRejectConfirmDialog = ref(false);
 const showImageDialog = ref(false);
 
+// Estado para las observaciones
+const conclusion = ref('');
+
 // Manejar cierre del dialog
 const handleClose = () => {
     dialogVisible.value = false;
     emit('close');
 };
 
-// Cargar detalles del depósito
-const fetchDepositDetails = async () => {
-    loading.value = true;
-    try {
-        const response = await axios.get(`/deposit/${props.deposit.id}`);
-        console.log('Detalles del depósito cargados:', response.data);
-    } catch (error) {
-        console.error('Error al cargar detalles del depósito:', error);
-        toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: 'No se pudieron cargar los detalles del depósito'
-        });
-    } finally {
-        loading.value = false;
+// Inicializar datos del componente
+const initializeComponent = () => {
+    // Cargar conclusion directamente desde las props si existe
+    if (props.deposit.conclusion) {
+        conclusion.value = props.deposit.conclusion;
+        console.log('Conclusion cargada desde props:', props.deposit.conclusion);
     }
+    
+    // Establecer loading como false ya que tenemos todos los datos
+    loading.value = false;
+    
+    console.log('Datos completos del depósito:', props.deposit);
 };
 
 // Funciones de traducción y estilos
@@ -494,7 +527,14 @@ const validateMovement = async () => {
 
     validating.value = true;
     try {
-        const response = await axios.post(`/deposit/${props.deposit.id_movimiento}/validate`);
+        const payload: any = {};
+        
+        // Incluir observaciones si las hay
+        if (conclusion.value.trim()) {
+            payload.conclusion = conclusion.value.trim();
+        }
+
+        const response = await axios.post(`/deposit/${props.deposit.id_movimiento}/validate`, payload);
         toast.add({
             severity: 'success',
             summary: 'Éxito',
@@ -503,10 +543,9 @@ const validateMovement = async () => {
         });
         // Actualizar el estado local
         props.deposit.estado = 'valid';
-        props.deposit.estadoConfig = 'pending';
         emit('refresh');
     } catch (error: any) {
-        console.error('Error al validar:', error);
+        console.error('Error al validar movimiento:', error);
         const errorMessage = error.response?.data?.message || 'Error al validar el movimiento';
         toast.add({
             severity: 'error',
@@ -535,7 +574,14 @@ const confirmRejectMovement = async () => {
 
     rejectingMovement.value = true;
     try {
-        const response = await axios.post(`/deposit/${props.deposit.id}/${props.deposit.id_movimiento}/reject`);
+        const payload: any = {};
+        
+        // Incluir observaciones si las hay
+        if (conclusion.value.trim()) {
+            payload.conclusion = conclusion.value.trim();
+        }
+
+        const response = await axios.post(`/deposit/${props.deposit.id_movimiento}/reject`, payload);
         toast.add({
             severity: 'success',
             summary: 'Éxito',
@@ -545,7 +591,6 @@ const confirmRejectMovement = async () => {
         showRejectMovementDialog.value = false;
         // Actualizar el estado local
         props.deposit.estado = 'rejected';
-        props.deposit.estadoConfig = 'rejected';
         emit('refresh');
     } catch (error: any) {
         console.error('Error al rechazar movimiento:', error);
@@ -577,7 +622,14 @@ const approveDeposit = async () => {
 
     approving.value = true;
     try {
-        const response = await axios.post(`/deposit/${props.deposit.id}/${props.deposit.id_movimiento}/approve`);
+        const payload: any = {};
+        
+        // Incluir observaciones si las hay
+        if (conclusion.value.trim()) {
+            payload.conclusion = conclusion.value.trim();
+        }
+
+        const response = await axios.post(`/deposit/${props.deposit.id}/${props.deposit.id_movimiento}/approve`, payload);
         toast.add({
             severity: 'success',
             summary: 'Éxito',
@@ -617,7 +669,14 @@ const confirmRejectConfirm = async () => {
 
     rejectingConfirm.value = true;
     try {
-        const response = await axios.post(`/deposit/${props.deposit.id}/${props.deposit.id_movimiento}/reject-confirm`);
+        const payload: any = {};
+        
+        // Incluir observaciones si las hay
+        if (conclusion.value.trim()) {
+            payload.conclusion = conclusion.value.trim();
+        }
+
+        const response = await axios.post(`/deposit/${props.deposit.id}/${props.deposit.id_movimiento}/reject-confirm`, payload);
         toast.add({
             severity: 'success',
             summary: 'Éxito',
@@ -658,7 +717,8 @@ const formatAmount = (amount: number | string) => {
     }).format(Number(amount));
 };
 
+// Inicializar componente al montarse
 onMounted(() => {
-    fetchDepositDetails();
+    initializeComponent();
 });
 </script>

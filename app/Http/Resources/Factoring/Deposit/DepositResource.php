@@ -21,11 +21,11 @@ class DepositResource extends JsonResource
             'foto' => $this->resource_path,
             'estado' => $this->movement->status,
             'estadoConfig' => $this->movement->confirm_status,
-            'estado_bank_account' => $this->bankAccount->status,
-            'cc' => $this->bankAccount->cc,
-            'cci' => $this->bankAccount->cci,
-            'type' => $this->bankAccount->type,
-            
+            'estado_bank_account' => $this->bankAccount->status ?? 'Sin estado',
+            'cc' => $this->bankAccount->cc ?? 'sin cc',
+            'cci' => $this->bankAccount->cci ?? 'sin cci',
+            'type' => $this->bankAccount->type ?? 'sin tipo',
+            'conclusion' => $this->conclusion,
             // Fechas originales formateadas
             'creacion' => Carbon::parse($this->created_at)->format('d-m-Y H:i:s A'),
             'fecha_aprobacion_1' => $this->movement && $this->movement->aprobacion_1

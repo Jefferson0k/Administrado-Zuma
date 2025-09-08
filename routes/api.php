@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\BankController;
 use App\Http\Controllers\Api\ConsultasDni;
 use App\Http\Controllers\Api\ContactRequestController;
 use App\Http\Controllers\Api\CreditSimulationController;
+use App\Http\Controllers\Api\ExchangeControllerFonted;
 use App\Http\Controllers\Api\FixedTermInvestmentControllers;
 use App\Http\Controllers\Api\FixedTermScheduleController;
 use App\Http\Controllers\Api\InvestmentController;
@@ -193,6 +194,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::prefix('banks')->group(function () {
         Route::get('/', [BankController::class, 'index']);
+    });
+
+    Route::prefix('exchange')->group(function () {
+        Route::get('/', [ExchangeControllerFonted::class, 'index']);       // solo activo
+        Route::get('/list', [ExchangeControllerFonted::class, 'indexList']); // historial completo
+        Route::post('/pen-to-usd', [ExchangeControllerFonted::class, 'penToUsd']);
+        Route::post('/usd-to-pen', [ExchangeControllerFonted::class, 'usdToPen']);
     });
 });
 

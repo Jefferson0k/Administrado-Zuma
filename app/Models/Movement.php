@@ -38,6 +38,9 @@ class Movement extends Model{
         'aprobacion_1' => 'datetime',
         'aprobacion_2' => 'datetime',
     ];
+    public function exchange(){
+        return $this->belongsTo(Exchange::class, 'exchange_id', 'id');
+    }
     public function investor(){
         return $this->belongsTo(Investor::class);
     }

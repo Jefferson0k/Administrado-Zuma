@@ -57,21 +57,33 @@ class Withdraw extends Model
             $this->attributes['currency']
         );
     }
+    public function getResourcePathAttribute(): ?string
+    {
+        $disk = Storage::disk('s3');
+        $path = $this->attributes['resource_path'] ?? null;
 
-public function getResourcePathAttribute(): ?string
-{
-    $disk = Storage::disk('s3');
+        if (empty($path)) {
+            return null;
+        }
 
-    if (!empty($this->attributes['resource_path']) && $disk->exists($this->attributes['resource_path'])) {
-        return $disk->temporaryUrl(
-            $this->attributes['resource_path'],
-            now()->addMinutes(10)
-        );
+        try {
+            // Solo usar exists() en drivers que lo soportan bien
+            if ($disk->getDriver()->getAdapter() instanceof \League\Flysystem\AwsS3V3\AwsS3Adapter) {
+                // En S3: asumir que el archivo existe y devolver directamente la URL
+                return $disk->temporaryUrl($path, now()->addMinutes(10));
+            } else {
+                // En local u otros: sí validamos la existencia
+                if ($disk->exists($path)) {
+                    return $disk->temporaryUrl($path, now()->addMinutes(10));
+                }
+            }
+        } catch (\Throwable $e) {
+            // Si algo falla, mejor devolver null para no romper la app
+            return null;
+        }
+
+        return null;
     }
-
-    return null; // si no existe archivo -> null
-}
-
 
     // ========================
     // Accesores (setters)
