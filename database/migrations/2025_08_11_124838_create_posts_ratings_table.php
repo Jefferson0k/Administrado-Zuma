@@ -13,8 +13,17 @@ return new class extends Migration
     {
         Schema::create('posts_ratings', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('post_id')->constrained('posts')->onDelete('cascade');
-            $table->foreignId('rating_id')->constrained('ratings')->onDelete('cascade');
+            $table->unsignedBigInteger('post_id');
+            $table->foreign('post_id')
+                ->references('id')
+                ->on('posts')
+                ->onDelete('restrict');
+
+            $table->unsignedBigInteger('rating_id');
+            $table->foreign('rating_id')
+                ->references('id')
+                ->on('rating')
+                ->onDelete('restrict');
             //$table->timestamps();
         });
     }

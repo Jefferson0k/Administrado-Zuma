@@ -32,7 +32,11 @@ use App\Http\Controllers\BlogController;
 |--------------------------------------------------------------------------
 */
 
-Route::post('/login', [CustomerSessionController::class, 'login']);
+Route::post('register', [InvestorController::class, 'register']);
+Route::post('register/cliente', [InvestorController::class, 'registerCustomer']);
+
+
+Route::post('/login', [InvestorController::class, 'login']);
 Route::post('/customers/register', [RegisteredCustomerController::class, 'store']);
 Route::put('/email/verify/{id}/{hash}', [ProfileController::class, 'emailVerification']);
 Route::get('/consultar-dni/{dni?}', [ConsultasDni::class, 'consultar'])->name('consultar.dni');

@@ -1,5 +1,5 @@
-<template>
-  <DataTable ref="dt" v-model:selection="selectedProducts" :value="categories" dataKey="id" :paginator="true"
+ <template>
+  <DataTable ref="dt" v-model:selection="selectedProducts" :value="categoriesArray" dataKey="id" :paginator="true" :loading="loading"
     :rows="10" :filters="filters"
     paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
     :rowsPerPageOptions="[5, 10, 25]"
@@ -7,7 +7,7 @@
     <template #header>
       <div class="flex flex-wrap gap-2 items-center justify-between">
         <h4 class="m-0">Categorias
-          <Tag severity="contrast" :value="categories.length" />
+          <Tag severity="contrast" :value="categoriesCount" />
         </h4>
         <IconField>
           <InputIcon><i class="pi pi-search" /></InputIcon>
@@ -61,7 +61,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import axios from 'axios'
 import { FilterMatchMode } from '@primevue/core/api'
 import { useToast } from 'primevue/usetoast'
@@ -103,7 +103,16 @@ const editForm = ref({
 })
 
 const categories = ref([])
+// Always give the DataTable a real array
+const categoriesArray = computed(() =>
+  Array.isArray(categories.value)
+    ? categories.value
+    : (Array.isArray(categories.value?.data) ? categories.value.data : [])
+)
+const categoriesCount = computed(() => categoriesArray.value.length)
+
 const selectedCategory = ref([])
+
 
 const filters = ref({
   global: { value: null, matchMode: FilterMatchMode.CONTAINS }
@@ -216,7 +225,7 @@ async function actualizarCategoria() {
 async function obtenerCategorias() {
   try {
     const res = await axios.get('/api/blog/listar-categoria')
-    categories.value = res.data
+    categories.value = Array.isArray(res.data) ? res.data : (res.data?.data ?? [])
     console.log(categories.value)
   } catch (error) {
     toast.add({
@@ -232,7 +241,7 @@ onMounted(() => {
   obtenerCategorias()
 })
 
-watch(() => categories.refresh, () => {
+watch(() => props.refresh, () => {
   obtenerCategorias()
 })
 </script>
