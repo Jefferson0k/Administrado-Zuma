@@ -65,6 +65,7 @@ use App\Http\Controllers\Web\TasasFijas\PaymentFrequenciesWebController;
 use App\Http\Controllers\Web\TasasFijas\RateTypeWebController;
 use App\Http\Controllers\Web\TasasFijas\TermPlanWebController;
 use App\Http\Controllers\Web\UsuarioWebController;
+use App\Http\Controllers\BlogController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
@@ -87,6 +88,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/Ambiente-Pruebas', [SubastasOnlineWebController::class, 'viewsTC']);
     Route::get('/moneda', [CurrencyControllers::class, 'index']);
     Route::get('/Frecuencia/Pagos', [PaymentFrequenciesWebController::class, 'views']);
+
+    Route::get('/blog/registro', [BlogController::class, 'create']);
+    Route::get('/blog/seguimiento', [BlogController::class, 'seguimiento']);
+    Route::get('/blog/categorias', [BlogController::class, 'categorias']);
+    Route::get('/blog/posts', [BlogController::class, 'index']);
+
+    Route::post('/payments/extraer', [PaymentsController::class, 'comparacion'])->name('payments.comparacion');
+    Route::post('/payments/{invoiceId}', [PaymentsController::class, 'store'])->name('payments.store');
 
     #RUTAS DE API
     Route::prefix('api')->group(function () {
