@@ -27,7 +27,7 @@ class UserSeeder extends Seeder{
             'password'          => Hash::make('12345678'),
             'status'            => true,
             'restablecimiento'  => 0,
-            'cargo_id'          => $cargoAdmin?->id,
+            'cargo_id'          => 1,
             'created_by'        => null,
             'updated_by'        => null,
             'deleted_by'        => null,

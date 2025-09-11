@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers\Panel;
+
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Factoring\BankAccount\BankAccountResource;
 use App\Models\BankAccount;
@@ -12,30 +13,31 @@ use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Throwable;
 
-class BankAccountsController extends Controller {
-    public function index(){
+class BankAccountsController extends Controller
+{
+    public function index()
+    {
         try {
             Gate::authorize('viewAny', BankAccount::class);
-            $sectors = BankAccount::all();
-            return response()->json([
-                'total' => $sectors->count(),
-                'data'  => BankAccountResource::collection($sectors),
-            ]);
+
+            $accounts = BankAccount::latest()->paginate(10);
+
+            // Devuelve data + meta/links automáticamente
+            return BankAccountResource::collection($accounts);
         } catch (AuthorizationException $e) {
-            return response()->json([
-                'message' => 'No tienes permiso para ver las cuentas bancarias.'
-            ], 403);
-        } catch (Throwable $e) {
-            return response()->json([
-                'message' => 'Error al listar las cuentas bancarias.'
-            ], 500);
+            return response()->json(['message' => 'No tienes permiso para ver las cuentas bancarias.'], 403);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Error al listar las cuentas bancarias.'], 500);
         }
     }
-    public function show($id){
+
+    public function show($id)
+    {
         $bankAccount = BankAccount::with('bank', 'investor')->findOrFail($id);
         return response()->json($bankAccount);
     }
-    public function showBank($id){
+    public function showBank($id)
+    {
         $deposits = Deposit::with(['movement', 'investor'])
             ->where('bank_account_id', $id)
             ->get();
@@ -66,7 +68,8 @@ class BankAccountsController extends Controller {
         ]);
     }
 
-    public function validateBankAccount($id){
+    public function validateBankAccount($id)
+    {
         try {
             DB::beginTransaction();
             $bankAccount = BankAccount::findOrFail($id);
@@ -82,7 +85,7 @@ class BankAccountsController extends Controller {
             ]);
         } catch (Throwable $th) {
             DB::rollBack();
-            Log::error('Error al validar cuenta bancaria: '.$th->getMessage(), [
+            Log::error('Error al validar cuenta bancaria: ' . $th->getMessage(), [
                 'id' => $id,
                 'trace' => $th->getTraceAsString(),
             ]);
@@ -98,7 +101,8 @@ class BankAccountsController extends Controller {
             ], 500);
         }
     }
-    public function rejectBankAccount($id){
+    public function rejectBankAccount($id)
+    {
         try {
             DB::beginTransaction();
             $bankAccount = BankAccount::findOrFail($id);
@@ -114,7 +118,7 @@ class BankAccountsController extends Controller {
             ]);
         } catch (Throwable $th) {
             DB::rollBack();
-            Log::error('Error al rechazar cuenta bancaria: '.$th->getMessage(), [
+            Log::error('Error al rechazar cuenta bancaria: ' . $th->getMessage(), [
                 'id' => $id,
                 'trace' => $th->getTraceAsString(),
             ]);
