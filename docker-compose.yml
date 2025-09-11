@@ -77,6 +77,28 @@ services:
     networks:
       - laravel_red_2025
 
+  # AGREGAR MINIO AQUÍ
+  minio:
+    image: minio/minio:latest
+    container_name: laravel_minio
+    restart: always
+    ports:
+      - "9000:9000"   # API
+      - "9001:9001"   # Console
+    environment:
+      MINIO_ROOT_USER: 88Mrvl8CrL2tfosPn0we
+      MINIO_ROOT_PASSWORD: pMBUqsHOx2kIaeSlkL915WXl70H8CCRCnzhoRK9s
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - laravel_red_2025
+
   node:
     image: node:22
     container_name: laravel_node
@@ -105,3 +127,4 @@ networks:
 
 volumes:
   mysql_data:
+  minio_data:  # Agregar volumen para MinIO

@@ -24,6 +24,25 @@ class InvestorEmailVerificationNotification extends VerifyEmail
     }
 
     /**
+     * Get the verification email notification mail message for the given URL.
+     *
+     * @param  string  $url
+     * @return \Illuminate\Notifications\Messages\MailMessage
+     */
+    protected function buildMailMessage($url)
+    {
+        return (new MailMessage)
+            ->subject('Verifica tu dirección de email - zuma')
+            ->greeting('¡Hola!')
+            ->line('Gracias por registrarte en nuestra plataforma de inversiones.')
+            ->line('Para completar tu registro y acceder a todas las funcionalidades, por favor verifica tu dirección de email.')
+            ->action('Verificar Email', $url)
+            ->line('Este enlace de verificación expirará en ' . config('auth.verification.expire', 60) . ' minutos.')
+            ->line('Si no creaste esta cuenta, puedes ignorar este email.')
+            ->salutation('Saludos, Equipo Zuma');
+    }
+
+    /**
      * Get the verification URL for the given notifiable.
      *
      * @param  mixed  $notifiable
@@ -38,57 +57,38 @@ class InvestorEmailVerificationNotification extends VerifyEmail
                 'id' => $notifiable->getKey(),
                 'hash' => sha1($notifiable->getEmailForVerification()),
             ],
-            false
+            false // No incluir el dominio actual
         );
     }
 
     /**
-     * Get the mail representation of the notification.
+     * Get the verification URL for the given notifiable.
      *
      * @param  mixed  $notifiable
-     * @return \Illuminate\Notifications\Messages\MailMessage
+     * @return string
      */
     public function toMail($notifiable)
     {
-        try {
-            $verificationUrl = $this->verificationUrl($notifiable);
+        $verificationUrl = $this->verificationUrl($notifiable);
 
-            // Extraer solo la parte de la ruta (sin el dominio)
-            $path = parse_url($verificationUrl, PHP_URL_PATH);
-            $query = parse_url($verificationUrl, PHP_URL_QUERY);
+        // Extraer solo la parte de la ruta (sin el dominio)
+        $path = parse_url($verificationUrl, PHP_URL_PATH);
+        $query = parse_url($verificationUrl, PHP_URL_QUERY);
 
-            // Construir la URL del frontend Vue
-            $frontendUrl = env('CLIENT_APP_URL', 'http://localhost:5173') . '/email-verify';
-            if ($query) {
-                $frontendUrl .= '?' . $query;
-            }
-
-            // Verificar si la vista existe, si no usar MailMessage simple
-            if (view()->exists('emails.investor-verify')) {
-                return (new MailMessage)
-                    ->subject('Confirma tu correo en ZUMA')
-                    ->view(
-                        'emails.investor-verify',
-                        [
-                            'url' => $frontendUrl,
-                            'investor' => $notifiable,
-                        ]
-                    );
-            } else {
-                // Fallback a MailMessage simple si la vista no existe
-                return (new MailMessage)
-                    ->subject('Confirma tu correo en ZUMA')
-                    ->greeting('¡Hola ' . $notifiable->name . '!')
-                    ->line('Gracias por actualizar tu información en nuestra plataforma.')
-                    ->line('Para continuar usando todas las funcionalidades, por favor verifica tu nueva dirección de email.')
-                    ->action('Verificar Email', $frontendUrl)
-                    ->line('Este enlace expirará en ' . config('auth.verification.expire', 60) . ' minutos.')
-                    ->line('Si no realizaste este cambio, contacta a soporte.')
-                    ->salutation('Saludos, Equipo ZUMA');
-            }
-        } catch (\Exception $e) {
-            \Log::error('Error building email verification notification: ' . $e->getMessage());
-            throw $e;
+        // Construir la URL del frontend
+        $frontendUrl = env('CLIENT_APP_URL', 'http://localhost:5173') . $path;
+        if ($query) {
+            $frontendUrl .= '?' . $query;
         }
+
+        return (new \Illuminate\Notifications\Messages\MailMessage)
+            ->subject('Confirma tu correo en ZUMA')
+            ->view(
+                'emails.investor-verify',
+                [
+                    'url' => $frontendUrl,
+                    'investor' => $notifiable,
+                ]
+            );
     }
 }

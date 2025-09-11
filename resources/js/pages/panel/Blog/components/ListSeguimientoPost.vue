@@ -1,12 +1,21 @@
 <template>
-  <DataTable ref="dt" v-model:selection="selectedPost" :value="posts" dataKey="id" :paginator="true"
-    :rows="10" :filters="filters"
+  <DataTable
+    ref="dt"
+    v-model:selection="selectedPost"
+    :value="posts"
+    dataKey="id"
+    :paginator="true"
+    :rows="10"
+    :filters="filters"
     paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
     :rowsPerPageOptions="[5, 10, 25]"
-    currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} posts" class="p-datatable-sm">
+    currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} posts"
+    class="p-datatable-sm"
+  >
     <template #header>
       <div class="flex flex-wrap gap-2 items-center justify-between">
-        <h4 class="m-0">Publicaciones
+        <h4 class="m-0">
+          Publicaciones
           <Tag severity="contrast" :value="posts.length" />
         </h4>
         <IconField>
@@ -15,147 +24,157 @@
         </IconField>
       </div>
     </template>
+
     <Column selectionMode="multiple" style="width: 3rem" :exportable="false" />
     <Column field="titulo" header="Titulo" sortable />
+
     <Column field="categories" header="Categorías" sortable>
       <template #body="{ data }">
         <div class="flex flex-wrap gap-2">
-          <Tag
-            v-for="p in data.categories"
-            :key="p.id"
-            :value="p.nombre"
-            severity="info"
-            rounded
-          />
+          <Tag v-for="p in data.categories" :key="p.id" :value="p.nombre" severity="info" rounded />
         </div>
       </template>
     </Column>
+
     <Column field="fecha_programada" header="Fecha Programada" sortable>
       <template #body="{ data }">
         {{ formatDate(data.fecha_programada) }}
       </template>
     </Column>
-    <Column field="ratings" header="Calificación" sortable>
+
+    <!-- NUEVA COLUMNA: Visitas -->
+    <Column field="views_total" header="Visitas" sortable style="width: 9rem;">
       <template #body="{ data }">
-        <div class="flex items-center space-x-2">
-          <Rating 
-            :modelValue="getPromedioRating(data.ratings)" 
-            readonly 
-            :cancel="false" 
-          />
-          <span>
-            ({{ getPromedioRating(data.ratings) }})
-          </span>
+        <div class="flex items-center gap-2">
+          <i class="pi pi-eye text-gray-500"></i>
+          <span class="font-medium">{{ formatNumber(data.views_total ?? 0) }}</span>
         </div>
       </template>
     </Column>
+
+    <Column field="ratings" header="Calificación" sortable>
+      <template #body="{ data }">
+        <div class="flex items-center space-x-2">
+          <Rating :modelValue="getPromedioRating(data.ratings)" readonly :cancel="false" />
+          <span>({{ getPromedioRating(data.ratings) }})</span>
+        </div>
+      </template>
+    </Column>
+
     <Column field="state_id" header="Estado" sortable>
       <template #body="{ data }">
-        <Tag 
-          :value="getEstadoLabel(data.state_id)" 
-          :severity="getEstadoSeverity(data.state_id)" 
-          rounded
-        />
+        <Tag :value="getEstadoLabel(data.state_id)" :severity="getEstadoSeverity(data.state_id)" rounded />
       </template>
     </Column>
+
     <Column field="user" header="Creado Por" sortable>
       <template #body="{ data }">
-        <span>
-          {{ data.user?.name || 'Sin asignar' }}
-        </span>
+        <span>{{ data.user?.name || 'Sin asignar' }}</span>
       </template>
     </Column>
+
     <Column field="updated_user" header="Modificado Por" sortable>
       <template #body="{ data }">
-        <span>
-          {{ data.updated_user?.name || 'Sin modificar' }}
-        </span>
+        <span>{{ data.updated_user?.name || 'Sin modificar' }}</span>
       </template>
     </Column>
-    <!-- <Column header="" style="width: 3rem;">
+
+    <!-- Si quieres reactivar el menú por fila, descomenta esto y usa toggleMenu/menuItems -->
+    <!--
+    <Column header="" style="width: 3rem;">
       <template #body="{ data }">
         <div>
           <Button icon="pi pi-ellipsis-v" rounded text @click="toggleMenu($event, data)" />
         </div>
       </template>
-    </Column> -->
+    </Column>
+    -->
   </DataTable>
 
   <Menu ref="menu" :model="menuItems" popup />
   <ConfigPost ref="configDialog" />
-
   <VerDialog ref="viewDialogRef" />
 
   <Dialog v-model:visible="editDialog" :style="{ width: '600px' }" header="Editar Publicación" :modal="true">
-        <div class="flex flex-col gap-6">
-            <div>
-                <label class="block font-bold mb-3">Titulo <span class="text-red-500">*</span></label>
-                <InputText v-model="editForm.titulo" :useGrouping="false" placeholder="Ingresa el titulo" inputId="titulo" class="w-full" />
-            </div>
+    <div class="flex flex-col gap-6">
+      <div>
+        <label class="block font-bold mb-3">Titulo <span class="text-red-500">*</span></label>
+        <InputText
+          v-model="editForm.titulo"
+          :useGrouping="false"
+          placeholder="Ingresa el titulo"
+          inputId="titulo"
+          class="w-full"
+        />
+      </div>
 
-            <div>
-                <label class="block font-bold mb-3">Categoría(s) <span class="text-red-500">*</span></label>
-                <MultiSelect
-                  v-model="editForm.products"
-                  display="chip"
-                  :options="products"
-                  optionLabel="nombre"
-                  optionValue="id"
-                  filter
-                  placeholder="Seleccione la categoría"
-                  :maxSelectedLabels="3"
-                  class="w-full"
-                />
-            </div>
+      <!-- Categoría(s) -->
+      <div>
+        <label class="block font-bold mb-3">Categoría(s) <span class="text-red-500">*</span></label>
+        <MultiSelect
+          v-model="editForm.category_ids"
+          display="chip"
+          :options="categories"
+          optionLabel="nombre"
+          optionValue="id"
+          filter
+          placeholder="Seleccione la(s) categoría(s)"
+          :maxSelectedLabels="3"
+          class="w-full"
+        />
+      </div>
 
-            <!-- <div>
-              <label class="block font-bold mb-3">Categoría <span class="text-red-500">*</span></label>
-              <Select v-model="editForm.product_id" :options="products" optionLabel="nombre" optionValue="id" placeholder="Seleccione la categoría" class="w-full" />
-            </div> -->
-            <div>
-                <label class="block font-bold mb-3">Resumen <span class="text-red-500">*</span></label>
-                <InputText v-model="editForm.resumen" :useGrouping="false" placeholder="Ingresa el resumen" inputId="resumen" class="w-full" />
-            </div>
-            <div>
-                <label class="block font-bold mb-3">Contenido <span class="text-red-500">*</span></label>
-                <Textarea v-model="editForm.contenido" placeholder="Ingresa el contenido" rows="3" class="w-full" />
-            </div>
+      <div>
+        <label class="block font-bold mb-3">Resumen <span class="text-red-500">*</span></label>
+        <InputText
+          v-model="editForm.resumen"
+          :useGrouping="false"
+          placeholder="Ingresa el resumen"
+          inputId="resumen"
+          class="w-full"
+        />
+      </div>
 
-            <div>
-                <label class="block font-bold mb-3">Fecha Programada <span class="text-red-500">*</span></label>
-                <Calendar
-                    v-model="editForm.fecha_programada"
-                    dateFormat="dd/mm/yy"
-                    placeholder="Selecciona la fecha"
-                    showIcon
-                    class="w-full"
-                />
-            </div>
+      <div>
+        <label class="block font-bold mb-3">Contenido <span class="text-red-500">*</span></label>
+        <Textarea v-model="editForm.contenido" placeholder="Ingresa el contenido" rows="3" class="w-full" />
+      </div>
 
-            <div>
-                <label class="block font-bold mb-3">Imagén para mostrar <span class="text-red-500">*</span></label>
-                <FileUpload
-                    mode="advanced"
-                    name="img"
-                    accept=".jpg"
-                    :auto="true"
-                    customUpload
-                    :maxFileSize="10000000"
-                    @uploader="onUploadImage"
-                    :chooseLabel="'Seleccionar Imagen'"
-                    :uploadLabel="'Subir'"
-                    :cancelLabel="'Cancelar'"
-                    class="w-full"
-                />
-            </div>
-        </div>
+      <div>
+        <label class="block font-bold mb-3">Fecha Programada <span class="text-red-500">*</span></label>
+        <Calendar
+          v-model="editForm.fecha_programada"
+          dateFormat="dd/mm/yy"
+          placeholder="Selecciona la fecha"
+          showIcon
+          class="w-full"
+        />
+      </div>
 
-        <!-- Botones -->
-        <template #footer>
-            <Button label="Cancelar" icon="pi pi-times" text @click="editDialog = false" severity="secondary"/>
-            <Button label="Guardar" icon="pi pi-check" @click="actualizarPost" severity="contrast"/>
-        </template>
-    </Dialog>
+      <div>
+        <label class="block font-bold mb-3">Imagén para mostrar</label>
+        <FileUpload
+          mode="advanced"
+          name="img"
+          accept=".jpg,.jpeg,.png"
+          :auto="true"
+          customUpload
+          :maxFileSize="10000000"
+          @uploader="onUploadImage"
+          :chooseLabel="'Seleccionar Imagen'"
+          :uploadLabel="'Subir'"
+          :cancelLabel="'Cancelar'"
+          class="w-full"
+        />
+        <small class="text-gray-500">Opcional: si no seleccionas una nueva imagen, se mantiene la actual.</small>
+      </div>
+    </div>
+
+    <template #footer>
+      <Button label="Cancelar" icon="pi pi-times" text @click="editDialog = false" severity="secondary" />
+      <Button label="Guardar" icon="pi pi-check" @click="actualizarPost" severity="contrast" />
+    </template>
+  </Dialog>
 
   <ConfirmDialog />
 </template>
@@ -166,6 +185,8 @@ import axios from 'axios'
 import { FilterMatchMode } from '@primevue/core/api'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
+
+// PrimeVue
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
@@ -177,10 +198,14 @@ import Menu from 'primevue/menu'
 import Dialog from 'primevue/dialog'
 import FileUpload from 'primevue/fileupload'
 import ConfirmDialog from 'primevue/confirmdialog'
-import VerDialog from './ver.vue'
-import Select from 'primevue/select'
-import ConfigPost from './ConfigPost.vue'
 import Rating from 'primevue/rating'
+import MultiSelect from 'primevue/multiselect'
+import Calendar from 'primevue/calendar'
+import Textarea from 'primevue/textarea'
+
+// Local
+import VerDialog from './ver.vue'
+import ConfigPost from './ConfigPost.vue'
 
 const toast = useToast()
 const confirm = useConfirm()
@@ -192,89 +217,75 @@ const selectedPost = ref([])
 const selectedItem = ref(null)
 const loading = ref(false)
 const viewDialogRef = ref(null)
-// Diálogos
+
 const editDialog = ref(false)
 const viewDialog = ref(false)
 
-// Opciones para el dropdown de estado
-const estadoOptions = ref([
-  { label: 'Activo', value: 'activo' },
-  { label: 'Inactivo', value: 'inactivo' }
-])
+// Props (we need user.id for publicar)
+const props = defineProps({
+  refresh: Number,
+  user: {
+    type: Object,
+    default: () => ({ id: null, name: '', email: '' })
+  }
+})
 
 // Formulario de edición
 const editForm = ref({
   id: null,
   titulo: '',
-  //product_id: null,
-  products: null,
   resumen: '',
   contenido: '',
-  fecha_programada: null,
+  fecha_programada: null,   // Date
+  category_ids: []          // array<number>
 })
-const products = ref([])
-const archivoImg = ref(null)
+
+const categories = ref([])   // options for MultiSelect
+const archivoImg = ref(null) // File | null
 
 const filters = ref({
   global: { value: null, matchMode: FilterMatchMode.CONTAINS }
 })
 
-const props = defineProps({ refresh: Number })
-
 const menuItems = ref([
-  //{ label: 'Ver', icon: 'pi pi-eye', command: () => ver(selectedItem.value) },
-  { label: 'Publicar', icon: 'pi pi-play', command: () => publicar(item) },
+  { label: 'Publicar', icon: 'pi pi-play', command: () => publicar(selectedItem.value) },
   { label: 'Ver imagen', icon: 'pi pi-image', command: () => verImagen(selectedItem.value) },
   { label: 'Editar', icon: 'pi pi-pencil', command: () => editar(selectedItem.value) },
-  { label: 'Eliminar', icon: 'pi pi-trash', command: () => eliminar(selectedItem.value) },
+  { label: 'Eliminar', icon: 'pi pi-trash', command: () => eliminar(selectedItem.value) }
 ])
 
 function toggleMenu(event, item) {
   selectedItem.value = item
-
-  menuItems.value = [
-    //{ label: 'Ver', icon: 'pi pi-eye', command: () => ver(item) },
-    { label: 'Publicar', icon: 'pi pi-play', command: () => publicar(item) },
-    { label: 'Ver imagen', icon: 'pi pi-image', command: () => verImagen(item), disabled: !item.imagen },
-    { label: 'Editar', icon: 'pi pi-pencil', command: () => editar(item) },
-    { label: 'Eliminar', icon: 'pi pi-trash', command: () => eliminar(item) },
-  ]
-
   menu.value.toggle(event)
 }
 
 function ver(item) {
-  configDialog.value?.close?.() // si quieres cerrar otros diálogos
+  configDialog.value?.close?.()
   selectedItem.value = item
   viewDialog.value = true
-  viewDialogRef.value.open(item) // este es el punto importante
+  viewDialogRef.value.open(item)
 }
 
-
 function editar(item) {
-
   selectedItem.value = item
   editForm.value = {
     id: item.id,
     titulo: item.titulo,
-    //product_id: item.product_id,
-    products: item.products.map(p => Number(p.id)),
     resumen: item.resumen,
     contenido: item.contenido,
-    fecha_programada: item.fecha_programada ? new Date(item.fecha_programada) : null,
+    fecha_programada: item.fecha_programada
+      ? new Date(String(item.fecha_programada).replace(' ', 'T'))
+      : null,
+    // map from categories on the post
+    category_ids: (item.categories || []).map(c => Number(c.id))
   }
-
+  archivoImg.value = null
   editDialog.value = true
-
-
-  console.log('i<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>')
-  console.log(editForm.value.products)
-  console.log('i<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>')
 }
 
 function eliminar(item) {
   confirm.require({
-    message: `¿Estás seguro de que quieres eliminar la publicación"${item.nombre}"?`,
+    message: `¿Estás seguro de que quieres eliminar la publicación "${item.titulo}"?`,
     header: 'Confirmar eliminación',
     icon: 'pi pi-exclamation-triangle',
     acceptLabel: 'Sí, eliminar',
@@ -283,21 +294,11 @@ function eliminar(item) {
     accept: async () => {
       try {
         loading.value = true
-        await axios.delete(`api/blog/eliminar/${item.id}`)
-        toast.add({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Publicación eliminada correctamente',
-          life: 3000
-        })
+        await axios.delete(`/api/blog/eliminar/${item.id}`)
+        toast.add({ severity: 'success', summary: 'Éxito', detail: 'Publicación eliminada correctamente', life: 3000 })
         obtenerPost()
       } catch (error) {
-        toast.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'No se pudo eliminar la publicación',
-          life: 3000
-        })
+        toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar la publicación', life: 3000 })
       } finally {
         loading.value = false
       }
@@ -310,48 +311,39 @@ function configurar(item) {
 }
 
 function verImagen(item) {
-  if (!item.imagen) {
-    toast.add({
-      severity: 'warn',
-      summary: 'Advertencia',
-      detail: 'Esta publicación no tiene una imagen asociada',
-      life: 3000
-    })
+  if (!item?.imagen) {
+    toast.add({ severity: 'warn', summary: 'Advertencia', detail: 'Esta publicación no tiene una imagen asociada', life: 3000 })
     return
   }
-
   const url = `/image/${item.imagen}`
-  window.open(url, '_blank') // Abre en nueva pestaña
+  window.open(url, '_blank')
 }
-/* onFileSelect(event) {
-  editForm.value.pdf = event.files[0]
-}*/
 
 async function publicar(item) {
   try {
     loading.value = true
-
-    await axios.get(`/api/blog/publicar/${item.id}/2`)
-
-    toast.add({
-      severity: 'success',
-      summary: 'Éxito',
-      detail: 'Publicación realizada correctamente',
-      life: 3000
-    })
-
+    const userId = props?.user?.id ?? 1
+    await axios.get(`/api/blog/publicar/${userId}/${item.id}/2`)
+    toast.add({ severity: 'success', summary: 'Éxito', detail: 'Publicación realizada correctamente', life: 3000 })
     editDialog.value = false
     obtenerPost()
   } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'No se pudo actualizar la acción',
-      life: 3000
-    })
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo actualizar la acción', life: 3000 })
   } finally {
     loading.value = false
   }
+}
+
+function formatDateRequest(date) {
+  if (!date) return ''
+  const d = new Date(date)
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mi = String(d.getMinutes()).padStart(2, '0')
+  const ss = String(d.getSeconds()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`
 }
 
 async function actualizarPost() {
@@ -359,42 +351,31 @@ async function actualizarPost() {
     loading.value = true
 
     const formData = new FormData()
-    formData.append('user_id', 1)
-    formData.append('titulo', editForm.value.titulo)
-    //formData.append('product_id', editForm.value.product_id)
-    formData.append('product_id', JSON.stringify(editForm.value.products))
-    formData.append('resumen', editForm.value.resumen)
-    formData.append('contenido', editForm.value.contenido)
-    formData.append('fecha_programada', editForm.value.fecha_programada.toISOString().split('T')[0])
+    formData.append('user_id', props?.user?.id ?? 1)
+    formData.append('titulo', editForm.value.titulo || '')
+    formData.append('resumen', editForm.value.resumen || '')
+    formData.append('contenido', editForm.value.contenido || '')
+    formData.append('fecha_programada', formatDateRequest(editForm.value.fecha_programada))
     formData.append('state_id', 1)
-    formData.append('imagen', archivoImg.value)
 
-    /*if (editForm.value.pdf) {
-      formData.append('pdf', editForm.value.pdf)
-    }*/
+    // ✅ categories as CSV string
+    formData.append('category_id', (editForm.value.category_ids || []).join(','))
+
+    // ✅ Only append image if user picked a new file
+    if (archivoImg.value) {
+      formData.append('imagen', archivoImg.value)
+    }
 
     await axios.post(`/api/blog/actualizar/${editForm.value.id}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
+      headers: { 'Content-Type': 'multipart/form-data' }
     })
 
-    toast.add({
-      severity: 'success',
-      summary: 'Éxito',
-      detail: 'Publicación actualizada correctamente',
-      life: 3000
-    })
-
+    toast.add({ severity: 'success', summary: 'Éxito', detail: 'Publicación actualizada correctamente', life: 3000 })
     editDialog.value = false
     obtenerPost()
   } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'No se pudo actualizar la publicación',
-      life: 3000
-    })
+    const detail = error?.response?.data?.message || error?.response?.data?.error || 'No se pudo actualizar la publicación'
+    toast.add({ severity: 'error', summary: 'Error', detail, life: 3000 })
   } finally {
     loading.value = false
   }
@@ -403,70 +384,45 @@ async function actualizarPost() {
 async function obtenerPost() {
   try {
     const res = await axios.get('/api/blog/lista')
-    console.log(res.data.posts)
-    posts.value = res.data.posts
+    posts.value = res.data.posts || []
   } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'No se pudo cargar posts',
-      life: 3000
-    })
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar posts', life: 3000 })
   }
 }
 
 function onUploadImage(event) {
-    const file = event.files[0];
-    const allowedTypes = ['image/jpeg', 'image/png'];
-
-    if (file && allowedTypes.includes(file.type)) {
-        archivoImg.value = file;
-        toast.add({
-            severity: 'success',
-            summary: 'Imagen cargada',
-            detail: `Archivo "${file.name}" listo para enviar`,
-            life: 3000
-        });
-    } else {
-        toast.add({
-            severity: 'error',
-            summary: 'Archivo inválido',
-            detail: 'Debe subir un archivo del tipo jpg o png.',
-            life: 4000
-        });
-    }
+  const file = event.files?.[0]
+  const allowedTypes = ['image/jpeg', 'image/png']
+  if (file && allowedTypes.includes(file.type)) {
+    archivoImg.value = file
+    toast.add({ severity: 'success', summary: 'Imagen cargada', detail: `Archivo "${file.name}" listo para enviar`, life: 3000 })
+  } else {
+    toast.add({ severity: 'error', summary: 'Archivo inválido', detail: 'Debe subir un archivo JPG o PNG.', life: 4000 })
+  }
 }
 
-async function obtenerProductos() {
+async function obtenerCategorias() {
   try {
-    const res = await axios.get('/api/blog/productos')
-    products.value = res.data
+    const res = await axios.get('/api/blog/listar-categoria', { params: { per_page: 1000 } })
+    categories.value = Array.isArray(res.data?.data) ? res.data.data : []
   } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'No se pudo cargar posts',
-      life: 3000
-    })
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar categorías', life: 3000 })
   }
 }
 
 const formatDate = (date) => {
   if (!date) return ''
-
   const d = new Date(date)
+  if (isNaN(d)) return ''
   const day = String(d.getDate()).padStart(2, '0')
   const month = String(d.getMonth() + 1).padStart(2, '0')
   const year = d.getFullYear()
-
   let hours = d.getHours()
   const minutes = String(d.getMinutes()).padStart(2, '0')
   const ampm = hours >= 12 ? 'pm' : 'am'
-
   hours = hours % 12
-  hours = hours ? hours : 12 // 0 debe mostrarse como 12
+  hours = hours ? hours : 12
   hours = String(hours).padStart(2, '0')
-
   return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`
 }
 
@@ -489,24 +445,25 @@ function getEstadoSeverity(stateId) {
 }
 
 function getPromedioRating(ratings) {
-  if (!ratings || ratings.length === 0) return 0;
-  const total = ratings.reduce((sum, rating) => {
-    return sum + parseFloat(rating.estrellas);
-  }, 0);
+  if (!Array.isArray(ratings) || ratings.length === 0) return 0
+  const total = ratings.reduce((sum, r) => sum + parseFloat(r.estrellas || 0), 0)
+  return Math.round((total / ratings.length) * 10) / 10 // 1 decimal
+}
 
-  return total / ratings.length;
+// 👁️ Helper para formatear visitas
+function formatNumber(n) {
+  n = Number(n || 0)
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M'
+  if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, '') + 'K'
+  return String(n)
 }
 
 onMounted(() => {
   obtenerPost()
-  obtenerProductos()
+  obtenerCategorias()
 })
 
 watch(() => props.refresh, () => {
   obtenerPost()
-})
-
-watch(() => products.refresh, () => {
-  obtenerProductos()
 })
 </script>

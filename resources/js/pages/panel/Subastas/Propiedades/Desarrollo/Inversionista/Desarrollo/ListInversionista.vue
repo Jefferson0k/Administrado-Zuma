@@ -33,8 +33,16 @@
         <Column field="documento" header="DNI" />
         <Column field="cliente" header="Cliente" />
         <Column field="propiedad" header="Propiedad" />
-        <Column field="requerido" header="Valor Requerido" />
-        <Column field="cronograma" header="Tipo Cronograma" />
+        <Column field="requerido" header="Valor Requerido">
+            <template #body="{ data }">
+                {{ formatCurrency(data.requerido) }}
+            </template>
+        </Column>
+        <Column field="cronograma" header="Tipo Cronograma">
+            <template #body="{ data }">
+                {{ formatCronograma(data.cronograma) }}
+            </template>
+        </Column>
         <Column field="plazo" header="Plazo" />
         
         <!-- Columnas opcionales -->
@@ -152,6 +160,21 @@
             </template>
         </Column>
 
+        <Column v-if="isColumnSelected('valor')" field="valor" header="Valor de la Propiedad" style="min-width: 10rem">
+            <template #body="{ data }">
+                {{ formatCurrency(data.valor) }}
+            </template>
+        </Column>
+
+        <Column v-if="isColumnSelected('subasta')" field="subasta" header="Valor Subasta" style="min-width: 10rem">
+            <template #body="{ data }">
+                <span v-if="data.subasta && data.subasta !== '0'">
+                    {{ formatCurrency(data.subasta) }}
+                </span>
+                <span v-else class="text-gray-400">-</span>
+            </template>
+        </Column>
+
         <Column field="riesgo" header="Riesgo">
             <template #body="{ data }">
                 <Tag :value="data.riesgo" :severity="getRiesgoSeverity(data.riesgo)" />
@@ -164,7 +187,7 @@
             </template>
         </Column>
 
-        <Column header="">
+        <Column style="width: 5rem">
             <template #body="{ data }">
                 <div class="flex justify-center">
                     <Menu 
@@ -344,75 +367,75 @@ const optionalColumns = ref([
     { field: 'solicitud_prestamo_para', header: 'Solicitud Para' },
     { field: 'garantia', header: 'Garantía' },
     { field: 'perfil_riesgo', header: 'Perfil de Riesgo' },
+    { field: 'valor', header: 'Valor de la Propiedad' },
+    { field: 'subasta', header: 'Valor Subasta' },
 ]);
+
+// Función para formatear moneda
+const formatCurrency = (value) => {
+    if (!value || value === '0') return '-';
+    const number = parseFloat(value);
+    return new Intl.NumberFormat('es-PE', {
+        style: 'currency',
+        currency: 'PEN',
+        minimumFractionDigits: 2
+    }).format(number);
+};
+
+// Función para formatear cronograma
+const formatCronograma = (cronograma) => {
+    const cronogramas = {
+        'frances': 'Francés',
+        'aleman': 'Alemán',
+        'americano': 'Americano'
+    };
+    return cronogramas[cronograma] || cronograma;
+};
 
 // Función para obtener los items del menú según el estado
 const getMenuItems = (data) => {
-    const baseItems = [
+    return [
         {
             label: 'Ver Detalle',
             icon: 'pi pi-eye',
             command: () => verDetalle(data)
+        },
+        {
+            separator: true
+        },
+        {
+            label: 'Subastarla',
+            icon: 'pi pi-cog',
+            command: () => abrirConfiguracion(data)
+        },
+        {
+            label: 'Editar',
+            icon: 'pi pi-pencil',
+            command: () => editarPrestamo(data)
+        },
+        {
+            separator: true
+        },
+        {
+            label: 'Enviar por Email',
+            icon: 'pi pi-envelope',
+            command: () => abrirEmailDialog(data)
+        },
+        {
+            label: 'Descargar PDF',
+            icon: 'pi pi-download',
+            command: () => descargarPDF(data)
+        },
+        {
+            separator: true
+        },
+        {
+            label: 'Eliminar',
+            icon: 'pi pi-trash',
+            class: 'text-red-500',
+            command: () => eliminarPrestamo(data)
         }
     ];
-
-    if (data.estado === 'activa') {
-        baseItems.push(
-            {
-                separator: true
-            },
-            {
-                label: 'Configuración',
-                icon: 'pi pi-cog',
-                command: () => abrirConfiguracion(data)
-            },
-            {
-                label: 'Editar',
-                icon: 'pi pi-pencil',
-                command: () => editarPrestamo(data)
-            },
-            {
-                separator: true
-            },
-            {
-                label: 'Enviar por Email',
-                icon: 'pi pi-envelope',
-                command: () => abrirEmailDialog(data)
-            },
-            {
-                label: 'Descargar PDF',
-                icon: 'pi pi-download',
-                command: () => descargarPDF(data)
-            },
-            {
-                separator: true
-            },
-            {
-                label: 'Eliminar',
-                icon: 'pi pi-trash',
-                class: 'text-red-500',
-                command: () => eliminarPrestamo(data)
-            }
-        );
-    } else {
-        baseItems.push(
-            {
-                separator: true
-            },
-            {
-                label: 'Enviar por Email',
-                icon: 'pi pi-envelope',
-                command: () => abrirEmailDialog(data)
-            },
-            {
-                label: 'Descargar PDF',
-                icon: 'pi pi-download',
-                command: () => descargarPDF(data)
-            }
-        );
-    }
-
-    return baseItems;
 };
 
 // Función para mostrar/ocultar el menú
@@ -497,7 +520,8 @@ const descargarPDF = (data) => {
         summary: 'Descarga', 
         detail: `Descargando PDF del préstamo ${data.id}` 
     });
-    // Lógica para descargar PDF
+    // Aquí puedes implementar la lógica real para descargar el PDF
+    // Por ejemplo: window.open(`/api/prestamos/${data.id}/pdf`, '_blank');
 };
 
 // Función para verificar si una columna está seleccionada
@@ -513,12 +537,64 @@ const openDetailDialog = (title, content, data) => {
     showDetailDialog.value = true;
 };
 
+// Función principal para obtener datos del API
 const getData = async () => {
     try {
+        console.log('Iniciando petición a la API...');
         const response = await axios.get('/property-loan-details');
-        products.value = response.data.data;
+        
+        console.log('Respuesta completa del servidor:', response);
+        console.log('Datos de respuesta:', response.data);
+        
+        // Verificar que la respuesta tenga la estructura esperada
+        if (response.data && Array.isArray(response.data.data)) {
+            products.value = response.data.data;
+            console.log('Datos cargados correctamente:', products.value);
+            console.log('Número de registros:', products.value.length);
+            
+            // Verificar la estructura del primer elemento si existe
+            if (products.value.length > 0) {
+                console.log('Primer registro:', products.value[0]);
+            }
+        } else if (response.data && Array.isArray(response.data)) {
+            // Por si acaso la respuesta viene directamente como array
+            products.value = response.data;
+            console.log('Datos cargados directamente como array:', products.value);
+        } else {
+            console.error('Estructura de respuesta inesperada:', response.data);
+            console.error('Tipo de data:', typeof response.data.data);
+            console.error('Es array data?', Array.isArray(response.data.data));
+            
+            toast.add({ 
+                severity: 'warn', 
+                summary: 'Advertencia', 
+                detail: 'Los datos recibidos tienen una estructura inesperada' 
+            });
+            products.value = [];
+        }
     } catch (error) {
-        toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar los datos' });
+        console.error('Error completo:', error);
+        console.error('Respuesta del error:', error.response);
+        console.error('Status del error:', error.response?.status);
+        console.error('Datos del error:', error.response?.data);
+        
+        let errorMessage = 'No se pudo cargar los datos';
+        
+        if (error.response?.status === 404) {
+            errorMessage = 'Endpoint no encontrado. Verifica la URL de la API.';
+        } else if (error.response?.status === 500) {
+            errorMessage = 'Error interno del servidor. Revisa los logs del backend.';
+        } else if (error.response?.data?.message) {
+            errorMessage = error.response.data.message;
+        }
+        
+        toast.add({ 
+            severity: 'error', 
+            summary: 'Error', 
+            detail: errorMessage,
+            life: 5000
+        });
+        products.value = [];
     }
 };
 
@@ -539,12 +615,12 @@ const abrirConfiguracion = (data) => {
 
 const editarPrestamo = (data) => {
     toast.add({ severity: 'info', summary: 'Editar', detail: `Editar préstamo ${data.id}` });
-    // Lógica para editar
+    // Implementar lógica para editar
 };
 
 const eliminarPrestamo = (data) => {
     toast.add({ severity: 'warn', summary: 'Eliminar', detail: `Eliminar préstamo ${data.id}` });
-    // Lógica para eliminar
+    // Implementar lógica para eliminar con confirmación
 };
 
 const getEstadoSeverity = (estado) => {
@@ -553,6 +629,8 @@ const getEstadoSeverity = (estado) => {
             return 'success';
         case 'pendiente':
             return 'warn';
+        case 'en_subasta':
+            return 'info';
         case 'subastada':
             return 'info';
         case 'desactivada':
@@ -578,5 +656,7 @@ const getRiesgoSeverity = (riesgo) => {
     }
 };
 
-onMounted(getData);
+onMounted(() => {
+    getData();
+});
 </script>

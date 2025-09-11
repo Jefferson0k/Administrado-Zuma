@@ -2,43 +2,60 @@
 
 namespace App\Models;
 
-use App\Enums\Currency;
+use App\Helpers\MoneyConverter;
+use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Str;
+use Money\Money;
+
 class Deposit extends Model{
-    use HasFactory;
-    protected $keyType = 'string';
-    public $incrementing = false;
-    protected $table = 'deposits';
+    use HasFactory, HasUlids;
     protected $fillable = [
-        'id',
         'nro_operation',
-        'amount',
         'currency',
+        'amount',
         'resource_path',
         'description',
-        'investor_id',
         'movement_id',
+        'investor_id',
         'bank_account_id',
-        'payment_source',
-        'type',
         'created_by',
         'updated_by',
         'fixed_term_investment_id',
-        'payment_schedules_id',
+        'property_reservations_id',
+        'conclusion'
     ];
 
     protected $casts = [
-        'amount' => 'decimal:2',
-        'currency' => Currency::class,
+        'amount' => 'integer',
     ];
 
-    /**
-     * Relaciones
-     */
+    public function movement(): BelongsTo
+    {
+        return $this->belongsTo(Movement::class);
+    }
 
+    public function investor(): BelongsTo
+    {
+        return $this->belongsTo(Investor::class);
+    }
+
+    public function bankAccount(): BelongsTo
+    {
+        return $this->belongsTo(BankAccount::class);
+    }
+
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
     protected static function boot(){
         parent::boot();
         
@@ -48,21 +65,6 @@ class Deposit extends Model{
             }
         });
     }
-
-    public function investor(): BelongsTo
-    {
-        return $this->belongsTo(Investor::class);
-    }
-
-    public function movement(): BelongsTo
-    {
-        return $this->belongsTo(Movement::class);
-    }
-
-    public function bankAccount(): BelongsTo
-    {
-        return $this->belongsTo(BankAccount::class);
-    }
     public function fixedTermInvestment(){
         return $this->belongsTo(FixedTermInvestment::class);
     }
@@ -71,5 +73,36 @@ class Deposit extends Model{
     }
     public function paymentschedules(){
         return $this->belongsTo(PaymentSchedule::class);
+    }
+    // ========================
+    // Accesores (getters)
+    // ========================
+    public function getAmountAttribute(): string{
+        return MoneyConverter::fromSubunitToDecimal(
+            $this->attributes['amount'],
+            $this->attributes['currency']
+        );
+    }
+    public function getResourcePathAttribute(): ?string{
+        if (isset($this->attributes['resource_path'])) {
+            return env('APP_URL') . '/s3/' . $this->attributes['resource_path'];
+        }
+        return null;
+    }
+    // ========================
+    // Accesores (setters)
+    // ========================
+    public function setAmountAttribute(float | Money $value): void{
+        if (!isset($this->attributes['currency'])) {
+            throw new \RuntimeException('Currency must be set before amount');
+        }
+        if ($value instanceof Money) {
+            $this->attributes['amount'] = $value->getAmount();
+        } else {
+            $this->attributes['amount'] = MoneyConverter::fromDecimal(
+                $value,
+                $this->attributes['currency']
+            )->getAmount();
+        }
     }
 }

@@ -38,7 +38,7 @@ class Post extends Model
 
     public function ratings()
     {
-        return $this->belongsToMany(Rating::class, 'post_ratings', 'post_id', 'rating_id');
+        return $this->belongsToMany(Rating::class, 'posts_ratings', 'post_id', 'rating_id');
     }
 
     public function state()

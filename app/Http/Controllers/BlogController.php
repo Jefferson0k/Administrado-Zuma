@@ -59,6 +59,7 @@ class BlogController extends Controller
             'ratings',
             'user:id,name',
             'updated_user:id,name',
+            'images',              // ✅ eager-load gallery images so edit dialog has them
         ])->get();
 
         return response()->json([
@@ -353,57 +354,107 @@ class BlogController extends Controller
     public function actualizar(Request $request, $id)
     {
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'updated_user_id' => 'nullable|integer',
-            'titulo' => 'required|string|max:255',
-            'contenido' => 'required|string',
-            'resumen' => 'nullable|string|max:1000',
-            'imagen' => 'required|image|max:2048', // ajusta si no es imagen
-            //'imagen' => 'nullable|string|max:255',
-            //'product_id' => 'required|exists:products,id',
-            'category_id' => 'required|exists:categories,id',
-            'state_id' => 'required|exists:states,id',
-            'fecha_programada' => 'nullable|date_format:Y-m-d H:i:s',
-            'fecha_publicacion' => 'nullable|date_format:Y-m-d H:i:s',
+            'user_id'           => 'required|exists:users,id',
+            'updated_user_id'   => 'nullable|integer',
+            'titulo'            => 'required|string|max:255',
+            'contenido'         => 'required|string',
+            'resumen'           => 'nullable|string|max:1000',
+
+            // ⚠️ ya no es required; opcional si quieres cambiar la portada con una NUEVA imagen
+            'imagen'            => 'nullable|image|mimes:jpeg,jpg,png|max:10240',
+
+            // categorías puede llegar como CSV
+            'category_id'       => 'required|string',
+
+            'state_id'          => 'required|exists:states,id',
+            'fecha_programada'  => 'nullable|date_format:Y-m-d H:i:s',
+
+            // NUEVO: manejo granular de galería
+            'new_images'        => 'nullable|array',
+            'new_images.*'      => 'image|mimes:jpeg,jpg,png|max:10240',
+            'delete_image_ids'  => 'nullable|array',
+            'delete_image_ids.*' => 'integer|exists:post_images,id',
+            'cover_image_id'    => 'nullable|integer|exists:post_images,id',
         ]);
 
-        // Si hay imagen, la procesamos
+        $post = Post::with('images')->findOrFail($id);
+
+        // Actualiza campos base
+        $post->update([
+            'user_id'          => $validated['user_id'],
+            'updated_user_id'  => $request->input('updated_user_id'),
+            'titulo'           => $validated['titulo'],
+            'contenido'        => $validated['contenido'],
+            'resumen'          => $request->input('resumen'),
+            'state_id'         => $validated['state_id'],
+            'fecha_programada' => $request->input('fecha_programada'),
+        ]);
+
+        // Sincroniza categorías
+        $category_ids = collect(explode(',', $validated['category_id']))
+            ->map(fn($v) => (int) trim($v))
+            ->filter()
+            ->values()
+            ->all();
+
+        $existing = Category::whereIn('id', $category_ids)->pluck('id')->toArray();
+        $missing = array_diff($category_ids, $existing);
+        if (count($missing)) {
+            return response()->json(['error' => 'Una o más categorías no existen: ' . implode(', ', $missing)], 422);
+        }
+        $post->categories()->sync($category_ids);
+
+        // Si subieron una NUEVA portada (imagen)
         if ($request->hasFile('imagen')) {
             $img = $request->file('imagen');
-            Log::debug($img);
-            $allowedMimeTypes = ['image/jpeg', 'image/png'];
-            if ($img->isValid() && in_array($img->getMimeType(), $allowedMimeTypes)) {
-                $randomName = Str::random(10) . '.' . $img->getClientOriginalExtension();
-                $img->storeAs('public/images', $randomName);
-                $validated['imagen'] = $randomName;
-            } else {
-                return response()->json(['error' => 'Solo se permiten imágenes JPG o PNG válidas'], 422);
+            $name = Str::random(10) . '.' . $img->getClientOriginalExtension();
+            $img->storeAs('images', $name, 'public');
+
+            // borra la portada anterior si existía
+            if ($post->imagen && Storage::disk('public')->exists("images/{$post->imagen}")) {
+                Storage::disk('public')->delete("images/{$post->imagen}");
+            }
+            $post->imagen = $name;
+            $post->save();
+        }
+
+        // Cambiar portada desde una imagen existente (post_images)
+        if ($request->filled('cover_image_id')) {
+            $img = PostImage::where('post_id', $post->id)->findOrFail($request->cover_image_id);
+            // Mueve portada actual a galería (opcional) o simplemente reemplaza
+            $post->imagen = $img->image_path;
+            $post->save();
+            // si NO quieres duplicados, puedes eliminar este PostImage o mantenerlo
+            // $img->delete();
+        }
+
+        // Agregar nuevas imágenes a galería
+        if ($request->hasFile('new_images')) {
+            foreach ($request->file('new_images') as $file) {
+                $name = Str::random(10) . '.' . $file->getClientOriginalExtension();
+                $file->storeAs('images', $name, 'public');
+                PostImage::create([
+                    'post_id'    => $post->id,
+                    'image_path' => $name,
+                ]);
             }
         }
 
-        // Actualizamos el post
-        $post = Post::findOrFail($id);
-        $post->update($validated);
-
-        // 💡 Sincronizamos las categorías si vienen en el request
-        if (isset($validated['category_id'])) {
-            $category_ids = explode(',', $validated['category_id']);
-            $category_ids = array_map('intval', array_map('trim', $category_ids));
-
-            // Validar que existan todas las categorías antes de sincronizar
-            $existingCategoryIds = Category::whereIn('id', $category_ids)->pluck('id')->toArray();
-            $missing = array_diff($category_ids, $existingCategoryIds);
-            if (count($missing)) {
-                return response()->json([
-                    'error' => 'Una o más categorías no existen: ' . implode(', ', $missing)
-                ], 422);
+        // Eliminar imágenes marcadas
+        $deleteIds = $request->input('delete_image_ids', []);
+        if (!empty($deleteIds)) {
+            $imgs = PostImage::where('post_id', $post->id)->whereIn('id', $deleteIds)->get();
+            foreach ($imgs as $im) {
+                if (Storage::disk('public')->exists("images/{$im->image_path}")) {
+                    Storage::disk('public')->delete("images/{$im->image_path}");
+                }
+                $im->delete();
             }
-
-            $post->categories()->sync($category_ids);
         }
 
         return response()->json(['message' => 'Publicación actualizada correctamente']);
     }
+
 
 
     public function publicar($user_id, $post_id, $state_id)
@@ -454,18 +505,17 @@ class BlogController extends Controller
         $post = Post::with(['ratings', 'categories', 'images'])
             ->where('id', $id)
             ->where('state_id', 2)
-            ->first(); // 👈 devuelve un solo post o null
+            ->first();
 
         if (!$post) {
-            return response()->json([
-                'message' => 'Post not found'
-            ], 404);
+            return response()->json(['message' => 'Post not found'], 404);
         }
 
-        // Obtiene IDs de categorías
-        $categoryIds = $post->categories->pluck('id')->toArray();
+        // 👇 Incrementa visitas totales (una por carga del detalle)
+        $post->increment('views_total');
 
-        // Busca posts relacionados
+        // Relacionados (igual que ya tenías)
+        $categoryIds = $post->categories->pluck('id')->toArray();
         $related = Post::where('state_id', 2)
             ->where('id', '!=', $post->id)
             ->whereHas('categories', function ($query) use ($categoryIds) {
@@ -474,11 +524,11 @@ class BlogController extends Controller
             ->limit(5)
             ->get();
 
-        // Agrega los relacionados al post
         $post->related_articles = $related;
 
         return response()->json($post);
     }
+
 
 
     private function getRealIp(Request $request): string

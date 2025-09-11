@@ -2,17 +2,21 @@
 
 namespace Database\Seeders;
 
+use App\Models\Cargo;
 use Illuminate\Database\Seeder;
+use Spatie\Permission\Contracts\Role;
 
 class DatabaseSeeder extends Seeder{
     public function run(): void{
         $this->call([
             PermissionSeeder::class,
-            RoleAndPermissionSeeder::class,
+            RoleSeeder::class,
+            CargoSeeder::class,
             UserSeeder::class,
             CurrencySeeder::class,
             SectorSeeder::class,
             SubsectorSeeder::class,
+            TermSeeder::class,
             CompanySeeder::class,
             BankSeeder::class,
             InvestorSeeder::class,
@@ -20,7 +24,6 @@ class DatabaseSeeder extends Seeder{
             ExchangeSeeder::class,
             #InvoiceSeeder::class,
             #InvestmentSeeder::class,
-            TermSeeder::class,
             #PropertySeeder::class,
             CoopacSanCristobalSeeder::class,
             PaymentFrequencySeeder::class,

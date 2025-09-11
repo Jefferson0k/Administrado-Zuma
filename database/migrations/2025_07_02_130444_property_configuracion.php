@@ -11,12 +11,16 @@ return new class extends Migration {
             $table->ulid('property_id');
             $table->foreign('property_id')->references('id')->on('properties')->onDelete('cascade');
             $table->foreignId('deadlines_id')->nullable()->constrained('deadlines')->onDelete('set null');
-            $table->decimal('tea', 6, 4)->nullable();
-            $table->decimal('tem', 6, 4)->nullable();
+            $table->bigInteger('tea')->nullable();
+            $table->bigInteger('tem')->nullable();
             $table->enum('tipo_cronograma', ['frances', 'americano','-'])->default('-');
             $table->enum('riesgo', ['A+', 'A', 'B', 'C', 'D', '-'])->default('-');
             $table->integer('estado');
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
     public function down(): void {

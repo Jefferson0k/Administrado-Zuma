@@ -12,7 +12,6 @@ class UserResource extends JsonResource{
             'name1' => $this->name . ' ' . $this->apellidos,
             'name' => $this->name,
             'apellidos' => $this->apellidos,
-            'nacimiento' => Carbon::parse($this->nacimiento)->format('d-m-Y'),
             'email' => $this->email,
             'username' => $this->username,
             'status' => $this->status,
@@ -20,6 +19,7 @@ class UserResource extends JsonResource{
             'creacion' => Carbon::parse($this->created_at)->format('d-m-Y H:i:s A'),
             'role' => $role ? $role->name : null,
             'role_id' => $role ? $role->id : null,
+            'cargo' => $this->cargo->nombre,
         ];
     }
 }

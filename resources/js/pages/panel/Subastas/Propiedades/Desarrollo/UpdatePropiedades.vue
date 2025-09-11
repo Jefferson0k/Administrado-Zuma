@@ -198,22 +198,38 @@ const cargarPropiedad = async () => {
         form.nombre = property.nombre || '';
         form.direccion = property.direccion || '';
         form.descripcion = property.descripcion || '';
-        form.valor_estimado = property.valor_estimado;
-        form.valor_requerido = property.valor_requerido;
+        
+        // CONVERTIR DE CENTAVOS A UNIDADES PARA MOSTRAR EN EL INPUT
+        if (property.valor_estimado && typeof property.valor_estimado === 'object' && property.valor_estimado.amount) {
+            // Dividir entre 100 para convertir centavos a unidades
+            form.valor_estimado = parseFloat(property.valor_estimado.amount) / 100;
+        } else {
+            form.valor_estimado = property.valor_estimado ? property.valor_estimado / 100 : null;
+        }
+        
+        // CONVERTIR DE CENTAVOS A UNIDADES PARA MOSTRAR EN EL INPUT
+        if (property.valor_requerido && typeof property.valor_requerido === 'object' && property.valor_requerido.amount) {
+            // Dividir entre 100 para convertir centavos a unidades
+            form.valor_requerido = parseFloat(property.valor_requerido.amount) / 100;
+        } else {
+            form.valor_requerido = property.valor_requerido ? property.valor_requerido / 100 : null;
+        }
+        
         form.currency_id = property.currency_id;
         form.estado = property.estado || '';
-        // Guardamos el investor_id de la respuesta
         form.investor_id = property.investor_id;
 
         await buscarUbicacion(property.departamento, property.provincia, property.distrito);
 
-        imagenesActuales.value = property.images ? property.images.map(img => ({
-            id: img.id,
-            imagen: img.imagen,
-            url: `/Propiedades/${property.id}/${img.imagen}`
-        })) : [];
-
+        imagenesActuales.value = property.images
+            ? property.images.map(img => ({
+                id: img.id || img.imagen,
+                imagen: img.imagen,
+                url: img.url || `/s3/${img.path}`
+            }))
+        : [];
     } catch (error) {
+        console.error('Error al cargar propiedad:', error);
         toast.add({
             severity: 'error',
             summary: 'Error',
@@ -223,6 +239,87 @@ const cargarPropiedad = async () => {
         cerrarModal();
     } finally {
         loading.value = false;
+    }
+};
+
+const actualizarPropiedad = async () => {
+    if (!props.idPropiedad) return;
+
+    if (
+        !form.nombre ||
+        !form.departamento ||
+        !form.provincia ||
+        !form.distrito ||
+        !form.direccion ||
+        !form.currency_id ||
+        !form.valor_requerido ||
+        !form.valor_estimado
+    ) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Validación',
+            detail: 'Por favor completa todos los campos obligatorios.',
+            life: 3000
+        });
+        return;
+    }
+
+    try {
+        saving.value = true;
+
+        const formData = new FormData();
+
+        formData.append('nombre', form.nombre);
+        formData.append('departamento', form.departamento.ubigeo_name);
+        formData.append('provincia', form.provincia.ubigeo_name);
+        formData.append('distrito', form.distrito.ubigeo_name);
+        formData.append('direccion', form.direccion);
+        formData.append('descripcion', form.descripcion || '');
+        
+        // CONVERTIR DE UNIDADES A CENTAVOS ANTES DE ENVIAR
+        formData.append('valor_estimado', Math.round(form.valor_estimado * 100));
+        formData.append('valor_requerido', Math.round(form.valor_requerido * 100));
+        
+        formData.append('currency_id', form.currency_id);
+        
+        if (form.investor_id) {
+            formData.append('investor_id', form.investor_id);
+        }
+
+        archivos.value.forEach((file) => {
+            formData.append('imagenes[]', file);
+        });
+
+        imagenesAEliminar.value.forEach(id => {
+            formData.append('imagenes_eliminar[]', id);
+        });
+
+        await axios.post(`/property/${props.idPropiedad}/actualizar?_method=PUT`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+
+        toast.add({
+            severity: 'success',
+            summary: 'Éxito',
+            detail: 'Propiedad actualizada correctamente',
+            life: 3000
+        });
+
+        emit('propiedad-actualizada');
+        cerrarModal();
+
+    } catch (error) {
+        console.error('Error al actualizar propiedad:', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: error.response?.data?.message || 'No se pudo actualizar la propiedad',
+            life: 3000
+        });
+    } finally {
+        saving.value = false;
     }
 };
 
@@ -263,87 +360,15 @@ const onSelectedFiles = (event) => {
 };
 
 const eliminarImagen = (imagen) => {
+    console.log('Eliminando imagen:', imagen);
     imagenesAEliminar.value.push(imagen.id);
     imagenesActuales.value = imagenesActuales.value.filter(img => img.id !== imagen.id);
-};
-
-const actualizarPropiedad = async () => {
-    if (!props.idPropiedad) return;
-
-    if (
-        !form.nombre ||
-        !form.departamento ||
-        !form.provincia ||
-        !form.distrito ||
-        !form.direccion ||
-        !form.currency_id ||
-        !form.valor_requerido ||
-        !form.valor_estimado
-    ) {
-        toast.add({
-            severity: 'warn',
-            summary: 'Validación',
-            detail: 'Por favor completa todos los campos obligatorios.',
-            life: 3000
-        });
-        return;
-    }
-
-    try {
-        saving.value = true;
-
-        const formData = new FormData();
-
-        // Enviar los nombres de los lugares, no los IDs (igual que en el registro)
-        formData.append('nombre', form.nombre);
-        formData.append('departamento', form.departamento.ubigeo_name);
-        formData.append('provincia', form.provincia.ubigeo_name);
-        formData.append('distrito', form.distrito.ubigeo_name);
-        formData.append('direccion', form.direccion);
-        formData.append('descripcion', form.descripcion || '');
-        formData.append('valor_estimado', form.valor_estimado);
-        formData.append('valor_requerido', form.valor_requerido);
-        formData.append('currency_id', form.currency_id);
-        
-        // Enviar el investor_id de forma interna
-        if (form.investor_id) {
-            formData.append('investor_id', form.investor_id);
-        }
-
-        archivos.value.forEach((file) => {
-            formData.append('imagenes[]', file);
-        });
-
-        imagenesAEliminar.value.forEach(id => {
-            formData.append('imagenes_eliminar[]', id);
-        });
-
-        await axios.post(`/property/${props.idPropiedad}/actualizar?_method=PUT`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data'
-            }
-        });
-
-        toast.add({
-            severity: 'success',
-            summary: 'Éxito',
-            detail: 'Propiedad actualizada correctamente',
-            life: 3000
-        });
-
-        emit('propiedad-actualizada');
-        cerrarModal();
-
-    } catch (error) {
-        toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: error.response?.data?.message || 'No se pudo actualizar la propiedad',
-            life: 3000
-        });
-    } finally {
-        saving.value = false;
-    }
+    toast.add({
+        severity: 'info',
+        summary: 'Imagen marcada',
+        detail: 'La imagen será eliminada al actualizar la propiedad',
+        life: 3000
+    });
 };
 
 const resetForm = () => {

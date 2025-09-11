@@ -94,8 +94,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/consultar-ruc/{ruc?}', [ConsultasRucController::class, 'consultar'])->name('consultar.ruc');
     });
 
-    
-    
     #Cargos
     Route::prefix('cargos')->group(function(){
         Route::get('/', [CargoController::class, 'index'])->name('cargos.index');
@@ -265,16 +263,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     # INVOICES => BACKEND
     Route::prefix('invoices')->group(function () {
-        // Route::get('/filtrado', [InvoiceController::class, 'indexfilter']);
-        // Route::get('/', [InvoiceController::class, 'index'])->name('invoices.index');
-        // Route::post('/', [InvoiceController::class, 'store'])->name('invoices.store');
-        // Route::put('/{id}', [InvoiceController::class, 'update'])->name('invoices.update');
-        // Route::patch('/{id}/standby', [InvoiceController::class, 'standby']);
-        // Route::patch('/{id}/activacion', [InvoiceController::class, 'activacion']);
-        // Route::get('/{id}', [InvoiceController::class, 'show'])->name('invoices.show');
-        // Route::delete('/{id}', [InvoiceController::class, 'delete'])->name('invoices.delete');
-        // # Exportación a Excel
-        // Route::get('/export/excel', [InvoiceController::class, 'exportExcel'])->name('invoices.export');
+        Route::get('/filtrado', [InvoiceController::class, 'indexfilter']);
+        Route::get('/', [InvoiceController::class, 'index'])->name('invoices.index');
+        Route::post('/', [InvoiceController::class, 'store'])->name('invoices.store');
+        Route::put('/{id}', [InvoiceController::class, 'update'])->name('invoices.update');
+        Route::patch('/{id}/standby', [InvoiceController::class, 'standby']);
+        Route::patch('/{id}/activacion', [InvoiceController::class, 'activacion']);
+        Route::get('/{id}', [InvoiceController::class, 'show'])->name('invoices.show');
+        Route::delete('/{id}', [InvoiceController::class, 'delete'])->name('invoices.delete');
+        # Exportación a Excel
+        Route::get('/export/excel', [InvoiceController::class, 'exportExcel'])->name('invoices.export');
     });
 
     #PROPERTY => BACKEND (SOLO ADMINISTRADOR MAS NO CLIENTE)
@@ -423,7 +421,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/blog/categorias', [BlogController::class, 'categorias']);
     Route::get('/blog/posts', [BlogController::class, 'index']);
 
-   
+    Route::post('/payments/extraer', [PaymentsController::class, 'comparacion'])->name('payments.comparacion');
+    Route::post('/payments/{invoiceId}', [PaymentsController::class, 'store'])->name('payments.store');
+
 });
 
 

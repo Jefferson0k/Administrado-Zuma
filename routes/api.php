@@ -1,11 +1,18 @@
 <?php
 
+use App\Http\Controllers\Api\BalanceController;
+use App\Http\Controllers\Api\BankAccountController;
+use App\Http\Controllers\Api\BankController;
 use App\Http\Controllers\Api\ConsultasDni;
 use App\Http\Controllers\Api\ContactRequestController;
 use App\Http\Controllers\Api\CreditSimulationController;
+use App\Http\Controllers\Api\ExchangeControllerFonted;
 use App\Http\Controllers\Api\FixedTermInvestmentControllers;
 use App\Http\Controllers\Api\FixedTermScheduleController;
 use App\Http\Controllers\Api\InvestmentController;
+use App\Http\Controllers\Api\InvestorAvatarController;
+use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\MovementController;
 use App\Http\Controllers\Api\NotificacionController;
 use App\Http\Controllers\Api\PropertyReservationController;
 use App\Http\Controllers\Api\TipoCambioSbs;
@@ -15,6 +22,7 @@ use App\Http\Controllers\Auth\CustomerSessionController;
 use App\Http\Controllers\Auth\RegisteredCustomerController;
 use App\Http\Controllers\OCRController;
 use App\Http\Controllers\OCRDniController;
+use App\Http\Controllers\Panel\CompanyController;
 use App\Http\Controllers\Panel\CurrencyControllers;
 use App\Http\Controllers\Panel\DeadlinesControllers;
 use App\Http\Controllers\Settings\ProfileController;
@@ -37,6 +45,7 @@ Route::post('register/cliente', [InvestorController::class, 'registerCustomer'])
 
 
 Route::post('/login', [InvestorController::class, 'login']);
+Route::post('login', [InvestorController::class, 'login']);
 Route::post('/customers/register', [RegisteredCustomerController::class, 'store']);
 Route::put('/email/verify/{id}/{hash}', [ProfileController::class, 'emailVerification']);
 Route::get('/consultar-dni/{dni?}', [ConsultasDni::class, 'consultar'])->name('consultar.dni');
@@ -49,6 +58,12 @@ Route::get('/investors/{id}', [InvestorController::class, 'show']);
 Route::put('/investors/{id}', [InvestorController::class, 'update']);
 Route::get('/visitas-producto', [VisitaProductoController::class, 'visitasPorProducto']);
 Route::post('/producto/{id}/click', [VisitaProductoController::class, 'registrar'])->name('producto.click');
+Route::post('register', [InvestorController::class, 'register']);
+Route::get('/investors/{id}', [InvestorController::class, 'showcliente']);
+Route::put('/investors/{id}', [InvestorController::class, 'updatecliente']);
+Route::post('reset-password', [InvestorController::class, 'resetPassword']);
+Route::post('logout', [InvestorController::class, 'logout']);
+
 /*
 |--------------------------------------------------------------------------
 | RUTAS PROTEGIDAS (requieren login con Sanctum)
@@ -59,15 +74,24 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::post('/customers/logout', [CustomerSessionController::class, 'logout']);
 
+
     Route::prefix('profile')->group(function () {
         Route::get('/', [ProfileController::class, 'profile']);
+        Route::get('/', [InvestorController::class, 'profile']);
+        Route::get('/avatar', [InvestorAvatarController::class, 'getAvatar']);
+        Route::post('/update-avatar', [InvestorController::class, 'updateAvatar']);
+        Route::post('/update/confirm-account', [InvestorController::class, 'updateConfirmAccount']);
+        Route::put('/update', [InvestorController::class, 'update']);
+        Route::put('/update-password', [InvestorController::class, 'updatePassword']);
+
+        Route::get('/last-invoice-invested', [InvestorController::class, 'lastInvoiceInvested']);
     });
 
     Route::prefix('property')->group(function () {
-        Route::get('/', [PropertyControllers::class, 'index'])->name('property.index');
-        Route::get('/active/sow', [PropertyControllers::class, 'indexSubastaTotoal'])->name('property.indexSubastaTotoal');
+        Route::get('/', [PropertyControllers::class, 'index'])->name('propertys.index');
+        Route::get('/active/sow', [PropertyControllers::class, 'indexSubastaTotoal'])->name('active.indexSubastaTotoal');
         Route::get('/{id}', [PropertyControllers::class, 'show'])->name('property.show');
-        Route::put('/{id}/estado', [PropertyControllers::class, 'update'])->name('property.update');
+        Route::put('/{id}/estado', [PropertyControllers::class, 'update'])->name('estado.update');
     });
 
     Route::get('/subastadas', [PropertyControllers::class, 'subastadas'])->name('property.subastadas');
@@ -90,6 +114,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/calculate', [InvestmentControllers::class, 'simulateByAmount']);
     
     Route::prefix('investments')->group(function () {
+        #Factoring
+        Route::get('/', [InvestmentController::class, 'index']);
+        Route::post('/', [InvestmentController::class, 'invest']);
+        Route::get('/{id}', [InvestmentController::class, 'showDetails']);
+
         Route::post('/simulate-by-amount', [InvestmentController::class, 'simulateByAmount']);
         Route::post('/generate-schedule', [InvestmentController::class, 'generateSchedule']);
         Route::post('/complete-simulation', [InvestmentController::class, 'completeSimulation']);
@@ -111,7 +140,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/fixed-term-investments/pendientes', [FixedTermInvestmentControllers::class, 'pendingInvestments']);
     });
     
-    Route::get('/config/{id}/schedules', [PropertyControllers::class, 'showConfig']);
 
     Route::get('/fixed-term-schedules/{id}/cronograma', [FixedTermScheduleController::class, 'showCronograma']);
 
@@ -124,6 +152,62 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/', [NotificacionController::class, 'list'])->name('notifications.list');
         Route::get('/missing-data', [NotificacionController::class, 'getMissingData'])->name('notifications.missing-data');
         Route::post('/mark-completed', [NotificacionController::class, 'markAsCompleted'])->name('notifications.mark-completed');
+    });
+    
+    Route::prefix('invoices')->group(function () {
+        Route::get('/', [InvoiceController::class, 'index']);
+        Route::get('/paid', [InvoiceController::class, 'paid']);
+        Route::get('/getSectors', [InvoiceController::class, 'getSectors']);
+        Route::get('/{code}', [InvoiceController::class, 'show']);
+    });
+    
+    Route::prefix(('companies'))->group(function () {
+        Route::get('/{id}', [CompanyController::class, 'showcompany']);
+        Route::get('/{id}/historical', [CompanyController::class, 'historicalData']);
+    });
+    
+    Route::prefix('reports')->group(function () {
+        Route::get('/balances', [BalanceController::class, 'index']);
+
+        Route::prefix('investments')->group(function () {
+            Route::get('/', [InvestmentController::class, 'reportTimeline']);
+            Route::get('/group-by-company', [InvestmentController::class, 'reportGroupByCompany']);
+            Route::get('/group-by-sector', [InvestmentController::class, 'reportGroupByCompanySector']);
+        });
+
+        Route::prefix('cumulative-returns')->group(function () {
+            Route::get('/', [InvestmentController::class, 'reportCumulativeReturns']);
+            Route::get('/group-by-company', [InvestmentController::class, 'reportCumulativeReturnsByCompany']);
+            Route::get('/group-by-sector', [InvestmentController::class, 'reportCumulativeReturnsBySector']);
+        });
+    });
+
+    Route::prefix('bank-accounts')->group(function () {
+        Route::get('/', [BankAccountController::class, 'index']);
+        Route::post('/', [BankAccountController::class, 'store']);
+        Route::put('/{id}', [BankAccountController::class, 'update']);
+        Route::delete('/{id}', [BankAccountController::class, 'destroy']);
+    });
+
+    Route::prefix('movements')->group(function () {
+        Route::get('/', [MovementController::class, 'index']);
+        Route::post('/deposits/create', [MovementController::class, 'createDeposit']);
+        Route::post('/withdraw/create', [MovementController::class, 'createWithdraw']);
+        Route::post('/deposits/tasas-fijas', [MovementController::class, 'createFixedRateDeposit']);
+        Route::post('/deposits/hipotecas', [MovementController::class, 'createMortgageDeposit']);
+        Route::post('/deposits/hipotecas', [MovementController::class, 'createMortgageDeposit']);
+        Route::post('/deposits/zuma', [MovementController::class, 'createZumaDeposit']);
+    });
+
+    Route::prefix('banks')->group(function () {
+        Route::get('/', [BankController::class, 'index']);
+    });
+
+    Route::prefix('exchange')->group(function () {
+        Route::get('/', [ExchangeControllerFonted::class, 'index']);       // solo activo
+        Route::get('/list', [ExchangeControllerFonted::class, 'indexList']); // historial completo
+        Route::post('/pen-to-usd', [ExchangeControllerFonted::class, 'penToUsd']);
+        Route::post('/usd-to-pen', [ExchangeControllerFonted::class, 'usdToPen']);
     });
 });
 

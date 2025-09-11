@@ -17,13 +17,13 @@ return new class extends Migration
             $table->foreign('post_id')
                 ->references('id')
                 ->on('posts')
-                ->onDelete('restrict');
+                ->onDelete('cascade');
 
             $table->unsignedBigInteger('rating_id');
             $table->foreign('rating_id')
                 ->references('id')
                 ->on('rating')
-                ->onDelete('restrict');
+                ->onDelete('cascade');
             //$table->timestamps();
         });
     }

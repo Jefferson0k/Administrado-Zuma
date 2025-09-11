@@ -1,12 +1,21 @@
 <template>
-  <DataTable ref="dt" v-model:selection="selectedPost" :value="posts" dataKey="id" :paginator="true" :rows="10"
+  <DataTable
+    ref="dt"
+    v-model:selection="selectedPost"
+    :value="posts"
+    dataKey="id"
+    :paginator="true"
+    :rows="10"
     :filters="filters"
     paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-    :rowsPerPageOptions="[5, 10, 25]" currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} posts"
-    class="p-datatable-sm">
+    :rowsPerPageOptions="[5, 10, 25]"
+    currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} posts"
+    class="p-datatable-sm"
+  >
     <template #header>
       <div class="flex flex-wrap gap-2 items-center justify-between">
-        <h4 class="m-0">Publicaciones
+        <h4 class="m-0">
+          Publicaciones
           <Tag severity="contrast" :value="posts.length" />
         </h4>
         <IconField>
@@ -15,15 +24,15 @@
         </IconField>
       </div>
     </template>
+
     <Column field="titulo" header="Titulo" sortable />
-    <!--<Column field="resumen" header="Resumen" sortable />-->
     <Column field="contenido" header="Contenido" sortable>
-  <template #body="{ data }">
-    <div class="line-clamp-4">
-      {{ data.contenido }}
-    </div>
-  </template>
-</Column>
+      <template #body="{ data }">
+        <div class="line-clamp-4">
+          {{ data.contenido }}
+        </div>
+      </template>
+    </Column>
     <Column field="categories" header="Categorías" sortable>
       <template #body="{ data }">
         <div class="flex flex-wrap gap-1">
@@ -53,44 +62,156 @@
   <Menu ref="menu" :model="menuItems" popup />
   <VerDialog ref="viewDialogRef" />
 
-  <Dialog v-model:visible="editDialog" :style="{ width: '700px' }" header="Editar Publicación" :modal="true">
+  <Dialog
+    v-model:visible="editDialog"
+    :style="{ width: '820px' }"
+    header="Editar Publicación"
+    :modal="true"
+    @hide="cleanupPreview"
+  >
     <div class="flex flex-col gap-6">
+      <!-- Título -->
       <div>
         <label class="block font-bold mb-3">Titulo <span class="text-red-500">*</span></label>
-        <InputText v-model="editForm.titulo" :useGrouping="false" placeholder="Ingresa el titulo" inputId="titulo"
-          class="w-full" />
+        <InputText v-model="editForm.titulo" placeholder="Ingresa el titulo" inputId="titulo" class="w-full" />
       </div>
+
+      <!-- Producto -->
       <div>
         <label class="block font-bold mb-3">Producto <span class="text-red-500">*</span></label>
-        <Select v-model="selectedProduct" :options="products" optionLabel="nombre" optionValue="id"
-          placeholder="Seleccione el producto" class="w-full" />
+        <Select
+          v-model="selectedProduct"
+          :options="products"
+          optionLabel="nombre"
+          optionValue="id"
+          placeholder="Seleccione el producto"
+          class="w-full"
+        />
       </div>
+
+      <!-- Categorías -->
       <div>
         <label class="block font-bold mb-3">Categoría(s) <span class="text-red-500">*</span></label>
-        <MultiSelect v-model="editForm.category_id" display="chip" :options="categories" optionLabel="nombre"
-          optionValue="id" filter placeholder="Seleccione la categoría" :maxSelectedLabels="3" class="w-full" />
+        <MultiSelect
+          v-model="editForm.category_id"
+          display="chip"
+          :options="categories"
+          optionLabel="nombre"
+          optionValue="id"
+          filter
+          placeholder="Seleccione la categoría"
+          :maxSelectedLabels="3"
+          class="w-full"
+        />
       </div>
+
+      <!-- Galería -->
+      <div>
+        <div class="flex items-center justify-between">
+          <label class="block font-bold mb-3">Imágenes del post</label>
+          <small class="text-gray-500">Click ★ para marcar portada • 🗑️ para eliminar</small>
+        </div>
+
+        <div v-if="allImages.length" class="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-2">
+          <div
+            v-for="img in allImages"
+            :key="img.key"
+            class="relative group rounded overflow-hidden border bg-white"
+            :class="img.markedForDeletion ? 'opacity-50 grayscale' : ''"
+          >
+            <img :src="img.src" :alt="img.alt" class="thumb-img" @error="onThumbError($event, img.path)" />
+
+            <!-- Badge portada -->
+            <span
+              v-if="img.isMain || coverImageId === img.id"
+              class="absolute top-1 left-1 px-1.5 py-0.5 text-[10px] rounded bg-blue-600 text-white shadow"
+            >
+              Portada
+            </span>
+
+            <!-- Acciones -->
+            <div
+              class="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 pb-1 opacity-0 group-hover:opacity-100 transition"
+            >
+              <Button icon="pi pi-search" text rounded class="p-button-sm btn-icon-xs" @click="previewImg(img.src)" />
+              <Button
+                icon="pi pi-star"
+                text
+                rounded
+                class="p-button-sm btn-icon-xs"
+                @click="setAsCover(img)"
+                :disabled="img.isNew"
+              />
+              <Button
+                icon="pi pi-trash"
+                text
+                rounded
+                severity="danger"
+                class="p-button-sm btn-icon-xs"
+                @click="toggleDelete(img)"
+                :disabled="img.isMain && coverImageId == null"
+              />
+            </div>
+          </div>
+        </div>
+        <div v-else class="text-sm text-gray-500">No hay imágenes todavía.</div>
+      </div>
+
+      <!-- Agregar nuevas imágenes -->
+      <div>
+        <label class="block font-bold mb-3">Agregar imagen(es) a la galería</label>
+        <FileUpload
+          mode="advanced"
+          name="imgs"
+          :multiple="true"
+          accept=".jpg,.jpeg,.png"
+          :auto="true"
+          customUpload
+          :maxFileSize="10000000"
+          @uploader="onUploadExtraImages"
+          :chooseLabel="'Seleccionar'"
+          :uploadLabel="'Agregar'"
+          :cancelLabel="'Cancelar'"
+          class="w-full"
+        />
+        <div v-if="newImagesPreview.length" class="mt-3">
+          <div class="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-2">
+            <div v-for="(src, i) in newImagesPreview" :key="'new-prev-' + i" class="relative rounded overflow-hidden border">
+              <img :src="src" alt="Nueva imagen" class="thumb-img object-cover" />
+              <button
+                type="button"
+                class="absolute top-1 right-1 p-1 rounded bg-white/90 hover:bg-white shadow"
+                @click="removeNewImage(i)"
+                title="Quitar de nuevas"
+              >
+                <i class="pi pi-times text-xs"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contenido -->
       <div>
         <label class="block font-bold mb-3">Contenido <span class="text-red-500">*</span></label>
-        <QuillEditor v-model:content="editForm.contenido" contentType="html" placeholder="Ingresa el contenido"
-          class="w-full" />
+        <QuillEditor v-model:content="editForm.contenido" contentType="html" placeholder="Ingresa el contenido" class="w-full" />
       </div>
 
+      <!-- Fecha -->
       <div>
         <label class="block font-bold mb-3">Fecha Programada <span class="text-red-500">*</span></label>
-        <Calendar v-model="editForm.fecha_programada" dateFormat="dd/mm/yy" placeholder="Selecciona la fecha" showIcon
-          showTime hourFormat="12" class="w-full" />
-      </div>
-
-      <div>
-        <label class="block font-bold mb-3">Imagén para mostrar <span class="text-red-500">*</span></label>
-        <FileUpload mode="advanced" name="img" accept=".jpg" :auto="true" customUpload :maxFileSize="10000000"
-          @uploader="onUploadImage" :chooseLabel="'Seleccionar Imagen'" :uploadLabel="'Subir'" :cancelLabel="'Cancelar'"
-          class="w-full" />
+        <Calendar
+          v-model="editForm.fecha_programada"
+          dateFormat="dd/mm/yy"
+          placeholder="Selecciona la fecha"
+          showIcon
+          showTime
+          hourFormat="12"
+          class="w-full"
+        />
       </div>
     </div>
 
-    <!-- Botones -->
     <template #footer>
       <Button label="Cancelar" icon="pi pi-times" text @click="editDialog = false" severity="secondary" />
       <Button label="Guardar" icon="pi pi-check" @click="actualizarPost" severity="contrast" />
@@ -101,11 +222,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import axios from 'axios'
 import { FilterMatchMode } from '@primevue/core/api'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
+
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
@@ -119,48 +241,44 @@ import FileUpload from 'primevue/fileupload'
 import ConfirmDialog from 'primevue/confirmdialog'
 import VerDialog from './ver.vue'
 import Select from 'primevue/select'
-import ConfigPost from './ConfigPost.vue'
-
-import { QuillEditor } from '@vueup/vue-quill'
-import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import MultiSelect from 'primevue/multiselect'
 import Calendar from 'primevue/calendar'
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
 
 const toast = useToast()
 const confirm = useConfirm()
 const dt = ref()
 const menu = ref()
-const configDialog = ref(null)
+
 const posts = ref([])
 const selectedPost = ref([])
 const selectedItem = ref(null)
 const loading = ref(false)
 const viewDialogRef = ref(null)
 const editDialog = ref(false)
-const viewDialog = ref(false)
 
-
-// Opciones para el dropdown de estado
-const estadoOptions = ref([
-  { label: 'Activo', value: 'activo' },
-  { label: 'Inactivo', value: 'inactivo' }
-])
-
-// Formulario de edición
+// -------- Form --------
 const editForm = ref({
   id: null,
   titulo: '',
-  category_id: null,
-  products: null,
+  category_id: [],
   resumen: '',
   contenido: '',
   fecha_programada: null,
 })
 
 const products = ref([])
-const selectedProduct = ref()
+const selectedProduct = ref(null)
 const categories = ref([])
-const archivoImg = ref(null)
+
+// IMÁGENES
+const extraImages = ref([])             // existentes (PostImage[])
+const newImages = ref([])               // File[]
+const newImagesPreview = ref([])        // blob urls
+const deletedImageIds = ref(new Set())  // ids marcados para borrar
+const coverImageId = ref(null)          // id de PostImage como portada (opcional)
+const mainTry = ref(0)                  // fallback idx para portada
 
 const filters = ref({
   global: { value: null, matchMode: FilterMatchMode.CONTAINS }
@@ -175,53 +293,275 @@ const props = defineProps({
   }
 })
 
-const menuItems = ref([
-  //{ label: 'Ver', icon: 'pi pi-eye', command: () => ver(selectedItem.value) },
-  { label: 'Publicar', icon: 'pi pi-play', command: () => publicar(item) },
-  { label: 'Ver imagen', icon: 'pi pi-image', command: () => verImagen(selectedItem.value) },
-  { label: 'Editar', icon: 'pi pi-pencil', command: () => editar(selectedItem.value) },
-  { label: 'Eliminar', icon: 'pi pi-trash', command: () => eliminar(selectedItem.value) },
-])
-
+// ==== Menú contextual ====
+const menuItems = ref([])
 function toggleMenu(event, item) {
   selectedItem.value = item
-
   menuItems.value = [
-    //{ label: 'Ver', icon: 'pi pi-eye', command: () => ver(item) },
     { label: 'Publicar', icon: 'pi pi-play', command: () => publicar(item) },
     { label: 'Ver imagen', icon: 'pi pi-image', command: () => verImagen(item), disabled: !item.imagen },
     { label: 'Editar', icon: 'pi pi-pencil', command: () => editar(item) },
     { label: 'Eliminar', icon: 'pi pi-trash', command: () => eliminar(item) },
   ]
-
   menu.value.toggle(event)
 }
 
-function ver(item) {
-  configDialog.value?.close?.() // si quieres cerrar otros diálogos
-  selectedItem.value = item
-  viewDialog.value = true
-  viewDialogRef.value.open(item) // este es el punto importante
+// ==== Utils de rutas para imágenes ====
+function srcCandidates(name) {
+  return [
+    `/storage/images/${name}`,
+    `/image/${name}`,
+    `/images/${name}`,
+  ]
+}
+function thumbSrc(name) {
+  return srcCandidates(name)[0]
+}
+function onThumbError(e, name) {
+  const list = srcCandidates(name)
+  const idx = list.indexOf(e.target.src)
+  e.target.src = list[Math.min(idx + 1, list.length - 1)] || list[list.length - 1]
 }
 
+// Todas las imágenes (portada + relacionadas + nuevas)
+const allImages = computed(() => {
+  const arr = []
+  // Principal (de Post.imagen)
+  const main = selectedItem.value?.imagen
+  if (main) {
+    const list = srcCandidates(main)
+    arr.push({
+      key: `main-${main}`,
+      id: null,                // no pertenece a post_images
+      src: list[Math.min(mainTry.value, list.length - 1)],
+      path: main,
+      alt: 'Portada actual',
+      isMain: true,
+      isNew: false,
+      markedForDeletion: false
+    })
+  }
+  // Relacionadas (PostImage[])
+  for (const im of extraImages.value || []) {
+    if (!im?.image_path) continue
+    const marked = deletedImageIds.value.has(im.id)
+    arr.push({
+      key: `extra-${im.id}-${im.image_path}`,
+      id: im.id,
+      src: thumbSrc(im.image_path),
+      path: im.image_path,
+      alt: 'Imagen relacionada',
+      isMain: false,
+      isNew: false,
+      markedForDeletion: marked
+    })
+  }
+  // Nuevas (File previews)
+  for (let i = 0; i < newImagesPreview.value.length; i++) {
+    arr.push({
+      key: `new-${i}`,
+      id: null,
+      src: newImagesPreview.value[i],
+      path: newImages.value[i]?.name || `new-${i}`,
+      alt: 'Nueva imagen',
+      isMain: false,
+      isNew: true,
+      markedForDeletion: false
+    })
+  }
+  return arr
+})
 
-function editar(item) {
+// ===== Acciones en miniaturas =====
+function previewImg(src) {
+  window.open(src, '_blank', 'noopener')
+}
+function setAsCover(img) {
+  if (img.isNew) {
+    toast.add({ severity: 'warn', summary: 'Portada', detail: 'Solo puedes elegir portada desde imágenes ya guardadas.', life: 2500 })
+    return
+  }
+  if (!img.id) {
+    // es la portada actual
+    coverImageId.value = null
+    toast.add({ severity: 'info', summary: 'Portada', detail: 'Ya es la portada actual.', life: 1800 })
+    return
+  }
+  coverImageId.value = img.id
+  toast.add({ severity: 'success', summary: 'Portada', detail: 'Se marcará como portada al guardar.', life: 2000 })
+}
+function toggleDelete(img) {
+  if (img.isNew) {
+    // quitar de la cola de nuevas
+    const idx = newImagesPreview.value.findIndex((u) => u === img.src)
+    if (idx > -1) removeNewImage(idx)
+    return
+  }
+  if (img.isMain && coverImageId.value == null) {
+    toast.add({ severity: 'warn', summary: 'No permitido', detail: 'Elige otra portada antes de eliminar la actual.', life: 2500 })
+    return
+  }
+  if (img.id == null) return // portada actual sin id (no es PostImage)
+  if (deletedImageIds.value.has(img.id)) {
+    deletedImageIds.value.delete(img.id)
+  } else {
+    deletedImageIds.value.add(img.id)
+  }
+}
+
+// ========= Editar =========
+async function editar(item) {
+  cleanupPreview()
   selectedItem.value = item
+
+  // cargar relacionadas desde la lista si existen
+  extraImages.value = Array.isArray(item.images) ? item.images : []
+
+  // fallback para asegurar que tenemos images e ids
+  if (!extraImages.value.length) {
+    try {
+      const { data } = await axios.get(`/api/blog/showpost/${item.id}`)
+      if (Array.isArray(data?.images)) extraImages.value = data.images
+      if (data?.imagen) selectedItem.value.imagen = data.imagen
+    } catch {}
+  }
+
+  // deduce product desde categorías (si category tiene product_id)
+  let pid = null
+  if (Array.isArray(item.categories) && item.categories.length) {
+    pid = Number(item.categories[0]?.product_id)
+  }
+  selectedProduct.value = Number.isFinite(pid) ? pid : null
+  await obtenerCategorias()
+
+  // form
   editForm.value = {
     id: item.id,
-    titulo: item.titulo,
-    resumen: item.resumen,
-    contenido: item.contenido,
-    fecha_programada: item.fecha_programada ? new Date(item.fecha_programada.replace(' ', 'T')) : null,
-    category_id: item.categories?.map(c => Number(c.id)) || [], // ✅ Cargar IDs de categorías
-    product_id: item.product?.id || null,
+    titulo: item.titulo || '',
+    resumen: item.resumen || '',
+    contenido: item.contenido || '',
+    fecha_programada: item.fecha_programada
+      ? new Date(String(item.fecha_programada).replace(' ', 'T'))
+      : null,
+    category_id: (item.categories || []).map(c => Number(c.id)).filter(Boolean)
   }
+
   editDialog.value = true
+}
+
+// ========= Guardar =========
+async function actualizarPost() {
+  try {
+    loading.value = true
+
+    const formData = new FormData()
+    formData.append('user_id', String(props.user?.id ?? 1))
+    formData.append('titulo', editForm.value.titulo)
+    formData.append('category_id', (editForm.value.category_id || []).join(','))
+    formData.append('resumen', editForm.value.resumen || '')
+    formData.append('contenido', editForm.value.contenido || '')
+    formData.append('fecha_programada', formatDateRequest(editForm.value.fecha_programada))
+    formData.append('state_id', '1')
+
+    // NUEVAS imágenes (agregar a la galería)
+    for (const file of newImages.value) {
+      formData.append('new_images[]', file)
+    }
+
+    // IMÁGENES a eliminar
+    if (deletedImageIds.value.size) {
+      for (const id of deletedImageIds.value) {
+        formData.append('delete_image_ids[]', String(id))
+      }
+    }
+
+    // Cambiar portada (usar una existente de post_images)
+    if (coverImageId.value != null) {
+      formData.append('cover_image_id', String(coverImageId.value))
+    }
+
+    await axios.post(`/api/blog/actualizar/${editForm.value.id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+
+    toast.add({ severity: 'success', summary: 'Éxito', detail: 'Publicación actualizada correctamente', life: 3000 })
+    editDialog.value = false
+    await obtenerPost()
+  } catch (error) {
+    const detail = error?.response?.data?.error || 'No se pudo actualizar la publicación'
+    toast.add({ severity: 'error', summary: 'Error', detail, life: 4000 })
+  } finally {
+    loading.value = false
+  }
+}
+
+// ========= Carga de datos =========
+async function obtenerPost() {
+  try {
+    const res = await axios.get('/api/blog/lista')
+    posts.value = res.data.posts || []
+  } catch {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar posts', life: 3000 })
+  }
+}
+
+async function obtenerCategorias() {
+  try {
+    let url = '/api/blog/listar-categoria'
+    if (selectedProduct.value) url = `/api/blog/listar-categoria-filtrada/${selectedProduct.value}`
+    const res = await axios.get(url)
+    const data = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : [])
+    categories.value = data
+  } catch {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar categorias', life: 3000 })
+  }
+}
+
+async function obtenerProductos() {
+  try {
+    const res = await axios.get('/api/blog/productos')
+    products.value = res.data || []
+  } catch {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar productos', life: 3000 })
+  }
+}
+
+// ========= Upload / Preview =========
+function onUploadExtraImages(event) {
+  const files = event.files || []
+  const allowed = ['image/jpeg', 'image/png']
+  const valid = []
+  for (const f of files) {
+    if (allowed.includes(f.type)) valid.push(f)
+  }
+  if (!valid.length) {
+    toast.add({ severity: 'error', summary: 'Archivo inválido', detail: 'Solo JPG o PNG.', life: 4000 })
+    return
+  }
+  for (const f of valid) {
+    newImages.value.push(f)
+    const url = URL.createObjectURL(f)
+    newImagesPreview.value.push(url)
+  }
+  toast.add({ severity: 'success', summary: 'Agregadas', detail: `${valid.length} imagen(es) en cola`, life: 2500 })
+}
+
+function removeNewImage(index) {
+  const url = newImagesPreview.value[index]
+  if (url) URL.revokeObjectURL(url)
+  newImagesPreview.value.splice(index, 1)
+  newImages.value.splice(index, 1)
+}
+
+// ========= Acciones varias =========
+function ver(item) {
+  selectedItem.value = item
+  viewDialogRef.value?.open?.(item)
 }
 
 function eliminar(item) {
   confirm.require({
-    message: `¿Estás seguro de que quieres eliminar la publicación"${item.nombre}"?`,
+    message: `¿Estás seguro de que quieres eliminar la publicación "${item.titulo}"?`,
     header: 'Confirmar eliminación',
     icon: 'pi pi-exclamation-triangle',
     acceptLabel: 'Sí, eliminar',
@@ -231,20 +571,10 @@ function eliminar(item) {
       try {
         loading.value = true
         await axios.delete(`/api/blog/eliminar/${item.id}`)
-        toast.add({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Publicación eliminada correctamente',
-          life: 3000
-        })
-        obtenerPost()
-      } catch (error) {
-        toast.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'No se pudo eliminar la publicación',
-          life: 3000
-        })
+        toast.add({ severity: 'success', summary: 'Éxito', detail: 'Publicación eliminada correctamente', life: 3000 })
+        await obtenerPost()
+      } catch {
+        toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar la publicación', life: 3000 })
       } finally {
         loading.value = false
       }
@@ -252,202 +582,60 @@ function eliminar(item) {
   })
 }
 
-function configurar(item) {
-  configDialog.value.open(item)
-}
-
 function verImagen(item) {
   if (!item.imagen) {
-    toast.add({
-      severity: 'warn',
-      summary: 'Advertencia',
-      detail: 'Esta publicación no tiene una imagen asociada',
-      life: 3000
-    })
+    toast.add({ severity: 'warn', summary: 'Advertencia', detail: 'Esta publicación no tiene una imagen asociada', life: 3000 })
     return
   }
-
-  const url = `/image/${item.imagen}`
-  window.open(url, '_blank') // Abre en nueva pestaña
+  window.open(`/image/${item.imagen}`, '_blank')
 }
-/* onFileSelect(event) {
-  editForm.value.pdf = event.files[0]
-}*/
-
 
 async function publicar(item) {
-
-  //console.log(user.value)
   try {
     loading.value = true
-
     await axios.get(`/api/blog/publicar/${props.user.id}/${item.id}/2`)
-
-    toast.add({
-      severity: 'success',
-      summary: 'Éxito',
-      detail: 'Publicación realizada correctamente',
-      life: 3000
-    })
-
+    toast.add({ severity: 'success', summary: 'Éxito', detail: 'Publicación realizada correctamente', life: 3000 })
     editDialog.value = false
-    obtenerPost()
-  } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'No se pudo actualizar la acción',
-      life: 3000
-    })
+    await obtenerPost()
+  } catch {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo actualizar la acción', life: 3000 })
   } finally {
     loading.value = false
   }
 }
 
-async function actualizarPost() {
-  try {
-    loading.value = true
-
-    const formData = new FormData()
-    formData.append('user_id', 1)
-    formData.append('titulo', editForm.value.titulo)
-    formData.append('category_id', editForm.value.category_id.join(','))
-    formData.append('resumen', editForm.value.resumen)
-    formData.append('contenido', editForm.value.contenido)
-    formData.append('fecha_programada', formatDateRequest(editForm.value.fecha_programada))
-    formData.append('state_id', 1)
-    formData.append('imagen', archivoImg.value)
-
-    /*if (editForm.value.pdf) {
-      formData.append('pdf', editForm.value.pdf)
-    }*/
-
-    await axios.post(`/api/blog/actualizar/${editForm.value.id}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
-
-    toast.add({
-      severity: 'success',
-      summary: 'Éxito',
-      detail: 'Publicación actualizada correctamente',
-      life: 3000
-    })
-
-    editDialog.value = false
-    obtenerPost()
-  } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'No se pudo actualizar la publicación',
-      life: 3000
-    })
-  } finally {
-    loading.value = false
+// ========= Limpieza =========
+function cleanupPreview() {
+  for (const url of newImagesPreview.value) {
+    URL.revokeObjectURL(url)
   }
+  newImagesPreview.value = []
+  newImages.value = []
+  deletedImageIds.value = new Set()
+  coverImageId.value = null
+  mainTry.value = 0
+  extraImages.value = []
 }
 
-async function obtenerPost() {
-  try {
-    const res = await axios.get('/api/blog/lista')
-    posts.value = res.data.posts
-  } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'No se pudo cargar posts',
-      life: 3000
-    })
-  }
-}
-
-/*async function obtenerCategorias() {
-  try {
-    const res = await axios.get('/api/blog/listar-categoria')
-    categories.value = res.data
-  } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'No se pudo cargar categorias',
-      life: 3000
-    })
-  }
-}*/
-
-async function obtenerCategorias() {
-  try {
-    const res = await axios.get(`/api/blog/listar-categoria-filtrada/${selectedProduct.value}`)
-    categories.value = res.data
-  } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'No se pudo cargar categorias',
-      life: 3000
-    })
-  }
-}
-
-function onUploadImage(event) {
-  const file = event.files[0];
-  const allowedTypes = ['image/jpeg', 'image/png'];
-
-  if (file && allowedTypes.includes(file.type)) {
-    archivoImg.value = file;
-    toast.add({
-      severity: 'success',
-      summary: 'Imagen cargada',
-      detail: `Archivo "${file.name}" listo para enviar`,
-      life: 3000
-    });
-  } else {
-    toast.add({
-      severity: 'error',
-      summary: 'Archivo inválido',
-      detail: 'Debe subir un archivo del tipo jpg o png.',
-      life: 4000
-    });
-  }
-}
-
-async function obtenerProductos() {
-  try {
-    const res = await axios.get('/api/blog/productos')
-    //products.value = res.data.map(p => ({ ...p, id: Number(p.id) }));
-    products.value = res.data
-  } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'No se pudo cargar productos',
-      life: 3000
-    })
-  }
-}
-
+// ========= Utils =========
 const formatDate = (date) => {
   if (!date) return ''
-
-  const d = new Date(date)
+  const d = new Date(String(date).replace(' ', 'T'))
+  if (isNaN(d)) return ''
   const day = String(d.getDate()).padStart(2, '0')
   const month = String(d.getMonth() + 1).padStart(2, '0')
   const year = d.getFullYear()
-
   let hours = d.getHours()
   const minutes = String(d.getMinutes()).padStart(2, '0')
   const ampm = hours >= 12 ? 'pm' : 'am'
-
   hours = hours % 12
-  hours = hours ? hours : 12 // 0 debe mostrarse como 12
+  hours = hours ? hours : 12
   hours = String(hours).padStart(2, '0')
-
   return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`
 }
 
 const formatDateRequest = (date) => {
+  if (!date) return ''
   const d = new Date(date)
   const year = d.getFullYear()
   const month = String(d.getMonth() + 1).padStart(2, '0')
@@ -466,7 +654,6 @@ function getEstadoLabel(stateId) {
     default: return 'Desconocido'
   }
 }
-
 function getEstadoSeverity(stateId) {
   switch (stateId) {
     case 1: return 'warning'
@@ -476,41 +663,42 @@ function getEstadoSeverity(stateId) {
   }
 }
 
-
-/*
-async function obtenerUsuario() {
-  try {
-    const res = await axios.get('/api/user', {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('token')}` // o desde cookies
-      }
-    })
-    user.value = res.data
-    console.log('Usuario ID:', user.value.id)
-  } catch (error) {
-    console.error('No autenticado')
-  }
-}*/
-
-onMounted(() => {
-  obtenerPost()
-  obtenerProductos()
-  //obtenerCategorias()
+// ========= Lifecycles =========
+onMounted(async () => {
+  await Promise.all([obtenerPost(), obtenerProductos()])
 })
 
 watch(() => props.refresh, () => {
   obtenerPost()
 })
 
-watch(() => products.refresh, () => {
-  obtenerProductos()
-})
-
-watch(() => categories.refresh, () => {
-  obtenerCategorias()
-})
-
-watch(selectedProduct, (newVal, oldVal) => {
-  obtenerCategorias()
+watch(selectedProduct, async () => {
+  await obtenerCategorias()
+  const available = new Set(categories.value.map(c => Number(c.id)))
+  editForm.value.category_id = (editForm.value.category_id || []).filter(id => available.has(Number(id)))
 })
 </script>
+
+<style scoped>
+.line-clamp-4 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  -webkit-line-clamp: 4;
+}
+
+.thumb-img {
+  width: 100%;
+  height: 80px;
+  object-fit: cover;
+  display: block;
+}
+
+/* Iconitos pequeños */
+.btn-icon-xs :deep(.p-button-icon) {
+  font-size: 0.7rem;
+}
+.btn-icon-xs :deep(.p-button) {
+  padding: 0.15rem 0.3rem;
+}
+</style>

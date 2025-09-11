@@ -11,15 +11,19 @@ return new class extends Migration {
             $table->foreignId('property_investor_id')->constrained('property_investors')->onDelete('cascade');
             $table->unsignedInteger('cuota');
             $table->date('vencimiento');
-            $table->decimal('saldo_inicial', 12, 2);
-            $table->decimal('capital', 12, 2);
-            $table->decimal('intereses', 12, 2);
-            $table->decimal('cuota_neta', 12, 2);
-            $table->decimal('igv', 12, 2);
-            $table->decimal('total_cuota', 12, 2);
-            $table->decimal('saldo_final', 12, 2);
+            $table->bigInteger('saldo_inicial')->default(0);
+            $table->bigInteger('capital')->default(0);
+            $table->bigInteger('intereses')->default(0);
+            $table->bigInteger('cuota_neta')->default(0);
+            $table->bigInteger('igv')->default(0);
+            $table->bigInteger('total_cuota')->default(0);
+            $table->bigInteger('saldo_final')->default(0);
             $table->enum('estado', ['pendiente', 'pagado', 'vencido'])->default('pendiente');
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

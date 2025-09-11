@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class PostRating extends Model
 {
     use HasFactory;
+    protected $table = "posts_ratings";
 
     protected $fillable = [
         'post_id',

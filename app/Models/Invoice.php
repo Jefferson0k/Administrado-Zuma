@@ -2,18 +2,24 @@
 
 namespace App\Models;
 
+use App\Helpers\MoneyConverter;
+use App\Traits\ConvertsPercent;
+use DateTime;
+use Illuminate\Database\Eloquent\Concerns\HasUlids;
+use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
+use OwenIt\Auditing\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use IntlDateFormatter;
+use Money\Money;
 
-class Invoice extends Model{
-    use HasFactory, SoftDeletes;
-    protected $table = 'invoices';
-    public $incrementing = false;
-    protected $keyType = 'string';
+class Invoice extends Model implements AuditableContract{
+    use HasFactory, HasUlids, Auditable, ConvertsPercent, SoftDeletes;
     protected $fillable = [
         'invoice_code',
+        'codigo',
         'amount',
         'currency',
         'financed_amount_by_garantia',
@@ -26,8 +32,13 @@ class Invoice extends Model{
         'company_id',
         'loan_number',
         'RUC_client',
-        'invoice_number'
+        'invoice_number',
+        'created_by',
+        'updated_by',
+        'deleted_by',
     ];
+    public $timestamps = true;
+
     protected static function boot(){
         parent::boot();
 
@@ -49,5 +60,128 @@ class Invoice extends Model{
     }
     public function deleter(){
         return $this->belongsTo(User::class, 'deleted_by');
+    }
+    public function company(){
+        return $this->belongsTo(Company::class);
+    }
+    public function investments(){
+        return $this->hasMany(Investment::class);
+    }
+    public function payments(){
+        return $this->hasMany(Payment::class);
+    }
+    public function isDaStandby(): bool {
+        return $this->status === 'daStandby';
+    }
+    public function getEstimatedPayDateFormattedAttribute(){
+        $date = new DateTime($this->attributes['estimated_pay_date']);
+        $formatter = new IntlDateFormatter(
+        'es_PE',
+        IntlDateFormatter::MEDIUM,
+        IntlDateFormatter::NONE
+        );
+        return $formatter->format($date);
+    }
+    public function getAmountAttribute(): ?string {
+        if (empty($this->attributes['amount']) || empty($this->attributes['currency'])) {
+            return null;
+        }
+
+        return MoneyConverter::fromSubunitToDecimal(
+            $this->attributes['amount'],
+            $this->attributes['currency']
+        );
+    }
+    public function getFinancedAmountAttribute(): string{
+        return MoneyConverter::fromSubunitToDecimal(
+        $this->attributes['financed_amount'],
+        $this->attributes['currency']
+        );
+    }
+    public function getFinancedAmountByGarantiaAttribute(): string  {
+        return MoneyConverter::fromSubunitToDecimal(
+        $this->attributes['financed_amount_by_garantia'],
+        $this->attributes['currency']
+        );
+    }
+    public function getPaidAmountAttribute(): string{
+        return MoneyConverter::fromSubunitToDecimal(
+        $this->attributes['paid_amount'],
+        $this->attributes['currency']
+        );
+    }
+    public function getAvailablePaidAmount(): Money{
+        $amountMoney = MoneyConverter::fromDecimal(
+        $this->amount,
+        $this->attributes['currency']
+        );
+        $paidAmountMoney = MoneyConverter::fromDecimal(
+        $this->paid_amount,
+        $this->attributes['currency']
+        );
+        return $amountMoney->subtract($paidAmountMoney);
+    }
+    public function containPartialPayments(): bool{
+        return $this->payments()->where('pay_type', 'partial')->exists();
+    }
+  // ========================
+  // Accesores (setters)
+  // ========================
+    public function setAmountAttribute(float | Money $value): void{
+        if (!isset($this->attributes['currency'])) {
+        throw new \RuntimeException('Currency must be set before amount');
+        }
+        if ($value instanceof Money) {
+        $this->attributes['amount'] = $value->getAmount();
+        } else {
+        $this->attributes['amount'] = MoneyConverter::fromDecimal(
+            $value,
+            $this->attributes['currency']
+        )->getAmount();
+        }
+    }
+    public function setFinancedAmountAttribute(float | Money $value): void{
+        if (!isset($this->attributes['currency'])) {
+        throw new \RuntimeException('Currency must be set before financed amount');
+        }
+        if ($value instanceof Money) {
+        $this->attributes['financed_amount'] = $value->getAmount();
+        } else {
+        $this->attributes['financed_amount'] = MoneyConverter::fromDecimal(
+            $value,
+            $this->attributes['currency']
+        )->getAmount();
+        }
+    }
+    public function setFinancedAmountByGarantiaAttribute(float | Money $value): void{
+        if (!isset($this->attributes['currency'])) {
+        throw new \RuntimeException('Currency must be set before financed amount by garantia');
+        }
+        if ($value instanceof Money) {
+        $this->attributes['financed_amount_by_garantia'] = $value->getAmount();
+        } else {
+        $this->attributes['financed_amount_by_garantia'] = MoneyConverter::fromDecimal(
+            $value,
+            $this->attributes['currency']
+        )->getAmount();
+        }
+    }
+    public function setPaidAmountAttribute(float | Money $value): void{
+        if (!isset($this->attributes['currency'])) {
+        throw new \RuntimeException('Currency must be set before paid amount');
+        }
+        if ($value instanceof Money) {
+        $this->attributes['paid_amount'] = $value->getAmount();
+        } else {
+        $this->attributes['paid_amount'] = MoneyConverter::fromDecimal(
+            $value,
+            $this->attributes['currency']
+        )->getAmount();
+        }
+    }
+    public function getInvestors(): array{
+    $ids = $this->investments->pluck('investor_id');
+    $investors = Investor::whereIn('id', $ids)->get();
+    return $investors->toArray();
     }
 }
