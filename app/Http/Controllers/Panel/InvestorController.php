@@ -26,19 +26,52 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\PersonalAccessToken;
+use Illuminate\Support\Facades\Schema;
+
 use Throwable;
 
 class InvestorController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         try {
             Gate::authorize('viewAny', Investor::class);
-            $investor = Investor::all();
-            return response()->json([
-                'total' => $investor->count(),
-                'data'  => InvestorResources::collection($investor),
-            ]);
+
+            $perPage = (int) $request->input('per_page', 15);
+            $search  = $request->input('search', '');
+
+            // ---- Sorting flexible con lista blanca y fallbacks
+            $defaultSort = Schema::hasColumn('investors', 'created_at') ? 'created_at' : 'id';
+            $allowed     = array_values(array_filter(
+                ['name', 'email', 'created_at', 'id'],
+                fn($c) => Schema::hasColumn('investors', $c)
+            ));
+
+            $sortBy  = $request->input('sort_by', $defaultSort);
+            if (!in_array($sortBy, $allowed, true)) {
+                $sortBy = $defaultSort;
+            }
+            $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+            $query = Investor::query();
+
+            // ---- Búsqueda (solo en columnas existentes para evitar errores)
+            if ($search !== '') {
+                $query->where(function ($q) use ($search) {
+                    if (Schema::hasColumn('investors', 'name'))         $q->orWhere('name', 'like', "%{$search}%");
+                    if (Schema::hasColumn('investors', 'email'))        $q->orWhere('email', 'like', "%{$search}%");
+                    if (Schema::hasColumn('investors', 'document'))     $q->orWhere('document', 'like', "%{$search}%");
+                    if (Schema::hasColumn('investors', 'razon_social')) $q->orWhere('razon_social', 'like', "%{$search}%");
+                });
+            }
+
+            // ---- Orden (más recientes primero por defecto) + desempate por id
+            $query->orderBy($sortBy, $sortDir)->orderBy('id', 'desc');
+
+            $investors = $query->paginate($perPage)->appends($request->query());
+
+            return InvestorResources::collection($investors)
+                ->additional(['total' => $investors->total()]);
         } catch (AuthorizationException $e) {
             return response()->json([
                 'message' => 'No tienes permiso para ver los inversionistas.'
@@ -49,7 +82,9 @@ class InvestorController extends Controller
             ], 500);
         }
     }
-    public function showInvestor($id){
+
+    public function showInvestor($id)
+    {
         try {
             $investor = Investor::findOrFail($id);
             Gate::authorize('view', $investor);
@@ -693,7 +728,8 @@ class InvestorController extends Controller
             ]),
         ]);
     }
-    public function rechazar(Request $request, $id){
+    public function rechazar(Request $request, $id)
+    {
         try {
             //Gate::authorize('update', Investor::class);
             $investor = Investor::findOrFail($id);
@@ -712,7 +748,6 @@ class InvestorController extends Controller
                 'message' => 'Inversionista rechazado y notificación enviada correctamente.',
                 'data' => $investor
             ], 200);
-            
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error al rechazar inversionista.',
@@ -720,7 +755,8 @@ class InvestorController extends Controller
             ], 500);
         }
     }
-    public function aprobar(Request $request, $id){
+    public function aprobar(Request $request, $id)
+    {
         try {
             //Gate::authorize('update', Investor::class);
             $investor = Investor::findOrFail($id);
@@ -733,7 +769,6 @@ class InvestorController extends Controller
                 'message' => 'Inversionista validado y notificación enviada correctamente.',
                 'data' => $investor
             ], 200);
-            
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error al validar inversionista.',

@@ -62,78 +62,78 @@ class PagosController extends Controller{
             ], 500);
         }
     }
-    public function store(StorePagoTasaRequest $request){
-        try {
-            $result = DB::transaction(function () use ($request) {
-                $schedule = FixedTermSchedule::findOrFail($request->id_fixed_term_schedule);
-                if ($schedule->status !== 'pendiente') {
-                    abort(422, 'La cuota ya fue pagada o está en estado inválido.');
-                }
-                $investment = FixedTermInvestment::find($schedule->fixed_term_investment_id);
-                if (!$investment) {
-                    abort(422, 'No se encontró la inversión con ID: ' . $schedule->fixed_term_investment_id);
-                }
-                $investorId = $request->id_inversionista;
-                $currency = $request->moneda;
-                $monto = $request->monto;
-                if (!$investorId || !$currency || !$monto) {
-                    abort(422, 'Faltan datos requeridos: inversionista, moneda o monto.');
-                }
-                if ((float) $monto <= 0) {
-                    abort(422, 'El monto debe ser mayor a cero.');
-                }
-                if ($investment->investor_id !== $investorId) {
-                    abort(422, 'El inversionista no coincide con la inversión.');
-                }
-                $data = $request->validated();
-                $data['id'] = (string) Str::ulid();
-                PagoTasa::create($data);
-                $movement = Movement::create([
-                    'amount' => $monto,
-                    'type' => MovementType::FIXED_RATE_INTEREST_PAYMENT->value,
-                    'currency' => $currency,
-                    'status' => MovementStatus::CONFIRMED->value,
-                    'confirm_status' => MovementStatus::CONFIRMED->value,
-                    'description' => 'Pago de intereses al inversionista',
-                    'origin' => 'zuma',
-                    'investor_id' => $investorId,
-                ]);
-                
-                Deposit::create([
-                    'nro_operation' => 'AUTO-' . now()->timestamp,
-                    'amount' => $monto,
-                    'currency' => $currency,
-                    'description' => 'Depósito automático por pago de intereses',
-                    'investor_id' => $investorId,
-                    'movement_id' => $movement->id,
-                    'payment_source' => 'ZUMA',
-                    'type' => 'intereses',
-                    'fixed_term_investment_id' => $investment->id,
-                ]);
-                $schedule->update(['status' => 'pagado']);
-                $pendingSchedules = FixedTermSchedule::where('fixed_term_investment_id', $investment->id)
-                    ->where('status', 'pendiente')
-                    ->count();
+        public function store(StorePagoTasaRequest $request){
+            try {
+                $result = DB::transaction(function () use ($request) {
+                    $schedule = FixedTermSchedule::findOrFail($request->id_fixed_term_schedule);
+                    if ($schedule->status !== 'pendiente') {
+                        abort(422, 'La cuota ya fue pagada o está en estado inválido.');
+                    }
+                    $investment = FixedTermInvestment::find($schedule->fixed_term_investment_id);
+                    if (!$investment) {
+                        abort(422, 'No se encontró la inversión con ID: ' . $schedule->fixed_term_investment_id);
+                    }
+                    $investorId = $request->id_inversionista;
+                    $currency = $request->moneda;
+                    $monto = $request->monto;
+                    if (!$investorId || !$currency || !$monto) {
+                        abort(422, 'Faltan datos requeridos: inversionista, moneda o monto.');
+                    }
+                    if ((float) $monto <= 0) {
+                        abort(422, 'El monto debe ser mayor a cero.');
+                    }
+                    if ($investment->investor_id !== $investorId) {
+                        abort(422, 'El inversionista no coincide con la inversión.');
+                    }
+                    $data = $request->validated();
+                    $data['id'] = (string) Str::ulid();
+                    PagoTasa::create($data);
+                    $movement = Movement::create([
+                        'amount' => $monto,
+                        'type' => MovementType::FIXED_RATE_INTEREST_PAYMENT->value,
+                        'currency' => $currency,
+                        'status' => MovementStatus::CONFIRMED->value,
+                        'confirm_status' => MovementStatus::CONFIRMED->value,
+                        'description' => 'Pago de intereses al inversionista',
+                        'origin' => 'zuma',
+                        'investor_id' => $investorId,
+                    ]);
                     
-                if ($pendingSchedules === 0) {
-                    $investment->update(['status' => 'finalizado']);
-                }
-                $balance = Balance::firstOrCreate([
-                    'investor_id' => $investorId,
-                    'currency' => $currency,
-                ]);
-                $balance->increment('amount', (float) $monto);
-                return ['message' => 'Pago de tasa registrado correctamente.'];
-            });
-            
-            return response()->json($result);
-            
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Error al procesar el pago: ' . $e->getMessage()
-            ], 500);
+                    Deposit::create([
+                        'nro_operation' => 'AUTO-' . now()->timestamp,
+                        'amount' => $monto,
+                        'currency' => $currency,
+                        'description' => 'Depósito automático por pago de intereses',
+                        'investor_id' => $investorId,
+                        'movement_id' => $movement->id,
+                        'payment_source' => 'ZUMA',
+                        'type' => 'intereses',
+                        'fixed_term_investment_id' => $investment->id,
+                    ]);
+                    $schedule->update(['status' => 'pagado']);
+                    $pendingSchedules = FixedTermSchedule::where('fixed_term_investment_id', $investment->id)
+                        ->where('status', 'pendiente')
+                        ->count();
+                        
+                    if ($pendingSchedules === 0) {
+                        $investment->update(['status' => 'finalizado']);
+                    }
+                    $balance = Balance::firstOrCreate([
+                        'investor_id' => $investorId,
+                        'currency' => $currency,
+                    ]);
+                    $balance->increment('amount', (float) $monto);
+                    return ['message' => 'Pago de tasa registrado correctamente.'];
+                });
+                
+                return response()->json($result);
+                
+            } catch (\Exception $e) {
+                return response()->json([
+                    'error' => 'Error al procesar el pago: ' . $e->getMessage()
+                ], 500);
+            }
         }
-    }
     public function lis(Request $request){
         $perPage = $request->get('per_page', 10);
         $pagos = PagoTasa::with(['fixedTermSchedule', 'inversionista'])

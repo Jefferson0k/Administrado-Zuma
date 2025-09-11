@@ -22,7 +22,15 @@ class Payment extends Model
     'pay_date',
     'reprogramation_date',
     'reprogramation_rate',
-    'evidencia'
+    'evidencia',
+    'approval1_status',
+    'approval1_by',
+    'approval1_comment',
+    'approval1_at',
+    'approval2_status',
+    'approval2_by',
+    'approval2_comment',
+    'approval2_at'
   ];
 
   public $timestamps = true;

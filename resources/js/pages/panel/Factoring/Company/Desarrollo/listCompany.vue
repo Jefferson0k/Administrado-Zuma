@@ -117,15 +117,15 @@
                 </template>
             </Column>
 
-            <Column style="min-width: 8rem">
+            <Column style="min-width: 2rem">
                 <template #body="slotProps">
                     <div class="flex gap-1">
                         <Button icon="pi pi-eye" outlined rounded class="mr-1" severity="info" size="small"
                             @click="showCompanyDetails(slotProps.data)" v-tooltip.top="'Ver detalles'" />
                         <Button icon="pi pi-pencil" outlined rounded class="mr-1" size="small"
                             @click="editCompany(slotProps.data)" v-tooltip.top="'Editar'" />
-                        <Button icon="pi pi-trash" outlined rounded severity="danger" size="small"
-                            @click="confirmDelete(slotProps.data)" v-tooltip.top="'Eliminar'" />
+                        <!--<Button icon="pi pi-trash" outlined rounded severity="danger" size="small"
+                            @click="confirmDelete(slotProps.data)" v-tooltip.top="'Eliminar'" />-->
                     </div>
                 </template>
             </Column>

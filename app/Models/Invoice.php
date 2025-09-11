@@ -20,8 +20,8 @@ class Invoice extends Model implements AuditableContract{
     protected $fillable = [
         'invoice_code',
         'codigo',
-        'amount',
         'currency',
+        'amount',
         'financed_amount_by_garantia',
         'financed_amount',
         'paid_amount',
@@ -31,12 +31,33 @@ class Invoice extends Model implements AuditableContract{
         'status',
         'company_id',
         'loan_number',
-        'RUC_client',
         'invoice_number',
+        'RUC_client',
+
+        // --- Aprobaciones ---
+        'approval1_status',
+        'approval1_by',
+        'approval1_comment',
+        'approval1_at',
+
+        'approval2_status',
+        'approval2_by',
+        'approval2_comment',
+        'approval2_at',
+
+        // --- Auditoría ---
         'created_by',
         'updated_by',
         'deleted_by',
     ];
+    protected $casts = [
+        'approval1_at' => 'datetime',
+        'approval2_at' => 'datetime',
+        'estimated_pay_date' => 'date',
+        'created_at' => 'datetime',
+    ];
+
+
     public $timestamps = true;
 
     protected static function boot(){
@@ -51,6 +72,9 @@ class Invoice extends Model implements AuditableContract{
                 $model->invoice_code = Str::uuid()->toString();
             }
         });
+    }
+    public function approvals(){
+        return $this->hasMany(InvoiceApproval::class);
     }
     public function creator(){
         return $this->belongsTo(User::class, 'created_by');
@@ -72,6 +96,21 @@ class Invoice extends Model implements AuditableContract{
     }
     public function isDaStandby(): bool {
         return $this->status === 'daStandby';
+    }
+    public function aprovacionuseruno(){
+        return $this->belongsTo(User::class, 'approval1_by');
+    }
+    public function aprovacionuserdos(){
+        return $this->belongsTo(User::class, 'approval2_by');
+    }
+    public function createdBy(){
+        return $this->belongsTo(User::class, 'created_by');
+    }
+    public function updatedBy(){
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+    public function deletedBy(){
+        return $this->belongsTo(User::class, 'deleted_by');
     }
     public function getEstimatedPayDateFormattedAttribute(){
         $date = new DateTime($this->attributes['estimated_pay_date']);

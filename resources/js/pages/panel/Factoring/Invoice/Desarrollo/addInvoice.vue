@@ -103,7 +103,7 @@
         <!-- Monto Financiado por Garantía -->
         <div>
           <label for="financed_amount_by_garantia" class="block font-bold mb-2">
-            Monto Financiado por Garantía <span class="text-red-500">*</span>
+            Monto Financiado por zuma <span class="text-red-500">*</span>
           </label>
           <InputNumber id="financed_amount_by_garantia" v-model="factura.financed_amount_by_garantia" mode="currency"
             :currency="factura.currency || 'PEN'" :locale="currencyLocale" :minFractionDigits="2" :maxFractionDigits="2"

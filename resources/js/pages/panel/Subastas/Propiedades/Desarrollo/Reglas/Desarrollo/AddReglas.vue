@@ -228,8 +228,8 @@
     </Dialog>
     
     <!-- Componente para ver cronograma -->
-    <VerCronograma v-model:visible="cronogramaVisible" :propiedad-data="propiedadSeleccionadaData"
-        :parametros="parametrosCronograma" />
+    <!-- <VerCronograma v-model:visible="cronogramaVisible" :propiedad-data="propiedadSeleccionadaData"
+        :parametros="parametrosCronograma" />-->
 </template>
 
 <script setup lang="ts">
@@ -244,7 +244,7 @@ import Tag from 'primevue/tag'
 import axios from 'axios'
 import { debounce } from 'lodash'
 import InputNumber from 'primevue/inputnumber'
-import VerCronograma from './verCronograma.vue'
+import VerCronograma from './VerCronograma.vue'
 import Message from 'primevue/message'
 
 const toast = useToast()

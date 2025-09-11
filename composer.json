@@ -18,7 +18,7 @@
         "laravel/tinker": "^2.10.1",
         "league/flysystem-aws-s3-v3": "~3.0",
         "maatwebsite/excel": "^3.1",
-        "moneyphp/money": "^4.7",
+        "moneyphp/money": "^4.3",
         "owen-it/laravel-auditing": "^14.0",
         "predis/predis": "^3.0",
         "resend/resend-php": "^0.18.1",

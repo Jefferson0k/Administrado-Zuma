@@ -224,7 +224,7 @@ const formatDate = (dateString) => {
     // Si viene en formato DD-MM-YYYY, convertir
     if (dateString.includes('-') && dateString.split('-')[0].length === 2) {
         const [day, month, year] = dateString.split('-')
-        return `${day}/${month}/${year}`
+        return `${day}/${month}/${year}`;
     }
     
     // Si viene en formato estándar de fecha
@@ -331,7 +331,9 @@ const exportar = async () => {
         const link = document.createElement('a')
         const url = URL.createObjectURL(blob)
         link.setAttribute('href', url)
-        link.setAttribute('download', `cronograma_${props.propiedad?.nombre || 'propiedad'}_${Date.now()}.csv`)
+        const base = (props.propiedad?.nombre || 'propiedad').replace(/\s+/g, '_');
+        link.setAttribute('download', `cronograma_${base}_${Date.now()}.csv`);
+
         link.style.visibility = 'hidden'
         document.body.appendChild(link)
         link.click()
