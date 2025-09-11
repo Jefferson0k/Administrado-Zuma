@@ -7,13 +7,16 @@ use App\Enums\MovementStatus;
 use App\Enums\MovementType;
 use App\Helpers\MoneyConverter;
 use App\Http\Controllers\Controller;
+use App\Models\Balance;
 use App\Models\Company;
 use App\Models\Investment;
 use App\Models\Invoice;
 use App\Models\Movement;
 use App\Models\Payment;
+use App\Notifications\InvestmentRefundNotification;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -217,9 +220,8 @@ class PaymentsController extends Controller{
             "pay_type" => "required|in:total,partial",
             "reprogramation_date" => "nullable|date|required_if:pay_type,partial",
             "reprogramation_rate" => "nullable|numeric|required_if:pay_type,partial",
-            "evidencia" => "required|file|mimes:pdf,jpg,jpeg,png,gif,doc,docx|max:10240", // 10MB máximo
+            "evidencia" => "required|file|mimes:pdf,jpg,jpeg,png,gif,doc,docx|max:10240",
         ]);
-
         try {
             $invoice = Invoice::findOrFail($invoiceId);
             $company = $invoice->company()->first();
@@ -227,9 +229,7 @@ class PaymentsController extends Controller{
                 $request->amount_to_be_paid,
                 $invoice->currency
             );
-
             DB::beginTransaction();
-
             $payment = new Payment();
             $payment->invoice_id = $invoice->id;
             $payment->pay_type = $request->pay_type;
@@ -237,54 +237,29 @@ class PaymentsController extends Controller{
             $payment->amount_to_be_paid = MoneyConverter::getValue($amountToBePaidMoney);
             $payment->reprogramation_date = $request->reprogramation_date;
             $payment->reprogramation_rate = $request->reprogramation_rate;
-
-            // Subir evidencia a S3
             if ($request->hasFile('evidencia')) {
                 $disk = Storage::disk('s3');
                 $evidenceFile = $request->file('evidencia');
                 $filename = Str::uuid() . '.' . $evidenceFile->getClientOriginalExtension();
                 $path = "pagos/evidencias/{$invoice->id}/{$filename}";
-                
                 try {
                     $disk->putFileAs("pagos/evidencias/{$invoice->id}", $evidenceFile, $filename);
-                    
-                    // Guardar información de la evidencia en el payment
                     $payment->evidencia = $filename;
                     $payment->evidencia_path = $path;
                     $payment->evidencia_original_name = $evidenceFile->getClientOriginalName();
                     $payment->evidencia_size = $evidenceFile->getSize();
                     $payment->evidencia_mime_type = $evidenceFile->getMimeType();
-                    
-                    Log::info('Evidencia de pago subida exitosamente a S3', [
-                        'invoice_id' => $invoice->id,
-                        'filename' => $filename,
-                        'path' => $path,
-                        'original_name' => $evidenceFile->getClientOriginalName(),
-                        'size' => $evidenceFile->getSize()
-                    ]);
-                    
                 } catch (Exception $e) {
-                    Log::error('Error al subir evidencia de pago a S3', [
-                        'error' => $e->getMessage(),
-                        'invoice_id' => $invoice->id,
-                        'fileName' => $filename,
-                        'path' => $path,
-                    ]);
-                    
                     DB::rollBack();
                     return response()->json([
                         "error" => "No se pudo subir la evidencia de pago. Intente nuevamente."
                     ], 422);
                 }
             }
-
-            // Actualizar monto pagado
             $invoicePaidAmountMoney = MoneyConverter::fromDecimal($invoice->paid_amount, $invoice->currency);
             $invoice->paid_amount = $invoicePaidAmountMoney->add($amountToBePaidMoney);
-
             if ($request->pay_type == "partial") {
                 $invoice->status = "reprogramed";
-
                 [$error, $partialPayment] = $payment->createPartialPayments(
                     $invoice,
                     $invoice->convertToDecimalPercent($request->input("apportioment_percentage", 0)),
@@ -384,6 +359,125 @@ class PaymentsController extends Controller{
                 'request_data' => $request->except(['evidencia'])
             ]);
             throw new Exception($th->getMessage());
+        }
+    }
+    public function storeReembloso(Request $request){
+        $request->validate([
+            'invoice_id'   => 'required|exists:invoices,id',
+            'pay_type'     => 'required|in:total,partial,reembloso',
+            'pay_date'     => 'required|date',
+            'investments'  => 'required|array|min:1',
+            'investments.*.investor_id'      => 'required_without:investments.*.investment_id|exists:investors,id',
+            'investments.*.investment_id'    => 'required_without:investments.*.investor_id|exists:investments,id',
+            'investments.*.amount'           => 'required|numeric|min:0.01',
+            'investments.*.operation_number' => 'required|string',
+            'investments.*.receipt'          => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'investments.*.comment'          => 'nullable|string',
+        ]);
+        DB::beginTransaction();
+        try {
+            $invoice = Invoice::findOrFail($request->invoice_id);
+            $payment = Payment::create([
+                'invoice_id'        => $invoice->id,
+                'pay_type'          => $request->pay_type,
+                'amount_to_be_paid' => collect($request->investments)->sum('amount'),
+                'pay_date'          => $request->pay_date,
+            ]);
+            foreach ($request->investments as $inv) {
+                $receiptPath = null;
+                $investorId = $inv['investor_id'] ?? null;
+                if (isset($inv['receipt']) && $inv['receipt'] instanceof UploadedFile) {
+                    $disk = Storage::disk('s3');
+                    $filename = uniqid("receipt_") . '.' . $inv['receipt']->getClientOriginalExtension();
+                    $path = "payments/receipts/{$invoice->id}/{$filename}";
+                    $disk->put($path, file_get_contents($inv['receipt']), 'public');
+                    $receiptPath = $path;
+                }
+                if (isset($inv['investment_id'])) {
+                    $existingInvestment = Investment::findOrFail($inv['investment_id']);
+                    $investorId = $existingInvestment->investor_id;
+                    if ($request->pay_type === 'reembloso') {
+                        $currentReturn = MoneyConverter::fromDecimal($existingInvestment->return, $existingInvestment->currency);
+                        $existingInvestment->update([
+                            'status'           => 'inactive',
+                            'return'           => 0,
+                            'operation_number' => $inv['operation_number'],
+                            'receipt_path'     => $receiptPath ?: $existingInvestment->receipt_path,
+                            'comment'          => $inv['comment'] ?? $existingInvestment->comment,
+                        ]);
+                    }
+                    $investment = $existingInvestment;
+                } else {
+                    $investment = Investment::create([
+                        'currency'         => $invoice->currency,
+                        'amount'           => $inv['amount'],
+                        'return'           => $inv['return'] ?? 0,
+                        'rate'             => $inv['rate'] ?? 0,
+                        'due_date'         => $invoice->due_date,
+                        'investor_id'      => $investorId,
+                        'invoice_id'       => $invoice->id,
+                        'status'           => $request->pay_type === 'reembloso' ? 'inactive' : 'paid',
+                        'operation_number' => $inv['operation_number'],
+                        'receipt_path'     => $receiptPath,
+                        'comment'          => $inv['comment'] ?? null,
+                    ]);
+                    $currentReturn = MoneyConverter::fromDecimal($inv['return'] ?? 0, $invoice->currency);
+                }
+                $movementType = $request->pay_type === 'reembloso'
+                                ? MovementType::INVESTMENT_REFUND->value
+                                : MovementType::INVESTMENT_PAYMENT->value;
+                $movement = Movement::create([
+                    'currency'       => $invoice->currency,
+                    'amount'         => $inv['amount'],
+                    'type'           => $movementType,
+                    'status'         => MovementStatus::CONFIRMED->value,
+                    'confirm_status' => MovementStatus::CONFIRMED->value,
+                    'investor_id'    => $investorId,
+                    'description'    => $request->pay_type === 'reembloso'
+                                        ? "Reembolso de factura #{$invoice->invoice_number}"
+                                        : "Pago de factura #{$invoice->invoice_number}",
+                ]);
+                $investment->update(['movement_id' => $movement->id]);
+                $balance = Balance::firstOrCreate([
+                    'investor_id' => $investorId,
+                    'currency'    => $invoice->currency,
+                ]);
+                $moneyAmount = MoneyConverter::fromDecimal($inv['amount'], $invoice->currency);
+                $moneyReturn = MoneyConverter::fromDecimal($inv['return'] ?? 0, $invoice->currency);
+                if ($request->pay_type === 'reembloso') {
+                    $balance->subtractInvestedAmount($moneyAmount)
+                            ->subtractExpectedAmount($moneyReturn)
+                            ->addAmount($moneyAmount);
+                } else {
+                    $balance->addAmount($moneyAmount)
+                            ->addExpectedAmount($moneyReturn);
+                }
+                $balance->save();
+                $investor = $investment->investor;
+                if ($investor && $investor->email) {
+                    Log::info("Enviando InvestmentRefundNotification a: {$investor->email}");
+                    $investor->notify(new InvestmentRefundNotification($investment, $invoice, $payment));
+                }
+            }
+            if ($request->pay_type === 'total') {
+                $invoice->update(['status' => 'paid']);
+            }
+            DB::commit();
+            return response()->json([
+                'message' => $request->pay_type === 'reembloso'
+                            ? 'Reembolso registrado correctamente y retorno cancelado'
+                            : 'Pago registrado correctamente',
+                'payment' => $payment,
+            ], 201);
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Error en storeReembloso', [
+                'error' => $e->getMessage(),
+                'request' => $request->all(),
+            ]);
+            return response()->json([
+                'error' => 'Error al registrar el pago/reembolso: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

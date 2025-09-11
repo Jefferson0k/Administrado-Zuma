@@ -20,7 +20,7 @@ class InvestmentListResource extends JsonResource{
             'status' => $this->status,
             'inversionista' => $this->investor->name.' '.$this->investor->first_last_name.' '.$this->investor->second_last_name,
             'correo' => $this->investor->email,
-            'telephone' => $this->investor->email,
+            'telephone' => $this->investor->telephone,
             'document'  => $this->investor->document,
             'creacion'    => Carbon::parse($this->created_at)->format('d-m-Y H:i:s A'),
         ];

@@ -17,4 +17,7 @@ enum MovementType: string{
     case MORTGAGE_DISBURSEMENT = "mortgage_disbursement";
     case MORTGAGE_INSTALLMENT_PAYMENT = "mortgage_installment_payment";
     case MORTGAGE_EARLY_PAYMENT = "mortgage_early_payment";
+    
+    case INVESTMENT_PAYMENT = "investment_payment";
+    case INVESTMENT_REFUND = "investment_refund";
 }

@@ -22,7 +22,7 @@ return new class extends Migration
 
             $table->foreignUlid('investor_id')->constrained();
             $table->foreignUlid('movement_id')->constrained();
-            $table->foreignUlid('bank_account_id')->nullable()->constrained(); // ✅ Corrección aquí
+            $table->foreignUlid('bank_account_id')->nullable()->constrained();
 
             $table->string('payment_source')->nullable();
             $table->string('type')->nullable();
@@ -39,7 +39,6 @@ return new class extends Migration
                   ->nullable()
                   ->constrained('payment_schedules')
                   ->onDelete('cascade');
-
             $table->string('created_by')->nullable();
             $table->string('updated_by')->nullable();
             $table->timestamps();
