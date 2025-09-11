@@ -268,11 +268,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/{id}', [InvoiceController::class, 'update'])->name('invoices.update');
         Route::patch('/{id}/standby', [InvoiceController::class, 'standby']);
         Route::patch('/{id}/activacion', [InvoiceController::class, 'activacion']);
+        Route::patch('/{id}/rechazar', [InvoiceController::class, 'rechazar']);
         Route::get('/{id}', [InvoiceController::class, 'show'])->name('invoices.show');
         Route::delete('/{id}', [InvoiceController::class, 'delete'])->name('invoices.delete');
+        
         # Exportación a Excel
         Route::get('/export/excel', [InvoiceController::class, 'exportExcel'])->name('invoices.export');
     });
+
 
     #PROPERTY => BACKEND (SOLO ADMINISTRADOR MAS NO CLIENTE)
     Route::prefix('property')->group(function () {
@@ -415,9 +418,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/dni/{dni?}', [ConsultasDni::class, 'consultar']);
 
-    Route::post('/payments/extraer', [PaymentsController::class, 'comparacion'])->name('payments.comparacion');
-    Route::post('/payments/{invoiceId}', [PaymentsController::class, 'store'])->name('payments.store');
-
+    Route::prefix('payments')->group(function () {
+        Route::post('/extraer', [PaymentsController::class, 'comparacion'])
+            ->name('payments.comparacion');
+        Route::post('/{invoiceId}', [PaymentsController::class, 'store'])
+            ->name('payments.store');
+        Route::post('/{invoiceId}/reembloso', [PaymentsController::class, 'storeReembloso'])
+            ->name('payments.storeReembloso');
+    });
 });
 
 
