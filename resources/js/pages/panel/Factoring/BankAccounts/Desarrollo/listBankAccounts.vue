@@ -33,7 +33,7 @@
     <Column field="currency" header="Moneda" sortable style="min-width: 8rem" />
     <Column field="cc" header="Cuenta" sortable style="min-width: 12rem" />
     <Column field="cci" header="CCI" sortable style="min-width: 15rem" />
-    <Column field="alias" header="Alias" sortable style="min-width: 12rem" />
+    <!-- <Column field="alias" header="Alias" sortable style="min-width: 12rem" /> -->
     <Column field="inversionista" header="Inversionista" sortable style="min-width: 18rem" />
     <Column field="estado" header="Estado" sortable style="min-width: 10rem">
       <template #body="{ data }">

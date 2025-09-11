@@ -154,10 +154,11 @@ class InvestmentControllers extends Controller {
             $search      = $request->input('razon_social', '');
             $currency    = $request->input('currency');
             $status      = $request->input('status');
+            $codigo      = $request->input('codigo', '');
             $query = app(Pipeline::class)
                 ->send(Investment::query()->with(['invoice.company', 'investor']))
                 ->through([
-                    new SearchInvestmentFilter($search),
+                    new SearchInvestmentFilter($search, $codigo),
                     new CurrencyFilter($currency),
                     new StatusFilter($status),
                 ])

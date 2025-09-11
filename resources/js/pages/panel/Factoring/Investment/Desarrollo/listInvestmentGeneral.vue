@@ -42,6 +42,12 @@
               class="w-full md:w-16rem" />
           </div>
 
+          <!-- Filtro por Código -->
+          <div v-if="selectedFilters.includes('codigo')" class="flex flex-column gap-2">
+            <InputText v-model="filters.codigo" @input="onFilterSearch" placeholder="Buscar por código..." 
+            class="w-full md:w-20rem"/>
+          </div>
+
           <!-- Botones de acción -->
           <div class="flex gap-2">
             <Button icon="pi pi-filter-slash" severity="secondary" outlined @click="clearFilters" />
@@ -114,7 +120,8 @@ const currentPage = ref(1);
 const filterOptions = ref([
   { label: 'Razón Social', value: 'razon_social' },
   { label: 'Moneda', value: 'moneda' },
-  { label: 'Estado', value: 'estado' }
+  { label: 'Estado', value: 'estado' },
+  { label: 'Código', value: 'codigo' }
 ]);
 
 // Filtros seleccionados
@@ -124,7 +131,8 @@ const selectedFilters = ref(['razon_social']);
 const filters = ref({
   razon_social: '',
   currency: null,
-  status: []
+  status: [],
+  codigo: ''
 });
 
 // Opciones de estado
@@ -185,6 +193,11 @@ const loadInvestments = async (event: any = {}) => {
       }
     }
 
+    // Agregar filtro por código
+    if (filters.value.codigo) {
+      params.codigo = filters.value.codigo;
+    } 
+
     const response = await axios.get('/investment/all', { params });
 
     investments.value = response.data.data;
@@ -214,7 +227,8 @@ const clearFilters = () => {
   filters.value = {
     razon_social: '',
     currency: null,
-    status: []
+    status: [],
+    codigo: ''
   };
   selectedFilters.value = ['razon_social'];
   loadInvestments();
@@ -263,4 +277,5 @@ function formatCurrency(amount: string | number, currency: string) {
 onMounted(() => {
   loadInvestments();
 });
+
 </script>
