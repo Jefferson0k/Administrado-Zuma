@@ -98,14 +98,13 @@ services:
       retries: 3
     networks:
       - laravel_red_2025
-
   node:
     image: node:22
     container_name: laravel_node
     working_dir: /var/www
     volumes:
       - .:/var/www
-    command: bash -c "npm install && npm run dev"
+    command: sh -c "npm install && npm run dev"
     ports:
       - "5173:5173"
     networks:
