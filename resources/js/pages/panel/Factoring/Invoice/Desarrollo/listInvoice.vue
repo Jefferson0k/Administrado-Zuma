@@ -151,7 +151,7 @@ function getApprovalStatusLabel(status) {
     const approvalLabels = {
         'pending': 'Inactivo',
         'approved': 'Activo',
-        'rejected': 'Rechazado'
+        'rejected': 'Anulado'
     };
     return approvalLabels[status] || status;
 }
@@ -175,7 +175,8 @@ function getStatusLabel(status) {
         'paid': 'Pagado',
         'canceled': 'Cancelado',
         'daStandby': 'Standby',
-        'observed': 'Observado'
+        'observed': 'Observado',
+        'annulled': 'Anulado'   // 👈 nuevo estado
     };
     return statusLabels[status] || status;
 }
@@ -191,10 +192,10 @@ function getStatusSeverity(status) {
         case 'canceled': return 'danger';
         case 'daStandby': return 'warn';
         case 'observed': return 'info';
+        case 'annulled': return 'danger'; // 👈 mismo estilo que canceled
         default: return 'secondary';
     }
 }
-
 
 const formatCurrency = (value, moneda) => {
     if (!value) return '';
@@ -663,13 +664,19 @@ onMounted(() => {
             </Column>
             
             <Column field="SegundaStado" header="2ª Estado" sortable style="min-width: 7rem">
-                <template #body="slotProps">
-                    <span :class="!slotProps.data.SegundaStado ? 'italic' : ''">
-                        {{ getApprovalStatusLabel(slotProps.data.SegundaStado) || 'Sin estado' }}
-                    </span>
+            <template #body="slotProps">
+                <template v-if="!slotProps.data.SegundaStado">
+                    <span class="italic">Sin estado</span>
+                </template>
+                <template v-else>
+                    <Tag 
+                        :value="getApprovalStatusLabel(slotProps.data.SegundaStado)" 
+                        :severity="getApprovalStatusSeverity(slotProps.data.SegundaStado)" 
+                    />
+                    </template>
                 </template>
             </Column>
-            
+
             <Column field="userdos" header="2do Usuario" sortable style="min-width: 8rem">
                 <template #body="slotProps">
                     <span :class="slotProps.data.userdos === 'Sin aprobar' ? 'italic' : ''">
@@ -682,6 +689,13 @@ onMounted(() => {
                 <template #body="slotProps">
                     <span :class="!slotProps.data.tiempoDos ? 'italic' : ''">
                         {{ slotProps.data.tiempoDos || 'Sin tiempo' }}
+                    </span>
+                </template>
+            </Column>
+            <Column field="approval2_comment" header="Situacion" sortable style="min-width: 12rem">
+                <template #body="slotProps">
+                    <span :class="!slotProps.data.approval2_comment ? 'italic' : ''">
+                        {{ slotProps.data.approval2_comment || 'Sin situacion' }}
                     </span>
                 </template>
             </Column>

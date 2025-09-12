@@ -465,7 +465,8 @@ const getStatusText = (status) => {
         'inactive': 'Inactivo',
         'active': 'Activo',
         'paid': 'Pagado',
-        'reprogramed': 'Reprogramado'
+        'reprogramed': 'Reprogramado',
+        'annulled': 'Anulado'
     };
     return statusTranslations[status?.toLowerCase()] || status;
 };

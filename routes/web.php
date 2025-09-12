@@ -431,8 +431,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/{payment}/details', [PaymentsController::class, 'getPaymentDetails']);
         Route::post('/{payment}/approve', [PaymentsController::class, 'approvePayment']);
         Route::get('/history', [PaymentsController::class, 'getPaymentHistory']);
+        Route::get('/deposits/investor/{investor_id}', [PaymentsController::class, 'show']);
     });
 
+    Route::post('/invoices/{invoiceId}/anular', [PaymentsController::class, 'anular'])
+    ->name('invoices.anular');
 });
 
 

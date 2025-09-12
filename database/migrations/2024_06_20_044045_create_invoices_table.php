@@ -29,7 +29,8 @@ return new class extends Migration
                 'paid',
                 'canceled',
                 'daStandby',
-                'observed' // nuevo estado
+                'observed',
+                'annulled'
             ])->default('inactive');
 
             $table->foreignUlid('company_id')->constrained();
