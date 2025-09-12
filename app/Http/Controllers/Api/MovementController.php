@@ -27,10 +27,13 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Sanctum\PersonalAccessToken;
 use Illuminate\Support\Facades\Storage;
+use Aws\S3\Exception\S3Exception;
 use Throwable;
 
-class MovementController extends Controller{
-    public function listTasasFijas(Request $request){
+class MovementController extends Controller
+{
+    public function listTasasFijas(Request $request)
+    {
         $movements = Movement::with('deposit')
             ->where('description', 'tasas_fijas')
             ->orderByDesc('created_at')
@@ -39,7 +42,8 @@ class MovementController extends Controller{
         return MovementResource::collection($movements)
             ->additional(['success' => true]);
     }
-    public function listHipotecas(Request $request){
+    public function listHipotecas(Request $request)
+    {
         $movements = Movement::with('deposit')
             ->where('description', 'hipotecas')
             ->orderByDesc('created_at')
@@ -48,7 +52,8 @@ class MovementController extends Controller{
         return MovementResource::collection($movements)
             ->additional(['success' => true]);
     }
-    public function listPagosCliente(Request $request){
+    public function listPagosCliente(Request $request)
+    {
         $movements = Movement::with('deposit')
             ->where('description', 'zuma')
             ->orderByDesc('created_at')
@@ -57,7 +62,8 @@ class MovementController extends Controller{
         return MovementResource::collection($movements)
             ->additional(['success' => true]);
     }
-    public function aceptarTasasFijas(string $id){
+    public function aceptarTasasFijas(string $id)
+    {
         DB::transaction(function () use ($id) {
             $movement = Movement::with('deposit')->findOrFail($id);
             $movement->update([
@@ -76,7 +82,8 @@ class MovementController extends Controller{
             'message' => 'Movimiento aceptado y estado de inversión activado.',
         ]);
     }
-    public function rechazarTasasFijas(string $id){
+    public function rechazarTasasFijas(string $id)
+    {
         DB::transaction(function () use ($id) {
             $movement = Movement::with('deposit')->findOrFail($id);
             $movement->update([
@@ -89,44 +96,46 @@ class MovementController extends Controller{
             'message' => 'Movimiento rechazado correctamente.',
         ]);
     }
-    public function aceptarHipotecas(string $id){
+    public function aceptarHipotecas(string $id)
+    {
         DB::transaction(function () use ($id) {
             $movement = Movement::with('deposit')->findOrFail($id);
             $movement->update([
                 'status' => MovementStatus::VALID,
                 'confirm_status' => MovementStatus::CONFIRMED,
             ]);
-            
+
             $deposit = $movement->deposit;
             if ($deposit && $deposit->property_reservations_id) {
                 $deposit->propertyreservacion()->update([
                     'status' => 'activo',
                 ]);
             }
-            
+
             $propertyReservation = PropertyReservation::find($id);
-        
+
             if ($propertyReservation) {
                 $propertyReservation->update([
                     'status' => 'pagado',
                 ]);
-                
+
                 PropertyInvestor::where('config_id', $propertyReservation->config_id)->update([
                     'investor_id' => $propertyReservation->investor_id,
                 ]);
-                
+
                 Property::where('id', $propertyReservation->property_id)->update([
                     'estado' => 'adquirido',
                 ]);
             }
         });
-        
+
         return response()->json([
             'success' => true,
             'message' => 'Movimiento aceptado y estado de inversión activado. Reserva procesada si existe.',
         ]);
     }
-    public function rechazarhipotecas(string $id){
+    public function rechazarhipotecas(string $id)
+    {
         DB::transaction(function () use ($id) {
             $movement = Movement::with('deposit')->findOrFail($id);
             $movement->update([
@@ -139,13 +148,14 @@ class MovementController extends Controller{
             'message' => 'Movimiento rechazado correctamente.',
         ]);
     }
-    public function aceptarPagosCliente(string $id){
+    public function aceptarPagosCliente(string $id)
+    {
         DB::transaction(function () use ($id) {
             $movement = Movement::with('deposit')->findOrFail($id);
             $movement->update([
                 'status' => MovementStatus::VALID,
                 'confirm_status' => MovementStatus::CONFIRMED,
-            ]); 
+            ]);
             $deposit = $movement->deposit;
             if ($deposit && $deposit->payment_schedules_id) {
                 $paymentSchedule = PaymentSchedule::findOrFail($deposit->payment_schedules_id);
@@ -153,11 +163,11 @@ class MovementController extends Controller{
                 $propertyInvestorId = $paymentSchedule->property_investor_id;
                 $totalCuotas = PaymentSchedule::where('property_investor_id', $propertyInvestorId)->count();
                 $cuotasPagadas = PaymentSchedule::where('property_investor_id', $propertyInvestorId)
-                                            ->where('estado', 'pagado')
-                                            ->count();
+                    ->where('estado', 'pagado')
+                    ->count();
                 if ($totalCuotas === $cuotasPagadas) {
                     PropertyInvestor::where('id', $propertyInvestorId)
-                                ->update(['status' => 'finalizado']);
+                        ->update(['status' => 'finalizado']);
                 }
             }
         });
@@ -166,7 +176,8 @@ class MovementController extends Controller{
             'message' => 'Movimiento aceptado y estado de inversión actualizado. Reserva procesada si existe.',
         ]);
     }
-    public function rechazarPagosCliente(string $id){
+    public function rechazarPagosCliente(string $id)
+    {
         DB::transaction(function () use ($id) {
             $movement = Movement::with('deposit')->findOrFail($id);
             $movement->update([
@@ -179,7 +190,8 @@ class MovementController extends Controller{
             'message' => 'Movimiento rechazado correctamente.',
         ]);
     }
-    public function index(Request $request){
+    public function index(Request $request)
+    {
         try {
             $validator = Validator::make(
                 $request->all(),
@@ -195,12 +207,12 @@ class MovementController extends Controller{
                     ],
                 ]
             );
-            
+
             $validator->fails() ? $validator->throwException() : null;
-            
+
             $token = PersonalAccessToken::findToken(request()->bearerToken());
             $investor = $token->tokenable;
-            
+
             // PASO 1: Agregamos investment.invoice.company para obtener el nombre de la empresa
             $data = $investor->movements()
                 ->with([
@@ -218,19 +230,18 @@ class MovementController extends Controller{
                 ->paginate(10)
                 ->withPath('')
                 ->setPageName($request->input('pageName') ?: 'page');
-            
+
             // Transformamos los datos para agregar investor_id
             $data->getCollection()->transform(function ($movement) use ($investor) {
                 $movement->investor_id = $investor->id;
                 return $movement;
             });
-            
+
             return response()->json([
                 'success' => true,
                 'data' => $data,
                 'message' => null,
             ]);
-            
         } catch (Throwable $th) {
             return response()->json([
                 'success' => false,
@@ -238,56 +249,145 @@ class MovementController extends Controller{
             ], $th->getCode() ?: 500);
         }
     }
-    public function createDeposit(StorePaymentsRequest $request){
+    public function createDeposit(StorePaymentsRequest $request)
+    {
         $validatedData = $request->validated();
+
+        /** @var \App\Models\Investor $investor */
+        $investor = Auth::user();
+
+        // == LOG: Inicio + payload (sin exponer todo)
+        Log::info('Deposit@createDeposit - START', [
+            'user_id' => $investor?->id,
+            'payload' => [
+                'bank'          => $validatedData['bank'] ?? null,
+                'amount'        => $validatedData['amount'] ?? null,
+                'nro_operation' => $validatedData['nro_operation'] ?? null,
+                // No logeamos el archivo completo, sólo tipo/tamaño más abajo
+            ],
+        ]);
 
         try {
             // Valores del body
-            $bankID = $validatedData['bank'];
-            $amount = $validatedData['amount'];
+            $bankID          = $validatedData['bank'];
+            $amount          = $validatedData['amount'];
             $operationNumber = $validatedData['nro_operation'];
-            $voucher = $validatedData['voucher'];
-
-            /** @var \App\Models\Investor $investor */
-            $investor = Auth::user();
+            $voucher         = $validatedData['voucher']; // UploadedFile
 
             // Buscar la cuenta bancaria del inversor
-            $bank_account = $investor->bankAccounts()
-                ->where('id', $bankID)
-                ->first();
+            $bank_account = $investor->bankAccounts()->where('id', $bankID)->first();
 
             if (!$bank_account) {
+                Log::warning('Deposit@createDeposit - bank account not found for user', [
+                    'user_id' => $investor->id,
+                    'bank_id' => $bankID,
+                ]);
+
                 return response()->json([
                     'success' => false,
                     'message' => 'La cuenta bancaria seleccionada no existe.',
                 ], 404);
             }
 
-            // Validar el archivo
+            // Validar archivo
             if (!$voucher || !$voucher->isValid()) {
+                Log::warning('Deposit@createDeposit - invalid file', [
+                    'user_id'   => $investor->id,
+                    'has_file'  => (bool) $voucher,
+                    'is_valid'  => $voucher?->isValid(),
+                    'error'     => $voucher?->getErrorMessage(),
+                ]);
+
                 return response()->json([
                     'success' => false,
                     'message' => 'El archivo no es válido.',
                 ], 400);
             }
 
-            // Generar nombre de archivo
+            // LOG: Metadatos del archivo
+            Log::info('Deposit@createDeposit - file meta', [
+                'original_name' => $voucher->getClientOriginalName(),
+                'extension'     => $voucher->getClientOriginalExtension(),
+                'mime'          => $voucher->getMimeType(),
+                'size_bytes'    => $voucher->getSize(),
+                'tmp_path'      => $voucher->getRealPath(),
+            ]);
+
+            // Nombre de archivo
             $fileName = Str::slug($investor->document) . '-' . Str::slug($operationNumber) . '.' . $voucher->getClientOriginalExtension();
 
-            // Preparar disco S3
-            /** @var \Illuminate\Filesystem\AwsS3FilesystemAdapter $disk */
+            // Disco S3
             $disk = Storage::disk('s3');
 
-            // Subir archivo a S3 en carpeta "depositos"
-            try {
-                $path = $disk->putFileAs('depositos', $voucher, $fileName);
+            // LOG: Snapshot de config S3 (sin secretos)
+            Log::info('Deposit@createDeposit - S3 config snapshot', [
+                'default_disk' => config('filesystems.default'),
+                'driver'       => config('filesystems.disks.s3.driver'),
+                'bucket'       => config('filesystems.disks.s3.bucket'),
+                'region'       => config('filesystems.disks.s3.region'),
+                'endpoint'     => config('filesystems.disks.s3.endpoint'),
+                'url'          => config('filesystems.disks.s3.url'),
+                'path_style'   => config('filesystems.disks.s3.use_path_style_endpoint'),
+                'throw'        => config('filesystems.disks.s3.throw'),
+            ]);
 
-                if (!$path) {
-                    Log::error('File upload failed - putFileAs returned false', [
-                        'fileName' => $fileName,
-                        'folder' => 'depositos',
-                        'fileSize' => $voucher->getSize(),
-                        'mimeType' => $voucher->getMimeType()
+            // PRE-FLIGHT: headBucket si el adapter expone el cliente
+            try {
+                $adapter = method_exists($disk, 'getAdapter') ? $disk->getAdapter() : null;
+
+                if ($adapter && method_exists($adapter, 'getClient')) {
+                    $client = $adapter->getClient();
+                    $bucket = config('filesystems.disks.s3.bucket');
+
+                    $client->headBucket(['Bucket' => $bucket]);
+                    Log::info('Deposit@createDeposit - headBucket OK', ['bucket' => $bucket]);
+                } else {
+                    Log::warning('Deposit@createDeposit - cannot access S3 client from adapter (no getClient method)');
+                }
+            } catch (S3Exception $e) {
+                Log::error('Deposit@createDeposit - headBucket FAILED', [
+                    'aws_error_code'  => method_exists($e, 'getAwsErrorCode') ? $e->getAwsErrorCode() : null,
+                    'aws_error_type'  => method_exists($e, 'getAwsErrorType') ? $e->getAwsErrorType() : null,
+                    'aws_request_id'  => method_exists($e, 'getAwsRequestId') ? $e->getAwsRequestId() : null,
+                    'message'         => $e->getMessage(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede acceder al bucket S3/MinIO. Revisa endpoint/bucket/credenciales.',
+                ], 500);
+            } catch (\Throwable $e) {
+                Log::error('Deposit@createDeposit - headBucket throwable', [
+                    'class'   => get_class($e),
+                    'message' => $e->getMessage(),
+                ]);
+                // seguimos, no bloquea la operación, pero queda log
+            }
+
+            // === SUBIDA ===
+            $storedPath = null;
+
+            try {
+                // Opción A) putFileAs (simple)
+                $storedPath = $disk->putFileAs('depositos', $voucher, $fileName);
+
+                // Opción B) writeStream (útil para control fino de headers). Descomenta para probar:
+                /*
+            $stream = fopen($voucher->getRealPath(), 'r');
+            $storedPath = 'depositos/'.$fileName;
+            $disk->writeStream($storedPath, $stream, [
+                'visibility'  => 'private',
+                'ContentType' => $voucher->getMimeType(),
+            ]);
+            if (is_resource($stream)) fclose($stream);
+            */
+
+                if (!$storedPath) {
+                    Log::error('Deposit@createDeposit - putFileAs returned false', [
+                        'folder'  => 'depositos',
+                        'file'    => $fileName,
+                        'size'    => $voucher->getSize(),
+                        'mime'    => $voucher->getMimeType(),
                     ]);
 
                     return response()->json([
@@ -296,12 +396,23 @@ class MovementController extends Controller{
                     ], 500);
                 }
 
-                Log::info('File uploaded successfully', ['path' => $path]);
-            } catch (\Exception $e) {
-                Log::error('File upload exception', [
-                    'error' => $e->getMessage(),
-                    'fileName' => $fileName,
-                    'fileSize' => $voucher->getSize()
+                Log::info('Deposit@createDeposit - upload OK', ['path' => $storedPath]);
+            } catch (S3Exception $e) {
+                Log::error('Deposit@createDeposit - upload S3Exception', [
+                    'aws_error_code' => method_exists($e, 'getAwsErrorCode') ? $e->getAwsErrorCode() : null,
+                    'aws_error_type' => method_exists($e, 'getAwsErrorType') ? $e->getAwsErrorType() : null,
+                    'aws_request_id' => method_exists($e, 'getAwsRequestId') ? $e->getAwsRequestId() : null,
+                    'message'        => $e->getMessage(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al subir el archivo (S3): ' . $e->getMessage(),
+                ], 500);
+            } catch (\Throwable $e) {
+                Log::error('Deposit@createDeposit - upload throwable', [
+                    'class'   => get_class($e),
+                    'message' => $e->getMessage(),
                 ]);
 
                 return response()->json([
@@ -310,61 +421,82 @@ class MovementController extends Controller{
                 ], 500);
             }
 
-            // Generar URL temporal (expira en 60 minutos)
+            // === URL temporal ===
             try {
+                // Nota: en MinIO, temporaryUrl funciona si las credenciales/endpoint están correctas
                 $urlTemporal = $disk->temporaryUrl(
                     'depositos/' . $fileName,
                     now()->addMinutes(60)
                 );
-            } catch (\Exception $e) {
-                Log::error('Error generating temporary URL', ['error' => $e->getMessage()]);
+                Log::info('Deposit@createDeposit - temporaryUrl OK');
+            } catch (\Throwable $e) {
+                Log::error('Deposit@createDeposit - temporaryUrl FAILED', [
+                    'class'   => get_class($e),
+                    'message' => $e->getMessage(),
+                ]);
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Error al generar URL temporal: ' . $e->getMessage(),
                 ], 500);
             }
 
+            // === DB ===
             DB::beginTransaction();
+            try {
+                $deposit = new Deposit();
+                $deposit->nro_operation   = $operationNumber;
+                $deposit->currency        = $bank_account->currency;
+                $deposit->amount          = $amount;
+                $deposit->resource_path   = $storedPath; // path real
+                $deposit->created_by      = $investor->id;
+                $deposit->updated_by      = $investor->id;
+                $deposit->investor_id     = $investor->id;
+                $deposit->bank_account_id = $bank_account->id;
 
-            // Crear depósito
-            $deposit = new Deposit();
-            $deposit->nro_operation = $operationNumber;
-            $deposit->currency = $bank_account->currency;
-            $deposit->amount = $amount;
-            $deposit->resource_path = $path; // Guardar path real
-            $deposit->created_by = $investor->id;
-            $deposit->updated_by = $investor->id;
-            $deposit->investor_id = $investor->id;
-            $deposit->bank_account_id = $bank_account->id;
+                $movement = new Movement();
+                $movement->currency    = $bank_account->currency;
+                $movement->amount      = $amount;
+                $movement->type        = 'deposit';
+                $movement->status      = MovementStatus::PENDING->value;
+                $movement->investor_id = $investor->id;
+                $movement->save();
 
-            // Crear movimiento
-            $movement = new Movement();
-            $movement->currency = $bank_account->currency;
-            $movement->amount = $amount;
-            $movement->type = 'deposit';
-            $movement->status = MovementStatus::PENDING->value;
-            $movement->investor_id = $investor->id;
-            $movement->save();
+                $deposit->movement_id = $movement->id;
+                $deposit->save();
 
-            $deposit->movement_id = $movement->id;
-            $deposit->save();
+                // Notificación
+                $investor->sendDepositPendingEmailNotification($deposit);
 
-            // Enviar notificación
-            $investor->sendDepositPendingEmailNotification($deposit);
+                DB::commit();
 
-            DB::commit();
+                Log::info('Deposit@createDeposit - DB commit OK', [
+                    'deposit_id'  => $deposit->id,
+                    'movement_id' => $movement->id,
+                ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Operación creada correctamente.',
-                'data' => [
-                    'deposit_url' => $urlTemporal
-                ],
-            ], 201);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Operación creada correctamente.',
+                    'data'    => ['deposit_url' => $urlTemporal],
+                ], 201);
+            } catch (\Throwable $e) {
+                DB::rollBack();
+                Log::error('Deposit@createDeposit - DB error, rolled back', [
+                    'message' => $e->getMessage(),
+                ]);
 
-        } catch (Throwable $th) {
-            DB::rollBack();
-            Log::error('Deposit creation failed', ['error' => $th->getMessage(), 'trace' => $th->getTraceAsString()]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al registrar el depósito: ' . $e->getMessage(),
+                ], 500);
+            }
+        } catch (\Throwable $th) {
+            Log::error('Deposit@createDeposit - FATAL', [
+                'class'   => get_class($th),
+                'message' => $th->getMessage(),
+                'trace'   => $th->getTraceAsString(),
+            ]);
 
             return response()->json([
                 'success' => false,
@@ -373,7 +505,8 @@ class MovementController extends Controller{
         }
     }
 
-    public function createWithdraw(StoreWithdrawRequest $request){
+    public function createWithdraw(StoreWithdrawRequest $request)
+    {
         $validatedData = $request->validated();
 
         try {
@@ -466,34 +599,38 @@ class MovementController extends Controller{
             ], 500);
         }
     }
-    public function createFixedRateDeposit(StoreFixedRateDepositRequest $request){
+    public function createFixedRateDeposit(StoreFixedRateDepositRequest $request)
+    {
         return $this->createGenericDeposit($request, 'tasas_fijas');
     }
-    public function createMortgageDeposit(StoreMortgageDepositRequest $request){
+    public function createMortgageDeposit(StoreMortgageDepositRequest $request)
+    {
         return $this->createGenericDeposit($request, 'hipotecas');
     }
-    public function createZumaDeposit(StoreZumaDepositRequest $request){
+    public function createZumaDeposit(StoreZumaDepositRequest $request)
+    {
         return $this->createGenericDeposit($request, 'zuma');
     }
-    private function createGenericDeposit($request, string $type){
+    private function createGenericDeposit($request, string $type)
+    {
         $validatedData = $request->validated();
-        
+
         try {
             DB::beginTransaction();
-            
+
             /** @var \App\Models\Investor $investor */
             $investor = Auth::user();
             $voucher = $validatedData['voucher'];
             $operationNumber = $validatedData['nro_operation'];
             $amount = $validatedData['amount'];
             $currency = 'PEN';
-            
+
             $path = Storage::disk('s3')->putFileAs(
                 'depositos',
                 $voucher,
                 Str::slug($investor->document) . '-' . Str::slug($operationNumber) . '.' . $voucher->extension()
             );
-            
+
             $deposit = new Deposit();
             $deposit->nro_operation = $operationNumber;
             $deposit->currency = $currency;
@@ -504,7 +641,7 @@ class MovementController extends Controller{
             $deposit->investor_id = $investor->id;
             $deposit->payment_source = $validatedData['payment_source'] ?? null;
             $deposit->type = $type;
-            
+
             if ($type === 'tasas_fijas' && isset($validatedData['fixed_term_investment_id'])) {
                 $deposit->fixed_term_investment_id = $validatedData['fixed_term_investment_id'];
             }
@@ -512,11 +649,11 @@ class MovementController extends Controller{
             if ($type === 'hipotecas' && isset($validatedData['property_reservations_id'])) {
                 $deposit->property_reservations_id = $validatedData['property_reservations_id'];
             }
-            
+
             if ($type === 'zuma' && isset($validatedData['payment_schedules_id'])) {
                 $deposit->payment_schedules_id = $validatedData['payment_schedules_id'];
             }
-            
+
             $movement = new Movement();
             $movement->currency = $currency;
             $movement->amount = $amount;
@@ -525,20 +662,19 @@ class MovementController extends Controller{
             $movement->investor_id = $investor->id;
             $movement->description = $type;
             $movement->save();
-            
+
             $deposit->movement_id = $movement->id;
             $deposit->save();
-            
+
             $investor->sendDepositPendingEmailNotification($deposit);
-            
+
             DB::commit();
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Depósito registrado correctamente',
                 'data' => null,
             ], 201);
-            
         } catch (Throwable $th) {
             DB::rollBack();
             return response()->json([
@@ -547,7 +683,8 @@ class MovementController extends Controller{
             ], 500);
         }
     }
-    public function validateMovement($id){
+    public function validateMovement($id)
+    {
         $movement = Movement::findOrFail($id);
         $movement->status = MovementStatus::VALID->value;
         $movement->save();

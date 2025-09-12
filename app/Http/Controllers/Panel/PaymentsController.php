@@ -7,13 +7,16 @@ use App\Enums\MovementStatus;
 use App\Enums\MovementType;
 use App\Helpers\MoneyConverter;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\Factoring\Deposit\DepositResources;
 use App\Models\Company;
+use App\Models\Deposit;
 use App\Models\Investment;
 use App\Models\Invoice;
 use App\Models\Movement;
 use App\Models\Payment;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -217,9 +220,8 @@ class PaymentsController extends Controller{
             "pay_type" => "required|in:total,partial",
             "reprogramation_date" => "nullable|date|required_if:pay_type,partial",
             "reprogramation_rate" => "nullable|numeric|required_if:pay_type,partial",
-            "evidencia" => "required|file|mimes:pdf,jpg,jpeg,png,gif,doc,docx|max:10240", // 10MB máximo
+            "evidencia" => "required|file|mimes:pdf,jpg,jpeg,png,gif,doc,docx|max:10240",
         ]);
-
         try {
             $invoice = Invoice::findOrFail($invoiceId);
             $company = $invoice->company()->first();
@@ -227,9 +229,7 @@ class PaymentsController extends Controller{
                 $request->amount_to_be_paid,
                 $invoice->currency
             );
-
             DB::beginTransaction();
-
             $payment = new Payment();
             $payment->invoice_id = $invoice->id;
             $payment->pay_type = $request->pay_type;
@@ -237,54 +237,29 @@ class PaymentsController extends Controller{
             $payment->amount_to_be_paid = MoneyConverter::getValue($amountToBePaidMoney);
             $payment->reprogramation_date = $request->reprogramation_date;
             $payment->reprogramation_rate = $request->reprogramation_rate;
-
-            // Subir evidencia a S3
             if ($request->hasFile('evidencia')) {
                 $disk = Storage::disk('s3');
                 $evidenceFile = $request->file('evidencia');
                 $filename = Str::uuid() . '.' . $evidenceFile->getClientOriginalExtension();
                 $path = "pagos/evidencias/{$invoice->id}/{$filename}";
-                
                 try {
                     $disk->putFileAs("pagos/evidencias/{$invoice->id}", $evidenceFile, $filename);
-                    
-                    // Guardar información de la evidencia en el payment
                     $payment->evidencia = $filename;
                     $payment->evidencia_path = $path;
                     $payment->evidencia_original_name = $evidenceFile->getClientOriginalName();
                     $payment->evidencia_size = $evidenceFile->getSize();
                     $payment->evidencia_mime_type = $evidenceFile->getMimeType();
-                    
-                    Log::info('Evidencia de pago subida exitosamente a S3', [
-                        'invoice_id' => $invoice->id,
-                        'filename' => $filename,
-                        'path' => $path,
-                        'original_name' => $evidenceFile->getClientOriginalName(),
-                        'size' => $evidenceFile->getSize()
-                    ]);
-                    
                 } catch (Exception $e) {
-                    Log::error('Error al subir evidencia de pago a S3', [
-                        'error' => $e->getMessage(),
-                        'invoice_id' => $invoice->id,
-                        'fileName' => $filename,
-                        'path' => $path,
-                    ]);
-                    
                     DB::rollBack();
                     return response()->json([
                         "error" => "No se pudo subir la evidencia de pago. Intente nuevamente."
                     ], 422);
                 }
             }
-
-            // Actualizar monto pagado
             $invoicePaidAmountMoney = MoneyConverter::fromDecimal($invoice->paid_amount, $invoice->currency);
             $invoice->paid_amount = $invoicePaidAmountMoney->add($amountToBePaidMoney);
-
             if ($request->pay_type == "partial") {
                 $invoice->status = "reprogramed";
-
                 [$error, $partialPayment] = $payment->createPartialPayments(
                     $invoice,
                     $invoice->convertToDecimalPercent($request->input("apportioment_percentage", 0)),
@@ -385,5 +360,149 @@ class PaymentsController extends Controller{
             ]);
             throw new Exception($th->getMessage());
         }
+    }
+    public function storeReembloso(Request $request){
+        $request->validate([
+            'invoice_id'      => 'required|exists:invoices,id',
+            'pay_type'        => 'required|in:reembloso',
+            'pay_date'        => 'required|date',
+            'amount'          => 'required|numeric|min:1',
+            'comment'         => 'nullable|string',
+            'nro_operation'   => 'required|string',
+            'currency'        => 'required|string|size:3',
+            'investor_id'     => 'required|exists:investors,id',
+            'resource_path'   => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'bank_account_id' => 'required|exists:bank_accounts,id',
+        ]);
+        $invoice = Invoice::findOrFail($request->invoice_id);
+        DB::beginTransaction();
+        try {
+            $payment = Payment::create([
+                'invoice_id'        => $invoice->id,
+                'pay_type'          => $request->pay_type,
+                'amount_to_be_paid' => $request->amount,
+                'pay_date'          => $request->pay_date,
+                'approval1_status'  => 'approved',
+                'approval1_by'      => Auth::id(),
+                'approval1_comment' => $request->comment,
+                'approval1_at'      => now(),
+                'approval2_status'  => 'pending',
+            ]);
+            $path = null;
+            if ($request->hasFile('resource_path')) {
+                $path = $request->file('resource_path')->store('refunds', 'public');
+            }
+            $deposit = Deposit::create([
+                'nro_operation'   => $request->nro_operation,
+                'currency'        => $request->currency,
+                'amount'          => $request->amount,
+                'resource_path'   => $path,
+                'description'     => "Solicitud de reembolso factura {$invoice->codigo}",
+                'investor_id'     => $request->investor_id,
+                'bank_account_id' => $request->bank_account_id,
+                'movement_id'     => null,
+                'payment_source'  => 'reembloso',
+                'type'            => 'reembloso',
+                'created_by'      => Auth::id(),
+                'updated_by'      => Auth::id(),
+            ]);
+            Investment::where('invoice_id', $invoice->id)
+                ->where('investor_id', $request->investor_id)
+                ->update([
+                    'status'     => 'pending',
+                    'updated_at' => now(),
+                ]);
+            DB::commit();
+            return response()->json([
+                'message' => 'Reembolso registrado, pendiente de confirmación.',
+                'payment' => $payment,
+                'deposit' => $deposit,
+            ], 201);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+    public function approvePayment(Request $request, $id){
+        $request->validate([
+            'status'  => 'required|in:approved,rejected',
+            'comment' => 'nullable|string',
+        ]);
+        $payment = Payment::with('invoice')->findOrFail($id);
+        if ($payment->approval1_status !== 'approved') {
+            return response()->json([
+                'error' => 'El pago aún no ha sido registrado por el primer aprobador.'
+            ], 400);
+        }
+        DB::beginTransaction();
+        try {
+            $payment->update([
+                'approval2_status'  => $request->status,
+                'approval2_by'      => Auth::id(),
+                'approval2_comment' => $request->comment,
+                'approval2_at'      => now(),
+            ]);
+            if ($request->status === 'approved') {
+                $deposit = Deposit::where('description', "Solicitud de reembolso factura {$payment->invoice->codigo}")
+                            ->whereNull('movement_id')
+                            ->first();
+                $movement = Movement::create([
+                    'amount'      => $payment->amount_to_be_paid,
+                    'type'        => 'withdraw',
+                    'currency'    => $payment->invoice->currency,
+                    'status'      => 'confirmed',
+                    'confirm_status' => 'confirmed',
+                    'description' => 'Reembolso aprobado para la factura ' . $payment->invoice->codigo,
+                    'origin'      => 'zuma',
+                    'aprobacion_1'=> $payment->approval1_at,
+                    'aprobado_por_1' => $payment->approval1_by,
+                    'aprobacion_2'=> $payment->approval2_at,
+                    'aprobado_por_2' => $payment->approval2_by,
+                ]);
+                if ($deposit) {
+                    $deposit->update([
+                        'movement_id' => $movement->id,
+                    ]);
+                }
+                $invoice = $payment->invoice;
+                $invoice->paid_amount -= $payment->amount_to_be_paid;
+                if ($invoice->paid_amount < 0) {
+                    $invoice->paid_amount = 0;
+                }
+                $invoice->save();
+            }
+            DB::commit();
+            return response()->json([
+                'message' => $request->status === 'approved'
+                    ? 'Reembolso confirmado: movimiento y depósito enlazados.'
+                    : 'Reembolso rechazado correctamente.',
+                'payment'  => $payment,
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+    public function show($investor_id){
+        $deposits = Deposit::with(['movement', 'investor', 'bankAccount'])
+            ->where('investor_id', $investor_id)
+            ->get();
+        return DepositResources::collection($deposits);
+    }
+    public function anular(Request $request, $id){
+        $request->validate([
+            'comment' => 'nullable|string|max:500',
+        ]);
+        $invoice = Invoice::findOrFail($id);
+        $ok = $invoice->anularFactura(Auth::id(), $request->comment);
+        if (! $ok) {
+            return response()->json([
+                'error' => 'La factura no puede ser anulada (ya pagada o ya anulada).'
+            ], 422);
+        }
+        return response()->json([
+            'message' => 'Factura anulada correctamente',
+            'invoice' => $invoice
+        ]);
     }
 }

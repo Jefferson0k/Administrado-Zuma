@@ -62,60 +62,67 @@
                 </div>
 
                 <!-- Resumen de Inversionistas - Solo visible si estado es "daStandby" -->
-                <div v-if="facturaData.estado === 'daStandby' && facturaData.investments && facturaData.investments.length > 0" 
-                     class="mt-6">
-                    <div class="border-t pt-4">
-                        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                            <h4 class="font-semibold text-base mb-3 text-blue-900 flex items-center">
-                                <i class="pi pi-users mr-2"></i>
-                                Resumen de Inversiones
-                            </h4>
-                            
-                            <div class="grid grid-cols-4 gap-4 text-center mb-4">
-                                <div class="bg-white p-3 rounded-lg shadow-sm">
-                                    <p class="text-2xl font-bold text-green-600">{{ investmentStats.active }}</p>
-                                    <p class="text-xs text-gray-600">Activos</p>
-                                </div>
-                                <div class="bg-white p-3 rounded-lg shadow-sm">
-                                    <p class="text-2xl font-bold text-blue-600">{{ investmentStats.paid }}</p>
-                                    <p class="text-xs text-gray-600">Pagados</p>
-                                </div>
-                                <div class="bg-white p-3 rounded-lg shadow-sm">
-                                    <p class="text-2xl font-bold text-gray-600">{{ investmentStats.inactive }}</p>
-                                    <p class="text-xs text-gray-600">Inactivos</p>
-                                </div>
-                                <div class="bg-white p-3 rounded-lg shadow-sm">
-                                    <p class="text-2xl font-bold text-purple-600">{{ investmentStats.total }}</p>
-                                    <p class="text-xs text-gray-600">Total</p>
-                                </div>
-                            </div>
+                <Message v-if="facturaData.estado === 'daStandby' && facturaData.investments && facturaData.investments.length > 0" 
+                        severity="info" 
+                        class="mt-6 w-full">
+                    
+                    <div class="p-2">
+                        <h4 class="font-semibold text-base mb-3 text-blue-900 flex items-center">
+                            <i class="pi pi-users mr-2 text-blue-700"></i>
+                            Resumen de Inversiones
+                        </h4>
+                        
+                        <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+                            Monto Total Invertido:
+                                <p class="text-lg font-bold text-green-600">
+                                    {{ formatCurrency(investmentStats.totalAmount, facturaData.moneda) }}
+                                </p>
+                        </div>
 
-                            <div class="grid grid-cols-2 gap-4 text-sm mb-4">
-                                <div class="bg-white p-3 rounded-lg">
-                                    <span class="font-medium text-gray-700">Monto Total Invertido:</span>
-                                    <p class="text-lg font-bold text-green-600">
-                                        {{ formatCurrency(investmentStats.totalAmount, facturaData.moneda) }}
-                                    </p>
-                                </div>
-                                <div class="bg-white p-3 rounded-lg">
-                                    <span class="font-medium text-gray-700">Retorno Total:</span>
-                                    <p class="text-lg font-bold text-blue-600">
-                                        {{ formatCurrency(investmentStats.totalReturn, facturaData.moneda) }}
-                                    </p>
-                                </div>
-                            </div>
+                        <Button 
+                            label="Ver Lista Completa de Inversionistas" 
+                            icon="pi pi-eye" 
+                            @click="openInvestorsModal" 
+                            fluid
+                            severity="info"
+                        />
+                    </div>
+                </Message>
+            </div>
 
-                            <Button 
-                                label="Ver Lista Completa de Inversionistas" 
-                                icon="pi pi-eye" 
-                                @click="openInvestorsModal" 
-                                class="w-full"
-                                severity="info"
-                            />
+                        <div class="mb-6">
+                <h4 class="font-semibold mb-4 flex items-center gap-2">
+                    <i class="pi pi-users"></i>
+                    Estado de Aprobaciones
+                </h4>
+                
+                <div class="space-y-4">
+                    <!-- Primera Aprobación -->
+                    <div class="flex items-center gap-4 p-4 bg-white rounded-lg border-2" :class="getApprovalBorderClass(facturaData.PrimerStado)">
+                        <div class="flex-shrink-0">
+                            <div class="w-12 h-12 rounded-full flex items-center justify-center" :class="getApprovalBgClass(facturaData.PrimerStado)">
+                                <i :class="getApprovalIconClass(facturaData.PrimerStado)"></i>
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-semibold text-gray-800">Primera Aprobación</div>
+                            <div class="text-sm" :class="getApprovalTextClass(facturaData.PrimerStado)">
+                                {{ getApprovalStatusText(facturaData.PrimerStado) }}
+                            </div>
+                            <div class="text-sm text-gray-600 mt-1">
+                                <b>Usuario:</b> {{ facturaData.userprimerNombre }}
+                            </div>
+                            <div class="text-sm text-gray-600 mt-1">
+                                <b>Comentarios:</b> {{ facturaData.approval1_comment }}
+                            </div>
+                            <div v-if="facturaData.tiempoUno" class="text-xs text-gray-500 mt-1">
+                                <b>{{ facturaData.tiempoUno }}</b>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
+
         </div>
 
         <!-- Botones de acción -->
@@ -167,29 +174,22 @@
                             <p class="text-gray-600 text-xs">DNI: {{ investment.document }}</p>
                             <p class="text-gray-600 text-xs">{{ investment.correo }}</p>
                         </div>
-
                         <!-- Monto y retorno -->
                         <div class="col-span-3 text-center">
                             <p class="text-gray-700 font-medium">
                                 {{ formatCurrency(investment.amount, investment.currency) }}
                             </p>
-                            <p class="text-green-600 font-medium text-xs">
-                                +{{ formatCurrency(investment.return, investment.currency) }}
-                            </p>
                         </div>
-
                         <!-- Estado -->
                         <div class="col-span-2 text-center">
                             <span :class="getStatusBadgeClass(investment.status)">
                                 {{ getStatusText(investment.status) }}
                             </span>
                         </div>
-
                         <!-- Fecha de creación -->
                         <div class="col-span-2 text-center">
                             <p class="text-gray-600 text-xs">{{ investment.creacion }}</p>
                         </div>
-
                         <!-- Acciones -->
                         <div class="col-span-1 text-center">
                             <Button 
@@ -245,6 +245,7 @@ import axios from 'axios';
 import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
 import { useToast } from 'primevue/usetoast';
+import Message from 'primevue/message';
 
 const toast = useToast();
 
@@ -464,10 +465,58 @@ const getStatusText = (status) => {
         'inactive': 'Inactivo',
         'active': 'Activo',
         'paid': 'Pagado',
-        'reprogramed': 'Reprogramado'
+        'reprogramed': 'Reprogramado',
+        'annulled': 'Anulado'
     };
     return statusTranslations[status?.toLowerCase()] || status;
 };
+
+
+const getApprovalBorderClass = (status) => {
+    switch (status) {
+        case 'approved': return 'border-green-200 bg-green-50';
+        case 'pending': return 'border-orange-200 bg-orange-50';
+        case 'rejected': return 'border-red-200 bg-red-50';
+        default: return 'border-gray-200';
+    }
+};
+
+const getApprovalIconClass = (status) => {
+    switch (status) {
+        case 'approved': return 'pi pi-check text-white';
+        case 'pending': return 'pi pi-clock text-white';
+        case 'rejected': return 'pi pi-times text-white';
+        default: return 'pi pi-question text-white';
+    }
+};
+
+const getApprovalTextClass = (status) => {
+    switch (status) {
+        case 'approved': return 'text-green-600';
+        case 'pending': return 'text-orange-600';
+        case 'rejected': return 'text-red-600';
+        default: return 'text-gray-600';
+    }
+};
+
+const getApprovalBgClass = (status) => {
+    switch (status) {
+        case 'approved': return 'bg-green-500';
+        case 'pending': return 'bg-orange-500';
+        case 'rejected': return 'bg-red-500';
+        default: return 'bg-gray-400';
+    }
+};
+
+const getApprovalStatusText = (status) => {
+    switch (status) {
+        case 'approved': return 'Aprobado';
+        case 'pending': return 'Pendiente';
+        case 'rejected': return 'Rechazado';
+        default: return 'Sin estado';
+    }
+};
+
 
 // Reset page when filters change
 watch([searchTerm, selectedStatus], () => {

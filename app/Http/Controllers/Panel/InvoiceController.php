@@ -111,7 +111,7 @@ class InvoiceController extends Controller{
             return response()->json(['message' => 'Error al crear la factura.', 'error' => $e->getMessage()], 500);
         }
     }
-   public function standby(Request $request, $id){
+    public function standby(Request $request, $id){
         try {
             $invoice = Invoice::findOrFail($id);
             Gate::authorize('update', $invoice);
@@ -153,20 +153,115 @@ class InvoiceController extends Controller{
         try {
             $invoice = Invoice::findOrFail($id);
             Gate::authorize('update', $invoice);
+            $userId = Auth::id();
+            if ($invoice->status === 'active') {
+                return response()->json([
+                    'message' => 'La factura ya está activada.',
+                    'data'    => $invoice
+                ], 400);
+            }
             $invoice->update([
-                'status' => 'active',
-                'updated_by' => Auth::id(),
+                'approval1_status'  => 'approved',
+                'approval1_by'      => $userId,
+                'approval1_at'      => now(),
+                'approval1_comment' => $request->input('comment'),
+                'status'            => 'active',
+                'updated_by'        => $userId,
             ]);
             return response()->json([
                 'message' => 'Factura activada correctamente.',
-                'data' => $invoice
+                'data'    => $invoice
             ], 200);
         } catch (AuthorizationException $e) {
-            return response()->json(['message' => 'No tienes permiso para actualizar esta factura.'], 403);
+            return response()->json(['message' => 'No tienes permiso.'], 403);
         } catch (Throwable $e) {
             return response()->json([
-                'message' => 'Error al actualizar la factura.',
-                'error' => $e->getMessage()
+                'message' => 'Error al aprobar la factura.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+    public function observacion(Request $request, $id){
+        try {
+            $invoice = Invoice::findOrFail($id);
+            Gate::authorize('update', $invoice);
+            $userId = Auth::id();
+            if ($invoice->status === 'observed') {
+                return response()->json([
+                    'message' => 'La factura ya fue observada.',
+                    'data'    => $invoice
+                ], 400);
+            }
+            $invoice->update([
+                'approval1_status'  => 'rejected',
+                'approval1_by'      => $userId,
+                'approval1_at'      => now(),
+                'approval1_comment' => $request->input('comment'),
+                'status'            => 'observed',
+                'updated_by'        => $userId,
+            ]);
+            return response()->json([
+                'message' => 'Factura observada correctamente.',
+                'data'    => $invoice
+            ], 200);
+        } catch (AuthorizationException $e) {
+            return response()->json(['message' => 'No tienes permiso.'], 403);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'Error al observar la factura.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+    public function rechazar(Request $request, $id){
+        try {
+            $invoice = Invoice::findOrFail($id);
+            Gate::authorize('update', $invoice);
+            $userId = Auth::id();
+            if ($invoice->approval1_status === 'pending') {
+                $invoice->update([
+                    'approval1_status'  => 'rejected',
+                    'approval1_by'      => $userId,
+                    'approval1_at'      => now(),
+                    'approval1_comment' => $request->input('comment'),
+                    'updated_by'        => $userId,
+                ]);
+                return response()->json([
+                    'message' => "Primera aprobación rechazada.",
+                    'data'    => $invoice
+                ], 200);
+            }
+            if ($invoice->approval2_status === 'pending') {
+                if ($invoice->approval1_status === 'pending') {
+                    return response()->json([
+                        'message' => 'No puedes rechazar en la segunda activación hasta que la primera esté resuelta.'
+                    ], 400);
+                }
+                $invoice->update([
+                    'approval2_status'  => 'rejected',
+                    'approval2_by'      => $userId,
+                    'approval2_at'      => now(),
+                    'approval2_comment' => $request->input('comment'),
+                    'updated_by'        => $userId,
+                ]);
+                $invoice->update([
+                    'status'     => 'inactive',
+                    'updated_by' => $userId,
+                ]);
+                return response()->json([
+                    'message' => "Segunda aprobación rechazada.",
+                    'data'    => $invoice
+                ], 200);
+            }
+            return response()->json([
+                'message' => 'Ya se registró esta acción.'
+            ], 400);
+        } catch (AuthorizationException $e) {
+            return response()->json(['message' => 'No tienes permiso.'], 403);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'Error al rechazar la factura.',
+                'error'   => $e->getMessage()
             ], 500);
         }
     }

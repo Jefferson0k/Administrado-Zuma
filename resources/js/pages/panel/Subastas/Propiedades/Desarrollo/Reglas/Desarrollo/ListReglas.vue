@@ -138,8 +138,8 @@ import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
 
 import UpdateReglas from './UpdateReglas.vue'
-import VerCronograma from './VerCronograma.vue'
-
+import VerCronograma from './showCronograma.vue'
+import showCronograma from './showCronograma.vue'
 const dt = ref()
 const menu = ref()
 const toast = useToast()

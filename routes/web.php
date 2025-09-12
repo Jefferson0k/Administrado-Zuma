@@ -111,9 +111,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/{invoice_id}/inversionistas', [InvestmentWeb::class, 'views'])->name('inversionistas.views');
         Route::get('/inversiones', [InvestmentWeb::class, 'viewsGeneral'])->name('inversiones.viewsGeneral');
         Route::get('/pagos', [PaymentsWeb::class, 'views'])->name('inversiones.views');
-        Route::get('/tipo-cambio', [ExchangeWebControler::class, 'views'])->name('tipo-cambio.views');
+        Route::get('/tipo-cambio/nuevo', [ExchangeWebControler::class, 'views'])->name('tipo-cambio.views');
         Route::get('/retiros', [WithdrawWeb::class, 'views'])->name('retiros.views');
-        Route::get('/tipo-cambio', [ExchangeWeb::class, 'views'])->name('retiros.views');
+        Route::get('/tipo-cambio', [ExchangeWeb::class, 'views'])->name('cambio.views');
     });
 
     #RUTAS DE WEB EN LA PARTE DE TASAS FIJAS
@@ -268,11 +268,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/{id}', [InvoiceController::class, 'update'])->name('invoices.update');
         Route::patch('/{id}/standby', [InvoiceController::class, 'standby']);
         Route::patch('/{id}/activacion', [InvoiceController::class, 'activacion']);
+        Route::patch('/{id}/rechazar', [InvoiceController::class, 'rechazar']);
+        Route::patch('/{id}/observacion', [InvoiceController::class, 'observacion']);
         Route::get('/{id}', [InvoiceController::class, 'show'])->name('invoices.show');
         Route::delete('/{id}', [InvoiceController::class, 'delete'])->name('invoices.delete');
+        
         # Exportación a Excel
         Route::get('/export/excel', [InvoiceController::class, 'exportExcel'])->name('invoices.export');
     });
+
 
     #PROPERTY => BACKEND (SOLO ADMINISTRADOR MAS NO CLIENTE)
     Route::prefix('property')->group(function () {
@@ -415,9 +419,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/dni/{dni?}', [ConsultasDni::class, 'consultar']);
 
-    Route::post('/payments/extraer', [PaymentsController::class, 'comparacion'])->name('payments.comparacion');
-    Route::post('/payments/{invoiceId}', [PaymentsController::class, 'store'])->name('payments.store');
+    Route::prefix('payments')->group(function () {
+        Route::post('/extraer', [PaymentsController::class, 'comparacion'])
+            ->name('payments.comparacion');
+        Route::post('/{invoiceId}', [PaymentsController::class, 'store'])
+            ->name('payments.store');
+        Route::post('/{invoiceId}/reembloso', [PaymentsController::class, 'storeReembloso'])
+            ->name('payments.storeReembloso');
+        Route::post('/reembolso', [PaymentsController::class, 'storeReembolso']);
+        Route::get('/pending', [PaymentsController::class, 'getPendingPayments']);
+        Route::get('/{payment}/details', [PaymentsController::class, 'getPaymentDetails']);
+        Route::post('/{payment}/approve', [PaymentsController::class, 'approvePayment']);
+        Route::get('/history', [PaymentsController::class, 'getPaymentHistory']);
+        Route::get('/deposits/investor/{investor_id}', [PaymentsController::class, 'show']);
+    });
 
+    Route::post('/invoices/{invoiceId}/anular', [PaymentsController::class, 'anular'])
+    ->name('invoices.anular');
 });
 
 

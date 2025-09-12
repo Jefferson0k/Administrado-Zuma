@@ -165,4 +165,14 @@ class Balance extends Model
     {
         return $this->getAmountMoney()->greaterThanOrEqual($amount);
     }
+    public function subtractInvestedAmount(Money $amount): self{
+        $newAmount = $this->getInvestedAmountMoney()->subtract($amount);
+        $this->attributes['invested_amount'] = $newAmount->getAmount();
+        return $this;
+    }
+    public function subtractExpectedAmount(Money $amount): self{
+        $newAmount = $this->getExpectedAmountMoney()->subtract($amount);
+        $this->attributes['expected_amount'] = $newAmount->getAmount();
+        return $this;
+    }
 }

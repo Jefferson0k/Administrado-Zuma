@@ -25,6 +25,7 @@ class CompanyResource extends JsonResource
             'subsector_id'     => $this->subsector_id,
             'sectornom'        => $this->sector?->name,
             'subsectornom'     => $this->subsector?->name,
+            'nuevonombreempresa' => $this->nuevonombreempresa,
             'creacion'         => $this->created_at ? Carbon::parse($this->created_at)->format('d-m-Y H:i:s A') : null,
 
             // Datos de la relación finances
