@@ -28,13 +28,13 @@
 
     <!-- Columns -->
     <Column selectionMode="multiple" style="width: 1rem" :exportable="false" />
+    <Column field="inversionista" header="Inversionista" sortable style="min-width: 18rem" />
     <Column field="banco" header="Banco" sortable style="min-width: 15rem" />
     <Column field="type" header="Tipo" sortable style="min-width: 10rem" />
     <Column field="currency" header="Moneda" sortable style="min-width: 8rem" />
     <Column field="cc" header="Cuenta" sortable style="min-width: 12rem" />
     <Column field="cci" header="CCI" sortable style="min-width: 15rem" />
-    <!-- <Column field="alias" header="Alias" sortable style="min-width: 12rem" /> -->
-    <Column field="inversionista" header="Inversionista" sortable style="min-width: 18rem" />
+    <!-- <Column field="alias" header="Alias" sortable style="min-width: 12rem" /> -->    
     <Column field="estado" header="Estado" sortable style="min-width: 10rem">
       <template #body="{ data }">
         <Tag :value="data.estado" :severity="getStatusSeverity(data.estado)" />
