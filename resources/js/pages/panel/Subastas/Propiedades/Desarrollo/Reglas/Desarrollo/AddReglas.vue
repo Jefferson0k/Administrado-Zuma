@@ -3,10 +3,8 @@
     <Toolbar class="mb-6">
         <template #start>
             <Button label="Nuevo" icon="pi pi-plus" severity="secondary" class="mr-2" @click="openDialog" />
-            <Button label="Eliminar" icon="pi pi-trash" severity="secondary" @click="showToast" />
         </template>
         <template #end>
-            <Button label="Exportar" icon="pi pi-upload" severity="secondary" @click="showToast" />
         </template>
     </Toolbar>
     <Dialog v-model:visible="visible" modal header="Reglas del inmueble" :style="{ width: '1100px' }">
@@ -14,8 +12,15 @@
             <!-- Propiedad (fila completa) -->
             <div>
                 <label class="block font-semibold mb-2">Propiedad <span class="text-red-500">*</span></label>
-                <Select v-model="propiedadSeleccionada" :options="propiedades" :style="{ width: '100%' }" editable
-                    optionLabel="label" optionValue="value" showClear placeholder="Buscar propiedad..."
+                <Select v-model="propiedadSeleccionada" 
+                    :options="propiedades" 
+                    :style="{ width: '100%' }" 
+                    :disabled="camposGeneralesBloqueados"
+                    editable
+                    optionLabel="label" 
+                    optionValue="value" 
+                    showClear 
+                    placeholder="Buscar propiedad..."
                     @update:modelValue="onInputChange">
                     <template #value="{ value }">
                         <span>{{ getPropiedadLabel(value) }}</span>
@@ -43,8 +48,13 @@
                     <label class="block font-semibold mb-2">
                         Tipo Cronograma <span class="text-red-500">*</span>
                     </label>
-                    <Select v-model="cronograma" :options="cronogramaOpciones" optionLabel="label" optionValue="value"
-                        placeholder="Seleccionar tipo..." class="w-full" />
+                    <Select v-model="cronograma" 
+                        :options="cronogramaOpciones" 
+                        :disabled="camposGeneralesBloqueados"
+                        optionLabel="label" 
+                        optionValue="value"
+                        placeholder="Seleccionar tipo..." 
+                        class="w-full" />
                 </div>
 
                 <!-- Plazo -->
@@ -52,96 +62,97 @@
                     <label class="block font-semibold mb-2">
                         Plazo del crédito <span class="text-red-500">*</span>
                     </label>
-                    <Select v-model="deadlines_id" :options="plazos" optionLabel="nombre" optionValue="id"
-                        placeholder="Seleccione un plazo" class="w-full" />
+                    <Select v-model="deadlines_id" 
+                        :options="plazos" 
+                        :disabled="camposGeneralesBloqueados"
+                        optionLabel="nombre" 
+                        optionValue="id"
+                        placeholder="Seleccione un plazo" 
+                        class="w-full" />
                 </div>
             </div>
-
             <!-- SECCIÓN INVERSIONISTA -->
-            <div class="border border-blue-200 rounded-lg p-4 bg-blue-50">
-                <h3 class="text-lg font-semibold text-blue-800 mb-4 flex items-center">
-                    <i class="pi pi-chart-line mr-2"></i>
-                    Configuración para Inversionista
-                </h3>
-                
-                <div class="grid grid-cols-3 gap-4">
-                    <!-- TEM Inversionista -->
-                    <div>
-                        <label class="block font-semibold mb-2">
-                            TEM Inversionista (%) <span class="text-red-500">*</span>
-                        </label>
-                        <InputNumber v-model="temInversionista" 
-                            @update:modelValue="calcularTeaDesdeTemInversionista"
-                            class="w-full"
-                            placeholder="Ej. 1.05" 
-                            :minFractionDigits="3"
-                            :maxFractionDigits="3"
-                            suffix="%" 
-                            :min="0" 
-                            :max="20" />
+            <Message severity="info" :closable="false" class="fluid">
+                <template #messageicon>
+                    <i class="pi pi-chart-line"></i>
+                </template>
+                <template #default>
+                    <h3 class="text-lg font-semibold mb-4">
+                        Configuración para Inversionista
+                    </h3>
+                    <div class="flex items-end gap-6 flex-wrap">
+                        <!-- TEM Inversionista -->
+                        <div>
+                            <label class="font-semibold mb-2 block">
+                                TEM Inversionista (%) <span class="text-red-500">*</span>
+                            </label>
+                            <InputNumber v-model="temInversionista" 
+                                @update:modelValue="calcularTeaDesdeTemInversionista"
+                                :disabled="inversionistaGuardado"
+                                fluid
+                                placeholder="Ej. 1.05" 
+                                :minFractionDigits="3"
+                                :maxFractionDigits="3"
+                                suffix="%" 
+                                :min="0" 
+                                :max="20" />
+                        </div>
+
+                        <!-- TEA Inversionista -->
+                        <div>
+                            <label class="font-semibold mb-2 block">
+                                TEA Inversionista (%) <span class="text-red-500">*</span>
+                            </label>
+                            <InputNumber v-model="teaInversionista" 
+                                @update:modelValue="calcularTemDesdeTeaInversionista"
+                                :disabled="inversionistaGuardado"
+                                fluid
+                                placeholder="Ej. 12.5" 
+                                :minFractionDigits="3"
+                                :maxFractionDigits="3"
+                                suffix="%" 
+                                :min="0" 
+                                :max="100" />
+                        </div>
+
+                        <!-- Botones -->
+                        <Button label="Previsualizar cronograma" 
+                            icon="pi pi-eye" 
+                            severity="info" 
+                            outlined
+                            :disabled="!canPreviewCronogramaInversionista" 
+                            @click="previsualizarCronograma('inversionista')" />
+
+                        <Button label="Guardar Inversionista" 
+                            icon="pi pi-check" 
+                            severity="contrast"
+                            :disabled="!canSaveInversionista || inversionistaGuardado" 
+                            @click="actualizarPropiedad(1)" />
                     </div>
 
-                    <!-- TEA Inversionista -->
-                    <div>
-                        <label class="block font-semibold mb-2">
-                            TEA Inversionista (%) <span class="text-red-500">*</span>
-                        </label>
-                        <InputNumber v-model="teaInversionista" 
-                            @update:modelValue="calcularTemDesdeTeaInversionista"
-                            class="w-full"
-                            placeholder="Ej. 12.5" 
-                            :minFractionDigits="3"
-                            :maxFractionDigits="3"
-                            suffix="%" 
-                            :min="0" 
-                            :max="100" />
-                        <small class="text-gray-600 mt-1 block">
-                            Conversión automática TEM ↔ TEA
-                        </small>
-                    </div>
-
-                    <!-- Riesgo Inversionista -->
-                    <div>
-                        <label class="block font-semibold mb-2">
-                            Riesgo Inversionista <span class="text-red-500">*</span>
-                        </label>
-                        <Select v-model="riesgoInversionista" :options="riesgos" optionLabel="label" optionValue="value"
-                            placeholder="Seleccionar riesgo..." class="w-full">
-                            <template #value="{ value }">
-                                <Tag v-if="value" :value="value" :severity="getRiesgoSeverity(value)" class="px-2 py-1" />
-                            </template>
-                            <template #option="{ option }">
-                                <Tag :value="option.label" :severity="getRiesgoSeverity(option.value)" class="px-2 py-1" />
-                            </template>
-                        </Select>
-                    </div>
-                </div>
-
-                <div class="flex justify-between items-center mt-4">
-                    <Button label="Previsualizar cronograma" icon="pi pi-eye" severity="info" outlined
-                        :disabled="!canPreviewCronogramaInversionista" @click="previsualizarCronograma('inversionista')" />
-                    
-                    <Button label="Guardar Inversionista" icon="pi pi-check" severity="primary"
-                        :disabled="!canSaveInversionista" @click="actualizarPropiedad(1)" />
-                </div>
-            </div>
+                </template>
+            </Message>
 
             <!-- SECCIÓN CLIENTE -->
-            <div class="border border-green-200 rounded-lg p-4 bg-green-50">
-                <h3 class="text-lg font-semibold text-green-800 mb-4 flex items-center">
-                    <i class="pi pi-user mr-2"></i>
-                    Configuración para Cliente
-                </h3>
-                
-                <div class="grid grid-cols-3 gap-4">
+            <Message severity="success" :closable="false" class="fluid mt-6">
+                <template #messageicon>
+                    <i class="pi pi-user"></i>
+                </template>
+                <template #default>
+                    <h3 class="text-lg font-semibold mb-4">
+                        Configuración para Cliente
+                    </h3>
+
+                    <div class="flex items-end gap-6 flex-wrap">
                     <!-- TEM Cliente -->
                     <div>
-                        <label class="block font-semibold mb-2">
+                        <label class="font-semibold mb-2 block">
                             TEM Cliente (%) <span class="text-red-500">*</span>
                         </label>
                         <InputNumber v-model="temCliente" 
                             @update:modelValue="calcularTeaDesdeTemCliente"
-                            class="w-full"
+                            :disabled="clienteGuardado"
+                            fluid
                             placeholder="Ej. 1.05" 
                             :minFractionDigits="3"
                             :maxFractionDigits="3"
@@ -152,30 +163,33 @@
 
                     <!-- TEA Cliente -->
                     <div>
-                        <label class="block font-semibold mb-2">
+                        <label class="font-semibold mb-2 block">
                             TEA Cliente (%) <span class="text-red-500">*</span>
                         </label>
                         <InputNumber v-model="teaCliente" 
                             @update:modelValue="calcularTemDesdeTeaCliente"
-                            class="w-full"
+                            :disabled="clienteGuardado"
+                            fluid
                             placeholder="Ej. 15.0" 
                             :minFractionDigits="3"
                             :maxFractionDigits="3"
                             suffix="%" 
                             :min="0" 
                             :max="100" />
-                        <small class="text-gray-600 mt-1 block">
-                            Conversión automática TEM ↔ TEA
-                        </small>
                     </div>
 
                     <!-- Riesgo Cliente -->
                     <div>
-                        <label class="block font-semibold mb-2">
+                        <label class="font-semibold mb-2 block">
                             Riesgo Cliente <span class="text-red-500">*</span>
                         </label>
-                        <Select v-model="riesgoCliente" :options="riesgos" optionLabel="label" optionValue="value"
-                            placeholder="Seleccionar riesgo..." class="w-full">
+                        <Select v-model="riesgoCliente" 
+                            :options="riesgos" 
+                            :disabled="clienteGuardado"
+                            optionLabel="label" 
+                            optionValue="value"
+                            placeholder="Seleccionar riesgo..." 
+                            fluid>
                             <template #value="{ value }">
                                 <Tag v-if="value" :value="value" :severity="getRiesgoSeverity(value)" class="px-2 py-1" />
                             </template>
@@ -184,16 +198,25 @@
                             </template>
                         </Select>
                     </div>
+
+                    <!-- Botones -->
+                    <Button label="Previsualizar cronograma" 
+                        icon="pi pi-eye" 
+                        severity="info" 
+                        outlined
+                        :disabled="!canPreviewCronogramaCliente" 
+                        @click="previsualizarCronograma('cliente')" />
+
+                    <Button label="Guardar Cliente" 
+                        icon="pi pi-check" 
+                        severity="contrast"
+                        :disabled="!canSaveCliente || clienteGuardado" 
+                        @click="actualizarPropiedad(2)" />
                 </div>
 
-                <div class="flex justify-between items-center mt-4">
-                    <Button label="Previsualizar cronograma" icon="pi pi-eye" severity="info" outlined
-                        :disabled="!canPreviewCronogramaCliente" @click="previsualizarCronograma('cliente')" />
-                    
-                    <Button label="Guardar Cliente" icon="pi pi-check" severity="success"
-                        :disabled="!canSaveCliente" @click="actualizarPropiedad(2)" />
-                </div>
-            </div>
+                </template>
+            </Message>
+
         </div>
 
         <template #footer>
@@ -205,8 +228,8 @@
     </Dialog>
     
     <!-- Componente para ver cronograma -->
-    <VerCronograma v-model:visible="cronogramaVisible" :propiedad-data="propiedadSeleccionadaData"
-        :parametros="parametrosCronograma" />
+    <!-- <VerCronograma v-model:visible="cronogramaVisible" :propiedad-data="propiedadSeleccionadaData"
+        :parametros="parametrosCronograma" />-->
 </template>
 
 <script setup lang="ts">
@@ -221,7 +244,8 @@ import Tag from 'primevue/tag'
 import axios from 'axios'
 import { debounce } from 'lodash'
 import InputNumber from 'primevue/inputnumber'
-import VerCronograma from './verCronograma.vue'
+import VerCronograma from './VerCronograma.vue'
+import Message from 'primevue/message'
 
 const toast = useToast()
 
@@ -240,20 +264,23 @@ const plazos = ref([])
 // Campos específicos para inversionista
 const temInversionista = ref(null)
 const teaInversionista = ref(null)
-const riesgoInversionista = ref(null)
 
 // Campos específicos para cliente
 const temCliente = ref(null)
 const teaCliente = ref(null)
 const riesgoCliente = ref(null)
 
-const tipoUsuarioActual = ref(null) // Para saber qué tipo se está previsualizando
+const tipoUsuarioActual = ref(null)
 
-// Variables para mostrar los cálculos automáticos - ELIMINADAS
-// const temCalculadoInversionista = ref('')
-// const temCalculadoCliente = ref('')
+// Estados de guardado
+const inversionistaGuardado = ref(false)
+const clienteGuardado = ref(false)
 
-// Funciones de conversión TEA/TEM
+// Computed para determinar si los campos generales deben estar bloqueados
+const camposGeneralesBloqueados = computed(() => {
+    return inversionistaGuardado.value || clienteGuardado.value
+})
+
 const convertirTeaATem = (tea) => {
     if (!tea || tea === 0) return 0
     // Fórmula: TEM = (1 + TEA)^(1/12) - 1
@@ -272,7 +299,7 @@ const actualizandoCliente = ref(false)
 
 // Funciones para calcular automáticamente - Inversionista
 const calcularTeaDesdeTemInversionista = () => {
-    if (actualizandoInversionista.value) return
+    if (actualizandoInversionista.value || inversionistaGuardado.value) return
     
     if (temInversionista.value !== null && temInversionista.value !== undefined && temInversionista.value !== '') {
         actualizandoInversionista.value = true
@@ -289,7 +316,7 @@ const calcularTeaDesdeTemInversionista = () => {
 }
 
 const calcularTemDesdeTeaInversionista = () => {
-    if (actualizandoInversionista.value) return
+    if (actualizandoInversionista.value || inversionistaGuardado.value) return
     
     if (teaInversionista.value !== null && teaInversionista.value !== undefined && teaInversionista.value !== '') {
         actualizandoInversionista.value = true
@@ -307,7 +334,7 @@ const calcularTemDesdeTeaInversionista = () => {
 
 // Funciones para calcular automáticamente - Cliente
 const calcularTeaDesdeTemCliente = () => {
-    if (actualizandoCliente.value) return
+    if (actualizandoCliente.value || clienteGuardado.value) return
     
     if (temCliente.value !== null && temCliente.value !== undefined && temCliente.value !== '') {
         actualizandoCliente.value = true
@@ -324,7 +351,7 @@ const calcularTeaDesdeTemCliente = () => {
 }
 
 const calcularTemDesdeTeaCliente = () => {
-    if (actualizandoCliente.value) return
+    if (actualizandoCliente.value || clienteGuardado.value) return
     
     if (teaCliente.value !== null && teaCliente.value !== undefined && teaCliente.value !== '') {
         actualizandoCliente.value = true
@@ -346,7 +373,6 @@ const resetForm = () => {
     deadlines_id.value = null
     temInversionista.value = null
     teaInversionista.value = null
-    riesgoInversionista.value = null
     temCliente.value = null
     teaCliente.value = null
     riesgoCliente.value = null
@@ -355,6 +381,9 @@ const resetForm = () => {
     tipoUsuarioActual.value = null
     actualizandoInversionista.value = false
     actualizandoCliente.value = false
+    // Resetear estados de guardado
+    inversionistaGuardado.value = false
+    clienteGuardado.value = false
 }
 
 const parametrosCronograma = computed(() => {
@@ -364,7 +393,7 @@ const parametrosCronograma = computed(() => {
 
     const teaActual = tipoUsuarioActual.value === 'inversionista' ? teaInversionista.value : teaCliente.value
     const temActual = tipoUsuarioActual.value === 'inversionista' ? temInversionista.value : temCliente.value
-    const riesgoActual = tipoUsuarioActual.value === 'inversionista' ? riesgoInversionista.value : riesgoCliente.value
+    const riesgoActual = tipoUsuarioActual.value === 'cliente' ? riesgoCliente.value : null
 
     return {
         tea: teaActual,
@@ -428,8 +457,7 @@ const camposGenerales = computed(() => {
 const canPreviewCronogramaInversionista = computed(() => {
     return camposGenerales.value && 
         temInversionista.value !== null && temInversionista.value !== '' &&
-        teaInversionista.value !== null && teaInversionista.value !== '' &&
-        riesgoInversionista.value !== null
+        teaInversionista.value !== null && teaInversionista.value !== ''
 })
 
 // Computed para validar previsualización cliente
@@ -444,8 +472,7 @@ const canPreviewCronogramaCliente = computed(() => {
 const canSaveInversionista = computed(() => {
     return camposGenerales.value && 
         temInversionista.value !== null && temInversionista.value !== '' &&
-        teaInversionista.value !== null && teaInversionista.value !== '' &&
-        riesgoInversionista.value !== null
+        teaInversionista.value !== null && teaInversionista.value !== ''
 })
 
 // Computed para validar guardado cliente
@@ -469,14 +496,6 @@ const riesgos = [
     { label: 'D', value: 'D' }
 ]
 
-const showToast = () => {
-    toast.add({
-        severity: 'info',
-        summary: 'Información',
-        detail: 'Aún se encuentra en desarrollo',
-        life: 3000
-    })
-}
 
 const openDialog = () => {
     resetForm()
@@ -559,7 +578,7 @@ const cargarPlazos = async () => {
 }
 
 const onInputChange = (valor) => {
-    if (typeof valor === 'string') {
+    if (typeof valor === 'string' && !camposGeneralesBloqueados.value) {
         buscarPropiedades(valor)
     }
 }
@@ -573,9 +592,12 @@ const actualizarPropiedad = async (tipoUsuario) => {
     // Validar campos según el tipo de usuario
     const tea = tipoUsuario === 1 ? teaInversionista.value : teaCliente.value
     const tem = tipoUsuario === 1 ? temInversionista.value : temCliente.value
-    const riesgo = tipoUsuario === 1 ? riesgoInversionista.value : riesgoCliente.value
+    const riesgo = tipoUsuario === 2 ? riesgoCliente.value : null
 
-    if (!tea || !tem || !deadlines_id.value || !riesgo || !cronograma.value) {
+    // Para inversionista no se requiere riesgo
+    const riesgoRequerido = tipoUsuario === 2 ? riesgo : true
+    
+    if (!tea || !tem || !deadlines_id.value || !riesgoRequerido || !cronograma.value) {
         const tipoTexto = tipoUsuario === 1 ? 'inversionista' : 'cliente'
         toast.add({
             severity: 'warn',
@@ -587,14 +609,20 @@ const actualizarPropiedad = async (tipoUsuario) => {
     }
 
     try {
-        const response = await axios.put(`/property/${propiedadSeleccionada.value}/estado`, {
+        const payload = {
             tea: tea,
             tem: tem,
             deadlines_id: deadlines_id.value,
-            riesgo: riesgo,
             tipo_cronograma: cronograma.value,
             estado_configuracion: tipoUsuario,
-        })
+        }
+
+        // Solo agregar riesgo si es cliente
+        if (tipoUsuario === 2) {
+            payload.riesgo = riesgo
+        }
+
+        const response = await axios.put(`/property/${propiedadSeleccionada.value}/estado`, payload)
 
         const tipoTexto = tipoUsuario === 1 ? 'inversionista' : 'cliente'
         toast.add({
@@ -604,15 +632,11 @@ const actualizarPropiedad = async (tipoUsuario) => {
             life: 3000
         })
 
-        // Limpiar solo los campos del tipo guardado
+        // Marcar como guardado según el tipo de usuario
         if (tipoUsuario === 1) {
-            temInversionista.value = null
-            teaInversionista.value = null
-            riesgoInversionista.value = null
+            inversionistaGuardado.value = true
         } else {
-            temCliente.value = null
-            teaCliente.value = null
-            riesgoCliente.value = null
+            clienteGuardado.value = true
         }
 
     } catch (error) {

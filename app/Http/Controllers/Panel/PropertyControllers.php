@@ -27,32 +27,48 @@ use App\Services\CreditSimulationAmericanoService;
 use App\Services\CreditSimulationService;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
-class PropertyControllers extends Controller{
-    public function store(StorePropertyRequest $request){
+use Throwable;
+
+class PropertyControllers extends Controller
+{
+    public function store(StorePropertyRequest $request)
+    {
+        Gate::authorize('create', Property::class);
         $data = $request->validated();
         if (!$data['currency_id']) {
             $data['currency_id'] = Currency::where('codigo', 'PEN')->first()->id;
         }
+        $data['created_by'] = Auth::id();
         $property = Property::create($data);
         if ($request->hasFile('imagenes')) {
+            $disk = Storage::disk('s3');
             foreach ($request->file('imagenes') as $imagen) {
                 $filename = Str::uuid() . '.' . $imagen->getClientOriginalExtension();
-                $destinationPath = public_path("propiedades/{$property->id}");
-                if (!file_exists($destinationPath)) {
-                    mkdir($destinationPath, 0777, true);
+                $path = "propiedades/{$property->id}/{$filename}";
+                try {
+                    $disk->putFileAs("propiedades/{$property->id}", $imagen, $filename);
+                    $property->images()->create([
+                        'imagen'     => $filename,
+                        'path'       => $path,
+                        'created_by' => Auth::id(),
+                    ]);
+                } catch (Exception $e) {
+                    Log::error('Error al subir imagen de propiedad a S3', [
+                        'error'    => $e->getMessage(),
+                        'fileName' => $filename,
+                        'path'     => $path,
+                    ]);
                 }
-                $imagen->move($destinationPath, $filename);
-                $property->images()->create([
-                    'imagen' => $filename,
-                    'path'   => "propiedades/{$property->id}/{$filename}",
-                ]);
             }
         }
         $property = Property::with(['images', 'currency'])->find($property->id);
@@ -62,48 +78,39 @@ class PropertyControllers extends Controller{
             'property' => $property,
         ], 201);
     }
-    public function showProperty(string $id){
-        $property = Property::with(['currency', 'images'])->findOrFail($id);
-        return response()->json($property);
-    }
-    public function updateProperty(StorePropertyRequest $request, string $id){
-        $property = Property::findOrFail($id);
-        $property->update($request->validated());
-        if ($request->has('imagenes_eliminar')) {
-            $imagenesAEliminar = $request->input('imagenes_eliminar');
-            foreach ($imagenesAEliminar as $imagenId) {
-                $image = $property->images()->find($imagenId);
-                if ($image) {
-                    $imagePath = public_path("propiedades/{$property->id}/{$image->imagen}");
-                    if (file_exists($imagePath)) {
-                        unlink($imagePath);
-                    }
-                    $image->delete();
-                }
-            }
+    public function showProperty(string $id)
+    {
+        $property = Property::with(['currency'])->findOrFail($id);
+        Gate::authorize('view', $property);
+        $folder = "propiedades/{$property->id}";
+        $files = Storage::disk('s3')->files($folder);
+        $images = collect($files)->map(function ($file) {
+            return [
+                'imagen' => basename($file),
+                'path'   => $file,
+                'url'    => url("s3/{$file}")
+            ];
+        });
+        $propertyArray = $property->toArray();
+        if (isset($propertyArray['valor_estimado']) && is_array($propertyArray['valor_estimado'])) {
+            $propertyArray['valor_estimado_decimal'] = (float) $propertyArray['valor_estimado']['amount'] / 100;
+            $propertyArray['valor_estimado_money'] = $propertyArray['valor_estimado'];
         }
-        if ($request->hasFile('imagenes')) {
-            foreach ($request->file('imagenes') as $imagen) {
-                $filename = Str::uuid() . '.' . $imagen->getClientOriginalExtension();
-                $destinationPath = public_path("propiedades/{$property->id}");
-                if (!file_exists($destinationPath)) {
-                    mkdir($destinationPath, 0777, true);
-                }
-                $imagen->move($destinationPath, $filename);
-                $property->images()->create([
-                    'imagen' => $filename,
-                    'path'   => "propiedades/{$property->id}/{$filename}",
-                ]);
-            }
+        if (isset($propertyArray['valor_subasta']) && is_array($propertyArray['valor_subasta'])) {
+            $propertyArray['valor_subasta_decimal'] = (float) $propertyArray['valor_subasta']['amount'] / 100;
+            $propertyArray['valor_subasta_money'] = $propertyArray['valor_subasta'];
         }
-        return response()->json([
-            'success' => true,
-            'message' => 'Propiedad actualizada correctamente.'
-        ], 200);
+        if (isset($propertyArray['valor_requerido']) && is_array($propertyArray['valor_requerido'])) {
+            $propertyArray['valor_requerido_decimal'] = (float) $propertyArray['valor_requerido']['amount'] / 100;
+            $propertyArray['valor_requerido_money'] = $propertyArray['valor_requerido'];
+        }
+        $propertyArray['images'] = $images;
+        return response()->json($propertyArray);
     }
-
-    public function delete(string $id){
+    public function delete(string $id)
+    {
         $property = Property::findOrFail($id);
+        Gate::authorize('delete', $property);
         foreach ($property->images as $image) {
             $imagePath = "propiedades/{$property->id}/{$image->imagen}";
             if (Storage::disk('s3')->exists($imagePath)) {
@@ -119,11 +126,97 @@ class PropertyControllers extends Controller{
             'message' => 'Propiedad eliminada correctamente.'
         ], 200);
     }
-    public function index(Request $request){
+    public function updateProperty(StorePropertyRequest $request, string $id)
+    {
+        $property = Property::findOrFail($id);
+        Gate::authorize('update', $property);
+        $property->update($request->validated());
+        $disk = Storage::disk('s3');
+        $folder = "propiedades/{$property->id}";
+        if ($request->has('imagenes_eliminar') && !empty($request->input('imagenes_eliminar'))) {
+            $imagenesAEliminar = $request->input('imagenes_eliminar');
+            foreach ($imagenesAEliminar as $filename) {
+                $image = $property->images()->where('imagen', $filename)->first();
+                if ($image) {
+                    try {
+                        if ($image->path && $disk->exists($image->path)) {
+                            $disk->delete($image->path);
+                            Log::info("Imagen eliminada de S3: {$image->path}");
+                        } else {
+                            Log::warning("Imagen no encontrada en S3: {$image->path}");
+                        }
+                        $image->deleted_by = Auth::id();
+                        $image->save();
+                        $image->delete();
+                    } catch (Exception $e) {
+                        Log::error('Error al eliminar imagen', [
+                            'error' => $e->getMessage(),
+                            'filename' => $filename,
+                            'path' => $image->path,
+                        ]);
+                    }
+                } else {
+                    Log::warning("Imagen no encontrada en BD: {$filename}");
+                }
+            }
+        }
+        if ($request->hasFile('imagenes')) {
+            foreach ($request->file('imagenes') as $index => $imagen) {
+                if (!$imagen->isValid()) {
+                    Log::warning("Archivo inválido en índice: {$index}");
+                    continue;
+                }
+
+                $filename = Str::uuid() . '.' . $imagen->getClientOriginalExtension();
+                $path = "{$folder}/{$filename}";
+
+                try {
+                    $uploadResult = $disk->putFileAs($folder, $imagen, $filename);
+
+                    if ($uploadResult) {
+                        $newImage = $property->images()->create([
+                            'imagen' => $filename,
+                            'path' => $path,
+                            'created_by' => Auth::id(),
+                        ]);
+
+                        Log::info("Imagen subida y registrada:", [
+                            'imagen_id' => $newImage->id,
+                            'filename' => $filename,
+                            'path' => $path
+                        ]);
+                    } else {
+                        Log::error("Falló la subida a S3: {$path}");
+                    }
+                } catch (Exception $e) {
+                    Log::error('Error al subir imagen', [
+                        'error' => $e->getMessage(),
+                        'fileName' => $filename,
+                        'path' => $path,
+                    ]);
+                }
+            }
+        }
+        $property->load('images');
+        return response()->json([
+            'success' => true,
+            'message' => 'Propiedad actualizada correctamente.',
+            'property' => $property,
+            'debug_info' => [
+                'imagenes_subidas' => $request->hasFile('imagenes') ? count($request->file('imagenes')) : 0,
+                'imagenes_eliminadas' => $request->has('imagenes_eliminar') ? count($request->input('imagenes_eliminar', [])) : 0
+            ]
+        ], 200);
+    }
+
+    public function index(Request $request)
+    {
         try {
-            $perPage = $request->input('per_page', 10);
-            $search = $request->input('search', '');
-            $estado = $request->input('estado', '');
+            Gate::authorize('viewAny', Property::class);
+
+            $perPage    = (int) $request->input('per_page', 10);
+            $search     = (string) $request->input('search', '');
+            $estado     = $request->input('estado', '');
             $currencyId = $request->input('currency_id');
 
             $query = app(Pipeline::class)
@@ -135,15 +228,29 @@ class PropertyControllers extends Controller{
                 ])
                 ->thenReturn();
 
-            return PropertyResource::collection($query->paginate($perPage));
-        } catch (\Throwable $th) {
+            // 👇 Orden descendente por fecha de creación
+            $properties = $query->orderByDesc('created_at')->paginate($perPage);
+
+            return PropertyResource::collection($properties)
+                ->additional([
+                    'total' => $properties->total(),
+                ]);
+        } catch (AuthorizationException $e) {
+            return response()->json([
+                'message' => 'No tienes permiso para ver las propiedades.'
+            ], 403);
+        } catch (Throwable $th) {
+            Log::error('Error al listar propiedades: ' . $th->getMessage(), [
+                'trace' => $th->getTraceAsString(),
+            ]);
+
             return response()->json([
                 'message' => 'Error al cargar los datos',
-                'error' => $th->getMessage(),
             ], 500);
         }
     }
-    public function indexSubastaTotoal(Request $request){
+    public function indexSubastaTotoal(Request $request)
+    {
         try {
             $perPage = $request->input('per_page', 10);
             $search = $request->input('search', '');
@@ -155,10 +262,10 @@ class PropertyControllers extends Controller{
                         'property.currency',
                         'plazo'
                     ])
-                    ->where('estado', 1)
-                    ->whereHas('property', function ($q) {
-                        $q->where('estado', 'activa');
-                    })
+                        ->where('estado', 1)
+                        ->whereHas('property', function ($q) {
+                            $q->where('estado', 'activa');
+                        })
                 )
                 ->through([
                     new FilterBySearch($search),
@@ -167,21 +274,23 @@ class PropertyControllers extends Controller{
                 ->thenReturn();
 
             return PropertyConfiguracionResource::collection($query->paginate($perPage));
-        } catch (\Throwable $th) {
+        } catch (Throwable $th) {
             return response()->json([
                 'message' => 'Error al cargar los datos',
                 'error' => $th->getMessage(),
             ], 500);
         }
     }
-    public function show($id){
+    public function show($id)
+    {
         $property = Property::with('subasta')->find($id);
         if (!$property) {
             return response()->json(['error' => 'Propiedad no encontrada'], 404);
         }
         return new PropertyUpdateResource($property);
     }
-    public function enviar(Request $request){
+    public function enviar(Request $request)
+    {
         $validator = Validator::make($request->all(), [
             'emails' => 'required|string',
             'mensaje' => 'required|string|min:10',
@@ -209,7 +318,7 @@ class PropertyControllers extends Controller{
             $mensaje = $request->mensaje;
             $asunto = $request->asunto;
             $investorId = $request->investor_id;
-            
+
             $enviados = 0;
             $errores = [];
 
@@ -217,7 +326,7 @@ class PropertyControllers extends Controller{
                 try {
                     Mail::to($email)->send(new MasiveEmail($mensaje, $asunto, $investorId));
                     $enviados++;
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     $errores[] = "Error enviando a {$email}: " . $e->getMessage();
                 }
             }
@@ -229,15 +338,15 @@ class PropertyControllers extends Controller{
                 'total' => count($emailsArray),
                 'errores' => $errores
             ]);
-
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error al procesar el envío: ' . $e->getMessage()
             ], 500);
         }
     }
-    private function processEmails($emailsString){
+    private function processEmails($emailsString)
+    {
         $emails = preg_split('/[,;\s\n\r]+/', $emailsString);
         $validEmails = [];
         foreach ($emails as $email) {
@@ -248,17 +357,26 @@ class PropertyControllers extends Controller{
         }
         return array_unique($validEmails);
     }
-    public function showCustumer($id){
+    public function showCustumer($id)
+    {
         $config = PropertyConfiguracion::with('plazo')->find($id);
         if (!$config) {
             return response()->json(['error' => 'Configuración no encontrada'], 404);
         }
         return new PropertyShowResource($config);
     }
-    public function update(PropertyUpdateRequest $request, $id){
+
+    public function update(PropertyUpdateRequest $request, $id)
+    {
         DB::beginTransaction();
+
         try {
             $property = Property::with('currency')->findOrFail($id);
+            Gate::authorize('update', new PropertyConfiguracion());
+            // Obtener usuario autenticado
+            $userId = Auth::id();
+
+            // Validar TEM y TEA
             if (!$request->filled('tea') || !$request->filled('tem')) {
                 return response()->json([
                     'message' => 'TEM y TEA son requeridos',
@@ -268,34 +386,50 @@ class PropertyControllers extends Controller{
                     ]
                 ], 422);
             }
+
+            // Verificar si ya existe configuración para este estado
             $existingConfig = PropertyConfiguracion::where('property_id', $property->id)
                 ->where('estado', $request->estado_configuracion)
                 ->latest()
                 ->first();
+
+            // Convertir tasas decimales a enteros (centésimas de punto porcentual)
+            $tea_entero = (int) round((float) $request->tea * 100); // 15.500 -> 1550
+            $tem_entero = (int) round((float) $request->tem * 100); // 1.250 -> 125
+
+            // Crear o actualizar configuración
             if (!$existingConfig) {
                 $config = PropertyConfiguracion::create([
                     'property_id' => $property->id,
                     'deadlines_id' => $request->deadlines_id,
-                    'tea' => $request->tea,
-                    'tem' => $request->tem,
+                    'tea' => $tea_entero,  // Guardar como entero
+                    'tem' => $tem_entero,  // Guardar como entero
                     'tipo_cronograma' => $request->tipo_cronograma,
-                    'riesgo' => $request->riesgo,
+                    'riesgo' => $request->filled('riesgo') ? $request->riesgo : '-', // Valor por defecto
                     'estado' => $request->estado_configuracion,
+                    'created_by' => $userId,
+                    'updated_by' => $userId,
                 ]);
                 $property->increment('config_total');
             } else {
                 $existingConfig->update([
                     'deadlines_id' => $request->deadlines_id,
-                    'tea' => $request->tea,
-                    'tem' => $request->tem,
+                    'tea' => $tea_entero,
+                    'tem' => $tem_entero,
                     'tipo_cronograma' => $request->tipo_cronograma,
-                    'riesgo' => $request->riesgo,
+                    'riesgo' => $request->filled('riesgo') ? $request->riesgo : '-',
+                    'updated_by' => $userId,
                 ]);
                 $config = $existingConfig;
             }
+
             $config->load(['plazo', 'property']);
+
+            // Obtener monto en centavos usando la librería Money
             $valorRequeridoMoney = $property->valor_requerido;
-            $valorRequeridoCentavos = $valorRequeridoMoney->getAmount(); // Ya está en centavos
+            $valorRequeridoCentavos = $valorRequeridoMoney->getAmount();
+
+            // Buscar inversor existente
             $existingInvestor = PropertyInvestor::where('property_id', $property->id)
                 ->where('config_id', $config->id)
                 ->first();
@@ -304,6 +438,7 @@ class PropertyControllers extends Controller{
                 $existingInvestor->update([
                     'amount' => $valorRequeridoCentavos, // Guardar en centavos
                     'status' => 'pendiente',
+                    'updated_by' => $userId,
                 ]);
 
                 // Eliminar cronograma anterior
@@ -316,16 +451,20 @@ class PropertyControllers extends Controller{
                     'config_id' => $config->id,
                     'amount' => $valorRequeridoCentavos, // Guardar en centavos
                     'status' => 'pendiente',
+                    'created_by' => $userId,
+                    'updated_by' => $userId,
                 ]);
             }
 
-            // Generar cronograma
+            // Generar cronograma según tipo de configuración
             $this->generatePaymentScheduleByType($propertyInvestor->id, $config);
 
-            // Si ya tiene 2 configuraciones distintas, cambiar estado a completo
+            // Actualizar estado de la propiedad si ya tiene 2 configuraciones distintas
             if ($property->config_total >= 2 && $property->estado !== 'completo') {
-                $property->estado = 'completo';
-                $property->save();
+                $property->update([
+                    'estado' => 'completo',
+                    'updated_by' => $userId,
+                ]);
             }
 
             DB::commit();
@@ -335,7 +474,6 @@ class PropertyControllers extends Controller{
                 'property' => $property->fresh()->load('currency'),
                 'property_investor_id' => $propertyInvestor->id,
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -345,23 +483,30 @@ class PropertyControllers extends Controller{
             ], 500);
         }
     }
-    private function generatePaymentScheduleByType($propertyInvestorId, $config){
+
+    private function generatePaymentScheduleByType($propertyInvestorId, $config)
+    {
         $deadline = $config->plazo;
         if (!$deadline) {
-            throw new \Exception('No se encontró configuración o plazo asociado a la propiedad.');
+            throw new Exception('No se encontró configuración o plazo asociado a la propiedad.');
         }
+
         $property = $config->property;
-        $property->tem = $config->tem;
-        $property->tea = $config->tea;
+        // Asignar las tasas enteras desde la configuración
+        $property->tem = $config->tem;  // Valor entero (ej: 125 = 1.25%)
+        $property->tea = $config->tea;  // Valor entero (ej: 1550 = 15.50%)
         $property->tipo_cronograma = $config->tipo_cronograma;
+
         if ($property->tipo_cronograma === 'americano') {
             $service = new CreditSimulationAmericanoService();
         } else {
             $service = new CreditSimulationService();
         }
+
         $simulation = $service->generate($property, $deadline, 1, $deadline->duracion_meses);
+
         if (!isset($simulation['cronograma_final']['pagos']) || !is_array($simulation['cronograma_final']['pagos'])) {
-            throw new \Exception('La simulación no generó un cronograma válido.');
+            throw new Exception('La simulación no generó un cronograma válido.');
         }
 
         $pagos = $simulation['cronograma_final']['pagos'];
@@ -380,18 +525,21 @@ class PropertyControllers extends Controller{
                     'total_cuota' => $this->cleanNumericValue($pago['total_cuota']),
                     'saldo_final' => $this->cleanNumericValue($pago['saldo_final']),
                     'estado' => 'pendiente',
+                    'created_by' => Auth::id(),
+                    'updated_by' => Auth::id(),
                 ]);
-                
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::error("Error creando pago {$pago['cuota']}: " . $e->getMessage(), [
                     'pago' => $pago,
                     'property_investor_id' => $propertyInvestorId
                 ]);
-                throw new \Exception("Error procesando la cuota {$pago['cuota']}: " . $e->getMessage());
+                throw new Exception("Error procesando la cuota {$pago['cuota']}: " . $e->getMessage());
             }
         }
     }
-    private function cleanNumericValue($value): float{
+
+    private function cleanNumericValue($value): float
+    {
         if ($value === null || $value === '') {
             return 0.0;
         }
@@ -399,10 +547,11 @@ class PropertyControllers extends Controller{
             $cleaned = preg_replace('/[^0-9.-]/', '', $value);
             $value = $cleaned;
         }
-        
+
         return (float) $value;
     }
-    public function subastadas(Request $request){
+    public function subastadas(Request $request)
+    {
         try {
             $perPage = $request->input('per_page', 15);
             $search = $request->input('search', '');
@@ -443,7 +592,7 @@ class PropertyControllers extends Controller{
                 'success' => true,
                 'orden_monto' => $ordenMonto,
             ]);
-        } catch (\Throwable $th) {
+        } catch (Throwable $th) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error al cargar configuraciones en subasta',
@@ -451,8 +600,10 @@ class PropertyControllers extends Controller{
             ], 500);
         }
     }
-    public function listProperties(Request $request): JsonResponse{
+    public function listProperties(Request $request)
+    {
         try {
+            Gate::authorize('viewAny', Property::class);
             $perPage = $request->input('per_page', 10);
             $search = $request->input('search');
             $query = Property::query()
@@ -471,19 +622,19 @@ class PropertyControllers extends Controller{
             return response()->json([
                 'data' => $properties->map(function ($property) {
                     return [
-                        'id'             => $property->id,
-                        'nombre'         => $property->nombre,
-                        'departamento'   => $property->departamento,
-                        'provincia'      => $property->provincia,
-                        'distrito'       => $property->distrito,
-                        'direccion'      => $property->direccion,
-                        'descripcion'    => $property->descripcion,
-                        'estado'         => $property->estado,
-                        'valor_requerido' => $property->valor_requerido 
-                            ? (float) $property->valor_requerido->getAmount() / 100 
+                        'id'              => $property->id,
+                        'nombre'          => $property->nombre,
+                        'departamento'    => $property->departamento,
+                        'provincia'       => $property->provincia,
+                        'distrito'        => $property->distrito,
+                        'direccion'       => $property->direccion,
+                        'descripcion'     => $property->descripcion,
+                        'estado'          => $property->estado,
+                        'valor_requerido' => $property->valor_requerido
+                            ? (float) $property->valor_requerido->getAmount() / 100
                             : null,
-                        'currency_id'    => $property->currency_id,
-                        'currency'       => $property->currency?->codigo ?? 'PEN',
+                        'currency_id'     => $property->currency_id,
+                        'currency'        => $property->currency?->codigo ?? 'PEN',
                         'currency_symbol' => $property->currency_id === 1 ? 'S/' : '$',
                     ];
                 }),
@@ -496,14 +647,15 @@ class PropertyControllers extends Controller{
                     'to'           => $properties->lastItem(),
                 ],
             ]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json([
                 'error' => 'Error al listar propiedades',
                 'message' => $e->getMessage(),
             ], 500);
         }
     }
-    public function listPropertiesActivas(Request $request){
+    public function listPropertiesActivas(Request $request)
+    {
         try {
             $perPage = $request->input('per_page', 10);
             $search = $request->input('search');
@@ -567,30 +719,45 @@ class PropertyControllers extends Controller{
                     'to' => $configuraciones->lastItem(),
                 ],
             ]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json([
                 'error' => 'Error al listar configuraciones',
                 'message' => $e->getMessage(),
             ], 500);
         }
     }
-    public function listReglas(Request $request){
-        $perPage = $request->get('per_page', 10);
-        $estado = $request->get('estado', 1);
-        $configuraciones = PropertyConfiguracion::with(['property', 'plazo'])
-            ->where('estado', $estado)
-            ->orderBy('created_at', 'desc')
-            ->paginate($perPage);
-        return PropertyConfiguracionResource::collection($configuraciones);
+
+    public function listReglas(Request $request)
+    {
+        try {
+            Gate::authorize('viewAny', PropertyConfiguracion::class);
+
+            $perPage = $request->get('per_page', 10);
+            $estado = $request->get('estado', 1);
+
+            $configuraciones = PropertyConfiguracion::with(['property', 'plazo'])
+                ->where('estado', $estado)
+                ->orderBy('created_at', 'desc')
+                ->paginate($perPage);
+            return PropertyConfiguracionResource::collection($configuraciones);
+        } catch (AuthorizationException $e) {
+            return response()->json([
+                'message' => 'No tienes permiso para ver las reglas del inmueble.'
+            ], 403);
+        }
     }
-    public function showReglas($id){
+    public function showReglas($id)
+    {
         $regla = PropertyConfiguracion::find($id);
         if (!$regla) {
             return response()->json(['message' => 'Configuración no encontrada'], 404);
         }
+        Gate::authorize('view', $regla);
         return new PropertyReglaResource($regla);
     }
-    public function showConfig($configId, Request $request){
+
+    public function showConfig($configId, Request $request)
+    {
         $perPage = $request->input('per_page', 15);
         $propertyInvestorIds = PropertyInvestor::where('config_id', $configId)->pluck('id');
         if ($propertyInvestorIds->isEmpty()) {

@@ -110,11 +110,11 @@
       :regla="reglaSeleccionada"
       @updated="cargarPropiedades(currentPage, searchText)"
     />
-    <VerCronograma
+    <!--  <VerCronograma
       v-model="dialogCronograma"
       :propiedad="reglaSeleccionada"
       @cerrar="dialogCronograma = false"
-    />
+    />-->
   </div>
 </template>
 

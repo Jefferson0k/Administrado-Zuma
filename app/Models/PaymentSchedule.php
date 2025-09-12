@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
+use OwenIt\Auditing\Auditable;
 
-class PaymentSchedule extends Model{
-    use HasFactory;
+class PaymentSchedule extends Model implements AuditableContract{
+    use HasFactory, SoftDeletes, Auditable;
     protected $fillable = [
         'property_investor_id',
         'cuota',
@@ -19,7 +22,11 @@ class PaymentSchedule extends Model{
         'total_cuota',
         'saldo_final',
         'estado',
+        'created_by',
+        'updated_by',
+        'deleted_by',
     ];
+    
     protected $casts = [
         'vencimiento' => 'date:Y-m-d',
         'cuota' => 'integer',
@@ -151,12 +158,12 @@ class PaymentSchedule extends Model{
     {
         return [
             'saldo_inicial_formatted' => number_format($this->saldo_inicial, 2, '.', ','),
-            'capital_formatted' => number_format($this->capital, 2, '.', ','),
-            'intereses_formatted' => number_format($this->intereses, 2, '.', ','),
-            'cuota_neta_formatted' => number_format($this->cuota_neta, 2, '.', ','),
-            'igv_formatted' => number_format($this->igv, 2, '.', ','),
-            'total_cuota_formatted' => number_format($this->total_cuota, 2, '.', ','),
-            'saldo_final_formatted' => number_format($this->saldo_final, 2, '.', ','),
+            'capital_formatted'       => number_format($this->capital, 2, '.', ','),
+            'intereses_formatted'     => number_format($this->intereses, 2, '.', ','),
+            'cuota_neta_formatted'    => number_format($this->cuota_neta, 2, '.', ','),
+            'igv_formatted'           => number_format($this->igv, 2, '.', ','),
+            'total_cuota_formatted'   => number_format($this->total_cuota, 2, '.', ','),
+            'saldo_final_formatted'   => number_format($this->saldo_final, 2, '.', ','),
         ];
     }
 }

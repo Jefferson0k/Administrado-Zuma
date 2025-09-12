@@ -4,10 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
+use OwenIt\Auditing\Auditable;
 
-class PropertyConfiguracion extends Model{
-    use HasFactory;
+class PropertyConfiguracion extends Model implements AuditableContract
+{
+    use HasFactory, SoftDeletes, Auditable;
+
     protected $table = 'property_configuracions';
+
     protected $fillable = [
         'property_id',
         'deadlines_id',
@@ -15,82 +21,60 @@ class PropertyConfiguracion extends Model{
         'tem',
         'tipo_cronograma',
         'riesgo',
-        'estado'
+        'estado',
+        'created_by',
+        'updated_by',
+        'deleted_by',
     ];
+
     // -------------------------
     // Relaciones
     // -------------------------
     public function plazo(){
         return $this->belongsTo(Deadlines::class, 'deadlines_id');
     }
+
     public function property(){
         return $this->belongsTo(Property::class, 'property_id');
     }
+
     public function subasta(){
         return $this->property->subasta();
     }
+
     public function propertyInvestor(){
         return $this->hasOne(PropertyInvestor::class, 'config_id');
     }
+
     // -------------------------
-    // Accessors & Mutators
+    // Mutators & Accessors
     // -------------------------
-    /**
-     * Mutator: guarda TEA como decimal (ej: 0.1525 = 15.25%)a
-     */
+
+    // Getter TEA → devuelve decimal con 2 decimales
     public function getTeaAttribute($value)
     {
-        if ($value === null) {
-            return null;
-        }
-        
-        // Asumiendo que guardas como: 20.00% -> 2000 (multiplicado por 100)
-        // Ajusta el divisor según tu lógica de almacenamiento
-        return number_format($value / 100, 2, '.', '');
+        return $value === null ? null : number_format($value / 100, 2, '.', '');
     }
 
-    /**
-     * Convierte TEM de entero a porcentaje decimal
-     * BD: 150 -> Frontend: 1.50
-     */
+    // Getter TEM → devuelve decimal con 2 decimales
     public function getTemAttribute($value)
     {
-        if ($value === null) {
-            return null;
-        }
-        
-        // Asumiendo que guardas como: 1.50% -> 150 (multiplicado por 100)
-        // Ajusta el divisor según tu lógica de almacenamiento
-        return number_format($value / 100, 2, '.', '');
+        return $value === null ? null : number_format($value / 100, 2, '.', '');
     }
 
-    /**
-     * Convierte TEA de porcentaje decimal a entero para BD
-     * Frontend: 20.00 -> BD: 2000
-     */
+    // Setter TEA → guarda como entero multiplicado por 100
     public function setTeaAttribute($value)
     {
-        if ($value === null || $value === '') {
-            $this->attributes['tea'] = null;
-            return;
-        }
-        
-        // Multiplica por 100 para guardar como entero
-        $this->attributes['tea'] = (int) round(floatval($value) * 100);
+        $this->attributes['tea'] = ($value === null || $value === '')
+            ? null
+            : (int) round(floatval($value) * 100);
     }
 
-    /**
-     * Convierte TEM de porcentaje decimal a entero para BD
-     * Frontend: 1.50 -> BD: 150
-     */
+    // Setter TEM → guarda como entero multiplicado por 100
     public function setTemAttribute($value)
     {
-        if ($value === null || $value === '') {
-            $this->attributes['tem'] = null;
-            return;
-        }
-        
-        // Multiplica por 100 para guardar como entero
-        $this->attributes['tem'] = (int) round(floatval($value) * 100);
+        $this->attributes['tem'] = ($value === null || $value === '')
+            ? null
+            : (int) round(floatval($value) * 100);
     }
 }

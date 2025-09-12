@@ -170,7 +170,7 @@ onMounted(() => {
         <Column field="deposit.resource_path" header="Voucher" style="min-width: 15rem">
             <template #body="slotProps">
                 <a v-if="slotProps.data.deposit?.resource_path && slotProps.data.deposit.resource_path !== '0'"
-                    :href="`https://tus3bucket-url.com/${slotProps.data.deposit.resource_path}`" target="_blank"
+                    :href="`${slotProps.data.deposit.resource_path}`" target="_blank"
                     class="text-blue-600 underline">
                     Ver voucher
                 </a>

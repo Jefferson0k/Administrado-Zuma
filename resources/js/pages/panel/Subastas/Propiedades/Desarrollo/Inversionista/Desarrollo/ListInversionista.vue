@@ -404,7 +404,7 @@ const getMenuItems = (data) => {
             separator: true
         },
         {
-            label: 'Configuración',
+            label: 'Subastarla',
             icon: 'pi pi-cog',
             command: () => abrirConfiguracion(data)
         },

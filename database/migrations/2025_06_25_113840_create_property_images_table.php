@@ -10,9 +10,15 @@ return new class extends Migration {
             $table->id();
             $table->foreignUlid('property_id')->constrained()->onDelete('cascade');
             $table->string('imagen');
+            $table->string('path')->nullable();
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
+
     public function down(): void {
         Schema::dropIfExists('property_images');
     }

@@ -4,7 +4,7 @@
             <!-- Propiedad (fila completa) -->
             <div>
                 <label class="block font-semibold mb-2">Propiedad <span class="text-red-500">*</span></label>
-                <Select v-model="propiedadSeleccionada" :options="propiedades" :style="{ width: '100%' }" editable disabled
+                <Select v-model="propiedadSeleccionada" :options="propiedades" :style="{ width: '100%' }" editable 
                     optionLabel="label" optionValue="value" showClear placeholder="Buscar propiedad..."
                     @update:modelValue="onInputChange">
                     <template #value="{ value }">
@@ -313,7 +313,7 @@ const cargarDatosRegla = async () => {
         const reglaData = response.data.data
 
         // Llenar los campos del formulario
-        propiedadSeleccionada.value = reglaData.idProperty
+        propiedadSeleccionada.value = reglaData.idProperty  // Usar idProperty del response
         tea.value = reglaData.tea
         tem.value = reglaData.tem
         cronograma.value = reglaData.tipo_cronograma
@@ -322,16 +322,14 @@ const cargarDatosRegla = async () => {
         estado.value = reglaData.estado
         tipoUsuario.value = reglaData.estado_configuracion
 
-        // Cargar la propiedad actual en el select
-        if (props.regla.nombre) {
-            propiedades.value = [{
-                label: props.regla.nombre,
-                sublabel: `${props.regla.distrito || ''} | ${props.regla.direccion || ''}`,
-                value: reglaData.id,
-                estado: reglaData.estado,
-                valor_requerido: props.regla.valor_requerido || 0
-            }]
-        }
+        // Cargar la propiedad actual en el select para que aparezca el nombre
+        propiedades.value = [{
+            label: reglaData.nombreProperty, // Usar nombreProperty del response
+            sublabel: `${props.regla.distrito || ''} | ${props.regla.direccion || ''}`,
+            value: reglaData.idProperty, // Usar idProperty como value (debe coincidir con propiedadSeleccionada)
+            estado: reglaData.estado,
+            valor_requerido: props.regla.valor_requerido || 0
+        }]
     } catch (error) {
         toast.add({
             severity: "error",
@@ -341,7 +339,6 @@ const cargarDatosRegla = async () => {
         })
     }
 }
-
 
 const resetForm = () => {
     propiedadSeleccionada.value = null

@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('invoices', function (Blueprint $table) {
@@ -23,22 +20,42 @@ return new class extends Migration
             $table->decimal('rate', 5, 2)->default(0);
             $table->date('due_date');
             $table->date('estimated_pay_date')->nullable();
-            $table->enum('status', ['inactive', 'active', 'expired', 'judicialized', 'reprogramed', 'paid', 'canceled'])->default('inactive');
+            $table->enum('status', [
+                'inactive',
+                'active',
+                'expired',
+                'judicialized',
+                'reprogramed',
+                'paid',
+                'canceled',
+                'daStandby'
+            ])->default('inactive');
+
             $table->foreignUlid('company_id')->constrained();
 
             $table->string('loan_number')->nullable();
             $table->string('invoice_number')->nullable();
             $table->char('RUC_client', 20)->nullable();
 
-            $table->string('created_by')->nullable();
-            $table->string('updated_by')->nullable();
+            // --- Aprobaciones ---
+            $table->enum('approval1_status', ['pending', 'approved', 'rejected'])->default('pending');
+            $table->foreignId('approval1_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->text('approval1_comment')->nullable();
+            $table->timestamp('approval1_at')->nullable();
+
+            $table->enum('approval2_status', ['pending', 'approved', 'rejected'])->default('pending');
+            $table->foreignId('approval2_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->text('approval2_comment')->nullable();
+            $table->timestamp('approval2_at')->nullable();
+
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('invoices');

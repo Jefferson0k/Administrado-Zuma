@@ -2,19 +2,28 @@
 
 namespace App\Models;
 
+use Exception;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Money\Money;
 use Money\Currency as MoneyCurrency;
+use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
+use OwenIt\Auditing\Auditable;
 
-class Property extends Model{
-    use HasFactory;
+class Property extends Model implements AuditableContract
+{
+    use HasFactory, Auditable, SoftDeletes;
+
     protected $table = 'properties';
     public $incrementing = false;
     protected $keyType = 'string';
+
     protected $fillable = [
         'investor_id',
         'nombre',
@@ -28,37 +37,83 @@ class Property extends Model{
         'valor_requerido',
         'currency_id',
         'estado',
+        'created_by',
+        'updated_by',
+        'deleted_by',
     ];
 
-    protected static function boot(){
+    protected $casts = [
+        'deleted_at' => 'datetime',
+    ];
+
+    protected static function boot()
+    {
         parent::boot();
+
         static::creating(function ($model): void {
             if (!$model->getKey()) {
                 $model->{$model->getKeyName()} = (string) Str::ulid();
+            }
+            if (Auth::check()) {
+                $model->created_by = Auth::id();
+            }
+        });
+
+        static::updating(function ($model): void {
+            if (Auth::check()) {
+                $model->updated_by = Auth::id();
+            }
+        });
+
+        static::deleting(function ($model): void {
+            if (Auth::check()) {
+                $model->deleted_by = Auth::id();
+                $model->saveQuietly();
             }
         });
     }
 
     // -------------------------
-    // 💰 Accessors & Mutators
+    // 💰 Mutators y Accessors
     // -------------------------
-    public function setValorEstimadoAttribute($value){
-        $this->attributes['valor_estimado'] = (int) round($value * 100);
+
+    // Mutators: Convertir de unidades a centavos al guardar (SOLO para CREATE)
+    public function setValorEstimadoAttribute($value)
+    {
+        // Solo aplicar mutator si es CREATE (no existe en BD)
+        if (!$this->exists) {
+            $this->attributes['valor_estimado'] = (int) round($value * 100);
+        } else {
+            // Para UPDATE, asumir que ya viene en centavos
+            $this->attributes['valor_estimado'] = (int) $value;
+        }
     }
 
-    public function setValorSubastaAttribute($value){
-        $this->attributes['valor_subasta'] = $value ? (int) round($value * 100) : null;
+    public function setValorSubastaAttribute($value)
+    {
+        if (!$this->exists) {
+            $this->attributes['valor_subasta'] = $value ? (int) round($value * 100) : null;
+        } else {
+            $this->attributes['valor_subasta'] = $value ? (int) $value : null;
+        }
     }
 
-    public function setValorRequeridoAttribute($value){
-        $this->attributes['valor_requerido'] = (int) round($value * 100);
+    public function setValorRequeridoAttribute($value)
+    {
+        if (!$this->exists) {
+            $this->attributes['valor_requerido'] = (int) round($value * 100);
+        } else {
+            $this->attributes['valor_requerido'] = (int) $value;
+        }
     }
 
-    public function getValorEstimadoAttribute($value){
+    // Accessors: Convertir de centavos a objetos Money
+    public function getValorEstimadoAttribute($value)
+    {
         try {
             $currencyCode = $this->getCurrencyCode();
             return new Money((int) $value, new MoneyCurrency($currencyCode));
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::warning('Error creating Money object for valor_estimado', [
                 'property_id' => $this->id,
                 'value' => $value,
@@ -69,14 +124,15 @@ class Property extends Model{
         }
     }
 
-    public function getValorSubastaAttribute($value){
+    public function getValorSubastaAttribute($value)
+    {
         if ($value === null) {
             return null;
         }
         try {
             $currencyCode = $this->getCurrencyCode();
             return new Money((int) $value, new MoneyCurrency($currencyCode));
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::warning('Error creating Money object for valor_subasta', [
                 'property_id' => $this->id,
                 'value' => $value,
@@ -87,11 +143,12 @@ class Property extends Model{
         }
     }
 
-    public function getValorRequeridoAttribute($value){
+    public function getValorRequeridoAttribute($value)
+    {
         try {
             $currencyCode = $this->getCurrencyCode();
             return new Money((int) $value, new MoneyCurrency($currencyCode));
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::warning('Error creating Money object for valor_requerido', [
                 'property_id' => $this->id,
                 'value' => $value,
@@ -102,71 +159,99 @@ class Property extends Model{
         }
     }
 
-    /**
-     * Get currency code safely
-     */
     private function getCurrencyCode(): string
     {
-        // Si ya tenemos la relación cargada
         if ($this->relationLoaded('currency') && $this->currency) {
             return $this->currency->codigo;
         }
-
-        // Si no está cargada pero tenemos currency_id, buscarla
         if ($this->currency_id) {
-            $currency = \App\Models\Currency::find($this->currency_id);
+            $currency = Currency::find($this->currency_id);
             if ($currency && $currency->codigo) {
                 return $currency->codigo;
             }
         }
-
-        // Fallback a PEN
         return 'PEN';
     }
 
     // -------------------------
     // Relaciones
     // -------------------------
-    public function subasta(){
+    public function propertyInvestors()
+    {
+        return $this->hasMany(PropertyInvestor::class);
+    }
+
+    public function subasta()
+    {
         return $this->hasOne(Auction::class);
     }
 
-    public function currency(){
-        return $this->belongsTo(\App\Models\Currency::class);
+    public function currency()
+    {
+        return $this->belongsTo(Currency::class);
     }
 
-    public function investor(){
+    public function investor()
+    {
         return $this->belongsTo(Investor::class);
     }
 
-    public function investments(){
+    public function investments()
+    {
         return $this->hasMany(Investment::class);
     }
 
-    public function images(){
-        return $this->hasMany(Imagenes::class);
+    public function images()
+    {
+        return $this->hasMany(Imagenes::class, 'property_id');
     }
 
-    public function loanDetail(){
+    public function loanDetail()
+    {
         return $this->hasOne(PropertyLoanDetail::class, 'property_id');
     }
-
     public function getImagenes(): array{
-        $rutaCarpeta = public_path("Propiedades/{$this->id}");
+        $propertyId = $this->getKey();
+        $rutaCarpeta = "propiedades/{$propertyId}";
         $imagenes = [];
-        if (File::exists($rutaCarpeta)) {
-            $archivos = File::files($rutaCarpeta);
-            foreach ($archivos as $archivo) {
-                $imagenes[] = asset("Propiedades/{$this->id}/" . $archivo->getFilename());
+        try {
+            if (!Storage::disk('s3')->exists($rutaCarpeta)) {
+                Log::info("Carpeta no existe en S3: {$rutaCarpeta}");
+                return [asset('Propiedades/no-image.png')];
             }
+            $archivos = Storage::disk('s3')->files($rutaCarpeta);
+            if (empty($archivos)) {
+                Log::info("No se encontraron archivos en: {$rutaCarpeta}");
+                return [asset('Propiedades/no-image.png')];
+            }
+            foreach ($archivos as $archivo) {
+                $extension = strtolower(pathinfo($archivo, PATHINFO_EXTENSION));
+                if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+                    try {
+                        $imagenes[] = url("s3/{$archivo}");
+                    } catch (Exception $e) {
+                        Log::error("Error generando URL para: {$archivo}", [
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+                }
+            }
+            if (empty($imagenes)) {
+                Log::info("No se encontraron imágenes válidas en: {$rutaCarpeta}");
+                return [asset('Propiedades/no-image.png')];
+            }
+            Log::info("Imágenes encontradas para propiedad {$propertyId}: " . count($imagenes));
+            return $imagenes;
+        } catch (Exception $e) {
+            Log::error("Error obteniendo imágenes de S3 para propiedad {$propertyId}", [
+                'error' => $e->getMessage(),
+                'carpeta' => $rutaCarpeta
+            ]);
+            return [asset('Propiedades/no-image.png')];
         }
-        if (empty($imagenes)) {
-            $imagenes[] = asset('Propiedades/no-image.png');
-        }
-        return $imagenes;
     }
-
-    public function paymentSchedules(){
+    public function paymentSchedules()
+    {
         return $this->hasManyThrough(
             PaymentSchedule::class,
             PropertyInvestor::class,
@@ -177,11 +262,13 @@ class Property extends Model{
         );
     }
 
-    public function configuraciones() {
+    public function configuraciones()
+    {
         return $this->hasMany(PropertyConfiguracion::class);
     }
 
-    public function ultimaConfiguracion() {
+    public function ultimaConfiguracion()
+    {
         return $this->hasOne(PropertyConfiguracion::class)->latestOfMany();
     }
 
@@ -195,11 +282,13 @@ class Property extends Model{
         return $this->hasOne(PropertyConfiguracion::class);
     }
 
-    public function configuracionActiva(){
+    public function configuracionActiva()
+    {
         return $this->hasOne(PropertyConfiguracion::class, 'property_id')->where('estado', 'activa');
     }
 
-    public function investorStatuses(){
+    public function investorStatuses()
+    {
         return $this->hasMany(InvestorPropertyStatus::class);
     }
 }

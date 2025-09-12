@@ -17,12 +17,13 @@ return new class extends Migration{
             $table->time('hora_inicio');
             $table->time('hora_fin');
             $table->dateTime('tiempo_finalizacion');
-
             $table->enum('estado', ['pendiente', 'activa', 'finalizada'])->default('pendiente');
-
             $table->foreignUlid('ganador_id')->nullable()->constrained('investors')->nullOnDelete();
-
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
     public function down(): void {

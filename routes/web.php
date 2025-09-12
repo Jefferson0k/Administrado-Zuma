@@ -3,30 +3,50 @@
 use App\Http\Controllers\Api\ConsultasDni;
 use App\Http\Controllers\Api\ConsultasRucController;
 use App\Http\Controllers\Api\FixedTermScheduleController;
-use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\MovementController;
 use App\Http\Controllers\Api\PropertyReservationController;
 use App\Http\Controllers\Api\RolesController;
 use App\Http\Controllers\Api\UsuariosController;
 use App\Http\Controllers\Panel\AmountRangeController;
+use App\Http\Controllers\Panel\BankAccountsController;
 use App\Http\Controllers\Panel\BidControllers;
 use App\Http\Controllers\Panel\CalculadoraController;
 use App\Http\Controllers\Panel\CargoController;
+use App\Http\Controllers\Panel\CompanyController;
 use App\Http\Controllers\Panel\CorporateEntityController;
 use App\Http\Controllers\Panel\CurrencyControllers;
 use App\Http\Controllers\Panel\CustomerController;
 use App\Http\Controllers\Panel\DeadlinesControllers;
+use App\Http\Controllers\Panel\DepositController;
+use App\Http\Controllers\Panel\ExchangeController;
 use App\Http\Controllers\Panel\FixedTermRateController;
+use App\Http\Controllers\Panel\InvestmentControllers;
 use App\Http\Controllers\Panel\InvestorController;
+use App\Http\Controllers\Panel\InvoiceController;
 use App\Http\Controllers\Panel\PagosController;
 use App\Http\Controllers\Panel\PaymentFrequencyController;
 use App\Http\Controllers\Panel\PaymentScheduleController;
+use App\Http\Controllers\Panel\PaymentsController;
 use App\Http\Controllers\Panel\PreviuController;
 use App\Http\Controllers\Panel\PropertyControllers;
 use App\Http\Controllers\Panel\PropertyLoanDetailController;
 use App\Http\Controllers\Panel\RateTypeController;
+use App\Http\Controllers\Panel\SectorController;
+use App\Http\Controllers\Panel\SubSectorController;
 use App\Http\Controllers\Panel\TermPlanController;
+use App\Http\Controllers\Panel\WithdrawController;
+use App\Http\Controllers\Web\Factoring\BankAccountsWeb;
 use App\Http\Controllers\Web\Factoring\CompanyWeb;
+use App\Http\Controllers\Web\Factoring\DepositsWeb;
+use App\Http\Controllers\Web\Factoring\ExchangeWeb;
+use App\Http\Controllers\Web\Factoring\ExchangeWebControler;
+use App\Http\Controllers\Web\Factoring\InvestmentWeb;
+use App\Http\Controllers\Web\Factoring\InvestorWeb;
+use App\Http\Controllers\Web\Factoring\InvoiceWeb;
+use App\Http\Controllers\Web\Factoring\PaymentsWeb;
+use App\Http\Controllers\Web\Factoring\SectorWeb;
+use App\Http\Controllers\Web\Factoring\SubSectorWeb;
+use App\Http\Controllers\Web\Factoring\WithdrawWeb;
 use App\Http\Controllers\Web\SubastaHipotecas\ClienteWebController;
 use App\Http\Controllers\Web\SubastaHipotecas\CuentasBancariasWebControler;
 use App\Http\Controllers\Web\SubastaHipotecas\DepositosWebControler;
@@ -45,8 +65,10 @@ use App\Http\Controllers\Web\TasasFijas\PaymentFrequenciesWebController;
 use App\Http\Controllers\Web\TasasFijas\RateTypeWebController;
 use App\Http\Controllers\Web\TasasFijas\TermPlanWebController;
 use App\Http\Controllers\Web\UsuarioWebController;
+use App\Http\Controllers\BlogController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Storage;
 
 Route::get('/', function () {
     return Inertia::render('Welcome');
@@ -67,6 +89,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/moneda', [CurrencyControllers::class, 'index']);
     Route::get('/Frecuencia/Pagos', [PaymentFrequenciesWebController::class, 'views']);
 
+    Route::get('/blog/registro', [BlogController::class, 'create']);
+    Route::get('/blog/seguimiento', [BlogController::class, 'seguimiento']);
+    Route::get('/blog/categorias', [BlogController::class, 'categorias']);
+    Route::get('/blog/posts', [BlogController::class, 'index']);
+
+    Route::post('/payments/extraer', [PaymentsController::class, 'comparacion'])->name('payments.comparacion');
+    Route::post('/payments/{invoiceId}', [PaymentsController::class, 'store'])->name('payments.store');
+
     #RUTAS DE API
     Route::prefix('api')->group(function () {
         Route::get('/consultar-ruc/{ruc?}', [ConsultasRucController::class, 'consultar'])->name('consultar.ruc');
@@ -78,8 +108,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     #RUTAS DE WEB EN LA PARTE DE FACTORING
-    Route::prefix('factoring')->group(function(){
-        Route::get('/empresas', [CompanyWeb::class, 'views'])->name('factoring.views');
+    
+    Route::prefix('factoring')->group(function () {
+        Route::get('/empresas', [CompanyWeb::class, 'views'])->name('empresas.views');
+        Route::get('/sectores', [SectorWeb::class, 'views'])->name('sectores.views');
+        Route::get('/{id}/subsectors', [SubSectorWeb::class, 'views'])->name('subsectors.views');
+        Route::get('/inversionistas', [InvestorWeb::class, 'views'])->name('inversionistas.views');
+        Route::get('/facturas', [InvoiceWeb::class, 'views'])->name('facturas.views');
+        Route::get('/cuentas-bancarias', [BankAccountsWeb::class, 'views'])->name('bancarias.views');
+        Route::get('/depositos', [DepositsWeb::class, 'views'])->name('depositos.views');
+        Route::get('/{invoice_id}/inversionistas', [InvestmentWeb::class, 'views'])->name('inversionistas.views');
+        Route::get('/inversiones', [InvestmentWeb::class, 'viewsGeneral'])->name('inversiones.viewsGeneral');
+        Route::get('/pagos', [PaymentsWeb::class, 'views'])->name('inversiones.views');
+        Route::get('/tipo-cambio', [ExchangeWebControler::class, 'views'])->name('tipo-cambio.views');
+        Route::get('/retiros', [WithdrawWeb::class, 'views'])->name('retiros.views');
+        Route::get('/tipo-cambio', [ExchangeWeb::class, 'views'])->name('retiros.views');
     });
 
     #RUTAS DE WEB EN LA PARTE DE TASAS FIJAS
@@ -93,10 +136,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     #RUTAS DE WEB EN LA PARTE DE SUBASTA HIPOTECARIA
     Route::prefix('subasta-hipotecas')->group(function(){
-        Route::get('/reserva', [CuentasBancariasWebControler::class, 'views'])->name('cuentas-bancarias.subasta.views');
-        Route::get('/depositos', [DepositosWebControler::class, 'views'])->name('reserva.views');
+        Route::get('/reserva', [CuentasBancariasWebControler::class, 'views'])->name('reserva.views');
+        Route::get('/depositos', [DepositosWebControler::class, 'views'])->name('depositos.views');
         Route::get('/historicos', [HistoricoWebController::class, 'views'])->name('historicos.views');
-        Route::get('/pagos', [PagosWebControler::class, 'views'])->name('pago.views');
+        Route::get('/pagos', [PagosWebControler::class, 'views'])->name('pagos.views');
         Route::get('/propiedades', [PropiedadesWebControler::class, 'views'])->name('propiedades.views');
         Route::get('/retiros', [RetirosWebControler::class, 'views'])->name('retiros.views');
         Route::get('/tipo-cambio', [TipoCambioWebControler::class, 'views'])->name('tipo-cambio.views');
@@ -104,6 +147,107 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/inversionista/pagos', [InversionistasWebController::class, 'index']);
         Route::get('/inversionista', [InversionistasWebController::class, 'views'])->name('inversionista.views');
         Route::get('/cliente/pagos', [ClienteWebController::class, 'views']);
+    });
+
+    #TIPO DE CAMBIP => BACKEND
+    Route::prefix('exchange')->group(function () {
+        Route::get('/', [ExchangeController::class, 'index'])->name('exchange.index');
+        Route::get('/list', [ExchangeController::class, 'indexList']);
+        Route::get('/{id}', [ExchangeController::class, 'show'])->name('exchange.show');
+        Route::post('/', [ExchangeController::class, 'store'])->name('exchange.store');
+        Route::put('/{id}', [ExchangeController::class, 'update'])->name('exchange.update');
+        Route::delete('/{id}', [ExchangeController::class, 'destroy'])->name('exchange.destroy');
+        // Cambiar estado
+        Route::put('/{id}/activacion', [ExchangeController::class, 'activacion'])->name('exchange.activacion');
+        Route::post('/{id}/inactivo', [ExchangeController::class, 'inactivo'])->name('exchange.inactivo');
+    });
+
+    Route::prefix('withdraws')->group(function () {
+        Route::get('/', [WithdrawController::class, 'index'])->name('withdraws.index');
+        Route::get('/{id}', [WithdrawController::class, 'show'])->name('withdraws.show');
+        Route::post('/', [WithdrawController::class, 'store'])->name('withdraws.store');
+        Route::put('/{id}', [WithdrawController::class, 'update'])->name('withdraws.update');
+        Route::delete('/{id}', [WithdrawController::class, 'destroy'])->name('withdraws.destroy');
+
+        Route::put('/{id}/approve', [WithdrawController::class, 'approve'])->name('withdraws.approve');
+        Route::put('/{id}/reject', [WithdrawController::class, 'reject'])->name('withdraws.reject');
+    });
+
+    Route::prefix('investment')->group(function() {
+        Route::get('/all', [InvestmentControllers::class, 'indexAll']);
+        Route::get('/{invoice_id}', [InvestmentControllers::class, 'show']);
+    });
+
+    Route::prefix('deposit')->group(function () {
+        Route::get('/', [DepositController::class, 'index'])->name('deposits.index');
+        Route::get('/{id}', [DepositController::class, 'show'])->name('deposits.show');
+
+        Route::post('/{movementId}/validate', [DepositController::class, 'validateDeposit'])
+            ->name('deposits.validate');
+
+        Route::post('/{depositId}/{movementId}/reject', [DepositController::class, 'rejectDeposit'])
+            ->name('deposits.reject');
+
+        Route::post('/{depositId}/{movementId}/approve', [DepositController::class, 'approveDeposit'])
+            ->name('deposits.approve');
+
+        Route::post('/{depositId}/{movementId}/reject-confirm', [DepositController::class, 'rejectConfirmDeposit'])
+            ->name('deposits.rejectConfirm');
+    });
+
+    Route::prefix('ban')->group(function () {
+        Route::get('/', [BankAccountsController::class, 'index'])->name('bankaccounts.index');
+
+        // Rutas más específicas SIEMPRE van antes
+        Route::get('/{bankAccountId}/filtrar', [BankAccountsController::class, 'showBank'])->name('bankaccounts.filtrar');
+
+        Route::get('/{id}', [BankAccountsController::class, 'show'])->name('bankaccounts.show');
+        Route::post('/{id}/validate', [BankAccountsController::class, 'validateBankAccount'])->name('bankaccounts.validate');
+        Route::post('/{id}/reject', [BankAccountsController::class, 'rejectBankAccount'])->name('bankaccounts.reject');
+    });
+
+    # INVERSIONISTA -> BACKEND
+    Route::prefix('investor')->group(function () {
+        Route::get('/', [InvestorController::class, 'index'])->name('investor.index');
+        Route::get('/{id}', [InvestorController::class, 'showInvestor'])->name('investor.showInvestor');
+        Route::put('/{id}/aprobar', [InvestorController::class, 'aprobar'])->name('investor.aprobar');
+        Route::put('/{id}/rechazar', [InvestorController::class, 'rechazar'])->name('investor.rechazar');
+    });
+
+    # COMPANIA -> BACKEND
+    Route::prefix('companies')->group(function () {
+        Route::get('/',        [CompanyController::class, 'index'])->name('companies.index');
+        Route::post('/',       [CompanyController::class, 'store'])->name('companies.store');
+        Route::get('/search',  [CompanyController::class, 'searchCompany'])->name('companies.searchCompany');
+        Route::get('/export-excel', [CompanyController::class, 'exportExcel'])->name('companies.exportExcel');
+        Route::get('{id}',     [CompanyController::class, 'show'])->name('companies.show');
+        Route::put('{id}',     [CompanyController::class, 'update'])->name('companies.update');
+        Route::delete('{id}',  [CompanyController::class, 'delete'])->name('companies.delete');
+    });
+
+    #SUB SECTOR -> BACKEND
+    Route::prefix('subsectors')->group(function () {
+        Route::get('/sector/{sector_id}', [SubSectorController::class, 'index'])->name('subsectors.index');
+        Route::post('/', [SubSectorController::class, 'store'])->name('subsectors.store');
+        Route::get('/{id}', [SubSectorController::class, 'show'])->name('subsectors.show');
+        Route::put('/{id}', [SubSectorController::class, 'update'])->name('subsectors.update');
+        Route::delete('/{id}', [SubSectorController::class, 'delete'])->name('subsectors.delete');
+
+        #Filtrar por sector
+        Route::get('/search/{sector_id}', [SubSectorController::class, 'searchSubSector'])
+            ->name('subsectors.search');
+    });
+
+
+    #SECTOR -> BACKEND
+    Route::prefix('sectors')->group(function () {
+        Route::get('/', [SectorController::class, 'index'])->name('sectors.index');
+        Route::post('/', [SectorController::class, 'store'])->name('sectors.store');
+        #Buscador
+        Route::get('/search', [SectorController::class, 'searchSector'])->name('sectors.search');
+        Route::get('/{id}', [SectorController::class, 'show'])->name('sectors.show');
+        Route::put('/{id}', [SectorController::class, 'update'])->name('sectors.update');
+        Route::delete('/{id}', [SectorController::class, 'delete'])->name('sectors.delete');
     });
 
     #USUARIOS -> BACKEND
@@ -125,11 +269,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/{id}', [RolesController::class, 'destroy'])->name('roles.destroy');
     });
 
-    #INVOICES => BACKEND
+    # INVOICES => BACKEND
     Route::prefix('invoices')->group(function () {
+        Route::get('/filtrado', [InvoiceController::class, 'indexfilter']);
         Route::get('/', [InvoiceController::class, 'index'])->name('invoices.index');
-        // Add other invoice routes here as needed
+        Route::post('/', [InvoiceController::class, 'store'])->name('invoices.store');
+        Route::put('/{id}', [InvoiceController::class, 'update'])->name('invoices.update');
+        Route::patch('/{id}/standby', [InvoiceController::class, 'standby']);
+        Route::patch('/{id}/activacion', [InvoiceController::class, 'activacion']);
+        Route::patch('/{id}/rechazar', [InvoiceController::class, 'rechazar']);
+        Route::get('/{id}', [InvoiceController::class, 'show'])->name('invoices.show');
+        Route::delete('/{id}', [InvoiceController::class, 'delete'])->name('invoices.delete');
+        
+        # Exportación a Excel
+        Route::get('/export/excel', [InvoiceController::class, 'exportExcel'])->name('invoices.export');
     });
+
 
     #PROPERTY => BACKEND (SOLO ADMINISTRADOR MAS NO CLIENTE)
     Route::prefix('property')->group(function () {
@@ -232,8 +387,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{id}/aceptar-pago/cliente', [MovementController::class, 'aceptarPagosCliente']);
 
         Route::post('/{id}/rechazar-tasas-fijas', [MovementController::class, 'rechazarTasasFijas']);
-        Route::post('/{id}/rechazar-hipotecas', [MovementController::class, 'rechazarhipotecas']);
+        Route::post('/{id}/rechazar-hipotecas', [MovementController::class, 'rechazarHipotecas']);
         Route::post('/{id}/rechazar/pago/cliente', [MovementController::class, 'rechazarPagosCliente']);
+
+        Route::post('{id}/validate', [MovementController::class, 'validateMovement']);
     });
 
     Route::prefix('pagos')->group(function () {
@@ -270,10 +427,41 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/dni/{dni?}', [ConsultasDni::class, 'consultar']);
 
+    Route::prefix('payments')->group(function () {
+        Route::post('/extraer', [PaymentsController::class, 'comparacion'])
+            ->name('payments.comparacion');
+        Route::post('/{invoiceId}', [PaymentsController::class, 'store'])
+            ->name('payments.store');
+        Route::post('/{invoiceId}/reembloso', [PaymentsController::class, 'storeReembloso'])
+            ->name('payments.storeReembloso');
+    });
 });
 
 
 Route::get('/currencies', [CurrencyControllers::class, 'index']);
+Route::get('/s3/{path}', function ($path) {
+    if (!Storage::disk('s3')->exists($path)) {
+        abort(404, 'Archivo no encontrado');
+    }
+
+    $file = Storage::disk('s3')->get($path);
+    $extension = pathinfo($path, PATHINFO_EXTENSION);
+    $mimeType = match ($extension) {
+        'png' => 'image/png',
+        'jpg', 'jpeg' => 'image/jpeg',
+        'gif' => 'image/gif',
+        'webp' => 'image/webp',
+        'pdf' => 'application/pdf',
+        default => 'application/octet-stream'
+    };
+
+    return response($file)
+        ->header('Content-Type', $mimeType)
+        ->header('Cache-Control', 'public, max-age=86400') // Cache por 24 horas
+        ->header('ETag', md5($file))
+        ->header('Last-Modified', Storage::disk('s3')->lastModified($path))
+        ->header('Content-Length', Storage::disk('s3')->size($path));
+})->where('path', '.*');
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

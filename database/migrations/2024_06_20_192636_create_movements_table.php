@@ -1,5 +1,4 @@
 <?php
-
 use App\Enums\MovementStatus;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -15,7 +14,6 @@ return new class extends Migration
         Schema::create('movements', function (Blueprint $table) {
             $table->ulid('id')->primary();
             $table->decimal('amount', 10, 2);
-
             $table->enum('type', [
                 'payment',
                 'deposit',
@@ -31,9 +29,7 @@ return new class extends Migration
                 'mortgage_installment_payment',
                 'mortgage_early_payment',
             ]);
-
             $table->char('currency', 3);
-
             $table->enum('status', [
                 MovementStatus::VALID->value,
                 MovementStatus::INVALID->value,
@@ -41,7 +37,6 @@ return new class extends Migration
                 MovementStatus::REJECTED->value,
                 MovementStatus::CONFIRMED->value
             ])->default(MovementStatus::PENDING->value);
-
             $table->enum('confirm_status', [
                 MovementStatus::VALID->value,
                 MovementStatus::INVALID->value,
@@ -49,15 +44,22 @@ return new class extends Migration
                 MovementStatus::REJECTED->value,
                 MovementStatus::CONFIRMED->value
             ])->default(MovementStatus::PENDING->value);
-
             $table->string('description')->nullable();
-
             $table->enum('origin', ['cliente', 'inversionista', 'zuma'])->default('zuma');
-
             $table->foreignUlid('investor_id')->nullable()->constrained();
             $table->foreignUlid('related_movement_id')->nullable()->constrained('movements');
-
+            
+            // NUEVO: Campos para timestamps de aprobación
+            $table->timestamp('aprobacion_1')->nullable(); // Cuándo se validó
+            $table->string('aprobado_por_1')->nullable();   // Quién validó
+            $table->timestamp('aprobacion_2')->nullable(); // Cuándo se aprobó/confirmó
+            $table->string('aprobado_por_2')->nullable();   // Quién aprobó/confirmó
+            
             $table->timestamps();
+            
+            // Índices para consultas de tiempo
+            $table->index(['aprobacion_1', 'aprobacion_2']);
+            $table->index(['status', 'confirm_status']);
         });
     }
 

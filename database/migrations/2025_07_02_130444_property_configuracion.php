@@ -16,7 +16,11 @@ return new class extends Migration {
             $table->enum('tipo_cronograma', ['frances', 'americano','-'])->default('-');
             $table->enum('riesgo', ['A+', 'A', 'B', 'C', 'D', '-'])->default('-');
             $table->integer('estado');
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
     public function down(): void {
