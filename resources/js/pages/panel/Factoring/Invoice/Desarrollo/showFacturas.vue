@@ -120,33 +120,6 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- Segunda Aprobación -->
-                    <div class="flex items-center gap-4 p-4 bg-white rounded-lg border-2" :class="getApprovalBorderClass(facturaData.SegundaStado)">
-                        <div class="flex-shrink-0">
-                            <div class="w-12 h-12 rounded-full flex items-center justify-center" :class="getApprovalBgClass(facturaData.SegundaStado)">
-                                <i :class="getApprovalIconClass(facturaData.SegundaStado)"></i>
-                            </div>
-                        </div>
-                        <div class="flex-1">
-                            <div class="font-semibold text-gray-800">Segunda Aprobación</div>
-                            <div class="text-sm" :class="getApprovalTextClass(facturaData.SegundaStado)">
-                                {{ getApprovalStatusText(facturaData.SegundaStado) }}
-                            </div>
-                            <div class="text-sm text-gray-600 mt-1">
-                                Usuario: {{ facturaData.userdosNombre }}
-                            </div>
-                            <div class="text-sm text-gray-600 mt-1">
-                                <b>Comentarios:</b> {{ facturaData.approval2_comment }}
-                            </div>
-                            <div v-if="facturaData.tiempoDos" class="text-xs text-gray-500 mt-1">
-                                {{ facturaData.tiempoDos }}
-                            </div>
-                            <div v-if="facturaData.PrimerStado === 'pending'" class="text-xs text-orange-600 mt-1 italic">
-                                * Requiere primera aprobación antes de proceder
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
 

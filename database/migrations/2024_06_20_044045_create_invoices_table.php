@@ -28,7 +28,8 @@ return new class extends Migration
                 'reprogramed',
                 'paid',
                 'canceled',
-                'daStandby'
+                'daStandby',
+                'observed' // nuevo estado
             ])->default('inactive');
 
             $table->foreignUlid('company_id')->constrained();
@@ -42,8 +43,8 @@ return new class extends Migration
             $table->foreignId('approval1_by')->nullable()->constrained('users')->nullOnDelete();
             $table->text('approval1_comment')->nullable();
             $table->timestamp('approval1_at')->nullable();
-
-            $table->enum('approval2_status', ['pending', 'approved', 'rejected'])->default('pending');
+            
+            $table->enum('approval2_status', ['pending', 'approved', 'rejected'])->nullable();
             $table->foreignId('approval2_by')->nullable()->constrained('users')->nullOnDelete();
             $table->text('approval2_comment')->nullable();
             $table->timestamp('approval2_at')->nullable();

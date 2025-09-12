@@ -12,6 +12,7 @@
             <span class="ml-2 text-gray-600">Cargando información...</span>
         </div>
         <div v-else-if="facturaData" class="space-y-6">
+            <!-- Información de la Factura -->
             <div class="bg-gray-50 p-4 rounded-lg">
                 <h3 class="text-lg font-semibold mb-4 text-gray-800">Información de la Factura</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -29,14 +30,11 @@
                     </div>
                     <div>
                         <label class="text-sm font-medium text-gray-600">Monto Factura</label>
-                        <p class="text-sm text-gray-800">{{ formatCurrency(facturaData.montoFactura, facturaData.moneda)
-                            }}</p>
+                        <p class="text-sm text-gray-800">{{ formatCurrency(facturaData.montoFactura, facturaData.moneda) }}</p>
                     </div>
                     <div>
                         <label class="text-sm font-medium text-gray-600">Monto Disponible</label>
-                        <p class="text-sm text-gray-800">{{ formatCurrency(facturaData.montoDisponible,
-                            facturaData.moneda) }}
-                        </p>
+                        <p class="text-sm text-gray-800">{{ formatCurrency(facturaData.montoDisponible, facturaData.moneda) }}</p>
                     </div>
                     <div>
                         <label class="text-sm font-medium text-gray-600">Tasa</label>
@@ -48,11 +46,12 @@
                     </div>
                     <div>
                         <label class="text-sm font-medium text-gray-600">Estado</label>
-                        <Tag :value="getStatusLabel(facturaData.estado)"
-                            :severity="getStatusSeverity(facturaData.estado)" />
+                        <Tag :value="getStatusLabel(facturaData.estado)" :severity="getStatusSeverity(facturaData.estado)" />
                     </div>
                 </div>
             </div>
+
+            <!-- Tabla de Inversionistas -->
             <div>
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold">Inversionistas</h3>
@@ -61,9 +60,7 @@
 
                 <DataTable :value="facturaData.investments" class="p-datatable-sm"
                     :paginator="(facturaData.investments?.length || 0) > 10" :rows="10"
-                    :rowsPerPageOptions="[5, 10, 20, 50]" scrollable scrollHeight="400px"
-                    paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                    currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} inversionistas">
+                    :rowsPerPageOptions="[5, 10, 20, 50]" scrollable scrollHeight="400px">
                     <template #empty>
                         <div class="text-center p-4">
                             <i class="pi pi-users text-4xl text-gray-400 mb-4 block"></i>
@@ -92,7 +89,7 @@
                         <template #body="slotProps">
                             <div class="flex gap-1">
                                 <Button icon="pi pi-money-bill" severity="warn" size="small" text
-                                    v-tooltip.top="'Procesar reembolso'" @click="openRefundDialog(slotProps.data)"
+                                    v-tooltip.top="'Solicitar reembolso'" @click="openRefundDialog(slotProps.data)"
                                     v-if="['active', 'paid'].includes(slotProps.data.status)" />
                             </div>
                         </template>
@@ -106,17 +103,24 @@
             </div>
         </template>
     </Dialog>
+
+    <!-- Dialog de Solicitud de Reembolso -->
     <Dialog v-model:visible="refundDialogVisible" modal :closable="true" :draggable="false" class="mx-4"
-        style="width: 90vw; max-width: 500px;" @hide="closeRefundDialog">
+        style="width: 90vw; max-width: 600px;" @hide="closeRefundDialog">
         <template #header>
             <div class="flex items-center gap-2">
-                <i class="pi pi-money-bill text-xl"></i>
-                <span class="text-xl font-semibold">Procesar Reembolso</span>
+                <i class="pi pi-money-bill text-xl text-orange-600"></i>
+                <span class="text-xl font-semibold">Solicitar Reembolso</span>
             </div>
         </template>
+        
         <div v-if="selectedInvestment" class="space-y-6">
-            <div class="bg-orange-50 p-4 rounded-lg">
-                <h4 class="text-md font-semibold mb-2 text-orange-800">Información del Inversionista</h4>
+            <!-- Información del Inversionista -->
+            <div class="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                <h4 class="text-md font-semibold mb-3 text-orange-800 flex items-center gap-2">
+                    <i class="pi pi-user"></i>
+                    Información del Inversionista
+                </h4>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                         <label class="text-sm font-medium text-orange-600">Inversionista</label>
@@ -128,28 +132,46 @@
                     </div>
                     <div>
                         <label class="text-sm font-medium text-orange-600">Monto Invertido</label>
-                        <p class="text-sm text-gray-800">{{ formatCurrency(selectedInvestment.amount,
-                            selectedInvestment.currency) }}</p>
+                        <p class="text-sm text-gray-800">{{ formatCurrency(selectedInvestment.amount, selectedInvestment.currency) }}</p>
                     </div>
                     <div>
                         <label class="text-sm font-medium text-orange-600">Total a Reembolsar</label>
-                        <p class="text-sm text-gray-800 font-semibold">{{ formatCurrency(selectedInvestment.amount +
-                            selectedInvestment.return, selectedInvestment.currency) }}</p>
+                        <p class="text-sm text-gray-800 font-semibold">
+                            {{ formatCurrency(selectedInvestment.amount + selectedInvestment.return, selectedInvestment.currency) }}
+                        </p>
                     </div>
                 </div>
             </div>
+
+            <!-- Alerta de Proceso de Aprobación -->
+            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <div class="flex items-start gap-3">
+                    <i class="pi pi-info-circle text-blue-600 mt-1"></i>
+                    <div>
+                        <h5 class="font-medium text-blue-800 mb-1">Proceso de Aprobación</h5>
+                        <p class="text-sm text-blue-700">
+                            Esta solicitud será enviada para aprobación y no se procesará inmediatamente. 
+                            Recibirás una notificación una vez que sea aprobada o rechazada.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulario -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="field">
                     <label for="refundDate" class="block text-sm font-medium mb-2">
+                        <i class="pi pi-calendar mr-1"></i>
                         Fecha de Pago <span class="text-red-500">*</span>
                     </label>
-                    <Calendar id="refundDate" v-model="refundForm.payDate" dateFormat="dd-mm-yy" :showIcon="true"
-                        class="w-full" disabled :class="{ 'p-invalid': formErrors.payDate }" />
+                    <Calendar id="refundDate" v-model="refundForm.payDate" dateFormat="dd-mm-yy" 
+                        :showIcon="true" class="w-full" :class="{ 'p-invalid': formErrors.payDate }" />
                     <small v-if="formErrors.payDate" class="p-error">{{ formErrors.payDate }}</small>
                 </div>
 
                 <div class="field">
                     <label for="refundAmount" class="block text-sm font-medium mb-2">
+                        <i class="pi pi-dollar mr-1"></i>
                         Monto del Reembolso <span class="text-red-500">*</span>
                     </label>
                     <InputNumber id="refundAmount" v-model="refundForm.amount" mode="currency"
@@ -160,6 +182,7 @@
 
                 <div class="field md:col-span-2">
                     <label for="refundOperationNumber" class="block text-sm font-medium mb-2">
+                        <i class="pi pi-hashtag mr-1"></i>
                         Número de Operación <span class="text-red-500">*</span>
                     </label>
                     <InputText id="refundOperationNumber" v-model="refundForm.operationNumber" class="w-full"
@@ -170,6 +193,7 @@
 
                 <div class="field md:col-span-2">
                     <label class="block text-sm font-medium mb-2">
+                        <i class="pi pi-file mr-1"></i>
                         Comprobante de Pago <span class="text-red-500">*</span>
                     </label>
                     <FileUpload ref="refundFileUpload" mode="advanced" accept=".pdf,.jpg,.jpeg,.png"
@@ -177,12 +201,12 @@
                         @remove="onRefundFileRemove" :class="{ 'p-invalid': formErrors.receipt }" :auto="false"
                         chooseLabel="Seleccionar Comprobante" uploadLabel="Subir" cancelLabel="Cancelar">
                         <template #empty>
-                            <div class="text-center">
-                                <i class="pi pi-cloud-upload text-4xl"></i>
-                                <p class="mt-2 text-sm">
+                            <div class="text-center py-6">
+                                <i class="pi pi-cloud-upload text-4xl text-gray-400"></i>
+                                <p class="mt-2 text-sm text-gray-600">
                                     Selecciona el comprobante de pago
                                 </p>
-                                <p class="text-xs mt-1">
+                                <p class="text-xs mt-1 text-gray-500">
                                     Formatos: PDF, JPG, PNG (Max 10MB)
                                 </p>
                             </div>
@@ -193,26 +217,57 @@
 
                 <div class="field md:col-span-2">
                     <label for="refundComments" class="block text-sm font-medium mb-2">
+                        <i class="pi pi-comment mr-1"></i>
                         Comentarios
                     </label>
                     <Textarea id="refundComments" v-model="refundForm.comments" rows="4" class="w-full"
                         placeholder="Ingrese comentarios sobre el reembolso (opcional)" :maxlength="500" />
                     <div class="text-right">
-                        <small class="">
+                        <small class="text-gray-500">
                             {{ refundForm.comments?.length || 0 }}/500
                         </small>
                     </div>
                 </div>
             </div>
-
         </div>
 
         <template #footer>
+            <div class="flex justify-between items-center w-full">
+                <div class="flex items-center gap-2 text-sm text-gray-600">
+                    <i class="pi pi-clock"></i>
+                    <span>Pendiente de aprobación tras envío</span>
+                </div>
+                <div class="flex gap-2">
+                    <Button label="Cancelar" icon="pi pi-times" severity="secondary" text 
+                        @click="closeRefundDialog" :disabled="processingRefund" />
+                    <Button label="Enviar Solicitud" icon="pi pi-send" severity="warn" 
+                        @click="submitRefundRequest" :loading="processingRefund" 
+                        :disabled="!isRefundFormValid" />
+                </div>
+            </div>
+        </template>
+    </Dialog>
+
+    <!-- Dialog de Confirmación -->
+    <Dialog v-model:visible="confirmDialogVisible" modal header="Confirmar Solicitud" 
+        style="width: 500px;" class="mx-4">
+        <div class="flex items-start gap-3">
+            <i class="pi pi-exclamation-triangle text-orange-500 text-2xl"></i>
+            <div>
+                <p class="mb-3">
+                    ¿Está seguro que desea enviar la solicitud de reembolso por 
+                    <strong>{{ formatCurrency(refundForm.amount, selectedInvestment?.currency) }}</strong>?
+                </p>
+                <p class="text-sm text-gray-600">
+                    Esta acción no se puede deshacer y la solicitud quedará pendiente de aprobación.
+                </p>
+            </div>
+        </div>
+        <template #footer>
             <div class="flex justify-end gap-2">
-                <Button label="Cancelar" icon="pi pi-times" severity="secondary" text @click="closeRefundDialog"
-                    :disabled="processingRefund" />
-                <Button label="Procesar Reembolso" icon="pi pi-money-bill" severity="warn" @click="processRefund"
-                    :loading="processingRefund" :disabled="!isRefundFormValid" />
+                <Button label="Cancelar" severity="secondary" text @click="confirmDialogVisible = false" />
+                <Button label="Confirmar Envío" severity="warn" @click="processRefundRequest" 
+                    :loading="processingRefund" />
             </div>
         </template>
     </Dialog>
@@ -244,17 +299,17 @@ const props = defineProps({
     }
 });
 
-const emit = defineEmits(['update:modelValue', 'cancelled', 'paymentProcessed', 'refundProcessed']);
+const emit = defineEmits(['update:modelValue', 'cancelled', 'refundRequested']);
 
 const toast = useToast();
 const loading = ref(false);
 const facturaData = ref(null);
 
 const refundDialogVisible = ref(false);
+const confirmDialogVisible = ref(false);
 const selectedInvestment = ref(null);
 const processingRefund = ref(false);
 const refundFileUpload = ref(null);
-
 
 const refundForm = ref({
     payDate: new Date(),
@@ -323,7 +378,6 @@ function getStatusSeverity(status) {
     }
 }
 
-
 function openRefundDialog(investment) {
     selectedInvestment.value = investment;
     const totalAmount = parseFloat(investment.amount);
@@ -340,6 +394,7 @@ function openRefundDialog(investment) {
 
 function closeRefundDialog() {
     refundDialogVisible.value = false;
+    confirmDialogVisible.value = false;
     selectedInvestment.value = null;
     refundForm.value = {
         payDate: new Date(),
@@ -403,11 +458,15 @@ function validateRefundForm() {
     return isValid;
 }
 
-async function processRefund() {
+function submitRefundRequest() {
     if (!validateRefundForm()) {
         return;
     }
+    confirmDialogVisible.value = true;
+}
 
+async function processRefundRequest() {
+    confirmDialogVisible.value = false;
     processingRefund.value = true;
 
     try {
@@ -416,43 +475,52 @@ async function processRefund() {
         formData.append('pay_type', 'reembloso');
         formData.append('pay_date', refundForm.value.payDate.toISOString().split('T')[0]);
 
-        formData.append('investments[0][investment_id]', selectedInvestment.value.id);
-        formData.append('investments[0][amount]', refundForm.value.amount);
-        formData.append('investments[0][operation_number]', refundForm.value.operationNumber);
+        // ✅ primero currency
+        formData.append('currency', selectedInvestment.value?.currency || 'PEN');
+
+        // ✅ investor_id desde la inversión seleccionada
+        formData.append('investor_id', selectedInvestment.value?.investor_id);
+
+        // luego amount y demás
+        formData.append('amount', refundForm.value.amount);
+        formData.append('nro_operation', refundForm.value.operationNumber);
 
         if (refundForm.value.comments) {
-            formData.append('investments[0][comment]', refundForm.value.comments);
+            formData.append('comment', refundForm.value.comments);
         }
 
         if (refundForm.value.receipt) {
-            formData.append('investments[0][receipt]', refundForm.value.receipt);
+            formData.append('resource_path', refundForm.value.receipt);
         }
 
-        const response = await axios.post(`/payments/${props.facturaId}/reembloso`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data'
-            }
-        });
+        const response = await axios.post(
+            `/payments/${props.facturaId}/reembloso`,
+            formData,
+            { headers: { 'Content-Type': 'multipart/form-data' } }
+        );
 
         toast.add({
             severity: 'success',
-            summary: 'Éxito',
-            detail: 'Reembolso procesado correctamente',
-            life: 3000
+            summary: 'Solicitud Enviada',
+            detail: 'La solicitud de reembolso ha sido enviada para aprobación',
+            life: 5000
         });
 
-        emit('refundProcessed', response.data);
+        emit('refundRequested', {
+            investment: selectedInvestment.value,
+            refundData: refundForm.value,
+            response: response.data
+        });
+
         closeRefundDialog();
 
-        await loadFacturaData();
-
     } catch (error) {
-        console.error('Error al procesar el reembolso:', error);
+        console.error('Error al enviar solicitud de reembolso:', error);
         toast.add({
             severity: 'error',
             summary: 'Error',
-            detail: error.response?.data?.message || 'Error al procesar el reembolso',
-            life: 3000
+            detail: error.response?.data?.error || 'Error al enviar la solicitud de reembolso',
+            life: 5000
         });
     } finally {
         processingRefund.value = false;
@@ -494,3 +562,18 @@ watch(() => props.facturaId, () => {
     facturaData.value = null;
 });
 </script>
+
+<style scoped>
+.field {
+    margin-bottom: 1rem;
+}
+
+.p-invalid {
+    border-color: #ef4444;
+}
+
+.p-error {
+    color: #ef4444;
+    font-size: 0.75rem;
+}
+</style>

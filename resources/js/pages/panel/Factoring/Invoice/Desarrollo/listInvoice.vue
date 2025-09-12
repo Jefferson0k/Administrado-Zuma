@@ -149,7 +149,7 @@ defineExpose({
 // Funciones para los estados de aprobación
 function getApprovalStatusLabel(status) {
     const approvalLabels = {
-        'pending': 'inactivo',
+        'pending': 'Inactivo',
         'approved': 'Activo',
         'rejected': 'Rechazado'
     };
@@ -174,10 +174,12 @@ function getStatusLabel(status) {
         'reprogramed': 'Reprogramado',
         'paid': 'Pagado',
         'canceled': 'Cancelado',
-        'daStandby': 'En Standby'
+        'daStandby': 'Standby',
+        'observed': 'Observado'
     };
     return statusLabels[status] || status;
 }
+
 function getStatusSeverity(status) {
     switch (status) {
         case 'inactive': return 'secondary';
@@ -188,6 +190,7 @@ function getStatusSeverity(status) {
         case 'paid': return 'contrast';
         case 'canceled': return 'danger';
         case 'daStandby': return 'warn';
+        case 'observed': return 'info';
         default: return 'secondary';
     }
 }
@@ -423,6 +426,14 @@ const toggleMenu = (event, factura) => {
                 command: () => verInversionistas(factura)
             }
         ]);
+    } else if (factura.estado === 'observed') {
+        items = items.concat([
+            {
+                label: 'Editar',
+                icon: 'pi pi-pencil',
+                command: () => editFactura(factura)
+            }
+        ]);
     } else {
         items = items.concat([
             {
@@ -436,6 +447,7 @@ const toggleMenu = (event, factura) => {
     menuItems.value = items;
     menu.value.toggle(event);
 };
+
 
 let searchTimeout;
 watch(() => filters.value.search, (newValue) => {
@@ -628,7 +640,7 @@ onMounted(() => {
                 </template>
             </Column>
             <!-- Columnas de aprobación -->
-            <Column field="PrimerStado" header="1ª Aprobación" sortable style="min-width: 9rem">
+            <Column field="PrimerStado" header="1ª Estado" sortable style="min-width: 7rem">
                 <template #body="slotProps">
                     <Tag :value="getApprovalStatusLabel(slotProps.data.PrimerStado)" :severity="getApprovalStatusSeverity(slotProps.data.PrimerStado)" />
                 </template>
@@ -650,9 +662,11 @@ onMounted(() => {
                 </template>
             </Column>
             
-            <Column field="SegundaStado" header="2ª Aprobación" sortable style="min-width: 9rem">
+            <Column field="SegundaStado" header="2ª Estado" sortable style="min-width: 7rem">
                 <template #body="slotProps">
-                    <Tag :value="getApprovalStatusLabel(slotProps.data.SegundaStado)" :severity="getApprovalStatusSeverity(slotProps.data.SegundaStado)" />
+                    <span :class="!slotProps.data.SegundaStado ? 'italic' : ''">
+                        {{ getApprovalStatusLabel(slotProps.data.SegundaStado) || 'Sin estado' }}
+                    </span>
                 </template>
             </Column>
             

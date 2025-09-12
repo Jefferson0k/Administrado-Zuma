@@ -18,6 +18,7 @@ class InvestmentListResource extends JsonResource{
             'currency' => $this->currency,
             'due_date'    => Carbon::parse($this->due_date)->format('d-m-Y'),
             'status' => $this->status,
+            'investor_id' => $this->investor_id,
             'inversionista' => $this->investor->name.' '.$this->investor->first_last_name.' '.$this->investor->second_last_name,
             'correo' => $this->investor->email,
             'telephone' => $this->investor->telephone,

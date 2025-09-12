@@ -9,6 +9,7 @@ use App\Helpers\MoneyConverter;
 use App\Http\Controllers\Controller;
 use App\Models\Balance;
 use App\Models\Company;
+use App\Models\Deposit;
 use App\Models\Investment;
 use App\Models\Invoice;
 use App\Models\Movement;
@@ -17,6 +18,7 @@ use App\Notifications\InvestmentRefundNotification;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -361,7 +363,7 @@ class PaymentsController extends Controller{
             throw new Exception($th->getMessage());
         }
     }
-    public function storeReembloso(Request $request){
+    /*public function storeReembloso(Request $request){
         $request->validate([
             'invoice_id'   => 'required|exists:invoices,id',
             'pay_type'     => 'required|in:total,partial,reembloso',
@@ -478,6 +480,308 @@ class PaymentsController extends Controller{
             return response()->json([
                 'error' => 'Error al registrar el pago/reembolso: ' . $e->getMessage()
             ], 500);
+        }
+    }
+    // PaymentsController.php
+    public function approvePayment(Request $request, $paymentId)
+    {
+        $request->validate([
+            'approval2_status' => 'required|in:approved,rejected',
+            'approval2_comment' => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $payment = Payment::findOrFail($paymentId);
+            
+            // Verificar que el pago esté listo para aprobación
+            if ($payment->approval1_status !== 'submitted' || $payment->approval2_status !== 'pending') {
+                return response()->json([
+                    'error' => 'Este pago no está disponible para aprobación'
+                ], 400);
+            }
+
+            // Actualizar estado de aprobación
+            $payment->update([
+                'approval2_status'  => $request->approval2_status,
+                'approval2_by'      => Auth::id(),
+                'approval2_comment' => $request->approval2_comment,
+                'approval2_at'      => now(),
+            ]);
+
+            if ($request->approval2_status === 'approved') {
+                // ✅ Ejecutar lógica financiera SOLO si es aprobado
+                $this->executePaymentLogic($payment);
+                
+                $message = $payment->pay_type === 'reembloso' 
+                    ? 'Reembolso aprobado y procesado correctamente'
+                    : 'Pago aprobado y procesado correctamente';
+            } else {
+                // ❌ Rechazado → eliminar archivos subidos
+                $this->cleanupRejectedPaymentFiles($payment);
+                $message = 'Reembolso rechazado. Archivos eliminados.';
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => $message,
+                'payment' => $payment->fresh(),
+            ], 200);
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Error en approvePayment', [
+                'error' => $e->getMessage(),
+                'payment_id' => $paymentId,
+            ]);
+            return response()->json([
+                'error' => 'Error al procesar la aprobación: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    private function executePaymentLogic(Payment $payment)
+    {
+        $invoice = $payment->invoice;
+        $investmentsData = json_decode($payment->investments_data, true);
+
+        foreach ($investmentsData as $inv) {
+            $investorId = $inv['investor_id'];
+            
+            // Mover recibos de carpeta temporal a definitiva
+            $finalReceiptPath = null;
+            if ($inv['receipt_path']) {
+                $finalReceiptPath = str_replace('/pending/', '/approved/', $inv['receipt_path']);
+                Storage::disk('s3')->move($inv['receipt_path'], $finalReceiptPath);
+            }
+
+            // Procesar inversión existente o crear nueva
+            if (isset($inv['investment_id'])) {
+                $existingInvestment = Investment::findOrFail($inv['investment_id']);
+                
+                if ($payment->pay_type === 'reembloso') {
+                    $existingInvestment->update([
+                        'status'           => 'inactive',
+                        'return'           => 0,
+                        'operation_number' => $inv['operation_number'],
+                        'receipt_path'     => $finalReceiptPath ?: $existingInvestment->receipt_path,
+                        'comment'          => $inv['comment'] ?? $existingInvestment->comment,
+                    ]);
+                }
+                $investment = $existingInvestment;
+            } else {
+                $investment = Investment::create([
+                    'currency'         => $invoice->currency,
+                    'amount'           => $inv['amount'],
+                    'return'           => $inv['return'],
+                    'rate'             => $inv['rate'],
+                    'due_date'         => $invoice->due_date,
+                    'investor_id'      => $investorId,
+                    'invoice_id'       => $invoice->id,
+                    'status'           => $payment->pay_type === 'reembloso' ? 'inactive' : 'paid',
+                    'operation_number' => $inv['operation_number'],
+                    'receipt_path'     => $finalReceiptPath,
+                    'comment'          => $inv['comment'],
+                ]);
+            }
+
+            // Crear movimiento financiero
+            $movementType = $payment->pay_type === 'reembloso'
+                            ? MovementType::INVESTMENT_REFUND->value
+                            : MovementType::INVESTMENT_PAYMENT->value;
+            
+            $movement = Movement::create([
+                'currency'       => $invoice->currency,
+                'amount'         => $inv['amount'],
+                'type'           => $movementType,
+                'status'         => MovementStatus::CONFIRMED->value,
+                'confirm_status' => MovementStatus::CONFIRMED->value,
+                'investor_id'    => $investorId,
+                'description'    => $payment->pay_type === 'reembloso'
+                                    ? "Reembolso de factura #{$invoice->invoice_number}"
+                                    : "Pago de factura #{$invoice->invoice_number}",
+            ]);
+
+            $investment->update(['movement_id' => $movement->id]);
+
+            // Actualizar balance del inversor
+            $balance = Balance::firstOrCreate([
+                'investor_id' => $investorId,
+                'currency'    => $invoice->currency,
+            ]);
+
+            $moneyAmount = MoneyConverter::fromDecimal($inv['amount'], $invoice->currency);
+            $moneyReturn = MoneyConverter::fromDecimal($inv['return'], $invoice->currency);
+
+            if ($payment->pay_type === 'reembloso') {
+                $balance->subtractInvestedAmount($moneyAmount)
+                        ->subtractExpectedAmount($moneyReturn)
+                        ->addAmount($moneyAmount);
+            } else {
+                $balance->addAmount($moneyAmount)
+                        ->addExpectedAmount($moneyReturn);
+            }
+            $balance->save();
+
+            // Notificar al inversor
+            $investor = $investment->investor;
+            if ($investor && $investor->email) {
+                Log::info("Enviando notificación aprobada a: {$investor->email}");
+                $investor->notify(new InvestmentRefundNotification($investment, $invoice, $payment));
+            }
+        }
+
+        // Actualizar estado de factura si es pago total
+        if ($payment->pay_type === 'total') {
+            $invoice->update(['status' => 'paid']);
+        }
+    }
+
+    private function cleanupRejectedPaymentFiles(Payment $payment)
+    {
+        $investmentsData = json_decode($payment->investments_data, true);
+        
+        foreach ($investmentsData as $inv) {
+            if ($inv['receipt_path']) {
+                Storage::disk('s3')->delete($inv['receipt_path']);
+            }
+        }
+    }
+
+    public function getPendingPayments()
+    {
+        $pendingPayments = Payment::with(['invoice', 'approval1By', 'approval2By'])
+            ->where('approval2_status', 'pending')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($payment) {
+                return [
+                    'id' => $payment->id,
+                    'invoice_number' => $payment->invoice->invoice_number,
+                    'pay_type' => $payment->pay_type,
+                    'amount_to_be_paid' => $payment->amount_to_be_paid,
+                    'pay_date' => $payment->pay_date,
+                    'created_by' => $payment->approval1By->name ?? 'N/A',
+                    'created_at' => $payment->created_at,
+                    'investments_data' => json_decode($payment->investments_data, true),
+                ];
+            });
+
+        return response()->json($pendingPayments);
+    }*/
+    public function storeReembloso(Request $request){
+        $request->validate([
+            'invoice_id'    => 'required|exists:invoices,id',
+            'pay_type'      => 'required|in:reembloso',
+            'pay_date'      => 'required|date',
+            'amount'        => 'required|numeric|min:1',
+            'comment'       => 'nullable|string',
+            'nro_operation' => 'required|string',
+            'currency'      => 'required|string|size:3',
+            'investor_id'   => 'required|exists:investors,id',
+            'resource_path' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+        ]);
+        $invoice = Invoice::findOrFail($request->invoice_id);
+        DB::beginTransaction();
+        try {
+            $payment = Payment::create([
+                'invoice_id'        => $invoice->id,
+                'pay_type'          => $request->pay_type,
+                'amount_to_be_paid' => $request->amount,
+                'pay_date'          => $request->pay_date,
+                'approval1_status'  => 'approved',
+                'approval1_by'      => Auth::id(),
+                'approval1_comment' => $request->comment,
+                'approval1_at'      => now(),
+                'approval2_status'  => 'pending',
+            ]);
+            $path = null;
+            if ($request->hasFile('resource_path')) {
+                $path = $request->file('resource_path')->store('refunds', 'public');
+            }
+            $deposit = Deposit::create([
+                'nro_operation'   => $request->nro_operation,
+                'currency'        => $request->currency,
+                'amount'          => $request->amount,
+                'resource_path'   => $path,
+                'description'     => "Solicitud de reembolso factura {$invoice->codigo}",
+                'investor_id'     => $request->investor_id,
+                'movement_id'     => null,
+                'payment_source'  => 'reembloso',
+                'type'            => 'reembloso',
+                'created_by'      => Auth::id(),
+                'updated_by'      => Auth::id(),
+            ]);
+            DB::commit();
+            return response()->json([
+                'message' => 'Reembolso registrado, pendiente de confirmación.',
+                'payment' => $payment,
+                'deposit' => $deposit,
+            ], 201);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+    public function approvePayment(Request $request, $id){
+        $request->validate([
+            'status'  => 'required|in:approved,rejected',
+            'comment' => 'nullable|string',
+        ]);
+        $payment = Payment::with('invoice')->findOrFail($id);
+        if ($payment->approval1_status !== 'approved') {
+            return response()->json([
+                'error' => 'El pago aún no ha sido registrado por el primer aprobador.'
+            ], 400);
+        }
+        DB::beginTransaction();
+        try {
+            $payment->update([
+                'approval2_status'  => $request->status,
+                'approval2_by'      => Auth::id(),
+                'approval2_comment' => $request->comment,
+                'approval2_at'      => now(),
+            ]);
+            if ($request->status === 'approved') {
+                $deposit = Deposit::where('description', "Solicitud de reembolso factura {$payment->invoice->codigo}")
+                            ->whereNull('movement_id')
+                            ->first();
+                $movement = Movement::create([
+                    'amount'      => $payment->amount_to_be_paid,
+                    'type'        => 'withdraw',
+                    'currency'    => $payment->invoice->currency,
+                    'status'      => 'confirmed',
+                    'confirm_status' => 'confirmed',
+                    'description' => 'Reembolso aprobado para la factura ' . $payment->invoice->codigo,
+                    'origin'      => 'zuma',
+                    'aprobacion_1'=> $payment->approval1_at,
+                    'aprobado_por_1' => $payment->approval1_by,
+                    'aprobacion_2'=> $payment->approval2_at,
+                    'aprobado_por_2' => $payment->approval2_by,
+                ]);
+                if ($deposit) {
+                    $deposit->update([
+                        'movement_id' => $movement->id,
+                    ]);
+                }
+                $invoice = $payment->invoice;
+                $invoice->paid_amount -= $payment->amount_to_be_paid;
+                if ($invoice->paid_amount < 0) {
+                    $invoice->paid_amount = 0;
+                }
+                $invoice->save();
+            }
+            DB::commit();
+            return response()->json([
+                'message' => $request->status === 'approved'
+                    ? 'Reembolso confirmado: movimiento y depósito enlazados.'
+                    : 'Reembolso rechazado correctamente.',
+                'payment'  => $payment,
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 }

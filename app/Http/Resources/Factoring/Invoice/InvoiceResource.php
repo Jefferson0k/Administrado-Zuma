@@ -24,32 +24,24 @@ class InvoiceResource extends JsonResource
             'loan_number'       => $this->loan_number,
             'RUC_client'        => $this->RUC_client,
             'company_id'        => $this->company_id,
-
-            // Primera aprobación
             'PrimerStado'       => $this->approval1_status,
             'approval1_comment' => $this->approval1_comment,
             'userprimer'        => $this->aprovacionuseruno?->dni ?? 'Sin aprobar',
             'userprimerNombre'  => $this->aprovacionuseruno?->name
                                     ? $this->aprovacionuseruno->name.' '.$this->aprovacionuseruno->apellidos
                                     : 'Sin aprobar',
-
-            // Segunda aprobación
             'SegundaStado'      => $this->approval2_status,
             'approval2_comment' => $this->approval2_comment,
             'userdos'           => $this->aprovacionuserdos?->dni ?? 'Sin aprobar',
             'userdosNombre'     => $this->aprovacionuserdos?->name
                                     ? $this->aprovacionuserdos->name.' '.$this->aprovacionuserdos->apellidos
                                     : 'Sin aprobar',
-
-            // Tiempos
             'tiempoUno'         => $this->approval1_at
                                     ? $this->approval1_at->format('d-m-Y H:i:s A')
                                     : null,
             'tiempoDos'         => $this->approval2_at
                                     ? $this->approval2_at->format('d-m-Y H:i:s A')
                                     : null,
-
-            // Fechas
             'fechaPago'         => $this->estimated_pay_date
                                     ? $this->estimated_pay_date->format('d-m-Y')
                                     : null,
@@ -57,11 +49,9 @@ class InvoiceResource extends JsonResource
                                     ? $this->created_at->format('d-m-Y H:i:s A')
                                     : null,
         ];
-
         if ($this->relationLoaded('investments')) {
             $data['investments'] = InvestmentListResource::collection($this->investments);
         }
-
         return $data;
     }
 }
