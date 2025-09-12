@@ -244,7 +244,7 @@ import Tag from 'primevue/tag'
 import axios from 'axios'
 import { debounce } from 'lodash'
 import InputNumber from 'primevue/inputnumber'
-import VerCronograma from './verCronograma.vue'
+import VerCronograma from './showCronograma.vue'
 import Message from 'primevue/message'
 
 const toast = useToast()
