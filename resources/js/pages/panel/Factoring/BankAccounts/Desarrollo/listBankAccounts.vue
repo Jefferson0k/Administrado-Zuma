@@ -41,7 +41,7 @@
       </template>
     </Column>
     <Column field="creacion" header="Creación" sortable style="min-width: 15rem" />
-    <Column field="update" header="Actualización" sortable style="min-width: 15rem" />
+    <!-- <Column field="update" header="Actualizaciónaqui" sortable style="min-width: 15rem" /> -->
     <Column header="" style="min-width: 5rem">
       <template #body="{ data }">
         <Button v-if="data.estado === 'Preaprobado'" icon="pi pi-ellipsis-v" text rounded
