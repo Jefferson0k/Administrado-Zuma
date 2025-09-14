@@ -152,18 +152,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
 import axios from 'axios';
-import DataTable from 'primevue/datatable';
-import Column from 'primevue/column';
+import { debounce } from 'lodash';
 import Button from 'primevue/button';
-import Tag from 'primevue/tag';
+import Column from 'primevue/column';
+import DataTable from 'primevue/datatable';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import InputText from 'primevue/inputtext';
-import { debounce } from 'lodash';
-import showInvertor from './showInvertor.vue';
+import Tag from 'primevue/tag';
 import { useToast } from 'primevue/usetoast';
+import { onMounted, ref } from 'vue';
+import showInvertor from './showInvertor.vue';
 
 const toast = useToast();
 const investors = ref<any[]>([]);
@@ -178,9 +178,9 @@ const showDetailDialog = ref(false);
 const selectedInvestorForDetail = ref<any>(null);
 
 const loadInvestors = async (event: any = {}) => {
-  loading.value = true;
-  const page = event.page != null ? event.page + 1 : currentPage.value;
-  const perPage = event.rows != null ? Number(event.rows) : rowsPerPage.value;
+    loading.value = true;
+    const page = event.page != null ? event.page + 1 : currentPage.value;
+    const perPage = event.rows != null ? Number(event.rows) : rowsPerPage.value;
 
   try {
     const response = await axios.get('/investor', {
@@ -199,12 +199,12 @@ const loadInvestors = async (event: any = {}) => {
 };
 
 const onGlobalSearch = debounce(() => {
-  currentPage.value = 1;
-  loadInvestors();
+    currentPage.value = 1;
+    loadInvestors();
 }, 500);
 
 const onPage = (event: any) => {
-  loadInvestors(event);
+    loadInvestors(event);
 };
 
 const getStatusLabel = (status: string) => {
@@ -246,15 +246,15 @@ const getStatusSeverity = (status: string) => {
 };
 
 const viewInvestorDetail = async (investor: any) => {
-  try {
-    const response = await axios.get(`/investor/${investor.id}`);
-    selectedInvestorForDetail.value = response.data.data;
-    showDetailDialog.value = true;
-  } catch (error) {
-    console.error('Error al obtener detalles del inversionista:', error);
-    selectedInvestorForDetail.value = investor;
-    showDetailDialog.value = true;
-  }
+    try {
+        const response = await axios.get(`/investor/${investor.id}`);
+        selectedInvestorForDetail.value = response.data.data;
+        showDetailDialog.value = true;
+    } catch (error) {
+        console.error('Error al obtener detalles del inversionista:', error);
+        selectedInvestorForDetail.value = investor;
+        showDetailDialog.value = true;
+    }
 };
 
 const handleStatusUpdate = (updatedInvestor: any) => {
@@ -273,6 +273,7 @@ const handleStatusUpdate = (updatedInvestor: any) => {
 };
 
 onMounted(() => {
-  loadInvestors();
+    loadInvestors();
 });
 </script>
+
