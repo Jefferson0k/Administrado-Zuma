@@ -197,14 +197,39 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{id}/reject', [BankAccountsController::class, 'rejectBankAccount'])->name('bankaccounts.reject');
     });
 
-    # INVERSIONISTA -> BACKEND
+# INVERSIONISTA -> BACKEND
     Route::prefix('investor')->group(function () {
-        Route::get('/', [InvestorController::class, 'index'])->name('investor.index');
-        Route::get('/{id}', [InvestorController::class, 'showInvestor'])->name('investor.showInvestor');
-        Route::put('/{id}/aprobar', [InvestorController::class, 'aprobar'])->name('investor.aprobar');
-        Route::put('/{id}/rechazar', [InvestorController::class, 'rechazar'])->name('investor.rechazar');
+        Route::get('/', [InvestorController::class, 'index'])
+        ->name('investor.index');
+        Route::get('/{id}', [InvestorController::class, 'showInvestor'])
+        ->name('investor.showInvestor');
+        // 📂 Archivos
+        Route::post('/{id}/adjuntar-primera', [InvestorController::class, 'adjuntarEvidenciaPrimeraValidacion'])
+        ->name('investor.adjuntarPrimera');
+        // 📂 Subida de documentos individuales
+        Route::post('/{id}/upload-document-front', [InvestorController::class, 'uploadDocumentFront'])
+        ->name('investor.uploadDocumentFront');
+        Route::post('/{id}/upload-document-back', [InvestorController::class, 'uploadDocumentBack'])
+        ->name('investor.uploadDocumentBack');
+        Route::post('/{id}/upload-investor-photo', [InvestorController::class, 'uploadInvestorPhoto'])
+        ->name('investor.uploadInvestorPhoto');
+        // ✅ Primera validación
+        Route::put('/{id}/aprobar-primera', [InvestorController::class, 'aprobarPrimeraValidacion'])
+        ->name('investor.aprobarPrimera');
+        Route::put('/{id}/rechazar-primera', [InvestorController::class, 'rechazarPrimeraValidacion'])
+        ->name('investor.rechazarPrimera');
+        Route::put('/{id}/comentar-primera', [InvestorController::class, 'comentarPrimeraValidacion'])
+        ->name('investor.comentarPrimera');
+        // ✅ Segunda validación
+        Route::put('/{id}/aprobar-segunda', [InvestorController::class, 'aprobarSegundaValidacion'])
+        ->name('investor.aprobarSegunda');
+        Route::put('/{id}/rechazar-segunda', [InvestorController::class, 'rechazarSegundaValidacion'])
+        ->name('investor.rechazarSegunda');
+        Route::put('/{id}/comentar-segunda', [InvestorController::class, 'comentarSegundaValidacion'])
+        ->name('investor.comentarSegunda');
+        Route::put('/{id}/observaciones', [InvestorController::class, 'observarPrimeraValidacion'])
+        ->name('investor.observaciones');
     });
-
     # COMPANIA -> BACKEND
     Route::prefix('companies')->group(function () {
         Route::get('/',        [CompanyController::class, 'index'])->name('companies.index');
@@ -431,7 +456,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/{payment}/details', [PaymentsController::class, 'getPaymentDetails']);
         Route::post('/{payment}/approve', [PaymentsController::class, 'approvePayment']);
         Route::get('/history', [PaymentsController::class, 'getPaymentHistory']);
-        Route::get('/deposits/investor/{investor_id}', [PaymentsController::class, 'show']);
+        Route::get('/deposits/investor/{id}', [PaymentsController::class, 'show']);
     });
 
     Route::post('/invoices/{invoiceId}/anular', [PaymentsController::class, 'anular'])

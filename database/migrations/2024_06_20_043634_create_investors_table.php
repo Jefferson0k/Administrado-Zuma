@@ -19,7 +19,7 @@ return new class extends Migration {
             $table->string('document_front')->nullable();
             $table->string('document_back')->nullable();
             $table->string('profile_photo_path', 2048)->nullable();
-            $table->enum('status', ['not validated', 'validated','rejected'])->default('not validated');
+            $table->enum('status', ['not validated', 'validated','rejected','observed','proceso'])->default('not validated');
             $table->timestamp('email_verified_at')->nullable();
             $table->boolean('is_pep')->default(false);
             $table->boolean('has_relationship_pep')->default(false);
@@ -31,6 +31,18 @@ return new class extends Migration {
             $table->string('codigo')->unique()->nullable()->comment('Código único del inversionista');
             $table->enum('type', ['inversionista', 'cliente', 'mixto'])->default('inversionista');
             $table->integer('asignado')->default(0);
+            $table->string('validacion_whatsapp', 255)->nullable();
+            $table->string('investor_photo_path', 2048)->nullable();
+            $table->string('file_path', 2048)->nullable();
+            // --- Aprobaciones ---
+            $table->enum('approval1_status', ['pending', 'approved', 'rejected','observed',])->default('pending');
+            $table->foreignId('approval1_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->text('approval1_comment')->nullable();
+            $table->timestamp('approval1_at')->nullable();
+            $table->enum('approval2_status', ['pending', 'approved', 'rejected','observed'])->nullable();
+            $table->foreignId('approval2_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->text('approval2_comment')->nullable();
+            $table->timestamp('approval2_at')->nullable();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
         });
