@@ -57,6 +57,7 @@ class Movement extends Model{
             }
         });
     }
+    
     public function deposits()
     {
         return Movement::where('type', 'deposit')->get();

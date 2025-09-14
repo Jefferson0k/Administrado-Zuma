@@ -764,7 +764,7 @@ function maskAccountNumber(accountNumber) {
 }
 
 function viewDetails(investment) {
-    selectedInvestorId.value = investment.investor_id;
+    selectedInvestorId.value = investment.id; // Usar el ID del investment (2), no el investor_id
     depositsDialogVisible.value = true;
 }
 

@@ -10,6 +10,28 @@ class InvoiceResource extends JsonResource
 {
     public function toArray($request)
     {
+        $today = Carbon::today();
+        $situacion = null;
+
+        if ($this->estimated_pay_date) {
+            $fechaVencimiento = Carbon::parse($this->estimated_pay_date);
+
+            if ($this->status === 'cobrada') {
+                $situacion = 'cobrada';
+            } elseif ($this->status === 'adjudicada') {
+                $situacion = 'adjudicada';
+            } elseif ($today->lte($fechaVencimiento)) {
+                // No está vencido
+                $situacion = 'vigente';
+            } elseif ($today->gt($fechaVencimiento) && $today->lte($fechaVencimiento->copy()->addDays(8))) {
+                // Venció pero dentro de 8 días
+                $situacion = 'vigente de los 8 días';
+            } else {
+                // Venció hace más de 8 días
+                $situacion = 'vencida';
+            }
+        }
+
         $data = [
             'id'                => $this->id,
             'razonSocial'       => $this->company?->name ?? '',
@@ -20,6 +42,7 @@ class InvoiceResource extends JsonResource
             'montoDisponible'   => $this->financed_amount,
             'tasa'              => $this->rate,
             'estado'            => $this->status,
+            'situacion'         => $situacion, // 👈 Aquí añadimos la condición
             'invoice_number'    => $this->invoice_number,
             'loan_number'       => $this->loan_number,
             'RUC_client'        => $this->RUC_client,
@@ -49,9 +72,11 @@ class InvoiceResource extends JsonResource
                                     ? $this->created_at->format('d-m-Y H:i:s A')
                                     : null,
         ];
+
         if ($this->relationLoaded('investments')) {
             $data['investments'] = InvestmentListResource::collection($this->investments);
         }
+
         return $data;
     }
 }

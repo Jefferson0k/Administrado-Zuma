@@ -692,10 +692,10 @@ onMounted(() => {
                     </span>
                 </template>
             </Column>
-            <Column field="approval2_comment" header="Situacion" sortable style="min-width: 12rem">
+            <Column field="situacion" header="Situacion" sortable style="min-width: 12rem">
                 <template #body="slotProps">
-                    <span :class="!slotProps.data.approval2_comment ? 'italic' : ''">
-                        {{ slotProps.data.approval2_comment || 'Sin situacion' }}
+                    <span :class="!slotProps.data.situacion ? 'italic' : ''">
+                        {{ slotProps.data.situacion || 'Sin situacion' }}
                     </span>
                 </template>
             </Column>
