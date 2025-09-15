@@ -33,6 +33,7 @@ use App\Http\Controllers\Panel\PaymentScheduleController;
 use App\Http\Controllers\Panel\PropertyInvestorController;
 use App\Http\Controllers\Panel\VisitaProductoController;
 use App\Http\Controllers\BlogController;
+use App\Http\Controllers\TipoDocumentoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -224,6 +225,7 @@ Route::prefix('online')->group(function () {
 });
 
 Route::get('/Tipo-Cambio-Sbs', [TipoCambioSbs::class, 'TipoCambioSbs']);
+Route::get('/tipo-documentos', [TipoDocumentoController::class, 'index']);
 Route::post('/blog/guardar', [BlogController::class, 'guardar']);
 Route::get('/blog/lista', [BlogController::class, 'lista']);
 Route::get('/blog/productos', [BlogController::class, 'productos']);

@@ -31,6 +31,7 @@ class DatabaseSeeder extends Seeder{
             CoopacInclusivaSeeder::class,
             CoopacLosAndesSeeder::class,
             ProductSeeder::class,
+            TipoDocumentoSeeder::class,
         ]);
     }
 }
