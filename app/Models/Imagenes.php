@@ -19,6 +19,7 @@ class Imagenes extends Model implements AuditableContract
         'property_id',
         'imagen',
         'path',
+        'description', // <-- ahora sí puedes guardar la descripción
         'created_by',
         'updated_by',
         'deleted_by',
@@ -26,6 +27,7 @@ class Imagenes extends Model implements AuditableContract
 
     protected $casts = [
         'deleted_at' => 'datetime',
+        'description' => 'string', // para asegurarte que siempre sea string
     ];
 
     protected static function boot()

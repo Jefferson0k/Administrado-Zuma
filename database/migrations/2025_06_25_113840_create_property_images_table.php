@@ -11,6 +11,7 @@ return new class extends Migration {
             $table->foreignUlid('property_id')->constrained()->onDelete('cascade');
             $table->string('imagen');
             $table->string('path')->nullable();
+            $table->text('description')->nullable();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();

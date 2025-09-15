@@ -142,6 +142,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     
 
     Route::get('/fixed-term-schedules/{id}/cronograma', [FixedTermScheduleController::class, 'showCronograma']);
+    Route::get('/config/{id}/schedules', [PropertyControllers::class, 'showConfig']);
 
     Route::prefix('reservas')->group(function () {
         Route::post('/', [PropertyReservationController::class, 'store']);
