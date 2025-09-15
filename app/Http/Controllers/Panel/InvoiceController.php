@@ -23,14 +23,20 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Pipeline\Pipeline;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
-class InvoiceController extends Controller{
+class InvoiceController extends Controller
+{
     private int $codigoCorrelativo = 0;
-    public function index(Request $request){
+    public function index(Request $request)
+    {
         try {
             Gate::authorize('viewAny', Invoice::class);
-            $perPage   = $request->input('per_page', 15);
+
+            $perPage   = (int) $request->input('per_page', 15);
+
+            // Filtros existentes
             $search    = $request->input('search', '');
             $status    = $request->input('status');
             $currency  = $request->input('currency');
@@ -39,8 +45,14 @@ class InvoiceController extends Controller{
             $maxAmount = $request->input('max_amount');
             $minRate   = $request->input('min_rate');
             $maxRate   = $request->input('max_rate');
+
+            // 🚀 Nuevo: parámetros de ordenamiento desde el frontend
+            $sortField = $request->input('sort_field');                 // p.ej. 'razonSocial'
+            $sortOrder = strtolower($request->input('sort_order', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+            // Construir query vía Pipeline (como ya tenías)
             $query = app(Pipeline::class)
-                ->send(Invoice::query()->with(['company']))
+                ->send(Invoice::query()->with(['company'])) // eager load
                 ->through([
                     new SearchInvoiceFilter($search),
                     new StatusFilter($status),
@@ -50,11 +62,63 @@ class InvoiceController extends Controller{
                     new RateRangeFilter($minRate, $maxRate),
                 ])
                 ->thenReturn();
+
+            // Mapa de campos de la UI -> columnas reales en BD
+            $sortableMap = [
+                'razonSocial'      => 'companies.name',
+                'codigo'           => 'invoices.invoice_code',
+                'moneda'           => 'invoices.currency',
+                'montoFactura'     => 'invoices.amount',
+                'montoAsumidoZuma' => 'invoices.financed_amount',
+                // montoDisponible = amount - financed_amount
+                'montoDisponible'  => DB::raw('(invoices.amount - invoices.financed_amount)'),
+                'tasa'             => 'invoices.rate',
+                'fechaPago'        => 'invoices.estimated_pay_date', // o 'invoices.due_date' si prefieres
+                'fechaCreacion'    => 'invoices.created_at',
+                'estado'           => 'invoices.status',
+            ];
+
+            // Si se ordena por un campo de companies.*, aseguramos el JOIN
+            if ($sortField === 'razonSocial') {
+                $alreadyJoined = collect($query->getQuery()->joins ?? [])->contains(
+                    fn($join) => $join->table === 'companies'
+                );
+
+                if (!$alreadyJoined) {
+                    $query->leftJoin('companies', 'companies.id', '=', 'invoices.company_id')
+                        ->select('invoices.*'); // mantener hidratación de modelo limpia
+                }
+            }
+
+            // Aplicar orden (y limpiar órdenes previas)
+            $query->reorder();
+            if ($sortField && array_key_exists($sortField, $sortableMap)) {
+                if ($sortField === 'montoDisponible') {
+                    $query->orderByRaw('(invoices.amount - invoices.financed_amount) ' . $sortOrder);
+                } else {
+                    $query->orderBy($sortableMap[$sortField], $sortOrder);
+                }
+            } else {
+                // Orden por defecto si no se envía sort desde el cliente
+                $query->orderBy('invoices.created_at', 'desc');
+            }
+
+            // Logs de depuración (revisar storage/logs/laravel.log)
+            $dbg = clone $query;
+            Log::info('Invoice index sorting', [
+                'sort_field' => $sortField,
+                'sort_order' => $sortOrder,
+            ]);
+            Log::info('Invoice index SQL', [
+                'sql'      => $dbg->toSql(),
+                'bindings' => $dbg->getBindings(),
+            ]);
+
             $invoices = $query->paginate($perPage);
-            return InvoiceResource::collection($invoices)
-                ->additional([
-                    'total' => $invoices->total(),
-                ]);
+
+            return InvoiceResource::collection($invoices)->additional([
+                'total' => $invoices->total(),
+            ]);
         } catch (AuthorizationException $e) {
             return response()->json([
                 'message' => 'No tienes permiso para ver las facturas.'
@@ -69,7 +133,9 @@ class InvoiceController extends Controller{
             ], 500);
         }
     }
-    public function indexfilter(){
+
+    public function indexfilter()
+    {
         try {
             Gate::authorize('viewAny', Invoice::class);
             $allowedStatus = ['active', 'expired', 'judicialized', 'reprogramed', 'daStandby'];
@@ -92,7 +158,8 @@ class InvoiceController extends Controller{
             ], 500);
         }
     }
-    public function store(StoreInvoiceRequest $request, InvoiceService $service){
+    public function store(StoreInvoiceRequest $request, InvoiceService $service)
+    {
         try {
             Gate::authorize('create', Invoice::class);
             $data = $request->validated();
@@ -111,7 +178,8 @@ class InvoiceController extends Controller{
             return response()->json(['message' => 'Error al crear la factura.', 'error' => $e->getMessage()], 500);
         }
     }
-   public function standby(Request $request, $id){
+    public function standby(Request $request, $id)
+    {
         try {
             $invoice = Invoice::findOrFail($id);
             Gate::authorize('update', $invoice);
@@ -130,7 +198,8 @@ class InvoiceController extends Controller{
         }
     }
 
-    public function show($id){
+    public function show($id)
+    {
         try {
             $invoice = Invoice::findOrFail($id);
             Gate::authorize('view', $invoice);
@@ -149,7 +218,8 @@ class InvoiceController extends Controller{
             return response()->json(['message' => 'Error al mostrar la factura.'], 500);
         }
     }
-    public function activacion(Request $request, $id){
+    public function activacion(Request $request, $id)
+    {
         try {
             $invoice = Invoice::findOrFail($id);
             Gate::authorize('update', $invoice);
@@ -170,7 +240,8 @@ class InvoiceController extends Controller{
             ], 500);
         }
     }
-    public function delete($id){
+    public function delete($id)
+    {
         try {
             $invoice = Invoice::findOrFail($id);
             Gate::authorize('delete', $invoice);
@@ -190,7 +261,8 @@ class InvoiceController extends Controller{
             ], 500);
         }
     }
-    public function update(UpdateInvoiceRequest $request, InvoiceService $service, $id){
+    public function update(UpdateInvoiceRequest $request, InvoiceService $service, $id)
+    {
         try {
             $invoice = Invoice::findOrFail($id);
             Gate::authorize('update', $invoice);
@@ -212,7 +284,8 @@ class InvoiceController extends Controller{
             ], 500);
         }
     }
-    public function exportExcel(Request $request){
+    public function exportExcel(Request $request)
+    {
         try {
             Gate::authorize('export', Invoice::class);
             $search    = $request->input('search', '');

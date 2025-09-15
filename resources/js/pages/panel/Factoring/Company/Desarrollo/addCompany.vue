@@ -68,6 +68,22 @@
                 </div>
             </div>
 
+            <!-- Nuevo nombre de empresa (Field4) -->
+            <div>
+                <label class="mb-2 block font-bold">Nuevo nombre de empresa</label>
+                <InputText
+                    v-model.trim="empresa.field4"
+                    placeholder="Nombre alternativo / nuevo nombre"
+                    class="w-full"
+                    maxlength="255"
+                    :class="{ 'p-invalid': serverErrors.field4 }"
+                    :disabled="!rucConsultado"
+                />
+                <small v-if="serverErrors.field4" class="text-red-500">
+                    {{ serverErrors.field4[0] }}
+                </small>
+            </div>
+
             <!-- Descripción -->
             <div>
                 <label class="mb-2 block font-bold">Descripción <span class="text-red-500">*</span></label>
@@ -207,13 +223,7 @@
             <!-- Moneda -->
             <div class="hidden">
                 <label class="mb-2 block font-bold">Moneda <span class="text-red-500">*</span></label>
-                <!-- <Select v-model="empresa.moneda" :options="monedas" optionLabel="label" optionValue="value"
-                    placeholder="Seleccione la moneda" class="w-full"
-                    :class="{ 'p-invalid': submitted && (!empresa.moneda || serverErrors.moneda) }"
-                    :disabled="!rucConsultado" /> -->
-                <!-- Asignamos directamente la moneda a PEN -->
                 <InputText v-model="empresa.moneda" type="hidden" />
-                <!-- Esto mantiene el v-model funcional -->
                 <small v-if="submitted && !empresa.moneda && rucConsultado" class="text-red-500"> La moneda es obligatoria. </small>
                 <small v-else-if="serverErrors.moneda" class="text-red-500">
                     {{ serverErrors.moneda[0] }}
@@ -503,7 +513,6 @@ const riesgos = [
     { label: 'E', value: 4 },
 ];
 
-// Opciones de moneda actualizadas para manejar BOTH
 const monedas = [
     { label: 'Soles (PEN)', value: 'PEN' },
     { label: 'Dólares (USD)', value: 'USD' },
@@ -524,16 +533,17 @@ const empresa = ref({
     sales_PEN: null,
     sales_USD: null,
     link_web_page: '',
-    // moneda: '',
     moneda: 'PEN',
     description: '',
+    // NUEVO: campo opcional para “Nuevo nombre de empresa”
+    field4: '',
+
     // Campos financieros integrados - estos van al CompanyFinance
     sales_volume_pen: null,
     sales_volume_usd: null,
     facturas_financiadas_pen: null,
     monto_total_financiado_pen: null,
     pagadas_pen: null,
-    // pendientes_pen: null,
     pendientes_pen: 0,
     plazo_promedio_pago_pen: null,
     facturas_financiadas_usd: null,
@@ -543,160 +553,94 @@ const empresa = ref({
     plazo_promedio_pago_usd: null,
 });
 
-// Funciones helper para el select de riesgo
+// helpers riesgo
 function getRiesgoLabel(value) {
     const riesgo = riesgos.find((r) => r.value === value);
     return riesgo ? riesgo.label : '';
 }
-
 function getRiesgoSeverity(value) {
     switch (value) {
-        case 0:
-            return 'success'; // A - Verde
-        case 1:
-            return 'info'; // B - Azul
-        case 2:
-            return 'warn'; // C - Amarillo
-        case 3:
-            return 'danger'; // D - Rojo
-        case 4:
-            return 'contrast'; // E - Negro/Gris
-        default:
-            return 'secondary';
+        case 0: return 'success';
+        case 1: return 'info';
+        case 2: return 'warn';
+        case 3: return 'danger';
+        case 4: return 'contrast';
+        default: return 'secondary';
     }
 }
 
-// Validación de URL
+// URL
 function isValidUrl(url) {
     if (!url) return false;
-    try {
-        return url.startsWith('http://') || url.startsWith('https://');
-    } catch {
-        return false;
-    }
+    try { return url.startsWith('http://') || url.startsWith('https://'); } catch { return false; }
 }
+function transformMonedaForSubmit(moneda) { return moneda; }
 
-// Función para transformar moneda antes del envío
-function transformMonedaForSubmit(moneda) {
-    // El backend espera BOTH, no AMBAS
-    return moneda;
-}
-
-// Validación del formulario
+// Validación
 function isFormValid() {
     if (!rucConsultado.value) return false;
 
-    // Verificar campos básicos requeridos
     const requiredFields = ['document', 'business_name', 'name', 'link_web_page', 'moneda', 'sector_id', 'description', 'incorporation_year'];
+    for (const field of requiredFields) { if (!empresa.value[field]) return false; }
 
-    for (const field of requiredFields) {
-        if (!empresa.value[field]) return false;
-    }
-
-    // Verificar riesgo (puede ser 0)
     if (empresa.value.risk === null || empresa.value.risk === '') return false;
 
-    // Verificar campos de ventas según moneda
     if (empresa.value.moneda === 'PEN' || empresa.value.moneda === 'BOTH') {
         if (empresa.value.sales_PEN === null || empresa.value.sales_PEN === undefined) return false;
     }
-
     if (empresa.value.moneda === 'USD' || empresa.value.moneda === 'BOTH') {
         if (empresa.value.sales_USD === null || empresa.value.sales_USD === undefined) return false;
     }
 
-    // Validar campos financieros específicos según moneda
     if (empresa.value.moneda === 'PEN' || empresa.value.moneda === 'BOTH') {
-        const requiredPenFields = [
-            'facturas_financiadas_pen',
-            'monto_total_financiado_pen',
-            'pagadas_pen',
-            'pendientes_pen',
-            'plazo_promedio_pago_pen',
-        ];
-        for (const field of requiredPenFields) {
-            if (empresa.value[field] === null || empresa.value[field] === undefined) return false;
-        }
+        const requiredPenFields = ['facturas_financiadas_pen','monto_total_financiado_pen','pagadas_pen','pendientes_pen','plazo_promedio_pago_pen'];
+        for (const f of requiredPenFields) { if (empresa.value[f] === null || empresa.value[f] === undefined) return false; }
     }
-
     if (empresa.value.moneda === 'USD' || empresa.value.moneda === 'BOTH') {
-        const requiredUsdFields = [
-            'facturas_financiadas_usd',
-            'monto_total_financiado_usd',
-            'pagadas_usd',
-            'pendientes_usd',
-            'plazo_promedio_pago_usd',
-        ];
-        for (const field of requiredUsdFields) {
-            if (empresa.value[field] === null || empresa.value[field] === undefined) return false;
-        }
+        const requiredUsdFields = ['facturas_financiadas_usd','monto_total_financiado_usd','pagadas_usd','pendientes_usd','plazo_promedio_pago_usd'];
+        for (const f of requiredUsdFields) { if (empresa.value[f] === null || empresa.value[f] === undefined) return false; }
     }
 
-    // Validar RUC
     if (!empresa.value.document || empresa.value.document.toString().length !== 11) return false;
 
-    // Validar longitudes
     if (empresa.value.business_name.length > 255) return false;
     if (empresa.value.name.length > 255) return false;
+    if (empresa.value.field4 && empresa.value.field4.length > 255) return false;
     if (empresa.value.description && empresa.value.description.length > 250) return false;
     if (empresa.value.link_web_page.length > 255) return false;
 
-    // Validar URL
     if (!isValidUrl(empresa.value.link_web_page)) return false;
 
-    // Validar año
     if (empresa.value.incorporation_year && (empresa.value.incorporation_year < 1800 || empresa.value.incorporation_year > 2030)) return false;
 
     return true;
 }
 
-// Función optimizada para cargar sectores (evita duplicaciones)
+// datos maestros
 const cargarSectores = async () => {
-    // Evitar carga duplicada
     if (sectores.value.length > 0) return;
-
     try {
         const response = await axios.get('/sectors/search');
         sectores.value = response.data.data;
-    } catch (error) {
-        console.error('Error al cargar sectores:', error);
-        toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: 'No se pudieron cargar los sectores',
-            life: 3000,
-        });
+    } catch {
+        toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar los sectores', life: 3000 });
     }
 };
-
 const cargarSubsectores = async (sectorId) => {
-    if (!sectorId) {
-        subsectores.value = [];
-        empresa.value.subsector_id = null;
-        return;
-    }
-
+    if (!sectorId) { subsectores.value = []; empresa.value.subsector_id = null; return; }
     loadingSubsectors.value = true;
     try {
         const response = await axios.get(`/subsectors/search/${sectorId}`);
         subsectores.value = response.data.data;
         empresa.value.subsector_id = null;
-    } catch (error) {
-        console.error('Error al cargar subsectores:', error);
+    } catch {
         subsectores.value = [];
-        toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: 'No se pudieron cargar los subsectores',
-            life: 3000,
-        });
+        toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar los subsectores', life: 3000 });
     } finally {
         loadingSubsectors.value = false;
     }
 };
-
 onMounted(cargarSectores);
-
 watch(() => empresa.value.sector_id, cargarSubsectores, { immediate: false });
 
 watch(
@@ -705,26 +649,21 @@ watch(
         if (nuevaMoneda !== 'PEN' && nuevaMoneda !== 'BOTH') {
             empresa.value.sales_PEN = null;
             empresa.value.sales_volume_pen = null;
-            // Resetear campos financieros PEN
             empresa.value.facturas_financiadas_pen = null;
             empresa.value.monto_total_financiado_pen = null;
             empresa.value.pagadas_pen = null;
             empresa.value.pendientes_pen = null;
             empresa.value.plazo_promedio_pago_pen = null;
         }
-
         if (nuevaMoneda !== 'USD' && nuevaMoneda !== 'BOTH') {
             empresa.value.sales_USD = null;
             empresa.value.sales_volume_usd = null;
-            // Resetear campos financieros USD
             empresa.value.facturas_financiadas_usd = null;
             empresa.value.monto_total_financiado_usd = null;
             empresa.value.pagadas_usd = null;
             empresa.value.pendientes_usd = null;
             empresa.value.plazo_promedio_pago_usd = null;
         }
-
-        // Sincronizar los campos de ventas
         if (nuevaMoneda === 'PEN' || nuevaMoneda === 'BOTH') {
             empresa.value.sales_volume_pen = empresa.value.sales_PEN;
         }
@@ -736,54 +675,25 @@ watch(
 
 async function consultarRuc() {
     if (!empresa.value.document || empresa.value.document.toString().length !== 11) {
-        toast.add({
-            severity: 'warn',
-            summary: 'RUC inválido',
-            detail: 'Debe ingresar un RUC válido de 11 dígitos',
-            life: 3000,
-        });
+        toast.add({ severity: 'warn', summary: 'RUC inválido', detail: 'Debe ingresar un RUC válido de 11 dígitos', life: 3000 });
         return;
     }
-
     try {
         const response = await axios.get(`/api/consultar-ruc/${empresa.value.document}`);
         const data = response.data;
-
         rucConsultado.value = true;
 
-        if (data.razonSocial) {
-            empresa.value.business_name = data.razonSocial;
-            empresa.value.name = data.razonSocial;
-        } else {
-            empresa.value.business_name = '';
-            empresa.value.name = '';
-        }
+        empresa.value.business_name = data.razonSocial || '';
+        empresa.value.name = data.razonSocial || '';
+        empresa.value.description = data.actividadEconomica || '';
 
-        if (data.actividadEconomica) {
-            empresa.value.description = data.actividadEconomica;
-        } else {
-            empresa.value.description = '';
-        }
-
-        toast.add({
-            severity: 'success',
-            summary: 'Datos cargados',
-            detail: 'Información del RUC obtenida correctamente',
-            life: 3000,
-        });
+        toast.add({ severity: 'success', summary: 'Datos cargados', detail: 'Información del RUC obtenida correctamente', life: 3000 });
     } catch (error) {
         rucConsultado.value = false;
-
         empresa.value.business_name = '';
         empresa.value.name = '';
         empresa.value.description = '';
-
-        toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: error.response?.data?.message || 'No se pudo obtener información del RUC',
-            life: 5000,
-        });
+        toast.add({ severity: 'error', summary: 'Error', detail: error.response?.data?.message || 'No se pudo obtener información del RUC', life: 5000 });
     }
 }
 
@@ -805,6 +715,8 @@ function resetEmpresa() {
         link_web_page: '',
         moneda: 'PEN',
         description: '',
+        field4: '',
+
         sales_volume_pen: null,
         sales_volume_usd: null,
         facturas_financiadas_pen: null,
@@ -845,6 +757,8 @@ function loadEmpresaData(data) {
         link_web_page: data.link_web_page,
         moneda: data.moneda,
         description: data.description,
+        field4: data.field4 || '',
+
         sales_volume_pen: data.sales_PEN,
         sales_volume_usd: data.sales_USD,
         facturas_financiadas_pen: data.facturas_financiadas_pen,
@@ -860,11 +774,8 @@ function loadEmpresaData(data) {
     };
 
     rucConsultado.value = true;
-
     cargarSectores();
-    if (data.sector_id) {
-        cargarSubsectores(data.sector_id);
-    }
+    if (data.sector_id) { cargarSubsectores(data.sector_id); }
 }
 
 async function guardarEmpresa() {
@@ -876,24 +787,14 @@ async function guardarEmpresa() {
         const empresaParaEnvio = { ...empresa.value };
         empresaParaEnvio.moneda = transformMonedaForSubmit(empresa.value.moneda);
         await axios.post('/companies', empresaParaEnvio);
-        toast.add({
-            severity: 'success',
-            summary: 'Éxito',
-            detail: 'Empresa y datos financieros registrados correctamente',
-            life: 3000,
-        });
+        toast.add({ severity: 'success', summary: 'Éxito', detail: 'Empresa y datos financieros registrados correctamente', life: 3000 });
         hideDialog();
         emit('agregado');
     } catch (error) {
         if (error.response && error.response.status === 422) {
             serverErrors.value = error.response.data.errors || {};
         } else {
-            toast.add({
-                severity: 'error',
-                summary: 'Error',
-                detail: 'No se pudo registrar la empresa',
-                life: 3000,
-            });
+            toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo registrar la empresa', life: 3000 });
         }
     } finally {
         loading.value = false;

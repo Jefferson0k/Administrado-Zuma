@@ -66,6 +66,7 @@ use App\Http\Controllers\Web\TasasFijas\RateTypeWebController;
 use App\Http\Controllers\Web\TasasFijas\TermPlanWebController;
 use App\Http\Controllers\Web\UsuarioWebController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\BlogController;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 
@@ -87,6 +88,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/Ambiente-Pruebas', [SubastasOnlineWebController::class, 'viewsTC']);
     Route::get('/moneda', [CurrencyControllers::class, 'index']);
     Route::get('/Frecuencia/Pagos', [PaymentFrequenciesWebController::class, 'views']);
+
+    #RUTAS BLOG
+    Route::get('/blog/registro', [BlogController::class, 'create']);
+    Route::get('/blog/seguimiento', [BlogController::class, 'seguimiento']);
+    Route::get('/blog/categorias', [BlogController::class, 'categorias']);
+    Route::get('/blog/posts', [BlogController::class, 'index']);
+
+
+
 
     #RUTAS DE API
     Route::prefix('api')->group(function () {

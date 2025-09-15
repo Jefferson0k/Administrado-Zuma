@@ -161,6 +161,34 @@ const model = computed(() => {
             ].filter(Boolean)
         },
 
+        // ===== Blog (added back, no permissions in your snippet) =====
+        {
+            label: 'Blog',
+            icon: 'pi pi-fw pi-sparkles',
+            items: [
+                {
+                    label: 'Categorias',
+                    icon: 'pi pi-fw pi-objects-column',
+                    to: '/blog/categorias'
+                },
+                {
+                    label: 'Registro',
+                    icon: 'pi pi-fw pi-file-plus',
+                    to: '/blog/registro'
+                },
+                {
+                    label: 'Posts',
+                    icon: 'pi pi-fw pi-list',
+                    to: '/blog/posts'
+                },
+                {
+                    label: 'Seguimiento',
+                    icon: 'pi pi-fw pi-star',
+                    to: '/blog/seguimiento'
+                }
+            ]
+        },
+
         // ========== ADMINISTRACIÓN ==========
         {
             label: 'Administración',

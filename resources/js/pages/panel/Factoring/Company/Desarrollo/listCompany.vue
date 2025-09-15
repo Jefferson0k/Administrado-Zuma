@@ -1,11 +1,28 @@
 <template>
     <div>
-        <DataTable ref="dt" v-model:selection="selectedCompanies" :value="companies" dataKey="id" :paginator="true" :rows="rows"
-            :totalRecords="totalRecords" :first="first" :loading="loading" :rowsPerPageOptions="[15, 25, 50, 100]"
+        <DataTable
+            ref="dt"
+            v-model:selection="selectedCompanies"
+            :value="companies"
+            dataKey="id"
+            :paginator="true"
+            :rows="rows"
+            :totalRecords="totalRecords"
+            :first="first"
+            :loading="loading"
+            :rowsPerPageOptions="[15, 25, 50, 100]"
             paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-            currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} empresas" @page="onPage" scrollable
-            scrollHeight="574px" class="p-datatable-sm" :lazy="true">
-            
+            currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} empresas"
+            @page="onPage"
+            scrollable
+            scrollHeight="574px"
+            class="p-datatable-sm"
+            :lazy="true"
+            :sortField="sortField"
+            :sortOrder="sortOrder"
+            :sortMode="'single'"
+            @sort="onSort"
+        >
             <!-- Header -->
             <template #header>
                 <div class="flex flex-col gap-4">
@@ -52,8 +69,11 @@
                                 <InputIcon>
                                     <i class="pi pi-search" />
                                 </InputIcon>
-                                <InputText v-model="globalFilter" @input="onGlobalSearch"
-                                    placeholder="Buscar por RUC, nombre, razón social..." />
+                                <InputText
+                                    v-model="globalFilter"
+                                    @input="onGlobalSearch"
+                                    placeholder="Buscar por RUC, nombre, razón social..."
+                                />
                             </IconField>
                             <Button 
                                 icon="pi pi-filter-slash" 
@@ -61,7 +81,14 @@
                                 severity="contrast"
                                 @click="clearFilters"
                             />
-                            <Button icon="pi pi-refresh" severity="contrast" outlined rounded aria-label="Refresh" @click="refreshData" />
+                            <Button
+                                icon="pi pi-refresh"
+                                severity="contrast"
+                                outlined
+                                rounded
+                                aria-label="Refresh"
+                                @click="refreshData"
+                            />
                         </div>
                     </div>
                 </div>
@@ -94,8 +121,7 @@
 
             <Column field="risk" header="Calificación" sortable style="min-width: 6rem">
                 <template #body="{ data }">
-                    <Tag :value="getRiskLabel(data.risk)" :severity="getRiskSeverity(data.risk)"
-                        class="px-3 py-1 rounded-lg font-bold" />
+                    <Tag :value="getRiskLabel(data.risk)" :severity="getRiskSeverity(data.risk)" class="px-3 py-1 rounded-lg font-bold" />
                 </template>
             </Column>
 
@@ -120,44 +146,57 @@
             <Column style="min-width: 8rem">
                 <template #body="slotProps">
                     <div class="flex gap-1">
-                        <Button icon="pi pi-eye" outlined rounded class="mr-1" severity="info" size="small"
-                            @click="showCompanyDetails(slotProps.data)" v-tooltip.top="'Ver detalles'" />
-                        <Button icon="pi pi-pencil" outlined rounded class="mr-1" size="small"
-                            @click="editCompany(slotProps.data)" v-tooltip.top="'Editar'" />
-                        <Button icon="pi pi-trash" outlined rounded severity="danger" size="small"
-                            @click="confirmDelete(slotProps.data)" v-tooltip.top="'Eliminar'" />
+                        <Button
+                            icon="pi pi-eye"
+                            outlined
+                            rounded
+                            class="mr-1"
+                            severity="info"
+                            size="small"
+                            @click="showCompanyDetails(slotProps.data)"
+                            v-tooltip.top="'Ver detalles'"
+                        />
+                        <Button
+                            icon="pi pi-pencil"
+                            outlined
+                            rounded
+                            class="mr-1"
+                            size="small"
+                            @click="editCompany(slotProps.data)"
+                            v-tooltip.top="'Editar'"
+                        />
+                        <Button
+                            icon="pi pi-trash"
+                            outlined
+                            rounded
+                            severity="danger"
+                            size="small"
+                            @click="confirmDelete(slotProps.data)"
+                            v-tooltip.top="'Eliminar'"
+                        />
                     </div>
                 </template>
             </Column>
         </DataTable>
 
-        <!-- Componentes de diálogos -->
-        <ShowCompany 
-            v-model:visible="viewDialog" 
-            :company="selectedCompany" 
-        />
-        
-        <UpdateCompany 
-            v-model:visible="editDialog" 
-            :company="selectedCompany" 
-            @updated="onCompanyUpdated" 
-        />
-        
-        <DeleteCompany 
-            v-model:visible="deleteDialog" 
-            :company="selectedCompany" 
-            @deleted="onCompanyDeleted" 
-        />
+        <!-- Diálogos -->
+        <ShowCompany v-model:visible="viewDialog" :company="selectedCompany" />
+        <UpdateCompany v-model:visible="editDialog" :company="selectedCompany" @updated="onCompanyUpdated" />
+        <DeleteCompany v-model:visible="deleteDialog" :company="selectedCompany" @deleted="onCompanyDeleted" />
     </div>
 </template>
 
 <script setup>
+/** DEBUG SWITCHES **/
+const DEBUG = true;        // logs en consola
+const API_DEBUG = false;   // añade ?debug=1 al backend
+
 import { ref, onMounted, watch } from 'vue';
 import axios from 'axios';
 import { debounce } from 'lodash';
 import { useToast } from 'primevue/usetoast';
 
-// Componentes PrimeVue
+// PrimeVue
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import InputText from 'primevue/inputtext';
@@ -166,10 +205,46 @@ import Tag from 'primevue/tag';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import Select from 'primevue/select';
-// Componentes personalizados
+
+// Custom
 import ShowCompany from './showCompany.vue';
 import UpdateCompany from './updateCompany.vue';
 import DeleteCompany from './deleteCompany.vue';
+
+/** Axios interceptors (once) **/
+if (DEBUG && typeof window !== 'undefined' && !window.__AXIOS_LOG_INSTALLED__) {
+    axios.interceptors.request.use((config) => {
+        console.groupCollapsed('%cAXIOS REQ','color:#0aa;font-weight:bold');
+        console.log('URL:', config.url);
+        console.log('Method:', config.method);
+        console.log('Params:', config.params);
+        console.log('Data:', config.data);
+        console.groupEnd();
+        return config;
+    }, (error) => {
+        console.error('AXIOS REQ ERROR:', error);
+        return Promise.reject(error);
+    });
+
+    axios.interceptors.response.use((response) => {
+        console.groupCollapsed('%cAXIOS RESP','color:#0a0;font-weight:bold');
+        console.log('URL:', response.config?.url);
+        console.log('Status:', response.status);
+        console.log('Data:', response.data);
+        console.groupEnd();
+        return response;
+    }, (error) => {
+        console.groupCollapsed('%cAXIOS RESP ERROR','color:#a00;font-weight:bold');
+        console.log('URL:', error.config?.url);
+        console.log('Status:', error.response?.status);
+        console.log('Data:', error.response?.data);
+        console.log('Message:', error.message);
+        console.groupEnd();
+        return Promise.reject(error);
+    });
+
+    window.__AXIOS_LOG_INSTALLED__ = true;
+}
 
 const toast = useToast();
 const dt = ref();
@@ -194,23 +269,19 @@ const selectedRisk = ref(null);
 const loadingSectors = ref(false);
 const loadingSubsectors = ref(false);
 
-// Opciones de riesgo
-const riskOptions = ref([
-    { label: 'A', value: 0 },
-    { label: 'B', value: 1 },
-    { label: 'C', value: 2 },
-    { label: 'D', value: 3 },
-    { label: 'E', value: 4 }
-]);
+// Ordenamiento
+const sortField = ref(null); // 'document' | 'business_name' | 'name' | 'risk' | 'sectornom' | 'subsectornom' | 'creacion'
+const sortOrder = ref(null); // 1 (asc) | -1 (desc)
 
+// Props
 const props = defineProps({
     refresh: { type: Number, required: true }
 });
 
-// Actualiza la lista si cambia la prop refresh
+// Watch refresh
 watch(() => props.refresh, () => refreshData());
 
-// Funciones auxiliares de calificación
+// Helpers calificación
 const getRiskSeverity = (risk) => {
     const riskNum = parseInt(risk);
     return ['success', 'info', 'warn', 'danger', 'secondary'][riskNum] || 'secondary';
@@ -229,69 +300,46 @@ const loadSectors = async () => {
         sectors.value = response.data.data || [];
     } catch (error) {
         console.error('Error al cargar sectores:', error);
-        toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: 'Error al cargar los sectores',
-            life: 5000
-        });
+        toast.add({ severity: 'error', summary: 'Error', detail: 'Error al cargar los sectores', life: 5000 });
         sectors.value = [];
     } finally {
         loadingSectors.value = false;
     }
 };
 
-// Cargar subsectores según el sector seleccionado
+// Cargar subsectores
 const loadSubsectors = async (sectorId) => {
-    if (!sectorId) {
-        subsectors.value = [];
-        return;
-    }
-    
+    if (!sectorId) { subsectors.value = []; return; }
     loadingSubsectors.value = true;
     try {
         const response = await axios.get(`/subsectors/search/${sectorId}`);
         subsectors.value = response.data.data || [];
     } catch (error) {
         console.error('Error al cargar subsectores:', error);
-        toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: 'Error al cargar los subsectores',
-            life: 5000
-        });
+        toast.add({ severity: 'error', summary: 'Error', detail: 'Error al cargar los subsectores', life: 5000 });
         subsectors.value = [];
     } finally {
         loadingSubsectors.value = false;
     }
 };
 
-// Eventos de cambio de filtros
+// Handlers filtros
 const onSectorChange = (event) => {
-    selectedSubsector.value = null; // Limpiar subsector cuando cambie el sector
-    if (event.value) {
-        loadSubsectors(event.value);
-    } else {
-        subsectors.value = [];
-    }
+    selectedSubsector.value = null;
+    if (event.value) loadSubsectors(event.value);
+    else subsectors.value = [];
     applyFilters();
 };
+const onSubsectorChange = () => applyFilters();
+const onRiskChange = () => applyFilters();
 
-const onSubsectorChange = () => {
-    applyFilters();
-};
-
-const onRiskChange = () => {
-    applyFilters();
-};
-
-// Aplicar filtros con debounce
+// Debounced filter apply
 const applyFilters = debounce(() => {
-    first.value = 0; // Resetear a la primera página
+    first.value = 0;
     loadCompanies();
 }, 300);
 
-// Limpiar todos los filtros
+// Limpiar filtros
 const clearFilters = () => {
     globalFilter.value = '';
     selectedSector.value = null;
@@ -299,10 +347,12 @@ const clearFilters = () => {
     selectedRisk.value = null;
     subsectors.value = [];
     first.value = 0;
+    sortField.value = null;
+    sortOrder.value = null;
     loadCompanies();
 };
 
-// Acciones para mostrar diálogos
+// Diálogos
 const showCompanyDetails = async (company) => {
     try {
         loading.value = true;
@@ -311,17 +361,11 @@ const showCompanyDetails = async (company) => {
         viewDialog.value = true;
     } catch (error) {
         console.error("Error al cargar detalles:", error);
-        toast.add({
-            severity: "error",
-            summary: "Error",
-            detail: "No se pudieron cargar los detalles de la empresa",
-            life: 5000
-        });
+        toast.add({ severity: "error", summary: "Error", detail: "No se pudieron cargar los detalles de la empresa", life: 5000 });
     } finally {
         loading.value = false;
     }
 };
-
 const editCompany = async (company) => {
     try {
         loading.value = true;
@@ -330,73 +374,58 @@ const editCompany = async (company) => {
         editDialog.value = true;
     } catch (error) {
         console.error("Error al cargar detalles:", error);
-        toast.add({
-            severity: "error",
-            summary: "Error",
-            detail: "No se pudieron cargar los detalles de la empresa",
-            life: 5000
-        });
+        toast.add({ severity: "error", summary: "Error", detail: "No se pudieron cargar los detalles de la empresa", life: 5000 });
     } finally {
         loading.value = false;
     }
 };
-
 const confirmDelete = (company) => {
     selectedCompany.value = { ...company };
     deleteDialog.value = true;
 };
 
-// Eventos de los componentes hijos
-const onCompanyUpdated = () => {
-    loadCompanies();
-};
+// Eventos hijos
+const onCompanyUpdated = () => loadCompanies();
+const onCompanyDeleted = () => loadCompanies();
 
-const onCompanyDeleted = () => {
-    loadCompanies();
-};
-
-// Cargar empresas desde API (paginado y filtrado)
+// Cargar empresas
 const loadCompanies = async () => {
     loading.value = true;
-    
-    // Calcular la página actual basada en first y rows
     const currentPage = Math.floor(first.value / rows.value) + 1;
-    
+
+    const params = {
+        search: globalFilter.value || '',
+        page: currentPage,
+        per_page: rows.value
+    };
+    if (selectedSector.value !== null) params.sector_id = selectedSector.value;
+    if (selectedSubsector.value !== null) params.subsector_id = selectedSubsector.value;
+    if (selectedRisk.value !== null) params.risk = selectedRisk.value;
+    if (sortField.value) {
+        params.sort_field = sortField.value;
+        params.sort_order = sortOrder.value === 1 ? 'asc' : 'desc';
+    }
+    if (API_DEBUG) params.debug = 1;
+
+    if (DEBUG) {
+        console.groupCollapsed('%cLOAD COMPANIES PARAMS','color:#06c;font-weight:bold');
+        console.log(params);
+        console.groupEnd();
+    }
+
     try {
-        const params = {
-            search: globalFilter.value || '',
-            page: currentPage,
-            per_page: rows.value
-        };
-
-        // Agregar filtros si están seleccionados
-        if (selectedSector.value !== null) {
-            params.sector_id = selectedSector.value;
-        }
-        
-        if (selectedSubsector.value !== null) {
-            params.subsector_id = selectedSubsector.value;
-        }
-        
-        if (selectedRisk.value !== null) {
-            params.risk = selectedRisk.value;
-        }
-
         const response = await axios.get('/companies', { params });
-        
-        console.log('Response:', response.data); // Para debugging
-        
         companies.value = response.data.data || [];
         totalRecords.value = response.data.total || 0;
-        
+
+        if (DEBUG) {
+            console.groupCollapsed('%cSERVER META','color:#06c;font-weight:bold');
+            console.log(response.data?.meta);
+            console.groupEnd();
+        }
     } catch (error) {
         console.error('Error al cargar empresas:', error);
-        toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: 'Error al cargar las empresas',
-            life: 5000
-        });
+        toast.add({ severity: 'error', summary: 'Error', detail: 'Error al cargar las empresas', life: 5000 });
         companies.value = [];
         totalRecords.value = 0;
     } finally {
@@ -404,22 +433,25 @@ const loadCompanies = async () => {
     }
 };
 
-// Función para búsqueda con debounce
+// Búsqueda global
 const onGlobalSearch = debounce(() => {
-    console.log('Buscando:', globalFilter.value); // Para debugging
-    first.value = 0; // Resetear a la primera página
+    first.value = 0;
     loadCompanies();
 }, 800);
 
-// Evento de paginación
+// Paginación
 const onPage = (event) => {
-    console.log('Page event:', event); // Para debugging
+    if (DEBUG) {
+        console.groupCollapsed('%cDT PAGE','color:#884;font-weight:bold');
+        console.log('event:', event);
+        console.groupEnd();
+    }
     first.value = event.first;
     rows.value = event.rows;
     loadCompanies();
 };
 
-// Función para refrescar datos
+// Refresh
 const refreshData = () => {
     globalFilter.value = '';
     selectedSector.value = null;
@@ -428,37 +460,32 @@ const refreshData = () => {
     subsectors.value = [];
     first.value = 0;
     rows.value = 15;
+    sortField.value = null;
+    sortOrder.value = null;
     loadCompanies();
 };
 
+// Exportar
 const exportToExcel = async () => {
     try {
         loading.value = true;
-        const params = {
-            search: globalFilter.value || '',
-        };
-        if (selectedSector.value !== null) {
-            params.sector_id = selectedSector.value;
+        const params = { search: globalFilter.value || '' };
+        if (selectedSector.value !== null) params.sector_id = selectedSector.value;
+        if (selectedSubsector.value !== null) params.subsector_id = selectedSubsector.value;
+        if (selectedRisk.value !== null) params.risk = selectedRisk.value;
+        if (sortField.value) {
+            params.sort_field = sortField.value;
+            params.sort_order = sortOrder.value === 1 ? 'asc' : 'desc';
         }
-        
-        if (selectedSubsector.value !== null) {
-            params.subsector_id = selectedSubsector.value;
-        }
-        
-        if (selectedRisk.value !== null) {
-            params.risk = selectedRisk.value;
-        }
+        if (API_DEBUG) params.debug = 1;
 
         const response = await axios.get('/companies/export-excel', {
-            params: params,
+            params,
             responseType: 'blob',
-            headers: {
-                'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-            }
+            headers: { 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
         });
-        const blob = new Blob([response.data], {
-            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        });
+
+        const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -468,13 +495,7 @@ const exportToExcel = async () => {
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
 
-        toast.add({
-            severity: 'success',
-            summary: 'Éxito',
-            detail: 'El archivo Excel se ha descargado correctamente',
-            life: 3000
-        });
-
+        toast.add({ severity: 'success', summary: 'Éxito', detail: 'El archivo Excel se ha descargado correctamente', life: 3000 });
     } catch (error) {
         console.error('Error al exportar:', error);
         toast.add({
@@ -488,8 +509,20 @@ const exportToExcel = async () => {
     }
 };
 
-const exportCSV = () => {
-    dt.value.exportCSV();
+const exportCSV = () => dt.value.exportCSV();
+
+// Sort handler
+const onSort = (event) => {
+    if (DEBUG) {
+        console.groupCollapsed('%cDT SORT','color:#884;font-weight:bold');
+        console.log('event.sortField:', event.sortField);
+        console.log('event.sortOrder:', event.sortOrder); // 1 asc, -1 desc
+        console.groupEnd();
+    }
+    sortField.value = event.sortField;
+    sortOrder.value = event.sortOrder;
+    first.value = 0;
+    loadCompanies();
 };
 
 onMounted(() => {

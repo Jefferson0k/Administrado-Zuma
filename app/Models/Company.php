@@ -29,6 +29,8 @@ class Company extends Model implements AuditableContract{
         'created_by',
         'updated_by',
         'deleted_by',
+        'nuevonombreempresa',
+
     ];
     public $timestamps = true;
     protected $casts = [
