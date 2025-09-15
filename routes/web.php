@@ -65,6 +65,7 @@ use App\Http\Controllers\Web\TasasFijas\PaymentFrequenciesWebController;
 use App\Http\Controllers\Web\TasasFijas\RateTypeWebController;
 use App\Http\Controllers\Web\TasasFijas\TermPlanWebController;
 use App\Http\Controllers\Web\UsuarioWebController;
+use App\Models\TipoDocumento;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
@@ -489,5 +490,6 @@ Route::get('/s3/{path}', function ($path) {
         ->header('Content-Length', Storage::disk('s3')->size($path));
 })->where('path', '.*');
 
+Route::get('/tipo-documentos', [TipoDocumento::class, 'index']);
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

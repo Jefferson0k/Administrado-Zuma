@@ -246,6 +246,7 @@ class InvestorController extends Controller
                 'first_last_name' => $request->first_last_name,
                 'second_last_name' => $request->second_last_name,
                 'alias' => $request->alias,
+                'tipo_documento_id' => $request->tipo_documento_id,
                 'document' => $request->document,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
