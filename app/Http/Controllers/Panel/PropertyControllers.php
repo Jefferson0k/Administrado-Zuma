@@ -28,7 +28,6 @@ use App\Services\CreditSimulationService;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -41,72 +40,190 @@ use Throwable;
 
 class PropertyControllers extends Controller
 {
-    public function store(StorePropertyRequest $request)
-    {
-        Gate::authorize('create', Property::class);
-        $data = $request->validated();
-        if (!$data['currency_id']) {
-            $data['currency_id'] = Currency::where('codigo', 'PEN')->first()->id;
-        }
-        $data['created_by'] = Auth::id();
-        $property = Property::create($data);
-        if ($request->hasFile('imagenes')) {
-            $disk = Storage::disk('s3');
-            foreach ($request->file('imagenes') as $imagen) {
-                $filename = Str::uuid() . '.' . $imagen->getClientOriginalExtension();
-                $path = "propiedades/{$property->id}/{$filename}";
-                try {
-                    $disk->putFileAs("propiedades/{$property->id}", $imagen, $filename);
-                    $property->images()->create([
-                        'imagen'     => $filename,
-                        'path'       => $path,
-                        'created_by' => Auth::id(),
-                    ]);
-                } catch (Exception $e) {
-                    Log::error('Error al subir imagen de propiedad a S3', [
-                        'error'    => $e->getMessage(),
-                        'fileName' => $filename,
-                        'path'     => $path,
-                    ]);
-                }
-            }
-        }
-        $property = Property::with(['images', 'currency'])->find($property->id);
-        return response()->json([
-            'success'  => true,
-            'message'  => 'Propiedad registrada exitosamente.',
-            'property' => $property,
-        ], 201);
+
+public function store(StorePropertyRequest $request)
+{
+    Gate::authorize('create', Property::class);
+    
+    $data = $request->validated();
+    
+    // Asignar moneda por defecto si no se proporciona
+    if (!isset($data['currency_id']) || !$data['currency_id']) {
+        $data['currency_id'] = Currency::where('codigo', 'PEN')->first()?->id;
     }
-    public function showProperty(string $id)
-    {
-        $property = Property::with(['currency'])->findOrFail($id);
+    
+    $data['created_by'] = Auth::id();
+    
+    // Crear la propiedad
+    $property = Property::create($data);
+    
+    // Procesar imágenes
+    if ($request->hasFile('imagenes')) {
+        $this->processPropertyImages($request, $property);
+    }
+    
+    // Cargar la propiedad con relaciones
+    $property = Property::with(['images', 'currency'])->find($property->id);
+    
+    return response()->json([
+        'success' => true,
+        'message' => 'Propiedad registrada exitosamente.',
+        'property' => $property,
+    ], 201);
+}
+
+private function processPropertyImages($request, $property)
+{
+    Log::info('=== PROCESANDO IMÁGENES ===');
+    
+    $disk = Storage::disk('s3');
+    $descripciones = $request->input('descriptions', []);
+    $imagenes = $request->file('imagenes');
+    
+    // DEBUG: Información detallada
+    Log::info('Datos de imágenes recibidas', [
+        'total_files' => count($imagenes),
+        'descriptions_count' => count($descripciones),
+        'property_id' => $property->id,
+        'disk_name' => config('filesystems.default'),
+        's3_configured' => config('filesystems.disks.s3.bucket')
+    ]);
+    
+    // Verificar configuración S3
+    try {
+        $testResult = $disk->exists('test-connection');
+        Log::info('Conexión S3 verificada', ['test_result' => $testResult]);
+    } catch (Exception $e) {
+        Log::error('Error de conexión S3', ['error' => $e->getMessage()]);
+    }
+    
+    foreach ($imagenes as $index => $imagen) {
+        Log::info("Procesando imagen {$index}", [
+            'original_name' => $imagen->getClientOriginalName(),
+            'size' => $imagen->getSize(),
+            'mime_type' => $imagen->getMimeType(),
+            'is_valid' => $imagen->isValid(),
+            'error' => $imagen->getError(),
+            'has_description' => isset($descripciones[$index])
+        ]);
+        
+        // Validar que el archivo sea válido
+        if (!$imagen->isValid()) {
+            Log::error('Archivo de imagen inválido', [
+                'index' => $index,
+                'error_code' => $imagen->getError(),
+                'original_name' => $imagen->getClientOriginalName()
+            ]);
+            continue;
+        }
+        
+        $filename = Str::uuid() . '.' . $imagen->getClientOriginalExtension();
+        $path = "propiedades/{$property->id}/{$filename}";
+        
+        try {
+            Log::info("Subiendo archivo a S3", [
+                'filename' => $filename,
+                'path' => $path,
+                'size' => $imagen->getSize()
+            ]);
+            
+            // Subir archivo a S3
+            $uploadResult = $disk->putFileAs("propiedades/{$property->id}", $imagen, $filename);
+            
+            Log::info('Resultado subida S3', [
+                'success' => (bool)$uploadResult,
+                'result' => $uploadResult
+            ]);
+            
+            if ($uploadResult) {
+                // Preparar datos para crear registro
+                $imageData = [
+                    'imagen' => $filename,
+                    'path' => $path,
+                    'description' => $descripciones[$index] ?? null,
+                    'created_by' => Auth::id(),
+                ];
+                
+                Log::info('Creando registro en BD', [
+                    'property_id' => $property->id,
+                    'image_data' => $imageData
+                ]);
+                
+                // Crear registro en base de datos
+                $imageRecord = $property->images()->create($imageData);
+                
+                Log::info('Imagen guardada en BD', [
+                    'image_id' => $imageRecord->id,
+                    'property_id' => $property->id,
+                    'filename' => $filename
+                ]);
+                
+            } else {
+                Log::error('Fallo al subir archivo a S3', [
+                    'filename' => $filename,
+                    'path' => $path
+                ]);
+            }
+            
+        } catch (Exception $e) {
+            Log::error('EXCEPCIÓN al procesar imagen', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+                'fileName' => $filename,
+                'path' => $path,
+                'property_id' => $property->id
+            ]);
+        }
+    }
+    
+    Log::info('=== FIN PROCESAMIENTO IMÁGENES ===');
+}
+    public function showProperty(string $id){
+        $property = Property::with(['currency', 'images'])->findOrFail($id);
+
         Gate::authorize('view', $property);
-        $folder = "propiedades/{$property->id}";
-        $files = Storage::disk('s3')->files($folder);
-        $images = collect($files)->map(function ($file) {
-            return [
-                'imagen' => basename($file),
-                'path'   => $file,
-                'url'    => url("s3/{$file}")
-            ];
-        });
+
         $propertyArray = $property->toArray();
+
+        // valores de dinero
         if (isset($propertyArray['valor_estimado']) && is_array($propertyArray['valor_estimado'])) {
             $propertyArray['valor_estimado_decimal'] = (float) $propertyArray['valor_estimado']['amount'] / 100;
             $propertyArray['valor_estimado_money'] = $propertyArray['valor_estimado'];
         }
+
         if (isset($propertyArray['valor_subasta']) && is_array($propertyArray['valor_subasta'])) {
             $propertyArray['valor_subasta_decimal'] = (float) $propertyArray['valor_subasta']['amount'] / 100;
             $propertyArray['valor_subasta_money'] = $propertyArray['valor_subasta'];
         }
+
         if (isset($propertyArray['valor_requerido']) && is_array($propertyArray['valor_requerido'])) {
             $propertyArray['valor_requerido_decimal'] = (float) $propertyArray['valor_requerido']['amount'] / 100;
             $propertyArray['valor_requerido_money'] = $propertyArray['valor_requerido'];
         }
+
+        // obtenemos archivos reales de S3
+        $folder = "propiedades/{$property->id}";
+        $files = Storage::disk('s3')->files($folder);
+
+        $images = collect($files)->map(function ($file) use ($property) {
+            // buscamos si este archivo existe en BD
+            $imgModel = $property->images->firstWhere('path', $file);
+
+            return [
+                'imagen'      => basename($file),
+                'path'        => $file,
+                'url'         => url("s3/{$file}"),
+                'description' => $imgModel?->description,
+            ];
+        });
+
         $propertyArray['images'] = $images;
+
         return response()->json($propertyArray);
     }
+
     public function delete(string $id)
     {
         $property = Property::findOrFail($id);
@@ -558,7 +675,7 @@ class PropertyControllers extends Controller
             $ordenMonto = $request->input('orden_monto', 'desc');
             $ahora = now();
 
-            $propertyIdsConSubastasActivas = Auction::where('estado', 'activa')
+            $propertyIdsConSubastasActivas = Auction::where('estado', 'en_subasta')
                 ->where(function ($query) use ($ahora) {
                     $query->where('dia_subasta', '>', $ahora->toDateString())
                         ->orWhere(function ($q) use ($ahora) {
