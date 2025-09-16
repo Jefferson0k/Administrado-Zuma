@@ -65,6 +65,7 @@ use App\Http\Controllers\Web\TasasFijas\PaymentFrequenciesWebController;
 use App\Http\Controllers\Web\TasasFijas\RateTypeWebController;
 use App\Http\Controllers\Web\TasasFijas\TermPlanWebController;
 use App\Http\Controllers\Web\UsuarioWebController;
+use App\Models\TipoDocumento;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\BlogController;
 use Inertia\Inertia;
@@ -200,19 +201,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('deposit')->group(function () {
         Route::get('/', [DepositController::class, 'index'])->name('deposits.index');
         Route::get('/{id}', [DepositController::class, 'show'])->name('deposits.show');
-
         Route::post('/{movementId}/validate', [DepositController::class, 'validateDeposit'])
             ->name('deposits.validate');
-
         Route::post('/{depositId}/{movementId}/reject', [DepositController::class, 'rejectDeposit'])
             ->name('deposits.reject');
-
         Route::post('/{depositId}/{movementId}/approve', [DepositController::class, 'approveDeposit'])
             ->name('deposits.approve');
-
         Route::post('/{depositId}/{movementId}/reject-confirm', [DepositController::class, 'rejectConfirmDeposit'])
             ->name('deposits.rejectConfirm');
+        Route::get('/export/excel', [DepositController::class, 'exportExcel'])
+            ->name('deposits.exportExcel');
     });
+
 
     Route::prefix('ban')->group(function () {
         Route::get('/', [BankAccountsController::class, 'index'])->name('bankaccounts.index');
@@ -517,5 +517,6 @@ Route::get('/s3/{path}', function ($path) {
         ->header('Content-Length', Storage::disk('s3')->size($path));
 })->where('path', '.*');
 
+Route::get('/tipo-documentos', [TipoDocumento::class, 'index']);
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
