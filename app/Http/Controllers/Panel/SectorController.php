@@ -16,26 +16,32 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Throwable;
 
-class SectorController extends Controller{
-    public function index(){
+class SectorController extends Controller
+{
+    public function index()
+    {
         try {
             Gate::authorize('viewAny', Sector::class);
-            $sectors = Sector::all();
-            return response()->json([
-                'total' => $sectors->count(),
-                'data'  => SectorResource::collection($sectors),
-            ]);
+
+            $sectors = Sector::latest()->paginate(10);
+
+            // Si quieres la respuesta “estándar” de resources (incluye meta/links):
+            return SectorResource::collection($sectors);
+
+            // O, si prefieres tu formato { total, data }:
+            // return response()->json([
+            //     'total' => $sectors->total(),
+            //     'data'  => SectorResource::collection(collect($sectors->items())),
+            // ]);
         } catch (AuthorizationException $e) {
-            return response()->json([
-                'message' => 'No tienes permiso para ver los sectores.'
-            ], 403);
-        } catch (Throwable $e) {
-            return response()->json([
-                'message' => 'Error al listar los sectores.'
-            ], 500);
+            return response()->json(['message' => 'No tienes permiso para ver los sectores.'], 403);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Error al listar los sectores.'], 500);
         }
     }
-    public function store(StoreSectorRequest $request){
+
+    public function store(StoreSectorRequest $request)
+    {
         try {
             Gate::authorize('create', Sector::class);
             $data = $request->validated();
@@ -51,7 +57,8 @@ class SectorController extends Controller{
             return response()->json(['message' => 'Error al crear el sector.'], 500);
         }
     }
-    public function show($id){
+    public function show($id)
+    {
         try {
             $sector = Sector::findOrFail($id);
             Gate::authorize('view', $sector);
@@ -64,7 +71,8 @@ class SectorController extends Controller{
             return response()->json(['message' => 'Error al mostrar el Sector.'], 500);
         }
     }
-    public function update(UpdateSectorRequest $request, $id){
+    public function update(UpdateSectorRequest $request, $id)
+    {
         try {
             $sector = Sector::findOrFail($id);
             Gate::authorize('update', $sector);
@@ -83,7 +91,8 @@ class SectorController extends Controller{
             return response()->json(['message' => 'Error al actualizar el sector.'], 500);
         }
     }
-    public function delete($id){
+    public function delete($id)
+    {
         try {
             $sector = Sector::findOrFail($id);
             Gate::authorize('delete', $sector);
@@ -99,7 +108,8 @@ class SectorController extends Controller{
             return response()->json(['message' => 'Error al eliminar la Sector.'], 500);
         }
     }
-    public function searchSector(Request $request){
+    public function searchSector(Request $request)
+    {
         try {
             Gate::authorize('search', Company::class);
             $perPage = $request->input('per_page', 15);
@@ -108,7 +118,7 @@ class SectorController extends Controller{
                 ->when($search, function ($query) use ($search) {
                     $query->where(function ($q) use ($search) {
                         $q->where('name', 'LIKE', "%{$search}%")
-                        ->orWhere('id', 'LIKE', "%{$search}%");
+                            ->orWhere('id', 'LIKE', "%{$search}%");
                     });
                 });
             $sectors = $query->paginate($perPage);
@@ -135,4 +145,3 @@ class SectorController extends Controller{
         }
     }
 }
-

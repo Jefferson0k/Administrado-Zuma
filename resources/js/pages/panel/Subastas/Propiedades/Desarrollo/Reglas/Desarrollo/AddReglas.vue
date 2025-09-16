@@ -178,7 +178,7 @@
                             :max="100" />
                     </div>
 
-                    <!-- Riesgo Cliente -->
+                    <!-- Riesgo Cliente con imágenes -->
                     <div>
                         <label class="font-semibold mb-2 block">
                             Riesgo Cliente <span class="text-red-500">*</span>
@@ -191,14 +191,21 @@
                             placeholder="Seleccionar riesgo..." 
                             fluid>
                             <template #value="{ value }">
-                                <Tag v-if="value" :value="value" :severity="getRiesgoSeverity(value)" class="px-2 py-1" />
+                                <div v-if="value" class="flex items-center gap-2">
+                                    <img :src="`/imagenes/riesgos/${value}.png`" 
+                                        :alt="`Riesgo ${value}`" 
+                                        class="w-6 h-6 object-contain" />
+                                </div>
                             </template>
                             <template #option="{ option }">
-                                <Tag :value="option.label" :severity="getRiesgoSeverity(option.value)" class="px-2 py-1" />
+                                <div class="flex items-center gap-2">
+                                    <img :src="`/imagenes/riesgos/${option.value}.png`" 
+                                        :alt="`Riesgo ${option.value}`" 
+                                        class="w-6 h-6 object-contain" />
+                                </div>
                             </template>
                         </Select>
                     </div>
-
                     <!-- Botones -->
                     <Button label="Previsualizar cronograma" 
                         icon="pi pi-eye" 
@@ -244,7 +251,7 @@ import Tag from 'primevue/tag'
 import axios from 'axios'
 import { debounce } from 'lodash'
 import InputNumber from 'primevue/inputnumber'
-import VerCronograma from './verCronograma.vue'
+import VerCronograma from './showCronograma.vue'
 import Message from 'primevue/message'
 
 const toast = useToast()
@@ -488,15 +495,6 @@ const cronogramaOpciones = [
     { label: 'Americano', value: 'americano' }
 ]
 
-const riesgos = [
-    { label: 'A+', value: 'A+' },
-    { label: 'A', value: 'A' },
-    { label: 'B', value: 'B' },
-    { label: 'C', value: 'C' },
-    { label: 'D', value: 'D' }
-]
-
-
 const openDialog = () => {
     resetForm()
     cargarPlazos()
@@ -660,4 +658,10 @@ const actualizarPropiedad = async (tipoUsuario) => {
         }
     }
 }
+const riesgos = [
+    { label: 'A+', value: 'A+' },
+    { label: 'A', value: 'A' },
+    { label: 'B', value: 'B' },
+    { label: 'C', value: 'C' }
+]
 </script>

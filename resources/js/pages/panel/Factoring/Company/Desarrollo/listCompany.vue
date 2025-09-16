@@ -143,7 +143,7 @@
                 </template>
             </Column>
 
-            <Column style="min-width: 8rem">
+            <Column style="min-width: 2rem">
                 <template #body="slotProps">
                     <div class="flex gap-1">
                         <Button
@@ -165,7 +165,7 @@
                             @click="editCompany(slotProps.data)"
                             v-tooltip.top="'Editar'"
                         />
-                        <Button
+                        <!--<Button
                             icon="pi pi-trash"
                             outlined
                             rounded
@@ -173,7 +173,7 @@
                             size="small"
                             @click="confirmDelete(slotProps.data)"
                             v-tooltip.top="'Eliminar'"
-                        />
+                        />-->
                     </div>
                 </template>
             </Column>

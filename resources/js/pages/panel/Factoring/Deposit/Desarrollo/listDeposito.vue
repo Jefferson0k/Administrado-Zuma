@@ -60,7 +60,7 @@
               {{ data.tiempo_info?.creacion_a_aprobacion_1?.texto || '--' }}
             </span>
           </div>
-          <div class="text-xs text-gray-500 text-center">
+          <div class="text-xs text-center">
             {{ getTiempoDescripcion(data.tiempo_info?.creacion_a_aprobacion_1?.categoria) }}
           </div>
         </div>

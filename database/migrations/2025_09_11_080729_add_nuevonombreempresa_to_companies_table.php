@@ -13,7 +13,6 @@ return new class extends Migration
     {
         Schema::table('companies', function (Blueprint $table) {
             $table->string('nuevonombreempresa', 255)->nullable()->after('name');
-            //
         });
     }
 
@@ -24,7 +23,6 @@ return new class extends Migration
     {
         Schema::table('companies', function (Blueprint $table) {
             $table->dropColumn('nuevonombreempresa');
-            //
         });
     }
 };

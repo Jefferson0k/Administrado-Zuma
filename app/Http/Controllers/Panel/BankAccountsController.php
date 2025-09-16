@@ -1,9 +1,11 @@
 <?php
 
 namespace App\Http\Controllers\Panel;
+
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Factoring\BankAccount\BankAccountResource;
 use App\Models\BankAccount;
+use App\Models\BankAccountAttachment;
 use App\Models\Deposit;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
@@ -11,31 +13,41 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Throwable;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
 
-class BankAccountsController extends Controller {
-    public function index(){
+class BankAccountsController extends Controller
+{
+    public function index()
+    {
         try {
             Gate::authorize('viewAny', BankAccount::class);
-            $sectors = BankAccount::all();
-            return response()->json([
-                'total' => $sectors->count(),
-                'data'  => BankAccountResource::collection($sectors),
-            ]);
+
+            $accounts = BankAccount::query()
+
+                ->whereHas('investor', function ($q) {
+                    $q->where('approval1_status', 'approved')
+                        ->where('approval2_status', 'approved');
+                })->latest()->paginate(10);
+
+            // Devuelve data + meta/links automáticamente
+            return BankAccountResource::collection($accounts);
         } catch (AuthorizationException $e) {
-            return response()->json([
-                'message' => 'No tienes permiso para ver las cuentas bancarias.'
-            ], 403);
-        } catch (Throwable $e) {
-            return response()->json([
-                'message' => 'Error al listar las cuentas bancarias.'
-            ], 500);
+            return response()->json(['message' => 'No tienes permiso para ver las cuentas bancarias.'], 403);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Error al listar las cuentas bancarias.'], 500);
         }
     }
-    public function show($id){
+
+    public function show($id)
+    {
         $bankAccount = BankAccount::with('bank', 'investor')->findOrFail($id);
         return response()->json($bankAccount);
     }
-    public function showBank($id){
+    public function showBank($id)
+    {
         $deposits = Deposit::with(['movement', 'investor'])
             ->where('bank_account_id', $id)
             ->get();
@@ -66,7 +78,8 @@ class BankAccountsController extends Controller {
         ]);
     }
 
-    public function validateBankAccount($id){
+    public function validateBankAccount($id)
+    {
         try {
             DB::beginTransaction();
             $bankAccount = BankAccount::findOrFail($id);
@@ -82,7 +95,7 @@ class BankAccountsController extends Controller {
             ]);
         } catch (Throwable $th) {
             DB::rollBack();
-            Log::error('Error al validar cuenta bancaria: '.$th->getMessage(), [
+            Log::error('Error al validar cuenta bancaria: ' . $th->getMessage(), [
                 'id' => $id,
                 'trace' => $th->getTraceAsString(),
             ]);
@@ -98,7 +111,8 @@ class BankAccountsController extends Controller {
             ], 500);
         }
     }
-    public function rejectBankAccount($id){
+    public function rejectBankAccount($id)
+    {
         try {
             DB::beginTransaction();
             $bankAccount = BankAccount::findOrFail($id);
@@ -114,7 +128,7 @@ class BankAccountsController extends Controller {
             ]);
         } catch (Throwable $th) {
             DB::rollBack();
-            Log::error('Error al rechazar cuenta bancaria: '.$th->getMessage(), [
+            Log::error('Error al rechazar cuenta bancaria: ' . $th->getMessage(), [
                 'id' => $id,
                 'trace' => $th->getTraceAsString(),
             ]);
@@ -122,5 +136,151 @@ class BankAccountsController extends Controller {
                 'message' => 'Error al rechazar la cuenta bancaria.'
             ], 500);
         }
+    }
+
+
+    public function storeAttachments(string $id, Request $request)
+    {
+        $account = BankAccount::findOrFail($id);
+        // Gate::authorize('update', $account); // si usas Policy
+
+        $request->validate([
+            'files'   => ['required', 'array', 'min:1'], // <- OBLIGATORIO: min:1 (no min[1])
+            'files.*' => ['file', 'mimes:pdf,jpg,jpeg,png,webp,heic', 'max:10240'], // 10 MB (en KB)
+        ]);
+
+        $stored = [];
+
+        foreach ($request->file('files', []) as $file) {
+            $path = $file->store("bank_accounts/{$account->id}", 'public');
+
+            $attachment = BankAccountAttachment::create([
+                'bank_account_id' => $account->id,
+                'original_name'   => $file->getClientOriginalName(),
+                'path'            => $path,
+                'mime_type'       => $file->getClientMimeType(),
+                'size'            => $file->getSize(),
+                'uploaded_by'     => auth()->id(), // null si no hay auth()
+                'meta'            => [
+                    'uuid' => (string) Str::uuid(),
+                ],
+            ]);
+
+            $stored[] = [
+                'id'            => $attachment->id,
+                'original_name' => $attachment->original_name,
+                'url'           => Storage::disk('public')->url($attachment->path),
+                'mime_type'     => $attachment->mime_type,
+                'size'          => $attachment->size,
+            ];
+        }
+
+        return response()->json(['files' => $stored], 201);
+    }
+
+
+
+
+    // App\Http\Controllers\Panel\BankAccountController.php
+
+    public function updateStatus0(string $id, Request $request)
+    {
+        $account = BankAccount::findOrFail($id);
+        Gate::authorize('update', $account); // opcional si usas Policies
+
+        $validated = $request->validate([
+            'status0' => 'required|in:approved,observed,rejected',
+            'comment0' => 'nullable|string|max:1000',
+        ]);
+
+        // ❗ Si intentan aprobar (approved), exigir al menos 1 adjunto
+        if ($validated['status0'] === 'approved') {
+            // Asegúrate de tener la relación attachments() en el modelo
+            if (!$account->attachments()->exists()) {
+                return response()->json([
+                    'message' => 'Debes adjuntar y subir al menos un archivo antes de aprobar la primera validación.'
+                ], 422);
+            }
+        }
+
+        $account->status0 = $validated['status0']; // approved|observed|rejected
+        $account->status = 'pending'; // approved|observed|rejected
+        $account->comment0 = $validated['comment0'] ?? null;
+
+        $account->updated0_by = Auth::id();
+        $account->updated0_at = now();
+        $account->save();
+
+        return new BankAccountResource($account);
+    }
+
+    public function updateStatus(string $id, Request $request)
+    {
+        $account = BankAccount::findOrFail($id);
+        Gate::authorize('update', $account); // opcional
+
+        if ($account->status0 !== 'approved') {
+            return response()->json([
+                'message' => 'La primera validación (status0) debe estar aprobada antes de actualizar el estado.'
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'status' => 'required|in:approved,observed,rejected',
+            'comment' => 'nullable|string|max:1000',
+        ]);
+
+        $account->status = $validated['status'];
+        $account->comment = $validated['comment'] ?? null;
+
+        // 🔁 Nuevo: si la 2da validación NO es "approved", regresamos status0 a "pending"
+        if (in_array($account->status, ['observed', 'rejected'], true)) {
+            $account->status0 = 'pending';
+        }
+
+        $account->updated_by = Auth::id();
+        $account->updated_last_at = now();
+
+        $account->save();
+
+        // Notificaciones (si ya las tienes)
+        // if ($account->status === 'approved') {
+        //     try {
+        //         $account->sendBankAccountValidationEmail();
+        //     } catch (\Throwable $e) {
+        //     }
+        // } elseif ($account->status === 'rejected') {
+        //     try {
+        //         $account->sendBankAccountRejectionEmail();
+        //     } catch (\Throwable $e) {
+        //     }
+        // }
+
+        return new BankAccountResource($account);
+    }
+
+
+    public function indexAttachments(string $id)
+    {
+        $account = BankAccount::with('attachments')->findOrFail($id);
+        // $this->authorize('view', $account); // si usas policies
+
+        $files = $account->attachments()
+            ->latest()
+            ->get()
+            ->map(fn($a) => [
+                'id'            => $a->id,
+                'original_name' => $a->original_name,
+                'url'           => Storage::disk('public')->url($a->path), // URL pública para preview/descarga
+                'mime_type'     => $a->mime_type,
+                'size'          => $a->size,
+            ]);
+
+        
+
+
+            
+
+        return response()->json(['files' => $files], 200);
     }
 }

@@ -17,6 +17,7 @@ use Illuminate\Support\Str;
 use App\Models\Alias;
 use App\Models\InvestorCode;
 use App\Models\Movement;
+use Dotenv\Exception\ValidationException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -24,21 +25,54 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\PersonalAccessToken;
+
 use Throwable;
 
 class InvestorController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         try {
             Gate::authorize('viewAny', Investor::class);
-            $investor = Investor::all();
-            return response()->json([
-                'total' => $investor->count(),
-                'data'  => InvestorResources::collection($investor),
-            ]);
+
+            $perPage = (int) $request->input('per_page', 15);
+            $search  = $request->input('search', '');
+
+            // ---- Sorting flexible con lista blanca y fallbacks
+            $defaultSort = Schema::hasColumn('investors', 'created_at') ? 'created_at' : 'id';
+            $allowed     = array_values(array_filter(
+                ['name', 'email', 'created_at', 'id'],
+                fn($c) => Schema::hasColumn('investors', $c)
+            ));
+
+            $sortBy  = $request->input('sort_by', $defaultSort);
+            if (!in_array($sortBy, $allowed, true)) {
+                $sortBy = $defaultSort;
+            }
+            $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+            $query = Investor::query();
+
+            // ---- Búsqueda (solo en columnas existentes para evitar errores)
+            if ($search !== '') {
+                $query->where(function ($q) use ($search) {
+                    if (Schema::hasColumn('investors', 'name'))         $q->orWhere('name', 'like', "%{$search}%");
+                    if (Schema::hasColumn('investors', 'email'))        $q->orWhere('email', 'like', "%{$search}%");
+                    if (Schema::hasColumn('investors', 'document'))     $q->orWhere('document', 'like', "%{$search}%");
+                    if (Schema::hasColumn('investors', 'razon_social')) $q->orWhere('razon_social', 'like', "%{$search}%");
+                });
+            }
+
+            // ---- Orden (más recientes primero por defecto) + desempate por id
+            $query->orderBy($sortBy, $sortDir)->orderBy('id', 'desc');
+
+            $investors = $query->paginate($perPage)->appends($request->query());
+
+            return InvestorResources::collection($investors)
+                ->additional(['total' => $investors->total()]);
         } catch (AuthorizationException $e) {
             return response()->json([
                 'message' => 'No tienes permiso para ver los inversionistas.'
@@ -49,7 +83,9 @@ class InvestorController extends Controller
             ], 500);
         }
     }
-    public function showInvestor($id){
+
+     public function showInvestor($id)
+    {
         try {
             $investor = Investor::findOrFail($id);
             Gate::authorize('view', $investor);
@@ -70,7 +106,7 @@ class InvestorController extends Controller
             ], 500);
         }
     }
-    public function store(Request $request)
+     public function store(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -567,14 +603,18 @@ class InvestorController extends Controller
             ], 500);
         }
     }
-    public function updateConfirmAccount(UpdateInvestorConfirmAccountRequest $request)
-    {
+    public function updateConfirmAccount(UpdateInvestorConfirmAccountRequest $request){
         try {
             $validatedData = $request->validated();
+
+            // Guardar documentos obligatorios
             $document_front_path = Storage::putFile('inversores/documentos', $validatedData['document_front']);
             $document_back_path = Storage::putFile('inversores/documentos', $validatedData['document_back']);
+            $investor_photo_path = Storage::putFile('inversores/fotos', $validatedData['investor_photo_path']);
+
             /** @var \App\Models\User $investor */
             $investor = Auth::user();
+
             $investor->update([
                 'is_pep' => $validatedData['is_pep'],
                 'has_relationship_pep' => $validatedData['has_relationship_pep'],
@@ -584,7 +624,9 @@ class InvestorController extends Controller
                 'address' => $validatedData['address'],
                 'document_front' => Storage::path($document_front_path),
                 'document_back' => Storage::path($document_back_path),
+                'investor_photo_path' => Storage::path($investor_photo_path),
             ]);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Tu cuenta ha sido confirmada correctamente.',
@@ -597,6 +639,7 @@ class InvestorController extends Controller
             ], 500);
         }
     }
+
     public function lastInvoiceInvested()
     {
         /** @var \App\Models\Investor $investor */
@@ -693,26 +736,40 @@ class InvestorController extends Controller
             ]),
         ]);
     }
-    public function rechazar(Request $request, $id){
+    public function rechazar(Request $request, $id)
+    {
         try {
-            //Gate::authorize('update', Investor::class);
+            $request->validate([
+                'approval1_comment' => 'nullable|string',
+            ]);
+
             $investor = Investor::findOrFail($id);
+            
             $investor->update([
+                'approval1_status' => 'rejected',
+                'approval1_by' => Auth::id(),
+                'approval1_comment' => $request->approval1_comment,
+                'approval1_at' => now(),
                 'status' => 'rejected',
+                // Limpiar datos si es necesario
                 'district' => null,
                 'province' => null,
                 'department' => null,
-                'address'  => null,
+                'address' => null,
                 'document_front' => null,
                 'document_back' => null,
+                'investor_photo_path' => null,
                 'updated_by' => Auth::id(),
             ]);
+
+            // Mandar correo de rechazo
             $investor->sendAccountRejectedEmailNotification();
+
             return response()->json([
                 'message' => 'Inversionista rechazado y notificación enviada correctamente.',
                 'data' => $investor
             ], 200);
-            
+
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error al rechazar inversionista.',
@@ -720,25 +777,366 @@ class InvestorController extends Controller
             ], 500);
         }
     }
-    public function aprobar(Request $request, $id){
+    public function observarPrimeraValidacion(Request $request, $id){
         try {
-            //Gate::authorize('update', Investor::class);
-            $investor = Investor::findOrFail($id);
-            $investor->update([
-                'status' => 'validated',
-                'updated_by' => Auth::id(),
+            $request->validate([
+                'approval1_comment' => 'required|string',
             ]);
-            $investor->sendAccountApprovedEmailNotification();
+
+            $investor = Investor::findOrFail($id);
+
+            $investor->update([
+                'approval1_status'  => 'observed',         // se mantiene para control interno
+                'approval1_by'      => Auth::id(),
+                'approval1_comment' => $request->approval1_comment,
+                'approval1_at'      => now(),
+                'status'            => 'proceso',          // 👈 aquí cambias a proceso
+                'updated_by'        => Auth::id(),
+            ]);
+
+            $investor->sendAccountObservedEmailNotification($request->approval1_comment);
+
             return response()->json([
-                'message' => 'Inversionista validado y notificación enviada correctamente.',
-                'data' => $investor
+                'message' => 'Inversionista marcado como observado (en proceso) y notificación enviada.',
+                'data'    => $investor
             ], 200);
-            
+
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Error al validar inversionista.',
-                'error' => $e->getMessage()
+                'message' => 'Error al marcar como observado.',
+                'error'   => $e->getMessage()
             ], 500);
         }
     }
-}
+    public function adjuntarEvidenciaPrimeraValidacion(Request $request, $id){
+        try {
+            $request->validate([
+                'file_path' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            ]);
+            $investor = Investor::findOrFail($id);
+            $path = $request->file('file_path')->store('inversores/evidencias', 'public');
+            $investor->update([
+                'file_path'  => Storage::disk('public')->url($path),
+                'updated_by' => Auth::id(),
+            ]);
+            return response()->json([
+                'message' => 'Archivo adjuntado correctamente.',
+                'data'    => $investor,
+            ], 200);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'Error de validación.',
+                'errors'  => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al adjuntar el archivo.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+    public function aprobarPrimeraValidacion(Request $request, $id){
+        try {
+            $request->validate([
+                'approval1_comment' => 'nullable|string',
+            ]);
+            $investor = Investor::findOrFail($id);
+            $investor->update([
+                'approval1_status' => 'approved',
+                'approval1_by'     => Auth::id(),
+                'approval1_comment'=> $request->approval1_comment,
+                'approval1_at'     => now(),
+                'updated_by'       => Auth::id(),
+            ]);
+            return response()->json([
+                'message' => 'Primera validación aprobada correctamente.',
+                'data'    => $investor,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error en la primera validación.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+    public function rechazarPrimeraValidacion(Request $request, $id){
+        try {
+            $request->validate([
+                'approval1_comment' => 'required|string',
+            ]);
+            $investor = Investor::findOrFail($id);
+            $investor->update([
+                'approval1_status' => 'rejected',
+                'approval1_by'     => Auth::id(),
+                'approval1_comment'=> $request->approval1_comment,
+                'approval1_at'     => now(),
+                'status'           => 'rejected',
+                // Limpiar datos sensibles si aplica
+                'district'         => null,
+                'province'         => null,
+                'department'       => null,
+                'address'          => null,
+                'document_front'   => null,
+                'document_back'    => null,
+                'updated_by'       => Auth::id(),
+            ]);
+            $investor->sendAccountRejectedEmailNotification();
+            return response()->json([
+                'message' => 'Primera validación rechazada correctamente.',
+                'data'    => $investor,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al rechazar en primera validación.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+    public function comentarPrimeraValidacion(Request $request, $id){
+        try {
+            $request->validate([
+                'approval1_comment' => 'required|string',
+            ]);
+            $investor = Investor::findOrFail($id);
+            $investor->update([
+                'approval1_comment' => $request->approval1_comment,
+                'approval1_by'      => Auth::id(),
+                'approval1_at'      => now(),
+                'updated_by'        => Auth::id(),
+            ]);
+            return response()->json([
+                'message' => 'Comentario guardado correctamente.',
+                'data'    => $investor,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al guardar el comentario.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+    // ===============================
+    // SEGUNDA VALIDACIÓN
+    // ===============================
+
+    public function observarSegundaValidacion(Request $request, $id){
+        try {
+            $request->validate([
+                'approval2_comment' => 'required|string',
+            ]);
+            $investor = Investor::findOrFail($id);
+            $investor->update([
+                'approval2_status' => 'observed',
+                'approval2_by'     => Auth::id(),
+                'approval2_comment'=> $request->approval2_comment,
+                'approval2_at'     => now(),
+                'status'           => 'observed',
+                'updated_by'       => Auth::id(),
+            ]);
+            // Si necesitas mandar correo, aquí va tu notificación
+            // $investor->sendAccountObservedEmailNotification($request->approval2_comment);
+
+            return response()->json([
+                'message' => 'Inversionista observado en segunda validación.',
+                'data'    => $investor
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al observar en segunda validación.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function aprobarSegundaValidacion(Request $request, $id){
+        try {
+            $request->validate([
+                'approval2_comment' => 'nullable|string',
+            ]);
+            $investor = Investor::findOrFail($id);
+            $investor->update([
+                'approval2_status'  => 'approved',
+                'approval2_by'      => Auth::id(),
+                'approval2_comment' => $request->approval2_comment,
+                'approval2_at'      => now(),
+                'status'            => 'validated',
+                'updated_by'        => Auth::id(),
+            ]);
+            return response()->json([
+                'message' => 'Segunda validación aprobada correctamente.',
+                'data'    => $investor,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error en segunda validación.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function rechazarSegundaValidacion(Request $request, $id){
+        try {
+            $request->validate([
+                'approval2_comment' => 'required|string',
+            ]);
+            $investor = Investor::findOrFail($id);
+            $investor->update([
+                'approval2_status'  => 'rejected',
+                'approval2_by'      => Auth::id(),
+                'approval2_comment' => $request->approval2_comment,
+                'approval2_at'      => now(),
+                'status'            => 'rejected',
+                // Limpiar datos sensibles si aplica
+                'district'          => null,
+                'province'          => null,
+                'department'        => null,
+                'address'           => null,
+                'document_front'    => null,
+                'document_back'     => null,
+                'updated_by'        => Auth::id(),
+            ]);
+            // $investor->sendAccountRejectedEmailNotification();
+
+            return response()->json([
+                'message' => 'Segunda validación rechazada correctamente.',
+                'data'    => $investor,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al rechazar en segunda validación.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function comentarSegundaValidacion(Request $request, $id){
+        try {
+            $request->validate([
+                'approval2_comment' => 'required|string',
+            ]);
+            $investor = Investor::findOrFail($id);
+            $investor->update([
+                'approval2_comment' => $request->approval2_comment,
+                'approval2_by'      => Auth::id(),
+                'approval2_at'      => now(),
+                'updated_by'        => Auth::id(),
+            ]);
+            return response()->json([
+                'message' => 'Comentario de segunda validación guardado correctamente.',
+                'data'    => $investor,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al guardar comentario en segunda validación.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+    public function uploadDocumentFront(Request $request, $id){
+        try {
+            $request->validate([
+                'document_front' => 'required|file|image|mimes:jpg,jpeg,png|max:5120'
+            ]);
+
+            $investor = Investor::findOrFail($id);
+            if ($investor->document_front && Storage::exists($investor->document_front)) {
+                Storage::delete($investor->document_front);
+            }
+
+            // Guardar nuevo documento
+            $document_front_path = Storage::putFile('inversores/documentos', $request->file('document_front'));
+
+            $investor->update([
+                'document_front' => Storage::path($document_front_path),
+                'updated_by' => Auth::id(),
+            ]);
+
+            return response()->json([
+                'message' => 'Documento frontal actualizado correctamente.',
+                'data' => $investor,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al subir documento frontal.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Subir nuevo documento posterior del DNI
+     */
+    public function uploadDocumentBack(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'document_back' => 'required|file|image|mimes:jpg,jpeg,png|max:5120'
+            ]);
+
+            $investor = Investor::findOrFail($id);
+            
+            // Eliminar archivo anterior si existe
+            if ($investor->document_back && Storage::exists($investor->document_back)) {
+                Storage::delete($investor->document_back);
+            }
+
+            // Guardar nuevo documento
+            $document_back_path = Storage::putFile('inversores/documentos', $request->file('document_back'));
+
+            $investor->update([
+                'document_back' => Storage::path($document_back_path),
+                'updated_by' => Auth::id(),
+            ]);
+
+            return response()->json([
+                'message' => 'Documento posterior actualizado correctamente.',
+                'data' => $investor,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al subir documento posterior.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Subir nueva foto del inversionista
+     */
+    public function uploadInvestorPhoto(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'investor_photo_path' => 'required|file|image|mimes:jpg,jpeg,png|max:5120'
+            ]);
+
+            $investor = Investor::findOrFail($id);
+            
+            // Eliminar archivo anterior si existe
+            if ($investor->investor_photo_path && Storage::exists($investor->investor_photo_path)) {
+                Storage::delete($investor->investor_photo_path);
+            }
+
+            // Guardar nueva foto
+            $investor_photo_path = Storage::putFile('inversores/fotos', $request->file('investor_photo_path'));
+
+            $investor->update([
+                'investor_photo_path' => Storage::path($investor_photo_path),
+                'updated_by' => Auth::id(),
+            ]);
+
+            return response()->json([
+                'message' => 'Foto del inversionista actualizada correctamente.',
+                'data' => $investor,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al subir foto del inversionista.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }}

@@ -19,12 +19,12 @@ import updateActive from './updateActive.vue';
 import deleteInvoice from './deleteInvoice.vue';
 import showFacturas from './showFacturas.vue';
 import updateInvoice from './updateInvoice.vue';
+import paymentInvoice from './paymentInvoice.vue';
 
 const props = defineProps({
   refresh: { type: Number, default: 0 }
 });
 
-// Exponer filtros al padre
 const emit = defineEmits(['filters-changed']);
 
 const toast = useToast();
@@ -38,7 +38,7 @@ const menuItems = ref([]);
 // ▸ NUEVO: estado de ordenamiento (server-side)
 const sortField = ref(null); // 'razonSocial' | 'codigo' | 'moneda' | 'montoFactura' | 'montoAsumidoZuma' | 'montoDisponible' | 'tasa' | 'fechaPago' | 'fechaCreacion' | 'estado'
 const sortOrder = ref(null); // 1 | -1
-
+const showPaymentDialog = ref(false);
 const filters = ref({
   search: '',
   status: null,
@@ -130,34 +130,61 @@ async function exportToExcel() {
     toast.add({ severity: 'error', summary: 'Error', detail: 'Error al exportar las facturas', life: 3000 });
   }
 }
-defineExpose({ exportToExcel });
+
+// Exponer la función de exportación para que el componente padre pueda usarla
+defineExpose({
+    exportToExcel
+});
+
+// Funciones para los estados de aprobación
+function getApprovalStatusLabel(status) {
+    const approvalLabels = {
+        'pending': 'Inactivo',
+        'approved': 'Activo',
+        'rejected': 'Anulado'
+    };
+    return approvalLabels[status] || status;
+}
+
+function getApprovalStatusSeverity(status) {
+    switch (status) {
+        case 'pending': return 'secondary';
+        case 'approved': return 'success';
+        case 'rejected': return 'danger';
+        default: return 'secondary';
+    }
+}
 
 function getStatusLabel(status) {
-  const statusLabels = {
-    inactive: 'Inactivo',
-    active: 'Activo',
-    expired: 'Vencido',
-    judicialized: 'Judicializado',
-    reprogramed: 'Reprogramado',
-    paid: 'Pagado',
-    canceled: 'Cancelado',
-    daStandby: 'En Standby'
-  };
-  return statusLabels[status] || status;
+    const statusLabels = {
+        'inactive': 'Inactivo',
+        'active': 'Activo',
+        'expired': 'Vencido',
+        'judicialized': 'Judicializado',
+        'reprogramed': 'Reprogramado',
+        'paid': 'Pagado',
+        'canceled': 'Cancelado',
+        'daStandby': 'Standby',
+        'observed': 'Observado',
+        'annulled': 'Anulado'   // 👈 nuevo estado
+    };
+    return statusLabels[status] || status;
 }
 
 function getStatusSeverity(status) {
-  switch (status) {
-    case 'inactive': return 'secondary';
-    case 'active': return 'success';
-    case 'expired': return 'danger';
-    case 'judicialized': return 'warn';
-    case 'reprogramed': return 'info';
-    case 'paid': return 'contrast';
-    case 'canceled': return 'danger';
-    case 'daStandby': return 'warn';
-    default: return 'secondary';
-  }
+    switch (status) {
+        case 'inactive': return 'secondary';
+        case 'active': return 'success';
+        case 'expired': return 'danger';
+        case 'judicialized': return 'warn';
+        case 'reprogramed': return 'info';
+        case 'paid': return 'contrast';
+        case 'canceled': return 'danger';
+        case 'daStandby': return 'warn';
+        case 'observed': return 'info';
+        case 'annulled': return 'danger'; // 👈 mismo estilo que canceled
+        default: return 'secondary';
+    }
 }
 
 const formatCurrency = (value, moneda) => {
@@ -221,6 +248,16 @@ async function loadData() {
   }
 }
 
+function gestionarPago(factura) {
+    selectedFacturaId.value = factura.id;
+    showPaymentDialog.value = true;
+}
+
+function onPaymentCancelled() {
+    selectedFacturaId.value = null;
+    showPaymentDialog.value = false;
+}
+
 function clearFilters() {
   filters.value = {
     search: '',
@@ -271,9 +308,8 @@ function confirmDelete(factura) {
 function verInversionistas(factura) {
   router.get(`/factoring/${factura.id}/inversionistas`);
 }
-function gestionarPago(factura) {
-  console.log('Gestionar pago factura:', factura);
-}
+
+
 function ponerEnStandby(factura) {
   selectedFacturaId.value = factura.id;
   showStandbyDialog.value = true;
@@ -295,37 +331,78 @@ const toggleMenu = (event, factura) => {
     { label: 'Ver factura', icon: 'pi pi-file', command: () => verFactura(factura) }
   ];
 
-  if ((factura.estado ?? '').toLowerCase().trim() === 'inactive') {
-    items = items.concat([
-      { label: 'Activo', icon: 'pi pi-check-circle', command: () => ponerActivo(factura) },
-      { separator: true },
-      { label: 'Editar', icon: 'pi pi-pencil', command: () => editFactura(factura) },
-      { label: 'Eliminar', icon: 'pi pi-trash', command: () => confirmDelete(factura), class: 'p-menuitem-link-danger' }
-    ]);
-  } else if (factura.estado === 'active') {
-    items = items.concat([
-      { label: 'Ver inversionistas', icon: 'pi pi-eye', command: () => verInversionistas(factura) },
-      { separator: true },
-      { label: 'Poner en standby', icon: 'pi pi-pause', command: () => ponerEnStandby(factura) }
-    ]);
-  } else if (factura.estado === 'daStandby') {
-    items = items.concat([
-      { label: 'Ver inversionistas', icon: 'pi pi-eye', command: () => verInversionistas(factura) },
-      { label: 'Gestionar pago', icon: 'pi pi-wallet', command: () => gestionarPago(factura) }
-    ]);
-  } else if (factura.estado === 'reprogramed') {
-    items = items.concat([
-      { label: 'Ver inversionistas', icon: 'pi pi-eye', command: () => verInversionistas(factura) }
-    ]);
-  } else {
-    items = items.concat([
-      { label: 'Ver inversionistas', icon: 'pi pi-eye', command: () => verInversionistas(factura) }
-    ]);
-  }
+    if (factura.estado?.toLowerCase().trim() === 'inactive') {
+        items = items.concat([
+            {
+                label: 'Activo',
+                icon: 'pi pi-check-circle',
+                command: () => ponerActivo(factura)
+            },
+            { separator: true },
+            {
+                label: 'Editar',
+                icon: 'pi pi-pencil',
+                command: () => editFactura(factura)
+            },
+            {
+                label: 'Eliminar',
+                icon: 'pi pi-trash',
+                command: () => confirmDelete(factura),
+                class: 'p-menuitem-link-danger'
+            }
+        ]);
+    } else if (factura.estado === 'active') {
+        items = items.concat([
+            {
+                label: 'Ver inversionistas',
+                icon: 'pi pi-eye',
+                command: () => verInversionistas(factura)
+            },
+            { separator: true },
+            {
+                label: 'Poner en standby',
+                icon: 'pi pi-pause',
+                command: () => ponerEnStandby(factura)
+            }
+        ]);
+    } else if (factura.estado === 'daStandby') {
+        items = items.concat([
+            {
+                label: 'Gestionar pago',
+                icon: 'pi pi-wallet',
+                command: () => gestionarPago(factura)
+            }
+        ]);
+    } else if (factura.estado === 'reprogramed') {
+        items = items.concat([
+            {
+                label: 'Ver inversionistas',
+                icon: 'pi pi-eye',
+                command: () => verInversionistas(factura)
+            }
+        ]);
+    } else if (factura.estado === 'observed') {
+        items = items.concat([
+            {
+                label: 'Editar',
+                icon: 'pi pi-pencil',
+                command: () => editFactura(factura)
+            }
+        ]);
+    } else {
+        items = items.concat([
+            {
+                label: 'Ver inversionistas',
+                icon: 'pi pi-eye',
+                command: () => verInversionistas(factura)
+            }
+        ]);
+    }
 
   menuItems.value = items;
   menu.value.toggle(event);
 };
+
 
 let searchTimeout;
 watch(() => filters.value.search, () => {
@@ -447,33 +524,93 @@ onMounted(() => {
         </div>
       </template>
 
-      <Column selectionMode="multiple" style="width: 1rem" :exportable="false" />
-      <Column field="razonSocial" header="Razón Social" sortable style="min-width: 20rem" />
-      <Column field="codigo" header="Código" sortable style="min-width: 10rem" />
-      <Column field="moneda" header="Moneda" sortable style="min-width: 8rem" />
-      <Column field="montoFactura" header="M. Factura" sortable style="min-width: 12rem">
-        <template #body="slotProps">
-          {{ formatCurrency(slotProps.data.montoFactura, slotProps.data.moneda) }}
-        </template>
-      </Column>
-      <Column field="montoAsumidoZuma" header="M. asumido ZUMA" sortable style="min-width: 15rem">
-        <template #body="slotProps">
-          {{ formatCurrency(slotProps.data.montoAsumidoZuma, slotProps.data.moneda) }}
-        </template>
-      </Column>
-      <Column field="montoDisponible" header="Monto Disponible" sortable style="min-width: 12rem">
-        <template #body="slotProps">
-          {{ formatCurrency(slotProps.data.montoDisponible, slotProps.data.moneda) }}
-        </template>
-      </Column>
-      <Column field="tasa" header="Tasa (%)" sortable style="min-width: 8rem" />
-      <Column field="fechaPago" header="Fecha de Pago" sortable style="min-width: 10rem" />
-      <Column field="fechaCreacion" header="Fecha Creación" sortable style="min-width: 13rem" />
-      <Column field="estado" header="Estado" sortable style="min-width: 8rem">
-        <template #body="slotProps">
-          <Tag :value="getStatusLabel(slotProps.data.estado)" :severity="getStatusSeverity(slotProps.data.estado)" />
-        </template>
-      </Column>
+            <Column selectionMode="multiple" style="width: 1rem" :exportable="false" />
+            <Column field="razonSocial" header="Razón Social" sortable style="min-width: 20rem" />
+            <Column field="codigo" header="Código" sortable style="min-width: 5rem" />
+            <Column field="moneda" header="Moneda" sortable style="min-width: 5rem" />
+            <Column field="montoFactura" header="M. Factura" sortable style="min-width: 8rem">
+                <template #body="slotProps">
+                    {{ formatCurrency(slotProps.data.montoFactura, slotProps.data.moneda) }}
+                </template>
+            </Column>
+            <Column field="montoAsumidoZuma" header="M. asumido zuma" sortable style="min-width: 11rem">
+                <template #body="slotProps">
+                    {{ formatCurrency(slotProps.data.montoAsumidoZuma, slotProps.data.moneda) }}
+                </template>
+            </Column>
+            <Column field="montoDisponible" header="Monto Disponible" sortable style="min-width: 11rem">
+                <template #body="slotProps">
+                    {{ formatCurrency(slotProps.data.montoDisponible, slotProps.data.moneda) }}
+                </template>
+            </Column>
+            <Column field="tasa" header="Tasa (%)" sortable style="min-width: 7rem" />
+            <Column field="fechaPago" header="Fecha de Pago" sortable style="min-width: 10rem" />
+            <Column field="estado" header="Estado" sortable style="min-width: 7rem">
+                <template #body="slotProps">
+                    <Tag :value="getStatusLabel(slotProps.data.estado)" :severity="getStatusSeverity(slotProps.data.estado)" />
+                </template>
+            </Column>
+            <!-- Columnas de aprobación -->
+            <Column field="PrimerStado" header="1ª Estado" sortable style="min-width: 7rem">
+                <template #body="slotProps">
+                    <Tag :value="getApprovalStatusLabel(slotProps.data.PrimerStado)" :severity="getApprovalStatusSeverity(slotProps.data.PrimerStado)" />
+                </template>
+            </Column>
+            
+            <Column field="userprimer" header="1ª Usuario" sortable style="min-width: 8rem">
+                <template #body="slotProps">
+                    <span :class="slotProps.data.userprimer === 'Sin aprobar' ? 'italic' : ''">
+                        {{ slotProps.data.userprimer || 'Sin asignar' }}
+                    </span>
+                </template>
+            </Column>
+            
+            <Column field="tiempoUno" header="T. 1ª Aprobación" sortable style="min-width: 12rem">
+                <template #body="slotProps">
+                    <span :class="!slotProps.data.tiempoUno ? 'italic' : ''">
+                        {{ slotProps.data.tiempoUno || 'Sin tiempo' }}
+                    </span>
+                </template>
+            </Column>
+            
+            <Column field="SegundaStado" header="2ª Estado" sortable style="min-width: 7rem">
+            <template #body="slotProps">
+                <template v-if="!slotProps.data.SegundaStado">
+                    <span class="italic">Sin estado</span>
+                </template>
+                <template v-else>
+                    <Tag 
+                        :value="getApprovalStatusLabel(slotProps.data.SegundaStado)" 
+                        :severity="getApprovalStatusSeverity(slotProps.data.SegundaStado)" 
+                    />
+                    </template>
+                </template>
+            </Column>
+
+            <Column field="userdos" header="2do Usuario" sortable style="min-width: 8rem">
+                <template #body="slotProps">
+                    <span :class="slotProps.data.userdos === 'Sin aprobar' ? 'italic' : ''">
+                        {{ slotProps.data.userdos || 'Sin asignar' }}
+                    </span>
+                </template>
+            </Column>
+            
+            <Column field="tiempoDos" header="T. 2ª Aprobación" sortable style="min-width: 12rem">
+                <template #body="slotProps">
+                    <span :class="!slotProps.data.tiempoDos ? 'italic' : ''">
+                        {{ slotProps.data.tiempoDos || 'Sin tiempo' }}
+                    </span>
+                </template>
+            </Column>
+            <Column field="situacion" header="Situacion" sortable style="min-width: 12rem">
+                <template #body="slotProps">
+                    <span :class="!slotProps.data.situacion ? 'italic' : ''">
+                        {{ slotProps.data.situacion || 'Sin situacion' }}
+                    </span>
+                </template>
+            </Column>
+            
+            <Column field="fechaCreacion" header="Fecha Creación" sortable style="min-width: 13rem" />
 
       <Column header="" :exportable="false">
         <template #body="slotProps">
@@ -497,5 +634,11 @@ onMounted(() => {
     <deleteInvoice v-model="showDeleteDialog"  :factura-id="selectedFacturaId" :factura-data="selectedFacturaData" @confirmed="onDeleteConfirmed" @cancelled="onDeleteCancelled" />
     <showFacturas  v-model="showFacturaDialog" :factura-id="selectedFacturaId" @cancelled="onFacturaDialogCancelled" />
     <updateInvoice v-model="showUpdateDialog"  :factura-id="selectedFacturaId" @updated="onUpdateConfirmed" @cancelled="onUpdateCancelled" />
+
+        <paymentInvoice
+            v-model="showPaymentDialog"
+            :factura-id="selectedFacturaId"
+            @cancelled="onPaymentCancelled"
+        />
   </div>
 </template>

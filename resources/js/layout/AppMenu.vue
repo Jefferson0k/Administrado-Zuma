@@ -1,27 +1,27 @@
 <script setup>
-import { computed } from 'vue';
-import { usePage } from '@inertiajs/vue3';
-import AppMenuItem from './AppMenuItem.vue';
+import { computed } from 'vue'
+import { usePage } from '@inertiajs/vue3'
+import AppMenuItem from './AppMenuItem.vue'
 
-const page = usePage();
-const permissions = computed(() => page.props.auth.user?.permissions ?? []);
-const hasPermission = (perm) => permissions.value.includes(perm);
+const page = usePage()
+const permissions = computed(() => page.props?.auth?.user?.permissions ?? [])
+const hasPermission = (perm) => permissions.value?.includes?.(perm)
 
 const model = computed(() => {
     const menuItems = [
-        // ========== DASHBOARD ==========
+        // ===== Dashboard =====
         {
             label: 'Dashboard',
             items: [
-                { 
-                    label: 'Panel Principal', 
-                    icon: 'pi pi-fw pi-home', 
-                    to: '/dashboard' 
+                {
+                    label: 'Panel Principal',
+                    icon: 'pi pi-fw pi-home',
+                    to: '/dashboard'
                 }
             ]
         },
 
-        // ========== TASAS FIJAS ==========
+        // ===== Tasas Fijas =====
         {
             label: 'Tasas Fijas',
             icon: 'pi pi-fw pi-percentage',
@@ -54,7 +54,7 @@ const model = computed(() => {
             ].filter(Boolean)
         },
 
-        // ========== FACTORING ==========
+        // ===== Factoring (interno) + link externo =====
         {
             label: 'Factoring',
             icon: 'pi pi-fw pi-file-invoice',
@@ -104,15 +104,24 @@ const model = computed(() => {
                     icon: 'pi pi-fw pi-sitemap',
                     to: '/factoring/sectores'
                 },
-                ('ver sectores') && {
-                    label: 'Tipo cambio',
-                    icon: 'pi pi-fw pi-sitemap',
+                // FIX: use the right permission for Tipo de Cambio
+                hasPermission('ver tipo cambio') && {
+                    label: 'Tipo de Cambio',
+                    icon: 'pi pi-fw pi-refresh',
                     to: '/factoring/tipo-cambio'
+                },
+
+                // External Backoffice link (kept, as requested)
+                {
+                    label: 'Backoffice (externo)',
+                    icon: 'pi pi-fw pi-external-link',
+                    url: 'https://backoffice.zuma.com.pe/',
+                    target: '_blank'
                 }
             ].filter(Boolean)
         },
 
-        // ========== SUBASTA DE HIPOTECAS ==========
+        // ===== Subasta de Hipotecas =====
         {
             label: 'Subasta de Hipotecas',
             icon: 'pi pi-fw pi-home',
@@ -132,7 +141,7 @@ const model = computed(() => {
                     icon: 'pi pi-fw pi-user',
                     to: '/subasta-hipotecas/inversionista'
                 },
-                // Estas opciones no tenían verificación de permisos, manteniéndolas visibles siempre
+                // Always visible items (as in your snippet)
                 {
                     label: 'Reservas',
                     icon: 'pi pi-fw pi-calendar-plus',
@@ -207,15 +216,15 @@ const model = computed(() => {
                 hasPermission('ver tipo cambio') && {
                     label: 'Tipo de Cambio',
                     icon: 'pi pi-fw pi-refresh',
-                    to: '/factoring/tipo-cambio'
-                },
+                    to: '/factoring/tipo-cambio/nuevo'
+                }
             ].filter(Boolean)
         }
-    ];
+    ]
 
-    // Filtrar secciones que tienen items después de aplicar permisos
-    return menuItems.filter(section => section.items && section.items.length > 0);
-});
+    // Hide sections that ended up empty after permission filtering
+    return menuItems.filter(section => section.items && section.items.length > 0)
+})
 </script>
 
 <template>

@@ -23,7 +23,11 @@ return new class extends Migration
             $table->foreignUlid('movement_id')->constrained();
             $table->ulid('previous_investment_id')->nullable();
             $table->ulid('original_investment_id')->nullable();
-            $table->enum('status', ['inactive', 'active', 'paid', 'reprogramed'])->default('inactive');
+            $table->enum('status', ['inactive', 'active', 'paid', 'reprogramed', 'reembloso','pending'])->default('inactive');
+            $table->foreignUlid('movement_reembloso')->nullable()->constrained('movements');
+            $table->string('operation_number')->nullable(); // número de operación
+            $table->string('receipt_path')->nullable();     // ruta del archivo en S3
+            $table->text('comment')->nullable();      
             $table->timestamps();
         });
     }

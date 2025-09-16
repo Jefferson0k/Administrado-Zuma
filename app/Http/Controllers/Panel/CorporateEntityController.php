@@ -11,8 +11,11 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Http\Request;
 
 class CorporateEntityController extends Controller{
-    public function index(){
-        $corporateEntities = CorporateEntity::all();
+    public function index()
+    {
+        $corporateEntities = CorporateEntity::latest()->get(); // DESC por created_at
+        // si no tienes timestamps: CorporateEntity::orderByDesc('id')->get();
+
         return CorporateEntityResource::collection($corporateEntities);
     }
     public function store(StoreCorporateEntityRequests $request){

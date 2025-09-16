@@ -22,7 +22,11 @@ class Investment extends Model{
         'invoice_id',
         'movement_id',
         'previous_investment_id',
-        'original_investment_id'
+        'original_investment_id',
+        'operation_number',
+        'receipt_path',
+        'comment',
+        'movement_reembloso'
     ];
     public function investor(){
         return $this->belongsTo(Investor::class);

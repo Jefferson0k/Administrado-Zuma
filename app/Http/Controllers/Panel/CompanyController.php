@@ -44,6 +44,7 @@ class CompanyController extends Controller{
                 'path'  => $request->path(),
             ]);
 
+
             $perPage     = $request->input('per_page', 15);
             $search      = $request->input('search', '');
             $sectorId    = $request->input('sector_id');
@@ -64,6 +65,7 @@ class CompanyController extends Controller{
                 'subsectornom'  => 'subsectors.name',
             ];
 
+
             $query = app(Pipeline::class)
                 ->send(Company::query()->with(['sector', 'subsector']))
                 ->through([
@@ -72,7 +74,9 @@ class CompanyController extends Controller{
                     new SubsectorFilter($subsectorId),
                     new RiskFilter($risk),
                 ])
-                ->thenReturn();
+                ->thenReturn()
+                ->latest(); // ORDER BY created_at DESC
+
 
             $sortApplied = ['companies.id', 'desc'];
 
@@ -107,6 +111,7 @@ class CompanyController extends Controller{
                 Log::info('Company.index QueryLog', DB::getQueryLog());
             }
 
+
             return CompanyResource::collection($companies)
                 ->additional([
                     'total' => $companies->total(),
@@ -119,6 +124,7 @@ class CompanyController extends Controller{
                 ]);
         } catch (AuthorizationException $e) {
             return response()->json(['message' => 'No tienes permiso para ver las compañías.'], 403);
+            return response()->json(['message' => 'No tienes permiso para ver las compañías.'], 403);
         } catch (Throwable $e) {
             Log::error('Error al listar las compañías', [
                 'error' => $e->getMessage(),
@@ -129,7 +135,9 @@ class CompanyController extends Controller{
             return response()->json(['message' => 'Error al listar las compañías.'], 500);
         }
     }
-    public function store(StoreCompanyRequest $request, StoreCompanyFinanceRequest $financeRequest){
+
+    public function store(StoreCompanyRequest $request, StoreCompanyFinanceRequest $financeRequest)
+    {
         try {
             Gate::authorize('create', Company::class);
             $data = $request->validated();
@@ -159,7 +167,8 @@ class CompanyController extends Controller{
             ], 500);
         }
     }
-    public function show($id){
+    public function show($id)
+    {
         try {
             $company = Company::with(['sector', 'subsector', 'finances'])
                 ->findOrFail($id);
@@ -173,7 +182,8 @@ class CompanyController extends Controller{
             return response()->json(['message' => 'Error al mostrar la empresa.'], 500);
         }
     }
-    public function update(UpdateCompanyRequest $request, $id){
+    public function update(UpdateCompanyRequest $request, $id)
+    {
         try {
             $company = Company::findOrFail($id);
             Gate::authorize('update', $company);
@@ -192,7 +202,8 @@ class CompanyController extends Controller{
             return response()->json(['message' => 'Error al actualizar la empresa.'], 500);
         }
     }
-    public function delete($id){
+    public function delete($id)
+    {
         try {
             $company = Company::findOrFail($id);
             Gate::authorize('delete', $company);
@@ -208,120 +219,122 @@ class CompanyController extends Controller{
             return response()->json(['message' => 'Error al eliminar la empresa.'], 500);
         }
     }
-    public function historicalData($companyId){
-		$company = Company::find($companyId);
-		if (!$company) {
-			return response()->json([
-				"success" => false,
-				"message" => "No se encontró la empresa"
-			], 404);
-		}
-		$existingFinanceData = CompanyFinance::where('company_id', $companyId)->first();
-		
-		$invoices = Invoice::where('company_id', $companyId)->get();
-		
-		if ($invoices->isEmpty() && !$existingFinanceData) {
-			return response()->json([
-				"success" => false,
-				"message" => "No se encontró información financiera para esta empresa"
-			], 404);
-		}
-		$currentTotalFacturasFinanciadas = $invoices->count();
-		$currentMontoTotalFinanciado = $invoices->sum(function ($invoice) {
-			return floatval($invoice->amount);
-		});
-		$currentFacturasPagadas = $invoices->where('status', 'paid')->count();
-		$currentFacturasPendientes = $invoices->whereIn('status', ['active', 'inactive'])->count();
-		$facturasReprogramadas = $invoices->where('status', 'reprogramed')->count();
-		$facturasInactivas = $invoices->where('status', 'inactive')->count();
+    public function historicalData($companyId)
+    {
+        $company = Company::find($companyId);
+        if (!$company) {
+            return response()->json([
+                "success" => false,
+                "message" => "No se encontró la empresa"
+            ], 404);
+        }
+        $existingFinanceData = CompanyFinance::where('company_id', $companyId)->first();
 
-		// Calcular plazo promedio de pago actual
-		$facturasPagadasCollection = $invoices->where('status', 'paid');
-		$currentPlazoPromedioPago = 0;
-		
-		if ($facturasPagadasCollection->count() > 0) {
-			$totalDias = $facturasPagadasCollection->sum(function ($invoice) {
-				$dueDate = new \DateTime($invoice->due_date);
-				$estimatedPayDate = new \DateTime($invoice->estimated_pay_date);
-				return $dueDate->diff($estimatedPayDate)->days;
-			});
-			$currentPlazoPromedioPago = round($totalDias / $facturasPagadasCollection->count());
-		}
+        $invoices = Invoice::where('company_id', $companyId)->get();
 
-		// Sumar datos históricos con datos actuales
-		$totalFacturasFinanciadas = $currentTotalFacturasFinanciadas + 
-			($existingFinanceData ? $existingFinanceData->facturas_financiadas : 0);
-		
-		$totalMontoFinanciado = $currentMontoTotalFinanciado + 
-			($existingFinanceData ? floatval($existingFinanceData->monto_total_financiado) : 0);
-		
-		$totalFacturasPagadas = $currentFacturasPagadas + 
-			($existingFinanceData ? $existingFinanceData->pagadas : 0);
-		
-		$totalFacturasPendientes = $currentFacturasPendientes + 
-			($existingFinanceData ? $existingFinanceData->pendientes : 0);
+        if ($invoices->isEmpty() && !$existingFinanceData) {
+            return response()->json([
+                "success" => false,
+                "message" => "No se encontró información financiera para esta empresa"
+            ], 404);
+        }
+        $currentTotalFacturasFinanciadas = $invoices->count();
+        $currentMontoTotalFinanciado = $invoices->sum(function ($invoice) {
+            return floatval($invoice->amount);
+        });
+        $currentFacturasPagadas = $invoices->where('status', 'paid')->count();
+        $currentFacturasPendientes = $invoices->whereIn('status', ['active', 'inactive'])->count();
+        $facturasReprogramadas = $invoices->where('status', 'reprogramed')->count();
+        $facturasInactivas = $invoices->where('status', 'inactive')->count();
 
-		// Calcular plazo promedio ponderado
-		$plazoPromedioPago = 0;
-		if ($existingFinanceData && $existingFinanceData->plazo_promedio_pago > 0 && $currentPlazoPromedioPago > 0) {
-			// Promedio ponderado entre histórico y actual
-			$totalFacturasPagadasHistorico = $existingFinanceData->pagadas;
-			$plazoPromedioPago = round(
-				(($existingFinanceData->plazo_promedio_pago * $totalFacturasPagadasHistorico) + 
-				($currentPlazoPromedioPago * $currentFacturasPagadas)) / 
-				($totalFacturasPagadasHistorico + $currentFacturasPagadas)
-			);
-		} elseif ($existingFinanceData && $existingFinanceData->plazo_promedio_pago > 0) {
-			$plazoPromedioPago = $existingFinanceData->plazo_promedio_pago;
-		} else {
-			$plazoPromedioPago = $currentPlazoPromedioPago;
-		}
+        // Calcular plazo promedio de pago actual
+        $facturasPagadasCollection = $invoices->where('status', 'paid');
+        $currentPlazoPromedioPago = 0;
 
-		// Calcular montos pagados y pendientes
-		$montoPagado = $invoices->sum(function ($invoice) {
-			return floatval($invoice->paid_amount);
-		});
-		
-		$montoPendiente = $totalMontoFinanciado - $montoPagado;
+        if ($facturasPagadasCollection->count() > 0) {
+            $totalDias = $facturasPagadasCollection->sum(function ($invoice) {
+                $dueDate = new \DateTime($invoice->due_date);
+                $estimatedPayDate = new \DateTime($invoice->estimated_pay_date);
+                return $dueDate->diff($estimatedPayDate)->days;
+            });
+            $currentPlazoPromedioPago = round($totalDias / $facturasPagadasCollection->count());
+        }
 
-		$financeData = (object) [
-			'id' => $existingFinanceData ? $existingFinanceData->id : null,
-			'company_id' => $companyId,
-			'company' => $company,
-			'facturas_financiadas' => $totalFacturasFinanciadas,
-			'monto_total_financiado' => number_format($totalMontoFinanciado, 2, '.', ''),
-			'pagadas' => $totalFacturasPagadas,
-			'pendientes' => $totalFacturasPendientes,
-			'reprogramadas' => $facturasReprogramadas,
-			'inactivas' => $facturasInactivas,
-			'plazo_promedio_pago' => $plazoPromedioPago,
-			'monto_pagado' => number_format($montoPagado, 2, '.', ''),
-			'monto_pendiente' => number_format($montoPendiente, 2, '.', '')
-		];
+        // Sumar datos históricos con datos actuales
+        $totalFacturasFinanciadas = $currentTotalFacturasFinanciadas +
+            ($existingFinanceData ? $existingFinanceData->facturas_financiadas : 0);
 
-		return new CompanyFinanceResource($financeData);
-	}
+        $totalMontoFinanciado = $currentMontoTotalFinanciado +
+            ($existingFinanceData ? floatval($existingFinanceData->monto_total_financiado) : 0);
+
+        $totalFacturasPagadas = $currentFacturasPagadas +
+            ($existingFinanceData ? $existingFinanceData->pagadas : 0);
+
+        $totalFacturasPendientes = $currentFacturasPendientes +
+            ($existingFinanceData ? $existingFinanceData->pendientes : 0);
+
+        // Calcular plazo promedio ponderado
+        $plazoPromedioPago = 0;
+        if ($existingFinanceData && $existingFinanceData->plazo_promedio_pago > 0 && $currentPlazoPromedioPago > 0) {
+            // Promedio ponderado entre histórico y actual
+            $totalFacturasPagadasHistorico = $existingFinanceData->pagadas;
+            $plazoPromedioPago = round(
+                (($existingFinanceData->plazo_promedio_pago * $totalFacturasPagadasHistorico) +
+                    ($currentPlazoPromedioPago * $currentFacturasPagadas)) /
+                    ($totalFacturasPagadasHistorico + $currentFacturasPagadas)
+            );
+        } elseif ($existingFinanceData && $existingFinanceData->plazo_promedio_pago > 0) {
+            $plazoPromedioPago = $existingFinanceData->plazo_promedio_pago;
+        } else {
+            $plazoPromedioPago = $currentPlazoPromedioPago;
+        }
+
+        // Calcular montos pagados y pendientes
+        $montoPagado = $invoices->sum(function ($invoice) {
+            return floatval($invoice->paid_amount);
+        });
+
+        $montoPendiente = $totalMontoFinanciado - $montoPagado;
+
+        $financeData = (object) [
+            'id' => $existingFinanceData ? $existingFinanceData->id : null,
+            'company_id' => $companyId,
+            'company' => $company,
+            'facturas_financiadas' => $totalFacturasFinanciadas,
+            'monto_total_financiado' => number_format($totalMontoFinanciado, 2, '.', ''),
+            'pagadas' => $totalFacturasPagadas,
+            'pendientes' => $totalFacturasPendientes,
+            'reprogramadas' => $facturasReprogramadas,
+            'inactivas' => $facturasInactivas,
+            'plazo_promedio_pago' => $plazoPromedioPago,
+            'monto_pagado' => number_format($montoPagado, 2, '.', ''),
+            'monto_pendiente' => number_format($montoPendiente, 2, '.', '')
+        ];
+
+        return new CompanyFinanceResource($financeData);
+    }
     public function showcompany(string $id)
-	{
-		try {
-			$company = Company::find($id);
-			if (!$company) return response()->json([
-				'success' => false,
-				'message' => 'No se encontró la empresa',
-			], 404);
+    {
+        try {
+            $company = Company::find($id);
+            if (!$company) return response()->json([
+                'success' => false,
+                'message' => 'No se encontró la empresa',
+            ], 404);
 
-			return response()->json([
-				'success' => true,
-				'data' => $company,
-			]);
-		} catch (Throwable $th) {
-			return response()->json([
-				'success' => false,
-				'message' => $th->getMessage(),
-			], 500);
-		}
-	}
-    public function searchCompany(Request $request){
+            return response()->json([
+                'success' => true,
+                'data' => $company,
+            ]);
+        } catch (Throwable $th) {
+            return response()->json([
+                'success' => false,
+                'message' => $th->getMessage(),
+            ], 500);
+        }
+    }
+    public function searchCompany(Request $request)
+    {
         try {
             Gate::authorize('viewAny', Company::class);
             $perPage = $request->input('per_page', 10);
@@ -347,7 +360,7 @@ class CompanyController extends Controller{
                         'business_name'     => $company->business_name,
                         'document'          => $company->document,
                         'risk'              => $company->risk,
-                        'incorporation_year'=> $company->incorporation_year,
+                        'incorporation_year' => $company->incorporation_year,
                     ];
                 }),
                 'pagination' => [
@@ -366,7 +379,8 @@ class CompanyController extends Controller{
             ], 500);
         }
     }
-    public function exportExcel(Request $request){
+    public function exportExcel(Request $request)
+    {
         Gate::authorize('export', Company::class);
         $search = $request->input('search', '');
         $sectorId = $request->input('sector_id');

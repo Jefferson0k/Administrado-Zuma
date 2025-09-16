@@ -187,14 +187,14 @@
             </template>
         </Column>
 
+        <!-- COLUMNA CORREGIDA - Usando ref() correctamente -->
         <Column style="width: 5rem">
             <template #body="{ data }">
                 <div class="flex justify-center">
                     <Menu 
-                        ref="menu" 
+                        :ref="(el) => setMenuRef(el, data.id)" 
                         :model="getMenuItems(data)" 
                         :popup="true" 
-                        id="overlay_menu"
                     />
                     <Button 
                         icon="pi pi-ellipsis-v" 
@@ -202,8 +202,7 @@
                         variant="text" 
                         rounded
                         @click="toggleMenu($event, data)"
-                        aria-haspopup="true" 
-                        aria-controls="overlay_menu"
+                        aria-haspopup="true"
                     />
                 </div>
             </template>
@@ -334,13 +333,15 @@ import Congiguracion from './Congiguracion.vue';
 
 const toast = useToast();
 const dt = ref();
-const menu = ref();
 const products = ref([]);
 const selectedProducts = ref([]);
 const showPrintDialog = ref(false);
 const prestamosId = ref(null);
 const showModal = ref(false);
 const currentData = ref(null);
+
+// CORRECCIÓN: Crear un objeto para almacenar las referencias de los menús
+const menuRefs = ref({});
 
 // Estados para el MultiSelect y Dialog
 const selectedColumns = ref([]);
@@ -371,6 +372,13 @@ const optionalColumns = ref([
     { field: 'subasta', header: 'Valor Subasta' },
 ]);
 
+// CORRECCIÓN: Función para establecer referencias de menús
+const setMenuRef = (el, id) => {
+    if (el) {
+        menuRefs.value[`menu_${id}`] = el;
+    }
+};
+
 // Función para formatear moneda
 const formatCurrency = (value) => {
     if (!value || value === '0') return '-';
@@ -392,13 +400,17 @@ const formatCronograma = (cronograma) => {
     return cronogramas[cronograma] || cronograma;
 };
 
-// Función para obtener los items del menú según el estado
+// Función para obtener los items del menú
 const getMenuItems = (data) => {
+    console.log('Generando menú para:', data); // Debug
     return [
         {
             label: 'Ver Detalle',
             icon: 'pi pi-eye',
-            command: () => verDetalle(data)
+            command: () => {
+                console.log('Ver detalle clickeado para:', data); // Debug
+                verDetalle(data);
+            }
         },
         {
             separator: true
@@ -438,14 +450,25 @@ const getMenuItems = (data) => {
     ];
 };
 
-// Función para mostrar/ocultar el menú
+// CORRECCIÓN: Función corregida para mostrar/ocultar el menú usando las referencias correctas
 const toggleMenu = (event, data) => {
+    console.log('Toggle menu para:', data); // Debug
     currentData.value = data;
-    menu.value.toggle(event);
+    
+    // Obtener la referencia del menú específico para esta fila usando el objeto menuRefs
+    const menuKey = `menu_${data.id}`;
+    const menuComponent = menuRefs.value[menuKey];
+    
+    if (menuComponent) {
+        menuComponent.toggle(event);
+    } else {
+        console.error('No se encontró la referencia del menú para:', menuKey);
+    }
 };
 
 // Función para abrir el dialog de email
 const abrirEmailDialog = (data) => {
+    console.log('Abrir email para:', data); // Debug
     currentData.value = data;
     emailAddress.value = '';
     emailMessage.value = 'Estimado/a inversionista,\n\nEsperamos que se encuentre bien. Le escribimos para solicitar que complete algunos datos faltantes en su perfil de inversionista.\n\nPara completar su información, por favor haga clic en el siguiente botón:\n\n[BOTÓN DE ACCESO]\n\nGracias por su tiempo y confianza.\n\nSaludos cordiales,\nEquipo ZUMA';
@@ -490,7 +513,7 @@ const sendByEmail = async () => {
             emails: emailAddress.value,
             mensaje: emailMessage.value,
             asunto: emailSubject.value,
-            investor_id: currentData.value.investor_id // Agregar el investor_id
+            investor_id: currentData.value.investor_id
         };
 
         const response = await axios.post('/property/enviar-emails', payload);
@@ -515,13 +538,12 @@ const sendByEmail = async () => {
 
 // Función para descargar PDF
 const descargarPDF = (data) => {
+    console.log('Descargar PDF para:', data); // Debug
     toast.add({ 
         severity: 'info', 
         summary: 'Descarga', 
         detail: `Descargando PDF del préstamo ${data.id}` 
     });
-    // Aquí puedes implementar la lógica real para descargar el PDF
-    // Por ejemplo: window.open(`/api/prestamos/${data.id}/pdf`, '_blank');
 };
 
 // Función para verificar si una columna está seleccionada
@@ -603,22 +625,32 @@ const handleClosePrestamo = () => {
     prestamosId.value = null;
 };
 
+// Función para ver detalle
 const verDetalle = (prestamo) => {
+    console.log('Ver detalle ejecutado con:', prestamo); // Debug
     prestamosId.value = prestamo.id;
     showPrintDialog.value = true;
+    toast.add({ 
+        severity: 'info', 
+        summary: 'Ver Detalle', 
+        detail: `Mostrando detalle del préstamo ID: ${prestamo.id} - Cliente: ${prestamo.cliente}` 
+    });
 };
 
 const abrirConfiguracion = (data) => {
+    console.log('Abrir configuración para:', data); // Debug
     prestamosId.value = data.property_id;
     showModal.value = true;
 };
 
 const editarPrestamo = (data) => {
+    console.log('Editar préstamo:', data); // Debug
     toast.add({ severity: 'info', summary: 'Editar', detail: `Editar préstamo ${data.id}` });
     // Implementar lógica para editar
 };
 
 const eliminarPrestamo = (data) => {
+    console.log('Eliminar préstamo:', data); // Debug
     toast.add({ severity: 'warn', summary: 'Eliminar', detail: `Eliminar préstamo ${data.id}` });
     // Implementar lógica para eliminar con confirmación
 };
