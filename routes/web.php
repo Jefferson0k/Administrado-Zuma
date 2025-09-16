@@ -173,19 +173,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('deposit')->group(function () {
         Route::get('/', [DepositController::class, 'index'])->name('deposits.index');
         Route::get('/{id}', [DepositController::class, 'show'])->name('deposits.show');
-
         Route::post('/{movementId}/validate', [DepositController::class, 'validateDeposit'])
             ->name('deposits.validate');
-
         Route::post('/{depositId}/{movementId}/reject', [DepositController::class, 'rejectDeposit'])
             ->name('deposits.reject');
-
         Route::post('/{depositId}/{movementId}/approve', [DepositController::class, 'approveDeposit'])
             ->name('deposits.approve');
-
         Route::post('/{depositId}/{movementId}/reject-confirm', [DepositController::class, 'rejectConfirmDeposit'])
             ->name('deposits.rejectConfirm');
+        Route::get('/export/excel', [DepositController::class, 'exportExcel'])
+            ->name('deposits.exportExcel');
     });
+
 
     Route::prefix('ban')->group(function () {
         Route::get('/', [BankAccountsController::class, 'index'])->name('bankaccounts.index');

@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Panel;
 
 use App\Enums\MovementStatus;
+use App\Exports\DepositsExport;
 use App\Helpers\MoneyConverter;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Factoring\Deposit\DepositResource;
 use App\Models\Deposit;
 use App\Models\Investor;
 use App\Models\Movement;
+use Carbon\Carbon;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
@@ -16,25 +18,20 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
+use Maatwebsite\Excel\Facades\Excel;
 use Throwable;
 
-class DepositController extends Controller
-{
-    public function index()
-    {
+class DepositController extends Controller{
+    public function index(){
         try {
             Gate::authorize('viewAny', Deposit::class);
-
-            // Orden por la fecha más relevante si existe, si no por created_at, y si no por id
             $primarySort = Schema::hasColumn('deposits', 'deposit_date') ? 'deposit_date'
                 : (Schema::hasColumn('deposits', 'date') ? 'date'
                     : (Schema::hasColumn('deposits', 'created_at') ? 'created_at' : 'id'));
-
             $deposits = Deposit::query()
                 ->orderByDesc($primarySort)
-                ->orderByDesc('id')   // desempate estable
+                ->orderByDesc('id')
                 ->get();
-
             return response()->json([
                 'total' => $deposits->count(),
                 'data'  => DepositResource::collection($deposits),
@@ -52,7 +49,6 @@ class DepositController extends Controller
             ], 500);
         }
     }
-
     public function show($id)
     {
         try {
@@ -119,44 +115,30 @@ class DepositController extends Controller
 
         return response()->json(['message' => 'Depósito rechazado correctamente']);
     }
-
-
-    public function approveDeposit(Request $request, $depositId, $movementId)
-    {
+    public function approveDeposit(Request $request, $depositId, $movementId){
         try {
             DB::beginTransaction();
-
             $movement = Movement::findOrFail($movementId);
-            if (
-                $movement->status !== MovementStatus::VALID ||
-                $movement->confirm_status === MovementStatus::VALID
-            ) {
+            if ($movement->status !== MovementStatus::VALID || $movement->confirm_status === MovementStatus::VALID) {
                 return response()->json(['message' => 'El movimiento no es válido para aprobar'], 400);
             }
-
             $movement->confirm_status = MovementStatus::VALID;
             $movement->registrarAprobacion2(Auth::id());
-
             $investor = Investor::findOrFail($movement->investor_id);
             $balance = $investor->getBalance($movement->currency);
-
             $balanceAmountMoney = MoneyConverter::fromDecimal($balance->amount, $balance->currency);
             $movementAmountMoney = MoneyConverter::fromDecimal($movement->amount, $movement->currency);
-
             $balance->amount = $balanceAmountMoney->add($movementAmountMoney);
             $balance->save();
-
             $deposit = Deposit::findOrFail($depositId);
             $deposit->update([
                 'aprobacion_2' => now(),
-                'aprobado_por_2' => Auth::id(),
+                'approval2_by' => Auth::id(),
                 'estadoConfig' => 'confirmed',
-                'conclusion' => $request->input('conclusion') // 👈 opcional
+                'conclusion' => $request->input('conclusion')
             ]);
-
             $investor->sendDepositApprovalEmailNotification($deposit);
             $movement->save();
-
             DB::commit();
             return response()->json(['message' => 'Depósito aprobado y saldo actualizado']);
         } catch (Throwable $th) {
@@ -169,8 +151,6 @@ class DepositController extends Controller
             ], 500);
         }
     }
-
-
     public function rejectConfirmDeposit(Request $request, $depositId, $movementId)
     {
         $movement = Movement::findOrFail($movementId);
@@ -192,5 +172,50 @@ class DepositController extends Controller
         ]);
 
         return response()->json(['message' => 'Depósito rechazado en confirmación']);
+    }
+    public function exportExcel(Request $request){
+        try {
+            // Autorización (descomentala si la necesitas)
+            // Gate::authorize('export', Deposit::class);
+            $search = $request->input('search', '');
+            $status = $request->input('status', null);
+            $query = Deposit::query()->with([
+                'investor.user',
+                'bankAccount.bank',
+                'movement.aprobadoPor1',
+                'movement.aprobadoPor2'
+            ]);
+            if ($status) {
+                $query->whereHas('movement', function ($q) use ($status) {
+                    $q->where('status', $status);
+                });
+            }
+            if ($search) {
+                $query->whereHas('investor.user', function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('apellidos', 'like', "%{$search}%");
+                });
+            }
+            $primarySort = Schema::hasColumn('deposits', 'deposit_date') ? 'deposit_date'
+                : (Schema::hasColumn('deposits', 'date') ? 'date'
+                    : (Schema::hasColumn('deposits', 'created_at') ? 'created_at' : 'id'));
+            $deposits = $query->orderByDesc($primarySort)
+                            ->orderByDesc('id')
+                            ->get();
+            $currentDateTime = Carbon::now()->format('d-m-Y_H-i-s');
+            $fileName = "depositos_{$currentDateTime}.xlsx";
+            return Excel::download(new DepositsExport($deposits), $fileName);
+        } catch (AuthorizationException $e) {
+            return response()->json([
+                'message' => 'No tienes permiso para exportar los depósitos.'
+            ], 403);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'Error al exportar los depósitos.',
+                'error'   => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
+            ], 500);
+        }
     }
 }

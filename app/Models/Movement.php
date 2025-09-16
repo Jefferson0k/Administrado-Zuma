@@ -29,6 +29,8 @@ class Movement extends Model{
         'aprobado_por_1',
         'aprobacion_2',
         'aprobado_por_2',
+        'approval1_by',
+        'approval2_by'
     ];
     protected $casts = [
         'type' => MovementType::class,
@@ -57,7 +59,12 @@ class Movement extends Model{
             }
         });
     }
-    
+    public function aprobadoPorUsuario1(){
+        return $this->belongsTo(User::class, 'approval1_by');
+    }
+    public function aprobadoPorUsuario2(){
+        return $this->belongsTo(User::class, 'approval2_by');
+    }
     public function deposits()
     {
         return Movement::where('type', 'deposit')->get();

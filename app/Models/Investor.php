@@ -86,7 +86,10 @@ class Investor extends Authenticatable implements MustVerifyEmail{
     public function aprovacionuserdos() {
         return $this->belongsTo(User::class, 'approval2_by');
     }
-
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
     public function balances(){
         return $this->hasMany(Balance::class);
     }
