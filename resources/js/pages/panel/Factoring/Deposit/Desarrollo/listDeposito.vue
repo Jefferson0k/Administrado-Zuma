@@ -1,4 +1,16 @@
 <template>
+  <Toolbar class="mb-6">
+    <template #start>
+    </template>
+
+    <template #end>
+      <div class="flex gap-2">
+        <Button label="Export Excel" icon="pi pi-file-excel" severity="secondary" @click="exportExcel"
+          :loading="exportingExcel" />
+      </div>
+    </template>
+  </Toolbar>
+
   <DataTable ref="dt" v-model:selection="selectedDeposits" :value="deposits" dataKey="id" :paginator="true"
     :rows="rowsPerPage" :totalRecords="totalRecords" :first="(currentPage - 1) * rowsPerPage" :loading="loading"
     :rowsPerPageOptions="[5, 10, 20, 50]"
@@ -38,71 +50,27 @@
         <span class="font-semibold">{{ formatAmount(data.amount) }}</span>
       </template>
     </Column>
-    <Column field="estado" header="Estado" sortable style="min-width: 5rem">
+    <Column field="estado" header="1ª Estado" sortable style="min-width: 7rem">
       <template #body="{ data }">
         <Tag :value="traducirEstado(data.estado)" :severity="obtenerColorEstado(data.estado)" />
       </template>
     </Column>
-    <Column field="estadoConfig" header="E. Confirmación" sortable style="min-width: 10rem">
+
+    <!-- Columna T. 1ª Aprobación actualizada -->
+    <Column field="fecha_aprobacion_1" header="T. 1ª Aprobación" sortable style="min-width: 12rem">
+    </Column>
+    <Column field="aprobado_por_1_nombre" header="1ª Usuario" sortable style="min-width: 20rem">
+    </Column>
+
+    <Column field="estadoConfig" header="2ª Estado" sortable style="min-width: 7rem">
       <template #body="{ data }">
         <Tag :value="traducirEstado(data.estadoConfig)" :severity="obtenerColorEstado(data.estadoConfig)" />
       </template>
     </Column>
-    
-    <!-- Columna T. 1ª Aprobación actualizada -->
-    <Column header="T. 1ª Aprobación" sortable style="min-width: 12rem">
-      <template #body="{ data }">
-        <div class="flex flex-col gap-1">
-          <div class="flex items-center gap-2 px-2 py-1 rounded-md text-sm font-semibold transition-all duration-200 hover:transform hover:-translate-y-0.5 hover:shadow-sm"
-               :class="getTiempoColorClass(data.tiempo_info?.creacion_a_aprobacion_1?.color)">
-            <i class="pi pi-clock text-xs"></i>
-            <span>
-              {{ data.tiempo_info?.creacion_a_aprobacion_1?.texto || '--' }}
-            </span>
-          </div>
-          <div class="text-xs text-center">
-            {{ getTiempoDescripcion(data.tiempo_info?.creacion_a_aprobacion_1?.categoria) }}
-          </div>
-        </div>
-      </template>
+    <Column field="fecha_aprobacion_2" header="T. 2ª Aprobación" sortable style="min-width: 12rem">
     </Column>
-    
-    <!-- Columna T. 2ª Aprobación actualizada -->
-    <Column header="T. 2ª Aprobación" sortable style="min-width: 12rem">
-      <template #body="{ data }">
-        <div class="flex flex-col gap-1">
-          <div class="flex items-center gap-2 px-2 py-1 rounded-md text-sm font-semibold transition-all duration-200 hover:transform hover:-translate-y-0.5 hover:shadow-sm"
-               :class="getTiempoColorClass(data.tiempo_info?.aprobacion_1_a_aprobacion_2?.color)">
-            <i class="pi pi-forward text-xs"></i>
-            <span>
-              {{ data.tiempo_info?.aprobacion_1_a_aprobacion_2?.texto || '--' }}
-            </span>
-          </div>
-          <div class="text-xs text-gray-500 text-center">
-            {{ getTiempoDescripcion(data.tiempo_info?.aprobacion_1_a_aprobacion_2?.categoria) }}
-          </div>
-        </div>
-      </template>
+    <Column field="aprobado_por_2_nombre" header="2ª Usuario" sortable style="min-width: 20rem">
     </Column>
-    
-    <!-- Columna T. Total actualizada -->
-    <Column header="T. Total" sortable style="min-width: 10rem">
-      <template #body="{ data }">
-        <div class="flex flex-col gap-1 border border-blue-300 rounded-lg p-2 bg-blue-50">
-          <div class="flex items-center gap-2 px-2 py-1 rounded-md text-sm font-bold transition-all duration-200 hover:transform hover:-translate-y-0.5 hover:shadow-sm"
-               :class="getTiempoColorClass(data.tiempo_info?.total?.color)">
-            <i class="pi pi-stopwatch text-xs"></i>
-            <span>
-              {{ data.tiempo_info?.total?.texto || '--' }}
-            </span>
-          </div>
-          <div class="text-xs text-gray-600 text-center font-medium">
-            Total del proceso
-          </div>
-        </div>
-      </template>
-    </Column>
-    
     <Column field="creacion" header="Fecha Creación" sortable style="min-width: 12rem">
       <template #body="{ data }">
         <div class="flex flex-col">
@@ -132,6 +100,7 @@ import InputIcon from 'primevue/inputicon';
 import InputText from 'primevue/inputtext';
 import { debounce } from 'lodash';
 import ShowDeposit from './showDeposit.vue';
+import Toolbar from 'primevue/toolbar';
 
 const deposits = ref<any[]>([]);
 const selectedDeposits = ref<any[]>([]);
@@ -141,6 +110,11 @@ const globalFilter = ref('');
 const rowsPerPage = ref(10);
 const currentPage = ref(1);
 const selectedDeposit = ref(null);
+
+// Loading states para los botones de exportación
+const exportingExcel = ref(false);
+const exportingCSV = ref(false);
+const exportingSelected = ref(false);
 
 const cargarDepositos = async (event: any = {}) => {
   loading.value = true;
@@ -178,6 +152,77 @@ function cerrarDetalle() {
   selectedDeposit.value = null;
 }
 
+// Función para descargar archivos desde URL
+const downloadFile = async (url: string, filename: string, params: any = {}, loadingRef: any) => {
+  loadingRef.value = true;
+
+  try {
+    const response = await axios.get(url, {
+      params,
+      responseType: 'blob',
+      timeout: 60000 // 60 segundos para archivos grandes
+    });
+
+    // Verificar que la respuesta tenga contenido
+    if (response.data.size === 0) {
+      throw new Error('El archivo descargado está vacío');
+    }
+
+    // Obtener el tipo MIME correcto
+    const contentType = response.headers['content-type'] || 'application/octet-stream';
+
+    // Crear blob
+    const blob = new Blob([response.data], { type: contentType });
+
+    // Crear URL temporal
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filename;
+
+    // Agregar al DOM y hacer click
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+
+    // Limpiar después de un breve delay
+    setTimeout(() => {
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+    }, 100);
+
+    return true;
+
+  } catch (error) {
+    console.error(`Error al descargar archivo desde ${url}:`, error);
+
+    if (error.response?.status === 404) {
+      console.error('Endpoint de descarga no encontrado');
+    } else if (error.response?.status === 500) {
+      console.error('Error del servidor al generar el archivo');
+    } else if (error.code === 'ECONNABORTED') {
+      console.error('Timeout: La descarga está tomando demasiado tiempo');
+    }
+
+    return false;
+  } finally {
+    loadingRef.value = false;
+  }
+};
+
+// Exportar a Excel
+const exportExcel = async () => {
+  const fecha = new Date().toISOString().split('T')[0];
+  const filename = `depositos_excel_${fecha}.xlsx`;
+
+  const params = {
+    search: globalFilter.value,
+    format: 'excel'
+  };
+
+  await downloadFile('/deposit/export/excel', filename, params, exportingExcel);
+};
+
 const formatAmount = (amount: number | string) => {
   return new Intl.NumberFormat('es-PE', {
     style: 'currency',
@@ -187,36 +232,6 @@ const formatAmount = (amount: number | string) => {
 
 const formatFecha = (fecha: string) => {
   return fecha;
-};
-
-// Funciones actualizadas según tus especificaciones de tiempo
-const getTiempoColorClass = (color: string | undefined) => {
-  const colorMap = {
-    'green': 'bg-green-100 text-green-800 border border-green-200',      // 1-30 min - Excelente
-    'blue': 'bg-blue-100 text-blue-800 border border-blue-200',          // 30min-1h - Muy bien
-    'yellow': 'bg-yellow-100 text-yellow-800 border border-yellow-200',  // 1h - Normal
-    'orange': 'bg-orange-100 text-orange-800 border border-orange-200',  // >1h-2h - Estás tardando
-    'red': 'bg-red-100 text-red-800 border border-red-200 animate-pulse', // >2h - Crítico
-    'gray': 'bg-gray-100 text-gray-600 border border-gray-200'           // Sin datos
-  };
-  return colorMap[color as keyof typeof colorMap] || 'bg-gray-100 text-gray-600 border border-gray-200';
-};
-
-const getTiempoDescripcion = (categoria: string | undefined) => {
-  const descripciones = {
-    'excelente': '¡Excelente!',        // 1-30 minutos
-    'muy_bien': 'Muy bien',            // 30min-1h  
-    'normal': 'Normal',                // 1h
-    'tardando': 'Estás tardando',      // >1h-2h
-    'critico': 'Crítico',              // >2h
-    'sin_datos': '00:00:00',
-    // Mantengo compatibilidad con los nombres antiguos por si acaso
-    'muy_rapido': '¡Excelente!',
-    'rapido': 'Muy bien',
-    'lento': 'Estás tardando',
-    'muy_lento': 'Crítico'
-  };
-  return descripciones[categoria as keyof typeof descripciones] || 'N/A';
 };
 
 function obtenerColorEstado(estado: string) {

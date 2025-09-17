@@ -19,10 +19,28 @@ return new class extends Migration
             $table->string('cc');
             $table->string('cci');
             $table->string('alias')->nullable();
-            $table->enum('status', ['valid', 'invalid', 'pre_approved','rejected'])->default('invalid');
+            $table->enum('status0', ['pending', 'observed', 'approved', 'rejected'])
+                ->default('pending');
+            $table->enum('status', ['pending', 'observed', 'approved', 'rejected'])
+                ->default('pending');
+
             $table->foreignUlid('investor_id')->constrained();
-            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
+
+            $table->text('comment0')->nullable();
+            $table->text('comment')->nullable();
+
+            $table->foreignId('updated0_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
+            $table->timestamp('updated0_at')->nullable();
+            $table->foreignId('updated_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
+            $table->timestamp('updated_last_at')->nullable();
+
             $table->timestamps();
             $table->softDeletes();
         });

@@ -49,15 +49,16 @@ return new class extends Migration
             $table->foreignUlid('investor_id')->nullable()->constrained();
             $table->foreignUlid('related_movement_id')->nullable()->constrained('movements');
             
-            // NUEVO: Campos para timestamps de aprobación
-            $table->timestamp('aprobacion_1')->nullable(); // Cuándo se validó
-            $table->string('aprobado_por_1')->nullable();   // Quién validó
-            $table->timestamp('aprobacion_2')->nullable(); // Cuándo se aprobó/confirmó
-            $table->string('aprobado_por_2')->nullable();   // Quién aprobó/confirmó
-            
+            $table->timestamp('aprobacion_1')->nullable();
+            $table->string('aprobado_por_1')->nullable();
+            $table->foreignId('approval1_by')->nullable()->constrained('users')->nullOnDelete();
+
+            $table->timestamp('aprobacion_2')->nullable();
+            $table->string('aprobado_por_2')->nullable();
+            $table->foreignId('approval2_by')->nullable()->constrained('users')->nullOnDelete();
+
             $table->timestamps();
             
-            // Índices para consultas de tiempo
             $table->index(['aprobacion_1', 'aprobacion_2']);
             $table->index(['status', 'confirm_status']);
         });

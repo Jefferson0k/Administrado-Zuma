@@ -25,9 +25,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\PersonalAccessToken;
-use Illuminate\Support\Facades\Schema;
 
 use Throwable;
 
@@ -84,7 +84,7 @@ class InvestorController extends Controller
         }
     }
 
-    public function showInvestor($id)
+     public function showInvestor($id)
     {
         try {
             $investor = Investor::findOrFail($id);
@@ -106,7 +106,7 @@ class InvestorController extends Controller
             ], 500);
         }
     }
-    public function store(Request $request)
+     public function store(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -1140,6 +1140,4 @@ class InvestorController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
-    }
-
-}
+    }}

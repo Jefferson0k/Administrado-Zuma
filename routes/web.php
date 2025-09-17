@@ -67,6 +67,7 @@ use App\Http\Controllers\Web\TasasFijas\TermPlanWebController;
 use App\Http\Controllers\Web\UsuarioWebController;
 use App\Models\TipoDocumento;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\BlogController;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 
@@ -76,6 +77,24 @@ Route::get('/', function () {
 Route::get('/investors/{id}', [InvestorController::class, 'show']);
 
 Route::middleware(['auth', 'verified'])->group(function () {
+
+
+    Route::get('/ban/{id}/attachments', [BankAccountsController::class, 'indexAttachments'])
+    ->name('bank-accounts.attachments.index');
+
+    Route::post('/ban/{id}/validate', [BankAccountsController::class, 'validateStatus'])
+    ->name('bank-accounts.validate');
+
+
+
+
+    Route::post('/ban/{id}/attachments', [BankAccountsController::class, 'storeAttachments']);
+    Route::patch('/ban/{id}/status0', [BankAccountsController::class, 'updateStatus0'])
+     ->name('bank-accounts.update-status0');
+
+     Route::patch('/ban/{bankAccount}/status', [BankAccountsController::class, 'updateStatus'])
+    ->name('bank-accounts.update-status');
+
     #PARA QUE CUANDO SE CREA UN USUARIO O MODIFICA SU PASSWORD LO REDIRECCIONE PARA QUE PUEDA ACTUALIZAR
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');
@@ -88,6 +107,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/Ambiente-Pruebas', [SubastasOnlineWebController::class, 'viewsTC']);
     Route::get('/moneda', [CurrencyControllers::class, 'index']);
     Route::get('/Frecuencia/Pagos', [PaymentFrequenciesWebController::class, 'views']);
+
+    #RUTAS BLOG
+    Route::get('/blog/registro', [BlogController::class, 'create']);
+    Route::get('/blog/seguimiento', [BlogController::class, 'seguimiento']);
+    Route::get('/blog/categorias', [BlogController::class, 'categorias']);
+    Route::get('/blog/posts', [BlogController::class, 'index']);
+
+
+
 
     #RUTAS DE API
     Route::prefix('api')->group(function () {
@@ -173,19 +201,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('deposit')->group(function () {
         Route::get('/', [DepositController::class, 'index'])->name('deposits.index');
         Route::get('/{id}', [DepositController::class, 'show'])->name('deposits.show');
-
         Route::post('/{movementId}/validate', [DepositController::class, 'validateDeposit'])
             ->name('deposits.validate');
-
         Route::post('/{depositId}/{movementId}/reject', [DepositController::class, 'rejectDeposit'])
             ->name('deposits.reject');
-
         Route::post('/{depositId}/{movementId}/approve', [DepositController::class, 'approveDeposit'])
             ->name('deposits.approve');
-
         Route::post('/{depositId}/{movementId}/reject-confirm', [DepositController::class, 'rejectConfirmDeposit'])
             ->name('deposits.rejectConfirm');
+        Route::get('/export/excel', [DepositController::class, 'exportExcel'])
+            ->name('deposits.exportExcel');
     });
+
 
     Route::prefix('ban')->group(function () {
         Route::get('/', [BankAccountsController::class, 'index'])->name('bankaccounts.index');
