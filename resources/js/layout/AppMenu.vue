@@ -198,7 +198,7 @@ const model = computed(() => {
             ]
         },
 
-        // ===== Administración =====
+        // ========== ADMINISTRACIÓN ==========
         {
             label: 'Administración',
             icon: 'pi pi-fw pi-shield',

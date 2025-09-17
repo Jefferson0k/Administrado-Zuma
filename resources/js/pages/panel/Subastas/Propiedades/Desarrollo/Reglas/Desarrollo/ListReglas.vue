@@ -23,16 +23,22 @@
             ref="dt"
             :value="products"
             :paginator="true"
-            :rows="10"
+            :rows="perPage"
             :rowsPerPageOptions="[5, 10, 25]"
             :totalRecords="totalRecords"
             :loading="loading"
             lazy
             dataKey="id"
+            :first="(currentPage - 1) * perPage"
             @page="onPage"
             paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
             currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} reglas"
             class="p-datatable-sm"
+
+            :sortField="sortField"
+            :sortOrder="sortOrder"
+            sortMode="single"
+            @sort="onSort"
           >
             <template #header>
               <div class="flex flex-wrap gap-2 items-center justify-between">
@@ -147,14 +153,19 @@ const toast = useToast()
 const products = ref([])
 const totalRecords = ref(0)
 const currentPage = ref(1)
+const perPage = ref(10)           // ◂ server page size
 const loading = ref(false)
 const searchText = ref('')
 const reglaSeleccionada = ref(null)
 const dialogVisible = ref(false)
 const dialogCronograma = ref(false)
 
-// ✅ CORRECTO: Estado actual para saber qué datos cargar
+// estado activo (1 = Inversionista, 2 = Cliente)
 const estadoSeleccionado = ref('1')
+
+// server-side sorting state
+const sortField = ref(null)       // e.g. 'nombre', 'Moneda', 'tea', ...
+const sortOrder = ref(1)          // 1 asc | -1 desc
 
 const tabs = ref([
   { title: 'Inversionista', value: '1', icon: 'pi pi-user' },
@@ -162,30 +173,14 @@ const tabs = ref([
 ])
 
 const menuItems = ref([
-  {
-    label: 'Copiar ID',
-    icon: 'pi pi-copy',
-    command: () => copiarId()
-  },
-  {
-    label: 'Editar',
-    icon: 'pi pi-pencil',
-    command: () => editarRegla()
-  },
-  {
-    label: 'Ver Cronograma',
-    icon: 'pi pi-calendar',
-    command: () => verCronograma()
-  }
+  { label: 'Copiar ID', icon: 'pi pi-copy',     command: () => copiarId() },
+  { label: 'Editar',    icon: 'pi pi-pencil',   command: () => editarRegla() },
+  { label: 'Ver Cronograma', icon: 'pi pi-calendar', command: () => verCronograma() }
 ])
 
-// 💰 Función para formatear valores monetarios
+// dinero pretty
 const formatMoney = (value) => {
-  if (value === null || value === undefined || isNaN(value)) {
-    return '0.00'
-  }
-  
-  // Convertir a número y formatear con 2 decimales y separadores de miles
+  if (value === null || value === undefined || isNaN(value)) return '0.00'
   return new Intl.NumberFormat('es-PE', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -195,16 +190,15 @@ const formatMoney = (value) => {
 
 const toggleMenu = (event, rowData) => {
   reglaSeleccionada.value = { ...rowData }
-  console.log('Regla seleccionada:', reglaSeleccionada.value)
   menu.value.toggle(event)
 }
 
-// ✅ CORRECTO: Función simple para cambiar tab
 const cambiarTab = (newValue) => {
-  console.log('Cambiando a tab:', newValue)
   estadoSeleccionado.value = newValue
   currentPage.value = 1
   searchText.value = ''
+  sortField.value = null
+  sortOrder.value = 1
   cargarPropiedades(1, '')
 }
 
@@ -215,46 +209,37 @@ const buscarReglas = debounce(() => {
 
 const cargarPropiedades = async (page = 1, search = '') => {
   loading.value = true
-  console.log('Cargando propiedades:', { 
-    page, 
-    search, 
-    estado: estadoSeleccionado.value 
-  })
-  
   try {
-    const response = await axios.get('/property/reglas', {
-      params: {
-        page,
-        search,
-        estado: parseInt(estadoSeleccionado.value)
-      }
-    })
+    const params = {
+      page,
+      per_page: perPage.value,
+      search,
+      estado: parseInt(estadoSeleccionado.value, 10)
+    }
 
-    products.value = response.data.data || []
-    totalRecords.value = response.data.meta?.total || 0
-    currentPage.value = response.data.meta?.current_page || 1
-    
-    console.log('Datos cargados:', response.data)
+    // include sorting only if set
+    if (sortField.value) {
+      params.sort_field = sortField.value
+      params.sort_order = sortOrder.value === 1 ? 'asc' : 'desc'
+    }
+
+    const { data } = await axios.get('/property/reglas', { params })
+
+    products.value     = data.data || []
+    totalRecords.value = data.meta?.total || 0
+    currentPage.value  = data.meta?.current_page || 1
   } catch (error) {
-    console.error('Error al cargar propiedades:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'No se pudieron cargar las reglas',
-      life: 3000
-    })
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar las reglas', life: 3000 })
   } finally {
     loading.value = false
   }
 }
 
-const formatCronograma = (tipo) => {
-  return tipo === 'frances' ? 'Francés' : tipo === 'americano' ? 'Americano' : tipo
-}
+const formatCronograma = (tipo) =>
+  tipo === 'frances' ? 'Francés' : (tipo === 'americano' ? 'Americano' : tipo)
 
-const getEstadoSeverity = (estado) => {
-  return estado === 'Inversionista' ? 'success' : estado === 'Cliente' ? 'info' : 'secondary'
-}
+const getEstadoSeverity = (estado) =>
+  estado === 'Inversionista' ? 'success' : (estado === 'Cliente' ? 'info' : 'secondary')
 
 const getRiesgoSeverity = (riesgo) => {
   switch (riesgo) {
@@ -267,42 +252,34 @@ const getRiesgoSeverity = (riesgo) => {
 }
 
 const onPage = (event) => {
-  cargarPropiedades(event.page + 1, searchText.value)
+  currentPage.value = event.page + 1
+  perPage.value = event.rows
+  cargarPropiedades(currentPage.value, searchText.value)
 }
 
-const editarRegla = () => {
-  dialogVisible.value = true
+// PrimeVue sort event (lazy)
+const onSort = (event) => {
+  // event.sortField (string) | event.sortOrder (1|-1)
+  sortField.value = event.sortField || null
+  sortOrder.value = typeof event.sortOrder === 'number' ? event.sortOrder : 1
+  currentPage.value = 1
+  cargarPropiedades(1, searchText.value)
 }
 
-const verCronograma = () => {
-  console.log('Abriendo cronograma para:', reglaSeleccionada.value)
-  dialogCronograma.value = true
-}
+const editarRegla = () => { dialogVisible.value = true }
+const verCronograma = () => { dialogCronograma.value = true }
 
-// ✅ CORRECTO: Copiar el property_id (UUID largo)
 const copiarId = async () => {
   try {
     const property_id = `${reglaSeleccionada.value.property_id}`
     await navigator.clipboard.writeText(property_id)
-    toast.add({ 
-      severity: 'success', 
-      summary: 'ID copiado', 
-      detail: `Property ID: ${property_id}`, 
-      life: 2000 
-    })
-  } catch (err) {
-    toast.add({ 
-      severity: 'error', 
-      summary: 'Error', 
-      detail: 'No se pudo copiar el ID', 
-      life: 3000 
-    })
+    toast.add({ severity: 'success', summary: 'ID copiado', detail: `Property ID: ${property_id}`, life: 2000 })
+  } catch {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo copiar el ID', life: 3000 })
   }
 }
 
-// ✅ PERFECTO: Al cargar, automáticamente muestra Inversionista
 onMounted(() => {
-  console.log('Componente montado - Cargando Inversionista por defecto')
   cargarPropiedades(1, '')
 })
 </script>

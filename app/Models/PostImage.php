@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 class PostImage extends Model
 {
@@ -18,6 +19,4 @@ class PostImage extends Model
     {
         return $this->belongsTo(Post::class, 'post_id');
     }
-
-    
 }

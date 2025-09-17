@@ -53,6 +53,7 @@ class Investor extends Authenticatable implements MustVerifyEmail{
         'type',
         'asignado',
         'codigo',
+        'tipo_documento_id',
         'updated_by',
         'investor_photo_path',
         'file_path',
@@ -85,7 +86,10 @@ class Investor extends Authenticatable implements MustVerifyEmail{
     public function aprovacionuserdos() {
         return $this->belongsTo(User::class, 'approval2_by');
     }
-
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
     public function balances(){
         return $this->hasMany(Balance::class);
     }
@@ -212,6 +216,10 @@ class Investor extends Authenticatable implements MustVerifyEmail{
     public function sendInvestmentFullyPaidEmailNotification(Payment $payment, Investment $investment, Money $netExpectedReturn, Money $itfAmount)
     {
         $this->notify(new InvestorFullyPaymentNotification($payment, $investment, $netExpectedReturn, $itfAmount));
+    }
+    public function tipoDocumento()
+    {
+        return $this->belongsTo(TipoDocumento::class, 'tipo_documento_id', 'id_tipo_documento');
     }
     public function sendPasswordResetNotification($token){
         $this->notify(new InvestorPasswordResetNotification($token));

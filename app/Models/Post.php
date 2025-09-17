@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Post extends Model
 {
     use HasFactory;
@@ -46,12 +45,12 @@ class Post extends Model
         return $this->belongsTo(State::class);
     }
     public function images()
-{
-    return $this->hasMany(PostImage::class, 'post_id');
-}
+    {
+        return $this->hasMany(PostImage::class, 'post_id');
+    }
 
-   public function comentarios()
-{
-    return $this->hasMany(ComentarioPost::class, 'post_id');
-}
+    public function comentarios()
+    {
+        return $this->hasMany(ComentarioPost::class, 'post_id');
+    }
 }
