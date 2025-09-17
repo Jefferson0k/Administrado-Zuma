@@ -187,13 +187,41 @@ const generatePDF = async () => {
         const contentWidth = pageWidth - (2 * margin);
         let y = 0;
 
-        // CALCULAR IR (SUMA TOTAL DE INTERESES)
+        // DETERMINAR LA MONEDA CORRECTA
+        let moneda = '$'; // Por defecto
+        if (data.Monto && data.Monto.includes('$')) {
+            moneda = '$';
+        } else if (data.Monto && data.Monto.includes('S/')) {
+            moneda = 'S/';
+        } else if (data.Monto && data.Monto.includes('PEN')) {
+            moneda = 'PEN';
+        } else if (data.Moneda) {
+            moneda = data.Moneda;
+        }
+
+        // FUNCIÓN PARA FORMATEAR NÚMEROS CON COMAS
+        const formatNumberWithCommas = (number) => {
+            return number.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        };
+
+        // FUNCIÓN PARA OBTENER IMAGEN DE RIESGO
+        const getRiskImage = (riesgo) => {
+            const riskMap = {
+                'A+': 'A+.png',
+                'A': 'A.png', 
+                'B': 'B.png',
+                'C': 'C.png'
+            };
+            return riskMap[riesgo] ? `/imagenes/riesgos/${riskMap[riesgo]}` : null;
+        };
+
+        // CALCULAR INTERESES BRUTO Y NETO
         const cronograma = data.cronograma || [];
-        const totalIntereses = cronograma.reduce((sum, cuota) => {
+        const totalInteresesBruto = cronograma.reduce((sum, cuota) => {
             const intereses = parseFloat(cuota.intereses) || 0;
             return sum + intereses;
         }, 0);
-        const IR = `${totalIntereses.toFixed(2)}`;
+        const totalInteresesNeto = totalInteresesBruto * 0.95; // 95% del bruto (5% menos)
 
         // ===== PRIMERA PÁGINA - DISEÑO ESPECÍFICO =====
         
@@ -212,51 +240,72 @@ const generatePDF = async () => {
             }
         }
 
-        // ENCABEZADO CORREGIDO CON IR - MOVIDO MÁS ABAJO
-        const headerStartX = 70;
-        const colWidth = 22;
-        const headerYOffset = 20; // Movido más abajo
+        // ENCABEZADO CON 5 COLUMNAS
+        const headerStartX = 75;
+        const colWidth = 28; // Ajustado para 5 columnas
+        const headerYOffset = 20;
 
-        // Títulos en azul
+        // Títulos en azul (5 columnas)
         pdf.setFontSize(8);
         pdf.setFont("helvetica", "bold");
-        pdf.setTextColor(103, 144, 255); // Azul
+        pdf.setTextColor(103, 144, 255);
         pdf.text("Importe", headerStartX, headerYOffset);
         pdf.text("Rentabilidad Anual", headerStartX + colWidth, headerYOffset);
-        pdf.text("Plazo", headerStartX + (colWidth * 2.5), headerYOffset);
-        pdf.text("Ratio LTV", headerStartX + (colWidth * 3.4), headerYOffset);
-        pdf.text("Riesgo", headerStartX + (colWidth * 4.2), headerYOffset);
-        pdf.text("IR", headerStartX + (colWidth * 4.8), headerYOffset);
+        pdf.text("Plazo", headerStartX + (colWidth * 2), headerYOffset);
+        pdf.text("Ratio LTV", headerStartX + (colWidth * 3), headerYOffset);
+        pdf.text("Riesgo", headerStartX + (colWidth * 4), headerYOffset);
 
-        // Valores en negro - USANDO DATOS REALES CON RENTABILIDAD REDUCIDA
+        // Valores en negro - USANDO TEA ORIGINAL (SIN REDUCIR)
         pdf.setFontSize(9);
         pdf.setFont("helvetica", "bold");
         pdf.setTextColor(0, 0, 0);
         
         // Extraer valores reales de los datos
         const importe = data.Monto || 'N/A';
-        // RENTABILIDAD REDUCIDA EN 5%
         const teaOriginal = parseFloat(data.tea) || 0;
-        const teaReducida = Math.max(0, teaOriginal - 5); // Asegurar que no sea negativo
-        const rentabilidadAnual = `${teaReducida.toFixed(1)}%`;
+        const rentabilidadAnual = `${teaOriginal.toFixed(1)}%`; // TEA original sin reducir
         const plazo = data.Plazo || 'N/A';
         const ratioLTV = data.Valor_Estimado && data.Monto_raw 
             ? `${((data.Monto_raw / parseFloat(data.Valor_Estimado.replace(/[^\d.-]/g, ''))) * 100).toFixed(1)}%` 
             : '0%';
-        const riesgo = data.riesgo || 'N/A';
 
-        // Posicionar valores directamente debajo de cada encabezado
-        const valuesYOffset = headerYOffset + 7; // Valores debajo de títulos
+        // Para el riesgo, mostrar la imagen si está disponible, sino el texto
+        const riesgo = data.riesgo || 'N/A';
+        const riskImagePath = getRiskImage(riesgo);
+
+        // Posicionar valores directamente debajo de cada encabezado (5 columnas)
+        const valuesYOffset = headerYOffset + 7;
         pdf.text(pdf.splitTextToSize(importe, colWidth - 2), headerStartX, valuesYOffset);
         pdf.text(pdf.splitTextToSize(rentabilidadAnual, colWidth - 2), headerStartX + colWidth, valuesYOffset);
-        pdf.text(pdf.splitTextToSize(plazo, colWidth - 2), headerStartX + (colWidth * 2.5), valuesYOffset);
-        pdf.text(pdf.splitTextToSize(ratioLTV, colWidth - 2), headerStartX + (colWidth * 3.4), valuesYOffset);
-        pdf.text(pdf.splitTextToSize(riesgo, colWidth - 2), headerStartX + (colWidth * 4.2), valuesYOffset);
-        pdf.text(pdf.splitTextToSize(IR, colWidth - 2), headerStartX + (colWidth * 4.8), valuesYOffset);
+        pdf.text(pdf.splitTextToSize(plazo, colWidth - 2), headerStartX + (colWidth * 2), valuesYOffset);
+        pdf.text(pdf.splitTextToSize(ratioLTV, colWidth - 2), headerStartX + (colWidth * 3), valuesYOffset);
+
+        // Para el riesgo, agregar imagen más pequeña o texto
+        if (riskImagePath) {
+            try {
+                const base64Risk = await loadImageAsBase64(riskImagePath);
+                const riskImgSize = 6; 
+
+                // --- Ajustes finos ---
+                const offsetX = -9;   // mueve a la izquierda (-) o derecha (+)
+                const offsetY = 1;    // mueve arriba (-) o abajo (+)
+
+                const riskX = headerStartX + (colWidth * 4) + (colWidth - riskImgSize) / 2 + offsetX;
+                const riskY = valuesYOffset - (riskImgSize * 0.75) + offsetY;
+
+                pdf.addImage(base64Risk, 'PNG', riskX, riskY, riskImgSize, riskImgSize);
+            } catch (error) {
+                console.error('Error al cargar imagen de riesgo:', error);
+                pdf.text(pdf.splitTextToSize(riesgo, colWidth - 2), headerStartX + (colWidth * 4), valuesYOffset);
+            }
+        } else {
+            pdf.text(pdf.splitTextToSize(riesgo, colWidth - 2), headerStartX + (colWidth * 4), valuesYOffset);
+        }
+
 
         // LÍNEA SEPARADORA DEBAJO DE LOS VALORES
         const lineY = headerYOffset + 2;
-        const totalHeaderWidth = colWidth * 5.8;
+        const totalHeaderWidth = colWidth * 5; // Ajustado para 5 columnas
         const lineStartX = headerStartX;
         const lineEndX = headerStartX + totalHeaderWidth;
 
@@ -264,7 +313,7 @@ const generatePDF = async () => {
         pdf.setDrawColor(0, 0, 0);
         pdf.line(lineStartX, lineY, lineEndX, lineY);
         
-        y = 60; // Ajustado para dar más espacio después del encabezado movido
+        y = 60;
 
         const col1X = margin;
         const col2X = centerX + 5;
@@ -295,11 +344,12 @@ const generatePDF = async () => {
         const solicitanteContent = `Profesión u ocupación: ${data.ocupacion_profesion || 'N/A'}\n\nIngresos mensuales promedio: ${data.inversionista?.documento || 'N/A'}\n\nRiesgo: ${data.riesgo || 'N/A'}`;
         const solicitanteEndY = addSection("Sobre el solicitante:", solicitanteContent, col1X, initialY, sectionWidth);
 
-        const garantiaContent = `Tipo de inmueble: ${data.Property || 'N/A'}`;
+        // SECCIÓN DE GARANTÍA SIN "GARANTÍA TOTAL"
+        const garantiaContent = `Tipo de inmueble: ${data.solicitud_prestamo_para || 'N/A'}\n\nValor estimado: ${data.Valor_Estimado || 'N/A'}`;
         const garantiaEndY = addSection("Sobre la garantía:", garantiaContent, col1X, solicitanteEndY + 1, sectionWidth);
 
-        // USAR LA RENTABILIDAD REDUCIDA TAMBIÉN EN LA SECCIÓN DE FINANCIAMIENTO
-        const financiamientoContent = `Importe del financiamiento: ${data.Monto || 'N/A'}\n\nMoneda del financiamiento: ${data.Monto ? 'PEN' : 'N/A'}\n\nPlazo: ${data.Plazo || 'N/A'}\n\nSistema de amortización: ${data.Esquema || 'N/A'}\n\nTasa efectiva anual: ${teaReducida.toFixed(1)}%\n\nTotal de intereses proyectados (IR): ${IR}`;
+        // USAR TEA ORIGINAL (SIN REDUCIR) EN LA SECCIÓN DE FINANCIAMIENTO
+        const financiamientoContent = `Importe del financiamiento: ${data.Monto || 'N/A'}\n\nMoneda del financiamiento: ${moneda}\n\nPlazo: ${data.Plazo || 'N/A'}\n\nSistema de amortización: ${data.Esquema || 'N/A'}\n\nTasa efectiva anual: ${teaOriginal.toFixed(1)}%\n\nTotal de intereses proyectados (Bruto): ${moneda} ${formatNumberWithCommas(totalInteresesBruto)}`;
         const financiamientoEndY = addSection("Sobre el financiamiento:", financiamientoContent, col2X, initialY, sectionWidth);
 
         y = Math.max(garantiaEndY, financiamientoEndY);
@@ -314,7 +364,7 @@ const generatePDF = async () => {
 
         // Configuración para las fotos con espacio para descripciones
         const photoSize = 45;
-        const descriptionHeight = 15; // Espacio para descripción
+        const descriptionHeight = 15;
         const spacing = 10;
         const photosPerRow1 = 3;
         const photosPerRow2 = 2;
@@ -458,8 +508,8 @@ const generatePDF = async () => {
                 const imageCenterY = frameY + (logoSize * 0.1);
                 
                 // Hacer la imagen un poco más ancha
-                const finalImageWidth = logoSize * 1.0;   // Un poco más ancho
-                const finalImageHeight = logoSize * 0.7;  // Mantener la altura original
+                const finalImageWidth = logoSize * 1.0;
+                const finalImageHeight = logoSize * 0.7;
                 
                 pdf.addImage(base64Principal, 'PNG', imageCenterX, imageCenterY, finalImageWidth, finalImageHeight);
             } catch (error) {
@@ -506,66 +556,69 @@ const generatePDF = async () => {
         pdf.setTextColor(0, 0, 0);
 
         const tem = data.tem || '0';
-        const tea = teaReducida.toFixed(1); // Usar la TEA reducida también aquí
-        const garantiaTotal = data.Valor_Estimado || data.Monto || '0';
+        const tea = teaOriginal.toFixed(1); // Usar TEA original
+        const valorEstimado = data.Valor_Estimado || data.Monto || '0';
         const montoOtorgado = data.Monto || '0';
 
         const lineSpacing = 8;
         const sidePadding = -5;
 
-        // ---- Línea 1 - IR ----
-        let text1 = `Total de Intereses (IR): `;
-        let text2 = `${IR}      Garantía Total: `;
-        let text3 = `${garantiaTotal}`;
+        // ---- NUEVA DISPOSICIÓN EN 2 FILAS ----
+        
+        // PRIMERA FILA: Monto Otorgado | Tasa Efectiva Anual
+        const row1Y = y;
+        const colSpacing = 90; // Espacio entre columnas
+        
+        // --- FILA 1: Total de interés (Bruto) | Monto Otorgado ---
 
-        let line1 = text1 + text2 + text3;
-        let textWidth = pdf.getTextWidth(line1);
-        let startX = (pageWidth - textWidth) / 2 + sidePadding;
+// Columna 1: Total de interés (Bruto)
+let text1 = `Total de interés (Bruto): `;
+let text2 = `${moneda} ${formatNumberWithCommas(totalInteresesBruto)}`;
+let startX1 = margin + 20;
 
-        pdf.setFont("helvetica", "bold");
-        pdf.text(text1, startX, y);
+pdf.setFont("helvetica", "bold");
+pdf.text(text1, startX1, row1Y);
+let x1 = startX1 + pdf.getTextWidth(text1);
+pdf.setFont("helvetica", "normal");
+pdf.text(text2, x1, row1Y);
 
-        let x1 = startX + pdf.getTextWidth(text1);
-        pdf.setFont("helvetica", "normal");
-        pdf.text(IR, x1, y);
+// Columna 2: Monto Otorgado
+text1 = `Monto Otorgado: `;
+text2 = `${montoOtorgado}`;
+let startX2 = startX1 + colSpacing;
 
-        let x2 = x1 + pdf.getTextWidth(IR + "      ");
-        pdf.setFont("helvetica", "bold");
-        pdf.text("Garantía Total: ", x2, y);
+pdf.setFont("helvetica", "bold");
+pdf.text(text1, startX2, row1Y);
+let x2 = startX2 + pdf.getTextWidth(text1);
+pdf.setFont("helvetica", "normal");
+pdf.text(text2, x2, row1Y);
 
-        let x3 = x2 + pdf.getTextWidth("Garantía Total: ");
-        pdf.setFont("helvetica", "normal");
-        pdf.text(garantiaTotal, x3, y);
 
-        y += lineSpacing;
+// --- FILA 2: Total de interés (Neto) | Tasa efectiva Anual ---
+const row2Y = row1Y + lineSpacing;
 
-        // ---- Línea 2 ----
-        text1 = `Tasa efectiva Anual: `;
-        text2 = `${tea}%      Monto Otorgado: `;
-        text3 = `${montoOtorgado}`;
+// Columna 1: Total de interés (Neto)
+text1 = `Total de interés (Neto): `;
+text2 = `${moneda} ${formatNumberWithCommas(totalInteresesNeto)}`;
 
-        line1 = text1 + text2 + text3;
-        textWidth = pdf.getTextWidth(line1);
-        startX = (pageWidth - textWidth) / 2 + sidePadding;
+pdf.setFont("helvetica", "bold");
+pdf.text(text1, startX1, row2Y);
+x1 = startX1 + pdf.getTextWidth(text1);
+pdf.setFont("helvetica", "normal");
+pdf.text(text2, x1, row2Y);
 
-        pdf.setFont("helvetica", "bold");
-        pdf.text(text1, startX, y);
+// Columna 2: Tasa efectiva Anual
+text1 = `Tasa efectiva Anual: `;
+text2 = `${tea}%`;
 
-        x1 = startX + pdf.getTextWidth(text1);
-        pdf.setFont("helvetica", "normal");
-        pdf.text(tea + '%', x1, y);
+pdf.setFont("helvetica", "bold");
+pdf.text(text1, startX2, row2Y);
+x2 = startX2 + pdf.getTextWidth(text1);
+pdf.setFont("helvetica", "normal");
+pdf.text(text2, x2, row2Y);
 
-        x2 = x1 + pdf.getTextWidth(tea + "%      ");
-        pdf.setFont("helvetica", "bold");
-        pdf.text("Monto Otorgado: ", x2, y);
 
-        x3 = x2 + pdf.getTextWidth("Monto Otorgado: ");
-        pdf.setFont("helvetica", "normal");
-        pdf.text(montoOtorgado, x3, y);
-
-        y += lineSpacing;
-
-        y += lineSpacing + 5;
+        y = row2Y + lineSpacing + 5;
 
         // FUNCIÓN PARA CREAR HEADER DE TABLA
         const drawTableHeader = (startY) => {
