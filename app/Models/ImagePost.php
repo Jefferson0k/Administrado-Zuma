@@ -1,14 +1,13 @@
 <?php
 
 namespace App\Models;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-
 
 use Illuminate\Database\Eloquent\Model;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 class ImagePost extends Model
 {
-      use HasFactory;
+    use HasFactory;
 
     protected $fillable = [
         'post_id',
@@ -21,5 +20,4 @@ class ImagePost extends Model
     {
         return $this->belongsTo(Post::class, 'post_id');
     }
-    
 }

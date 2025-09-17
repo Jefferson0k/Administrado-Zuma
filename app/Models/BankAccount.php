@@ -22,7 +22,17 @@ class BankAccount extends Model
         'cci',
         'alias',
         'status',
-        'investor_id'
+        'status0',
+        'investor_id',
+        'comment0',
+        'comment',
+
+        'updated0_by',
+        'updated0_at',   // NEW
+        'updated_by',
+        'updated_last_at'
+
+
     ];
 
     protected $casts = [
@@ -51,9 +61,27 @@ class BankAccount extends Model
     {
         $this->investor->sendBankAccountValidationEmailNotification($this);
     }
-    public function sendBankAccountRejectionEmail(){
+    public function sendBankAccountRejectionEmail()
+    {
         if ($this->investor && $this->investor->email) {
             $this->investor->notify(new BankAccountRejected($this));
         }
     }
+
+    public function attachments()
+    {
+        return $this->hasMany(\App\Models\BankAccountAttachment::class);
+    }
+
+
+     public function updated0By(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated0_by');
+    }
+
+    public function updatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
 }

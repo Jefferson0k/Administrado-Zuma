@@ -74,7 +74,7 @@ class BankAccountController extends Controller{
             $bank_account->cc = $request->cc;
             $bank_account->cci = $request->cci;
             $bank_account->alias = $request->alias;
-            $bank_account->status = 'pre_approved';
+            $bank_account->status = 'pending';
             $bank_account->investor_id = $investor->id;
 
             // Verificar si existe balance para esa moneda

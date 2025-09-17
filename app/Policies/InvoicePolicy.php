@@ -32,6 +32,13 @@ class InvoicePolicy
         return $user->can('eliminar factura');
     }
 
+    public function approveLevel1(User $user, Invoice $invoice): bool{
+        return $user->can('aprobar factura nivel 1');
+    }
+    public function approveLevel2(User $user, Invoice $invoice): bool{
+        return $user->can('aprobar factura nivel 2') 
+            && $invoice->approval1_status === 'approved';
+    }
     public function restore(User $user, Invoice $invoice): bool
     {
         return false;

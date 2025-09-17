@@ -35,6 +35,7 @@ use App\Http\Controllers\Panel\VisitaProductoController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\TipoDocumentoController;
 
+
 /*
 |--------------------------------------------------------------------------
 | RUTAS PÚBLICAS (sin login)
@@ -45,7 +46,6 @@ Route::post('register', [InvestorController::class, 'register']);
 Route::post('register/cliente', [InvestorController::class, 'registerCustomer']);
 
 
-Route::post('/login', [InvestorController::class, 'login']);
 Route::post('login', [InvestorController::class, 'login']);
 Route::post('/customers/register', [RegisteredCustomerController::class, 'store']);
 Route::put('/email/verify/{id}/{hash}', [ProfileController::class, 'emailVerification']);
@@ -211,6 +211,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/pen-to-usd', [ExchangeControllerFonted::class, 'penToUsd']);
         Route::post('/usd-to-pen', [ExchangeControllerFonted::class, 'usdToPen']);
     });
+
+
+
+    
+
 });
 
 Route::prefix('investments')->group(function () {
@@ -225,15 +230,8 @@ Route::prefix('online')->group(function () {
 });
 
 Route::get('/Tipo-Cambio-Sbs', [TipoCambioSbs::class, 'TipoCambioSbs']);
-Route::get('/tipo-documentos', [TipoDocumentoController::class, 'index']);
-Route::post('/blog/guardar', [BlogController::class, 'guardar']);
-Route::get('/blog/lista', [BlogController::class, 'lista']);
-Route::get('/blog/productos', [BlogController::class, 'productos']);
-Route::delete('/blog/eliminar/{id}', [BlogController::class, 'eliminar']);
-Route::post('/blog/actualizar/{id}', [BlogController::class, 'actualizar']);
-Route::get('/blog/publicar/{user_id}/{post_id}/{state_id}', [BlogController::class, 'publicar']);
-Route::get('/blog/showpost/{id}', [BlogController::class, 'showPost']);
-Route::get('/blog/getcomentarios/{id}', [BlogController::class, 'getComentarios']);
+
+
 
 
 Route::post('/blog/savecomentario', [BlogController::class, 'saveComentario']);
@@ -244,3 +242,12 @@ Route::post('/blog/guardar-categoria', [BlogController::class, 'guardar_categori
 Route::get('/blog/eliminar-categoria/{id}', [BlogController::class, 'eliminar_categoria']);
 Route::get('/blog/listar-categoria', [BlogController::class, 'listar_categoria']);
 Route::get('/blog/listar-categoria-filtrada/{id}', [BlogController::class, 'listar_categoria_filtrada']);
+Route::get('/tipo-documentos', [TipoDocumentoController::class, 'index']);
+Route::post('/blog/guardar', [BlogController::class, 'guardar']);
+Route::get('/blog/lista', [BlogController::class, 'lista']);
+Route::get('/blog/productos', [BlogController::class, 'productos']);
+Route::delete('/blog/eliminar/{id}', [BlogController::class, 'eliminar']);
+Route::post('/blog/actualizar/{id}', [BlogController::class, 'actualizar']);
+Route::get('/blog/publicar/{user_id}/{post_id}/{state_id}', [BlogController::class, 'publicar']);
+Route::get('/blog/showpost/{id}', [BlogController::class, 'showPost']);
+Route::get('/blog/getcomentarios/{id}', [BlogController::class, 'getComentarios']);

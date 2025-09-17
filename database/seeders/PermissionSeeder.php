@@ -125,5 +125,8 @@ class PermissionSeeder extends Seeder{
         Permission::create(['name' => 'editar permisos']);
         Permission::create(['name' => 'eliminar permisos']);
         Permission::create(['name' => 'ver permisos']);
+      
+    
+
     }
 }
