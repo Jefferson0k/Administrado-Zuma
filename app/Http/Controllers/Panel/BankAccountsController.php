@@ -20,17 +20,23 @@ use Illuminate\Support\Facades\Auth;
 
 class BankAccountsController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         try {
             Gate::authorize('viewAny', BankAccount::class);
 
-            $accounts = BankAccount::query()
+            $search  = trim((string) $request->input('search', ''));
+            $perPage = (int) $request->input('perPage', 10);
 
-                ->whereHas('investor', function ($q) {
-                    $q->where('approval1_status', 'approved')
-                        ->where('approval2_status', 'approved');
-                })->latest()->paginate(10);
+            $accounts = BankAccount::query()
+                ->when($search !== '', function ($q) use ($search) {
+                    $q->whereHas('investor', function ($iq) use ($search) {
+                        $iq->where('name', 'like', '%' . $search . '%');
+                    });
+                })
+                ->latest()
+                ->paginate($perPage)
+                ->appends(['search' => $search, 'perPage' => $perPage]);
 
             // Devuelve data + meta/links automáticamente
             return BankAccountResource::collection($accounts);
@@ -40,6 +46,7 @@ class BankAccountsController extends Controller
             return response()->json(['message' => 'Error al listar las cuentas bancarias.'], 500);
         }
     }
+
 
     public function show($id)
     {
@@ -152,7 +159,7 @@ class BankAccountsController extends Controller
         $stored = [];
 
         foreach ($request->file('files', []) as $file) {
-            $path = $file->store("bank_accounts/{$account->id}", 'public');
+            $path = $file->store("bank_accounts/{$account->id}", 's3');
 
             $attachment = BankAccountAttachment::create([
                 'bank_account_id' => $account->id,
@@ -169,7 +176,8 @@ class BankAccountsController extends Controller
             $stored[] = [
                 'id'            => $attachment->id,
                 'original_name' => $attachment->original_name,
-                'url'           => Storage::disk('public')->url($attachment->path),
+                'url'          => Storage::disk('s3')->temporaryUrl($attachment->path, now()->addMinutes(60)),
+                'download_url' => Storage::disk('s3')->temporaryUrl($attachment->path, now()->addMinutes(60)),
                 'mime_type'     => $attachment->mime_type,
                 'size'          => $attachment->size,
             ];
@@ -271,15 +279,16 @@ class BankAccountsController extends Controller
             ->map(fn($a) => [
                 'id'            => $a->id,
                 'original_name' => $a->original_name,
-                'url'           => Storage::disk('public')->url($a->path), // URL pública para preview/descarga
+                'url'          => Storage::disk('s3')->temporaryUrl($a->path, now()->addMinutes(60)), // URL presignada (preview)
+                'download_url' => Storage::disk('s3')->temporaryUrl($a->path, now()->addMinutes(60)), // URL presignada (descarga)
                 'mime_type'     => $a->mime_type,
                 'size'          => $a->size,
             ]);
 
-        
 
 
-            
+
+
 
         return response()->json(['files' => $files], 200);
     }

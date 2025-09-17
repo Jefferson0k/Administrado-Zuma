@@ -1,77 +1,72 @@
 <template>
-  <DataTable ref="dt" v-model:selection="selectedAccounts" :value="accounts" dataKey="id" :paginator="true"
+  <DataTable :lazy="true" ref="dt" v-model:selection="selectedAccounts" :value="accounts" dataKey="id" :paginator="true"
     :rows="rowsPerPage" :totalRecords="totalRecords" :first="(currentPage - 1) * rowsPerPage" :loading="loading"
-    :rowsPerPageOptions="[5, 10, 20, 50]"
+    :rowsPerPageOptions="[5,10,20,50]"
     paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
     currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} cuentas" @page="onPage" scrollable
-    scrollHeight="574px" class="p-datatable-sm">
-    <!-- Header -->
-    <template #header>
-      <div class="flex flex-wrap gap-2 items-center justify-between">
-        <h4 class="m-0">
-          Cuentas Bancarias
-          <Tag severity="contrast" :value="totalRecords" />
-        </h4>
-        <div class="flex flex-wrap gap-2">
-          <IconField>
-            <InputIcon><i class="pi pi-search" /></InputIcon>
-            <InputText v-model="globalFilter" @input="onGlobalSearch" placeholder="Buscar..." />
-          </IconField>
-          <Button icon="pi pi-refresh" outlined rounded aria-label="Refresh" severity="contrast"
-            @click="loadAccounts" />
-        </div>
+    scrollHeight="574px" class="p-datatable-sm" >
+
+  <!-- Header -->
+  <template #header>
+    <div class="flex flex-wrap gap-2 items-center justify-between">
+      <h4 class="m-0">
+        Cuentas Bancarias
+        <Tag severity="contrast" :value="totalRecords" />
+      </h4>
+      <div class="flex flex-wrap gap-2">
+        <IconField>
+          <InputIcon><i class="pi pi-search" /></InputIcon>
+          <InputText v-model="globalFilter" @input="onGlobalSearch" placeholder="Buscar..." />
+        </IconField>
+        <Button icon="pi pi-refresh" outlined rounded aria-label="Refresh" severity="contrast" @click="loadAccounts" />
+      </div>
+    </div>
+  </template>
+
+  <!-- Columns -->
+  <Column selectionMode="multiple" style="width: 1rem" :exportable="false" />
+  <Column field="inversionista" header="Inversionista" sortable style="min-width: 18rem" />
+  <Column field="banco" header="Banco" sortable style="min-width: 15rem" />
+  <Column field="type" header="Tipo" sortable style="min-width: 10rem" />
+  <Column field="currency" header="Moneda" sortable style="min-width: 8rem" />
+  <Column field="cc" header="Cuenta" sortable style="min-width: 12rem" />
+  <Column field="cci" header="CCI" sortable style="min-width: 15rem" />
+
+  <!-- Estado 0 -->
+  <Column field="estado0" header="1º estado" sortable style="min-width: 10rem">
+    <template #body="{ data }">
+      <Tag :value="data.estado0" :severity="getStatus0Severity(data.estado0)" />
+    </template>
+  </Column>
+
+  <Column field="updated0_by_name" header="1º apr. user" sortable style="min-width: 8rem" />
+
+  <Column header="1º apr. fecha" style="min-width: 15rem" sortable>
+    <template #body="{ data }">{{ data.updated0_at ?? '—' }}</template>
+  </Column>
+
+  <!-- Estado principal -->
+  <Column field="estado" header="2º estado" sortable style="min-width: 10rem">
+    <template #body="{ data }">
+      <Tag :value="data.estado" :severity="getStatusSeverity(data.estado)" />
+    </template>
+  </Column>
+
+  <Column field="updated_by_name" header="2º apr. user" sortable style="min-width: 8rem" />
+  <Column header="2º apr. fecha" sortable style="min-width: 15rem">
+    <template #body="{ data }">{{ data.updated_last_at ?? '—' }}</template>
+  </Column>
+
+  <Column field="creacion" header="Creación" sortable style="min-width: 15rem" />
+
+  <!-- Acciones -->
+  <Column header="" style="min-width: 7rem; text-align:center">
+    <template #body="{ data }">
+      <div class="flex items-center gap-2">
+        <Button icon="pi pi-eye" text rounded @click="openShowModal(data)" />
       </div>
     </template>
-
-    <!-- Columns -->
-    <Column selectionMode="multiple" style="width: 1rem" :exportable="false" />
-    <Column field="inversionista" header="Inversionista" sortable style="min-width: 18rem" />
-    <Column field="banco" header="Banco" sortable style="min-width: 15rem" />
-    <Column field="type" header="Tipo" sortable style="min-width: 10rem" />
-    <Column field="currency" header="Moneda" sortable style="min-width: 8rem" />
-    <Column field="cc" header="Cuenta" sortable style="min-width: 12rem" />
-    <Column field="cci" header="CCI" sortable style="min-width: 15rem" />
-
-    <!-- Estado 0 -->
-    <Column field="estado0" header="1º estado" sortable style="min-width: 10rem">
-      <template #body="{ data }">
-        <Tag :value="data.estado0" :severity="getStatus0Severity(data.estado0)" />
-      </template>
-    </Column>
-
-    <Column field="updated0_by_name" header="1º apr. user" sortable style="min-width: 8rem" />
-
-    <Column header="1º apr. fecha" style="min-width: 15rem" sortable>
-      <template #body="{ data }">{{ data.updated0_at ?? '—' }}</template>
-    </Column>
-
-
-    <!-- Estado principal -->
-    <Column field="estado" header="2º estado" sortable style="min-width: 10rem">
-      <template #body="{ data }">
-        <Tag :value="data.estado" :severity="getStatusSeverity(data.estado)" />
-      </template>
-    </Column>
-
-    <Column field="updated_by_name" header="2º apr. user" sortable style="min-width: 8rem" />
-    <Column header="2º apr. fecha" sortable style="min-width: 15rem">
-      <template #body="{ data }">{{ data.updated_last_at ?? '—' }}</template>
-    </Column>
-
-
-    <Column field="creacion" header="Creación" sortable style="min-width: 15rem" />
-
-    <!-- Auditoría -->
-
-
-    <!-- Acciones -->
-    <Column header="" style="min-width: 7rem; text-align:center">
-      <template #body="{ data }">
-        <div class="flex items-center gap-2">
-          <Button icon="pi pi-eye" text rounded @click="openShowModal(data)" />
-        </div>
-      </template>
-    </Column>
+  </Column>
   </DataTable>
 
   <!-- Modal de Detalle -->
@@ -141,7 +136,7 @@
           <p class="font-medium">{{ selectedAccount.updated_by_name ?? selectedAccount.updated_by ?? '—' }}</p>
           <p class="text-xs text-gray-500 mt-2">Fecha</p>
           <p class="font-medium">{{ formatDateTime(selectedAccount.updated_last_at ?? selectedAccount.updates_last_at)
-          }}
+            }}
           </p>
         </div>
       </div>
@@ -151,19 +146,12 @@
         <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Adjuntos</p>
 
         <div v-if="!isFirstApproved">
-          <FileUpload name="files[]" :customUpload="true" multiple :auto="false" accept=".pdf,image/*"
-            :maxFileSize="10485760" chooseLabel="Seleccionar" uploadLabel="Subir" cancelLabel="Limpiar"
-            @select="onFileSelect" @uploader="onFileUpload" @remove="onFileRemove" @clear="onFileClear" />
+          <!-- Subida automática sin botón Subir ni sección Pendientes -->
+          <FileUpload name="files[]" :customUpload="true" multiple :auto="true" accept=".pdf,image/*"
+            :maxFileSize="10485760" chooseLabel="Seleccionar" :showUploadButton="false" :showCancelButton="false"
+            @uploader="onAutoUpload" />
 
-          <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div class="p-3 rounded border border-gray-200/60">
-              <p class="text-xs font-semibold text-gray-500 mb-1">Pendientes de subir</p>
-              <ul class="text-sm list-disc pl-5">
-                <li v-for="(f, i) in pendingFiles" :key="i">{{ f.name }} ({{ prettySize(f.size) }})</li>
-                <li v-if="pendingFiles.length === 0" class="text-gray-500">—</li>
-              </ul>
-            </div>
-
+          <div class="mt-3">
             <div class="p-3 rounded border border-gray-200/60">
               <p class="text-xs font-semibold text-gray-500 mb-1">Subidos</p>
               <ul class="text-sm space-y-1">
@@ -249,18 +237,7 @@
           <i class="pi pi-file"></i> Primera Validación
         </p>
 
-        <!-- BOTH COMMENTS here (comment0 editable, comment readonly) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <p class="text-xs font-semibold text-gray-600 mb-1">Comentario (Primera)</p>
-            <Textarea v-model="comment0" autoResize rows="3" class="w-full" placeholder="Escribe un comentario..." />
-          </div>
-          <div>
-            <p class="text-xs font-semibold text-gray-600 mb-1">Comentario (Segunda)</p>
-            <Textarea v-model="comment" autoResize rows="3" class="w-full" placeholder="Solo lectura en esta etapa"
-              readonly />
-          </div>
-        </div>
+        <!-- (Eliminados los textareas duplicados del footer) -->
 
         <div v-if="!hasAnyAttachment" class="text-xs text-amber-800 bg-amber-100 border border-amber-300 rounded p-2">
           Debes adjuntar y subir al menos un archivo para poder <strong>aprobar</strong> esta etapa.
@@ -351,11 +328,10 @@ const comment0 = ref<string>(''); // primera
 const comment = ref<string>(''); // segunda
 
 // Archivos
-const pendingFiles = ref<File[]>([]);
 const uploadedFiles = ref<UploadedFile[]>([]);
 
 // Mostrar si hay algún adjunto
-const hasAnyAttachment = computed(() => pendingFiles.value.length > 0 || uploadedFiles.value.length > 0);
+const hasAnyAttachment = computed(() => uploadedFiles.value.length > 0);
 
 const imageFiles = computed(() =>
   uploadedFiles.value.filter((f) => {
@@ -389,12 +365,17 @@ const loadAccounts = async (event: any = {}) => {
   const perPage = event.rows != null ? Number(event.rows) : rowsPerPage.value;
 
   try {
-    const response = await axios.get('/ban', { params: { search: globalFilter.value, page, perPage } });
-    const payload = response.data;
+    const { data: payload } = await axios.get('/ban', {
+      params: { search: globalFilter.value, page, perPage }
+    });
+
     accounts.value = payload.data ?? [];
-    totalRecords.value = payload.meta?.total ?? payload.total ?? 0;
-    currentPage.value = page;
-    rowsPerPage.value = perPage;
+
+    // Pull totals & sync page/size from Laravel paginator meta
+    const meta = payload.meta ?? {};
+    totalRecords.value = meta.total ?? 0;
+    currentPage.value   = meta.current_page ?? page;
+    rowsPerPage.value   = meta.per_page ? Number(meta.per_page) : perPage;
   } catch (error) {
     console.error('Error al cargar cuentas bancarias:', error);
     toast.add({ severity: 'error', summary: 'Error', detail: 'Error al cargar las cuentas bancarias', life: 5000 });
@@ -402,6 +383,7 @@ const loadAccounts = async (event: any = {}) => {
     loading.value = false;
   }
 };
+
 
 const onGlobalSearch = debounce(() => { currentPage.value = 1; loadAccounts(); }, 500);
 const onPage = (event: any) => { loadAccounts(event); };
@@ -432,7 +414,6 @@ const openShowModal = async (row: any) => {
   selectedAccount.value = row;
   comment0.value = row.comment0 ?? '';
   comment.value = row.comment ?? '';
-  pendingFiles.value = [];
   uploadedFiles.value = [];
   showDialog.value = true;
   await loadAttachments();
@@ -504,10 +485,11 @@ const loadAttachments = async () => {
     toast.add({ severity: 'error', summary: 'Error', detail: msg, life: 4000 });
   }
 };
-const onFileSelect = (e: any) => { pendingFiles.value.push(...(e.files ?? [])); };
-const onFileRemove = (e: any) => { const f: File = e.file; pendingFiles.value = pendingFiles.value.filter((pf) => pf !== f); };
-const onFileClear = () => { pendingFiles.value = []; };
-const onFileUpload = async (e: any) => { await uploadFiles(e.files ?? pendingFiles.value); };
+
+// Subida automática al seleccionar archivos (customUpload + auto)
+const onAutoUpload = async (e: any) => {
+  await uploadFiles(e.files ?? []);
+};
 
 const uploadFiles = async (files: File[]) => {
   if (!selectedAccount.value?.id) {
@@ -530,8 +512,6 @@ const uploadFiles = async (files: File[]) => {
     } else {
       uploadedFiles.value.push(...files.map((f) => ({ name: f.name } as UploadedFile)));
     }
-    const uploadedNames = new Set(files.map((f) => f.name));
-    pendingFiles.value = pendingFiles.value.filter((pf) => !uploadedNames.has(pf.name));
     toast.add({ severity: 'success', summary: 'Listo', detail: 'Archivo(s) subido(s) correctamente', life: 3000 });
     return true;
   } catch (error: any) {
@@ -556,13 +536,9 @@ const downloadAttachment = (file: UploadedFile) => {
 const approveWithFiles = async () => {
   actionBusy.value = 'approve';
   if (!hasAnyAttachment.value) {
-    toast.add({ severity: 'warn', summary: 'Falta adjunto', detail: 'Adjunta y sube al menos un archivo antes de aprobar.', life: 4000 });
+    toast.add({ severity: 'warn', summary: 'Falta adjunto', detail: 'Adjunta al menos un archivo antes de aprobar.', life: 4000 });
     actionBusy.value = null;
     return;
-  }
-  if (pendingFiles.value.length > 0) {
-    const ok = await uploadFiles(pendingFiles.value.slice());
-    if (!ok) { actionBusy.value = null; return; }
   }
   await changeStatus0('approved', { closeAfter: false });
   actionBusy.value = null;

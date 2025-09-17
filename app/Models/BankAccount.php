@@ -30,7 +30,7 @@ class BankAccount extends Model
         'updated0_by',
         'updated0_at',   // NEW
         'updated_by',
-        'updates_last_at'
+        'updated_last_at'
 
 
     ];

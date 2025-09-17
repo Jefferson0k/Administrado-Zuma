@@ -42,6 +42,6 @@ class BankAccountAttachment extends Model
     // Helper para URL pública (disco "public")
     public function getUrlAttribute(): string
     {
-        return \Storage::disk('public')->url($this->path);
+        return \Storage::disk('s3')->temporaryUrl($this->path, now()->addMinutes(60));
     }
 }
