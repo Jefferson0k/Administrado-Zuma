@@ -218,28 +218,54 @@ class InvoiceController extends Controller
             return response()->json(['message' => 'Error al mostrar la factura.'], 500);
         }
     }
-    public function activacion(Request $request, $id)
-    {
+    public function activacion(Request $request, $id){
         try {
             $invoice = Invoice::findOrFail($id);
-            Gate::authorize('update', $invoice);
             $userId = Auth::id();
-            if ($invoice->status === 'active') {
+            $nivel = $request->input('nivel');
+            if ($nivel == 1) {
+                Gate::authorize('aprobar factura nivel 1');
+                if ($invoice->approval1_status === 'approved') {
+                    return response()->json([
+                        'message' => 'La factura ya fue aprobada en nivel 1.',
+                        'data'    => $invoice
+                    ], 400);
+                }
+                $invoice->update([
+                    'approval1_status'  => 'approved',
+                    'approval1_by'      => $userId,
+                    'approval1_at'      => now(),
+                    'approval1_comment' => $request->input('comment'),
+                    'updated_by'        => $userId,
+                ]);
+            } elseif ($nivel == 2) {
+                Gate::authorize('aprobar factura nivel 2');
+                if ($invoice->approval1_status !== 'approved') {
+                    return response()->json([
+                        'message' => 'No puedes aprobar en nivel 2 hasta que el nivel 1 apruebe.',
+                    ], 403);
+                }
+                if ($invoice->approval2_status === 'approved') {
+                    return response()->json([
+                        'message' => 'La factura ya fue aprobada en nivel 2.',
+                        'data'    => $invoice
+                    ], 400);
+                }
+                $invoice->update([
+                    'approval2_status'  => 'approved',
+                    'approval2_by'      => $userId,
+                    'approval2_at'      => now(),
+                    'approval2_comment' => $request->input('comment'),
+                    'status'            => 'active',
+                    'updated_by'        => $userId,
+                ]);
+            } else {
                 return response()->json([
-                    'message' => 'La factura ya está activada.',
-                    'data'    => $invoice
+                    'message' => 'Debes indicar un nivel válido (1 o 2).'
                 ], 400);
             }
-            $invoice->update([
-                'approval1_status'  => 'approved',
-                'approval1_by'      => $userId,
-                'approval1_at'      => now(),
-                'approval1_comment' => $request->input('comment'),
-                'status'            => 'active',
-                'updated_by'        => $userId,
-            ]);
             return response()->json([
-                'message' => 'Factura activada correctamente.',
+                'message' => "Factura aprobada correctamente en nivel {$nivel}.",
                 'data'    => $invoice
             ], 200);
         } catch (AuthorizationException $e) {

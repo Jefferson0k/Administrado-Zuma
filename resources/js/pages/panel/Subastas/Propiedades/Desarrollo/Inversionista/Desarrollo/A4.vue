@@ -25,6 +25,7 @@ const props = defineProps({
     }
 });
 
+
 const emit = defineEmits(['update:visible', 'close']);
 const dialogVisible = ref(props.visible);
 const loading = ref(true);
@@ -84,6 +85,29 @@ watch(() => props.prestamosId, async (newId) => {
         await cargarDatosPrestamo();
     }
 });
+
+// Función para obtener la ruta de la imagen de riesgo
+const getRiesgoImagePath = (riesgo) => {
+    if (!riesgo) return null;
+    
+    // Normalizar el valor de riesgo para que coincida con los nombres de archivo
+    const riesgoNormalizado = riesgo.toString().toUpperCase().trim();
+    
+    // Mapear los diferentes valores posibles
+    const riesgoMap = {
+        'A+': 'A+.png',
+        'A': 'A.png',
+        'B': 'B.png',
+        'C': 'C.png'
+    };
+    
+    const fileName = riesgoMap[riesgoNormalizado];
+    if (fileName) {
+        return `/imagenes/riesgos/${fileName}`;
+    }
+    
+    return null;
+};
 
 const loadImageAsBase64 = (url, timeout = 10000) => {
     return Promise.race([
@@ -251,7 +275,29 @@ const generatePDF = async () => {
         pdf.text(pdf.splitTextToSize(rentabilidadAnual, colWidth - 2), headerStartX + colWidth, valuesYOffset);
         pdf.text(pdf.splitTextToSize(plazo, colWidth - 2), headerStartX + (colWidth * 2.5), valuesYOffset);
         pdf.text(pdf.splitTextToSize(ratioLTV, colWidth - 2), headerStartX + (colWidth * 3.4), valuesYOffset);
-        pdf.text(pdf.splitTextToSize(riesgo, colWidth - 2), headerStartX + (colWidth * 4.2), valuesYOffset);
+        
+        // AQUÍ AGREGAMOS LA IMAGEN DE RIESGO EN LUGAR DE SOLO TEXTO
+        const riesgoImagePath = getRiesgoImagePath(riesgo);
+        if (riesgoImagePath) {
+            try {
+                const base64RiesgoImg = await loadImageAsBase64(riesgoImagePath);
+                // Posicionar la imagen de riesgo en la columna correspondiente
+                const riesgoImgWidth = 8;  // Ancho de la imagen
+                const riesgoImgHeight = 6; // Alto de la imagen
+                const riesgoImgX = headerStartX + (colWidth * 4.2) + 2; // Centrar en la columna
+                const riesgoImgY = valuesYOffset - 4; // Alineado con los valores
+                
+                pdf.addImage(base64RiesgoImg, 'PNG', riesgoImgX, riesgoImgY, riesgoImgWidth, riesgoImgHeight);
+            } catch (error) {
+                console.error('Error al cargar imagen de riesgo:', error);
+                // Fallback: mostrar texto si no se puede cargar la imagen
+                pdf.text(pdf.splitTextToSize(riesgo, colWidth - 2), headerStartX + (colWidth * 4.2), valuesYOffset);
+            }
+        } else {
+            // Fallback: mostrar texto si no hay imagen disponible
+            pdf.text(pdf.splitTextToSize(riesgo, colWidth - 2), headerStartX + (colWidth * 4.2), valuesYOffset);
+        }
+        
         pdf.text(pdf.splitTextToSize(IR, colWidth - 2), headerStartX + (colWidth * 4.8), valuesYOffset);
 
         // LÍNEA SEPARADORA DEBAJO DE LOS VALORES
@@ -291,12 +337,35 @@ const generatePDF = async () => {
 
         const initialY = y;
 
-        // CONTENIDO CON DATOS REALES
-        const solicitanteContent = `Profesión u ocupación: ${data.ocupacion_profesion || 'N/A'}\n\nIngresos mensuales promedio: ${data.inversionista?.documento || 'N/A'}\n\nRiesgo: ${data.riesgo || 'N/A'}`;
+        // CONTENIDO CON DATOS REALES - TAMBIÉN AGREGAMOS LA IMAGEN DE RIESGO EN LA SECCIÓN
+        const solicitanteContent = `Profesión u ocupación: ${data.ocupacion_profesion || 'N/A'}\n\nIngresos mensuales promedio: ${data.inversionista?.documento || 'N/A'}`;
         const solicitanteEndY = addSection("Sobre el solicitante:", solicitanteContent, col1X, initialY, sectionWidth);
 
+        // Agregar imagen de riesgo después del contenido del solicitante
+        let currentY = solicitanteEndY;
+        if (riesgoImagePath) {
+            try {
+                
+            } catch (error) {
+                console.error('Error al cargar imagen de riesgo en sección:', error);
+                // Fallback: mostrar texto
+                pdf.setFontSize(8);
+                pdf.setFont("helvetica", "normal");
+                pdf.setTextColor(0, 0, 0);
+                pdf.text(`Riesgo: ${riesgo}`, col1X, currentY);
+                currentY += 6;
+            }
+        } else {
+            // Fallback: mostrar texto
+            pdf.setFontSize(8);
+            pdf.setFont("helvetica", "normal");
+            pdf.setTextColor(0, 0, 0);
+            pdf.text(`Riesgo: ${riesgo}`, col1X, currentY);
+            currentY += 6;
+        }
+
         const garantiaContent = `Tipo de inmueble: ${data.Property || 'N/A'}`;
-        const garantiaEndY = addSection("Sobre la garantía:", garantiaContent, col1X, solicitanteEndY + 1, sectionWidth);
+        const garantiaEndY = addSection("Sobre la garantía:", garantiaContent, col1X, currentY + 4, sectionWidth);
 
         // USAR LA RENTABILIDAD REDUCIDA TAMBIÉN EN LA SECCIÓN DE FINANCIAMIENTO
         const financiamientoContent = `Importe del financiamiento: ${data.Monto || 'N/A'}\n\nMoneda del financiamiento: ${data.Monto ? 'PEN' : 'N/A'}\n\nPlazo: ${data.Plazo || 'N/A'}\n\nSistema de amortización: ${data.Esquema || 'N/A'}\n\nTasa efectiva anual: ${teaReducida.toFixed(1)}%\n\nTotal de intereses proyectados (IR): ${IR}`;
