@@ -7,7 +7,7 @@
     </template>
   </Toolbar>
 
-  <Dialog v-model:visible="modalVisible" header="Registro del inmueble" :modal="true" :style="{ width: '450px' }">
+  <Dialog v-model:visible="modalVisible" header="Registro del inmueble" :modal="true" :style="{ width: '600px' }">
     <form @submit.prevent="saveProperty" class="p-fluid">
       <div class="flex flex-col gap-4">
         <!-- Paso 1: Cliente -->
@@ -125,10 +125,97 @@
             <InputNumber v-model="form.valor_requerido" class="w-full" :useGrouping="true" :locale="'es-PE'" />
           </div>
 
-          <div>
-            <label class="block font-bold mb-1">Imágenes <span class="text-red-500">*</span></label>
-            <FileUpload ref="fileUpload" name="imagenes[]" :multiple="true" accept="image/*" :maxFileSize="1000000"
-              customUpload :auto="false" @select="onSelectedFiles" @upload="onTemplatedUpload" />
+          <!-- Sección de imágenes mejorada -->
+          <div class="flex flex-col gap-4">
+            <div>
+              <label class="block font-bold mb-2">Imágenes <span class="text-red-500">*</span></label>
+              <p class="text-sm text-gray-600 mb-2">Se requieren al menos 5 imágenes con sus respectivas descripciones</p>
+              <FileUpload ref="fileUpload" name="imagenes[]" :multiple="true" accept="image/*" :maxFileSize="1000000"
+                customUpload :auto="false" @select="onSelectedFiles" @upload="onTemplatedUpload"
+                :showUploadButton="false" :showCancelButton="false" />
+            </div>
+
+            <!-- Botón para limpiar todas las imágenes -->
+            <div v-if="imagenesConDescripcion.length > 0" class="flex justify-end">
+              <Button 
+                label="Limpiar todas" 
+                icon="pi pi-trash" 
+                severity="danger" 
+                size="small" 
+                outlined
+                @click="clearAllImages" 
+              />
+            </div>
+
+            <!-- Lista de imágenes seleccionadas con campos de descripción -->
+            <div v-if="imagenesConDescripcion.length > 0" class="flex flex-col gap-3">
+              <h4 class="font-bold text-sm">Imágenes seleccionadas ({{ imagenesConDescripcion.length }})</h4>
+              <div v-for="(imagen, index) in imagenesConDescripcion" :key="index"
+                class="flex gap-3 p-3 border-1 border-300 border-round items-start">
+                
+                <!-- Preview de la imagen -->
+                <div class="flex-shrink-0">
+                  <img :src="imagen.preview" :alt="`Imagen ${index + 1}`" 
+                    class="w-20 h-20 object-cover border-round" />
+                </div>
+
+                <!-- Información y descripción -->
+                <div class="flex-grow flex flex-col gap-2">
+                  <div class="text-sm">
+                    <strong>{{ imagen.file.name }}</strong>
+                    <span class="text-gray-500 ml-2">({{ formatFileSize(imagen.file.size) }})</span>
+                  </div>
+                  
+                  <!-- Campo de descripción con límite de 35 caracteres -->
+                  <div>
+                    <label class="text-xs font-semibold mb-1 block">
+                      Descripción (máx. 35 caracteres) <span class="text-red-500">*</span>
+                    </label>
+                    <InputText 
+                      v-model="imagen.description" 
+                      placeholder="Ej: Fachada, Sala, Cocina, etc."
+                      class="w-full text-sm"
+                      :class="{ 'p-invalid': submitted && !imagen.description?.trim() }"
+                      maxlength="35"
+                      @input="onDescriptionInput($event, index)"
+                    />
+                    <div class="flex justify-between items-center mt-1">
+                      <small v-if="submitted && !imagen.description?.trim()" class="text-red-500">
+                        La descripción es requerida
+                      </small>
+                      <small class="text-xs" :class="{
+                        'text-orange-500': imagen.description?.length >= 30,
+                        'text-red-500': imagen.description?.length >= 35,
+                        'text-gray-500': !imagen.description?.length || imagen.description.length < 30
+                      }">
+                        {{ imagen.description?.length || 0 }}/35
+                      </small>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Botón para eliminar -->
+                <Button icon="pi pi-times" severity="danger" size="small" outlined
+                  @click="removeImage(index)" />
+              </div>
+
+              <!-- Contador y validación -->
+              <div class="text-sm">
+                <span v-if="imagenesConDescripcion.length < 5" class="text-orange-600">
+                  <i class="pi pi-exclamation-triangle mr-1"></i>
+                  Necesitas al menos {{ 5 - imagenesConDescripcion.length }} imagen(es) más
+                </span>
+                <span v-else class="text-green-600">
+                  <i class="pi pi-check-circle mr-1"></i>
+                  Imágenes suficientes ({{ imagenesConDescripcion.length }}/5 mínimo)
+                </span>
+              </div>
+            </div>
+
+            <div v-else class="text-sm text-gray-500 p-3 border-1 border-300 border-round text-center">
+              <i class="pi pi-images mr-2"></i>
+              No hay imágenes seleccionadas
+            </div>
           </div>
 
           <!-- Botón para regresar al paso anterior -->
@@ -159,6 +246,12 @@ import InputNumber from 'primevue/inputnumber'
 import FileUpload from 'primevue/fileupload'
 import Textarea from 'primevue/textarea'
 import Select from 'primevue/select'
+
+interface ImagenConDescripcion {
+  file: File
+  description: string
+  preview: string
+}
 
 const toast = useToast()
 const emit = defineEmits(['agregado'])
@@ -196,7 +289,8 @@ const monedas = [
   { label: 'USD ($)', value: 2 }
 ]
 
-const archivos = ref<File[]>([])
+// Nueva estructura para manejar imágenes con descripciones
+const imagenesConDescripcion = ref<ImagenConDescripcion[]>([])
 const totalSize = ref(0)
 const totalSizePercent = ref(0)
 
@@ -221,7 +315,7 @@ const resetForm = () => {
   dniConsultaExterna.value = null
   provincias.value = []
   distritos.value = []
-  archivos.value = []
+  imagenesConDescripcion.value = []
   totalSize.value = 0
   totalSizePercent.value = 0
   if (fileUpload.value) fileUpload.value.clear()
@@ -249,10 +343,85 @@ const onProvinciaChange = () => {
   distritos.value = form.value.provincia?.districts || []
 }
 
+// Función para manejar el input de descripción con límite de caracteres
+const onDescriptionInput = (event: Event, index: number) => {
+  const target = event.target as HTMLInputElement
+  const value = target.value
+  
+  // Limitar a 35 caracteres
+  if (value.length > 35) {
+    target.value = value.substring(0, 35)
+    imagenesConDescripcion.value[index].description = target.value
+    
+    toast.add({
+      severity: 'warn',
+      summary: 'Límite alcanzado',
+      detail: 'La descripción no puede exceder 35 caracteres',
+      life: 2000
+    })
+  }
+}
+
+// FUNCIÓN CORREGIDA - Evita duplicación de imágenes
 const onSelectedFiles = (event: any) => {
-  archivos.value = [...event.files]
-  totalSize.value = archivos.value.reduce((acc, file) => acc + file.size, 0)
+  const files = [...event.files]
+  
+  // LIMPIAR el array antes de agregar las nuevas imágenes
+  imagenesConDescripcion.value = []
+  
+  // Crear previews y estructura para cada imagen
+  files.forEach(file => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      imagenesConDescripcion.value.push({
+        file: file,
+        description: '',
+        preview: e.target?.result as string
+      })
+    }
+    reader.readAsDataURL(file)
+  })
+
+  totalSize.value = files.reduce((acc, file) => acc + file.size, 0)
   totalSizePercent.value = totalSize.value / 10000
+}
+
+// Nueva función para limpiar todas las imágenes
+const clearAllImages = () => {
+  imagenesConDescripcion.value = []
+  totalSize.value = 0
+  totalSizePercent.value = 0
+  if (fileUpload.value) {
+    fileUpload.value.clear()
+  }
+  toast.add({
+    severity: 'info',
+    summary: 'Imágenes eliminadas',
+    detail: 'Todas las imágenes han sido eliminadas',
+    life: 2000
+  })
+}
+
+const removeImage = (index: number) => {
+  imagenesConDescripcion.value.splice(index, 1)
+  
+  // Recalcular el tamaño total
+  totalSize.value = imagenesConDescripcion.value.reduce((acc, img) => acc + img.file.size, 0)
+  totalSizePercent.value = totalSize.value / 10000
+  
+  // Actualizar el FileUpload con los archivos restantes
+  if (fileUpload.value) {
+    const remainingFiles = imagenesConDescripcion.value.map(img => img.file)
+    fileUpload.value.files = remainingFiles
+  }
+}
+
+const formatFileSize = (bytes: number) => {
+  if (bytes === 0) return '0 Bytes'
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
 const onTemplatedUpload = () => {
@@ -427,8 +596,8 @@ const saveProperty = async () => {
     return
   }
 
-  // Validación específica de imágenes en el frontend
-  if (!archivos.value || archivos.value.length === 0) {
+  // Validación de imágenes
+  if (!imagenesConDescripcion.value || imagenesConDescripcion.value.length === 0) {
     toast.add({
       severity: 'warn',
       summary: 'Imágenes requeridas',
@@ -439,11 +608,24 @@ const saveProperty = async () => {
     return
   }
 
-  if (archivos.value.length < 5) {
+  if (imagenesConDescripcion.value.length < 5) {
     toast.add({
       severity: 'warn',
       summary: 'Imágenes insuficientes',
-      detail: `Has subido ${archivos.value.length} imagen(es). Se requieren al menos 5 imágenes.`,
+      detail: `Has subido ${imagenesConDescripcion.value.length} imagen(es). Se requieren al menos 5 imágenes.`,
+      life: 4000
+    })
+    guardandoPropiedad.value = false
+    return
+  }
+
+  // Validar que todas las imágenes tengan descripción
+  const imagenessSinDescripcion = imagenesConDescripcion.value.filter(img => !img.description?.trim())
+  if (imagenessSinDescripcion.length > 0) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Descripciones requeridas',
+      detail: `${imagenessSinDescripcion.length} imagen(es) no tienen descripción. Todas las imágenes deben tener una descripción.`,
       life: 4000
     })
     guardandoPropiedad.value = false
@@ -478,9 +660,10 @@ const saveProperty = async () => {
       formData.append('distrito_id', form.value.distrito.ubigeo_id)
     }
 
-    // Agregar imágenes
-    archivos.value.forEach((file) => {
-      formData.append('imagenes[]', file)
+    // Agregar imágenes y descripciones
+    imagenesConDescripcion.value.forEach((imagen, index) => {
+      formData.append('imagenes[]', imagen.file)
+      formData.append(`descriptions[${index}]`, imagen.description)
     })
 
     const response = await axios.post('/property', formData, {

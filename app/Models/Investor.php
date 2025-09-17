@@ -6,6 +6,7 @@ use App\Enums\MovementStatus;
 use App\Enums\MovementType;
 use App\Notifications\InvestorAccountActivateNotification;
 use App\Notifications\InvestorAccountApprovedNotification;
+use App\Notifications\InvestorAccountObservedNotification;
 use App\Notifications\InvestorAccountRejectedNotification;
 use App\Notifications\InvestorDepositApprovalNotification;
 use App\Notifications\InvestorDepositPendingNotification;
@@ -52,7 +53,18 @@ class Investor extends Authenticatable implements MustVerifyEmail{
         'type',
         'asignado',
         'codigo',
+        'tipo_documento_id',
         'updated_by',
+        'investor_photo_path',
+        'file_path',
+        'approval1_status',
+        'approval1_by',
+        'approval1_comment',
+        'approval1_at',
+        'approval2_status',
+        'approval2_by',
+        'approval2_comment',
+        'approval2_at',
     ];
     protected $hidden = [
         'password',
@@ -66,6 +78,17 @@ class Investor extends Authenticatable implements MustVerifyEmail{
     ];
     public function investments(){
         return $this->hasMany(Investment::class);
+    }
+    public function aprovacionuseruno() {
+        return $this->belongsTo(User::class, 'approval1_by');
+    }
+
+    public function aprovacionuserdos() {
+        return $this->belongsTo(User::class, 'approval2_by');
+    }
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
     public function balances(){
         return $this->hasMany(Balance::class);
@@ -134,6 +157,12 @@ class Investor extends Authenticatable implements MustVerifyEmail{
         }
         return null;
     }
+    public function getInvestorPhotoAttribute(): ?string{
+        if (isset($this->attributes['investor_photo_path'])) {
+            return env('APP_URL') . '/s3/' . $this->attributes['investor_photo_path'];
+        }
+        return null;
+    }
     public function createMovement(
         float $amount,
         MovementType $type,
@@ -188,6 +217,10 @@ class Investor extends Authenticatable implements MustVerifyEmail{
     {
         $this->notify(new InvestorFullyPaymentNotification($payment, $investment, $netExpectedReturn, $itfAmount));
     }
+    public function tipoDocumento()
+    {
+        return $this->belongsTo(TipoDocumento::class, 'tipo_documento_id', 'id_tipo_documento');
+    }
     public function sendPasswordResetNotification($token){
         $this->notify(new InvestorPasswordResetNotification($token));
     }
@@ -199,4 +232,9 @@ class Investor extends Authenticatable implements MustVerifyEmail{
     {
         $this->notify(new InvestorAccountApprovedNotification());
     }
+    public function sendAccountObservedEmailNotification(string $comment)
+    {
+        $this->notify(new InvestorAccountObservedNotification($comment));
+    }
+
 }

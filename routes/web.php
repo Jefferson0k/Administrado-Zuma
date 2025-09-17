@@ -65,8 +65,9 @@ use App\Http\Controllers\Web\TasasFijas\PaymentFrequenciesWebController;
 use App\Http\Controllers\Web\TasasFijas\RateTypeWebController;
 use App\Http\Controllers\Web\TasasFijas\TermPlanWebController;
 use App\Http\Controllers\Web\UsuarioWebController;
-use App\Http\Controllers\BlogController;
+use App\Models\TipoDocumento;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\BlogController;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 
@@ -76,6 +77,24 @@ Route::get('/', function () {
 Route::get('/investors/{id}', [InvestorController::class, 'show']);
 
 Route::middleware(['auth', 'verified'])->group(function () {
+
+
+    Route::get('/ban/{id}/attachments', [BankAccountsController::class, 'indexAttachments'])
+    ->name('bank-accounts.attachments.index');
+
+    Route::post('/ban/{id}/validate', [BankAccountsController::class, 'validateStatus'])
+    ->name('bank-accounts.validate');
+
+
+
+
+    Route::post('/ban/{id}/attachments', [BankAccountsController::class, 'storeAttachments']);
+    Route::patch('/ban/{id}/status0', [BankAccountsController::class, 'updateStatus0'])
+     ->name('bank-accounts.update-status0');
+
+     Route::patch('/ban/{bankAccount}/status', [BankAccountsController::class, 'updateStatus'])
+    ->name('bank-accounts.update-status');
+
     #PARA QUE CUANDO SE CREA UN USUARIO O MODIFICA SU PASSWORD LO REDIRECCIONE PARA QUE PUEDA ACTUALIZAR
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');
@@ -89,13 +108,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/moneda', [CurrencyControllers::class, 'index']);
     Route::get('/Frecuencia/Pagos', [PaymentFrequenciesWebController::class, 'views']);
 
+    #RUTAS BLOG
     Route::get('/blog/registro', [BlogController::class, 'create']);
     Route::get('/blog/seguimiento', [BlogController::class, 'seguimiento']);
     Route::get('/blog/categorias', [BlogController::class, 'categorias']);
     Route::get('/blog/posts', [BlogController::class, 'index']);
 
-    Route::post('/payments/extraer', [PaymentsController::class, 'comparacion'])->name('payments.comparacion');
-    Route::post('/payments/{invoiceId}', [PaymentsController::class, 'store'])->name('payments.store');
+
+
 
     #RUTAS DE API
     Route::prefix('api')->group(function () {
@@ -120,9 +140,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/{invoice_id}/inversionistas', [InvestmentWeb::class, 'views'])->name('inversionistas.views');
         Route::get('/inversiones', [InvestmentWeb::class, 'viewsGeneral'])->name('inversiones.viewsGeneral');
         Route::get('/pagos', [PaymentsWeb::class, 'views'])->name('inversiones.views');
-        Route::get('/tipo-cambio', [ExchangeWebControler::class, 'views'])->name('tipo-cambio.views');
+        Route::get('/tipo-cambio/nuevo', [ExchangeWebControler::class, 'views'])->name('tipo-cambio.views');
         Route::get('/retiros', [WithdrawWeb::class, 'views'])->name('retiros.views');
-        Route::get('/tipo-cambio', [ExchangeWeb::class, 'views'])->name('retiros.views');
+        Route::get('/tipo-cambio', [ExchangeWeb::class, 'views'])->name('cambio.views');
     });
 
     #RUTAS DE WEB EN LA PARTE DE TASAS FIJAS
@@ -181,19 +201,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('deposit')->group(function () {
         Route::get('/', [DepositController::class, 'index'])->name('deposits.index');
         Route::get('/{id}', [DepositController::class, 'show'])->name('deposits.show');
-
         Route::post('/{movementId}/validate', [DepositController::class, 'validateDeposit'])
             ->name('deposits.validate');
-
         Route::post('/{depositId}/{movementId}/reject', [DepositController::class, 'rejectDeposit'])
             ->name('deposits.reject');
-
         Route::post('/{depositId}/{movementId}/approve', [DepositController::class, 'approveDeposit'])
             ->name('deposits.approve');
-
         Route::post('/{depositId}/{movementId}/reject-confirm', [DepositController::class, 'rejectConfirmDeposit'])
             ->name('deposits.rejectConfirm');
+        Route::get('/export/excel', [DepositController::class, 'exportExcel'])
+            ->name('deposits.exportExcel');
     });
+
 
     Route::prefix('ban')->group(function () {
         Route::get('/', [BankAccountsController::class, 'index'])->name('bankaccounts.index');
@@ -206,14 +225,39 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{id}/reject', [BankAccountsController::class, 'rejectBankAccount'])->name('bankaccounts.reject');
     });
 
-    # INVERSIONISTA -> BACKEND
+# INVERSIONISTA -> BACKEND
     Route::prefix('investor')->group(function () {
-        Route::get('/', [InvestorController::class, 'index'])->name('investor.index');
-        Route::get('/{id}', [InvestorController::class, 'showInvestor'])->name('investor.showInvestor');
-        Route::put('/{id}/aprobar', [InvestorController::class, 'aprobar'])->name('investor.aprobar');
-        Route::put('/{id}/rechazar', [InvestorController::class, 'rechazar'])->name('investor.rechazar');
+        Route::get('/', [InvestorController::class, 'index'])
+        ->name('investor.index');
+        Route::get('/{id}', [InvestorController::class, 'showInvestor'])
+        ->name('investor.showInvestor');
+        // 📂 Archivos
+        Route::post('/{id}/adjuntar-primera', [InvestorController::class, 'adjuntarEvidenciaPrimeraValidacion'])
+        ->name('investor.adjuntarPrimera');
+        // 📂 Subida de documentos individuales
+        Route::post('/{id}/upload-document-front', [InvestorController::class, 'uploadDocumentFront'])
+        ->name('investor.uploadDocumentFront');
+        Route::post('/{id}/upload-document-back', [InvestorController::class, 'uploadDocumentBack'])
+        ->name('investor.uploadDocumentBack');
+        Route::post('/{id}/upload-investor-photo', [InvestorController::class, 'uploadInvestorPhoto'])
+        ->name('investor.uploadInvestorPhoto');
+        // ✅ Primera validación
+        Route::put('/{id}/aprobar-primera', [InvestorController::class, 'aprobarPrimeraValidacion'])
+        ->name('investor.aprobarPrimera');
+        Route::put('/{id}/rechazar-primera', [InvestorController::class, 'rechazarPrimeraValidacion'])
+        ->name('investor.rechazarPrimera');
+        Route::put('/{id}/comentar-primera', [InvestorController::class, 'comentarPrimeraValidacion'])
+        ->name('investor.comentarPrimera');
+        // ✅ Segunda validación
+        Route::put('/{id}/aprobar-segunda', [InvestorController::class, 'aprobarSegundaValidacion'])
+        ->name('investor.aprobarSegunda');
+        Route::put('/{id}/rechazar-segunda', [InvestorController::class, 'rechazarSegundaValidacion'])
+        ->name('investor.rechazarSegunda');
+        Route::put('/{id}/comentar-segunda', [InvestorController::class, 'comentarSegundaValidacion'])
+        ->name('investor.comentarSegunda');
+        Route::put('/{id}/observaciones', [InvestorController::class, 'observarPrimeraValidacion'])
+        ->name('investor.observaciones');
     });
-
     # COMPANIA -> BACKEND
     Route::prefix('companies')->group(function () {
         Route::get('/',        [CompanyController::class, 'index'])->name('companies.index');
@@ -278,6 +322,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/{id}/standby', [InvoiceController::class, 'standby']);
         Route::patch('/{id}/activacion', [InvoiceController::class, 'activacion']);
         Route::patch('/{id}/rechazar', [InvoiceController::class, 'rechazar']);
+        Route::patch('/{id}/observacion', [InvoiceController::class, 'observacion']);
         Route::get('/{id}', [InvoiceController::class, 'show'])->name('invoices.show');
         Route::delete('/{id}', [InvoiceController::class, 'delete'])->name('invoices.delete');
         
@@ -434,7 +479,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('payments.store');
         Route::post('/{invoiceId}/reembloso', [PaymentsController::class, 'storeReembloso'])
             ->name('payments.storeReembloso');
+        Route::post('/reembolso', [PaymentsController::class, 'storeReembolso']);
+        Route::get('/pending', [PaymentsController::class, 'getPendingPayments']);
+        Route::get('/{payment}/details', [PaymentsController::class, 'getPaymentDetails']);
+        Route::post('/{payment}/approve', [PaymentsController::class, 'approvePayment']);
+        Route::get('/history', [PaymentsController::class, 'getPaymentHistory']);
+        Route::get('/deposits/investor/{id}', [PaymentsController::class, 'show']);
     });
+
+    Route::post('/invoices/{invoiceId}/anular', [PaymentsController::class, 'anular'])
+    ->name('invoices.anular');
 });
 
 
@@ -463,5 +517,6 @@ Route::get('/s3/{path}', function ($path) {
         ->header('Content-Length', Storage::disk('s3')->size($path));
 })->where('path', '.*');
 
+Route::get('/tipo-documentos', [TipoDocumento::class, 'index']);
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

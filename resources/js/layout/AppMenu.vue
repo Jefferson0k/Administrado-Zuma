@@ -198,7 +198,7 @@ const model = computed(() => {
             ]
         },
 
-        // ===== Administración =====
+        // ========== ADMINISTRACIÓN ==========
         {
             label: 'Administración',
             icon: 'pi pi-fw pi-shield',
@@ -216,7 +216,7 @@ const model = computed(() => {
                 hasPermission('ver tipo cambio') && {
                     label: 'Tipo de Cambio',
                     icon: 'pi pi-fw pi-refresh',
-                    to: '/factoring/tipo-cambio'
+                    to: '/factoring/tipo-cambio/nuevo'
                 }
             ].filter(Boolean)
         }

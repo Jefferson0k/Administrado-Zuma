@@ -25,6 +25,7 @@ const props = defineProps({
     }
 });
 
+
 const emit = defineEmits(['update:visible', 'close']);
 const dialogVisible = ref(props.visible);
 const loading = ref(true);
@@ -84,6 +85,29 @@ watch(() => props.prestamosId, async (newId) => {
         await cargarDatosPrestamo();
     }
 });
+
+// Función para obtener la ruta de la imagen de riesgo
+const getRiesgoImagePath = (riesgo) => {
+    if (!riesgo) return null;
+    
+    // Normalizar el valor de riesgo para que coincida con los nombres de archivo
+    const riesgoNormalizado = riesgo.toString().toUpperCase().trim();
+    
+    // Mapear los diferentes valores posibles
+    const riesgoMap = {
+        'A+': 'A+.png',
+        'A': 'A.png',
+        'B': 'B.png',
+        'C': 'C.png'
+    };
+    
+    const fileName = riesgoMap[riesgoNormalizado];
+    if (fileName) {
+        return `/imagenes/riesgos/${fileName}`;
+    }
+    
+    return null;
+};
 
 const loadImageAsBase64 = (url, timeout = 10000) => {
     return Promise.race([
@@ -187,6 +211,14 @@ const generatePDF = async () => {
         const contentWidth = pageWidth - (2 * margin);
         let y = 0;
 
+        // CALCULAR IR (SUMA TOTAL DE INTERESES)
+        const cronograma = data.cronograma || [];
+        const totalIntereses = cronograma.reduce((sum, cuota) => {
+            const intereses = parseFloat(cuota.intereses) || 0;
+            return sum + intereses;
+        }, 0);
+        const IR = `${totalIntereses.toFixed(2)}`;
+
         // ===== PRIMERA PÁGINA - DISEÑO ESPECÍFICO =====
         
         if (data.logo) {
@@ -204,28 +236,33 @@ const generatePDF = async () => {
             }
         }
 
-        // ENCABEZADO CORREGIDO
-        const headerStartX = 75;
+        // ENCABEZADO CORREGIDO CON IR - MOVIDO MÁS ABAJO
+        const headerStartX = 70;
         const colWidth = 22;
+        const headerYOffset = 20; // Movido más abajo
 
         // Títulos en azul
         pdf.setFontSize(8);
         pdf.setFont("helvetica", "bold");
         pdf.setTextColor(103, 144, 255); // Azul
-        pdf.text("Importe", headerStartX, 18);
-        pdf.text("Rentabilidad Anual", headerStartX + colWidth, 18);
-        pdf.text("Plazo", headerStartX + (colWidth * 2.5), 18);
-        pdf.text("Ratio LTV", headerStartX + (colWidth * 3.4), 18);
-        pdf.text("Riesgo", headerStartX + (colWidth * 4.2), 18);
+        pdf.text("Importe", headerStartX, headerYOffset);
+        pdf.text("Rentabilidad Anual", headerStartX + colWidth, headerYOffset);
+        pdf.text("Plazo", headerStartX + (colWidth * 2.5), headerYOffset);
+        pdf.text("Ratio LTV", headerStartX + (colWidth * 3.4), headerYOffset);
+        pdf.text("Riesgo", headerStartX + (colWidth * 4.2), headerYOffset);
+        pdf.text("IR", headerStartX + (colWidth * 4.8), headerYOffset);
 
-        // Valores en negro - USANDO DATOS REALES
+        // Valores en negro - USANDO DATOS REALES CON RENTABILIDAD REDUCIDA
         pdf.setFontSize(9);
         pdf.setFont("helvetica", "bold");
         pdf.setTextColor(0, 0, 0);
         
         // Extraer valores reales de los datos
         const importe = data.Monto || 'N/A';
-        const rentabilidadAnual = data.tea ? `${data.tea}%` : '0%';
+        // RENTABILIDAD REDUCIDA EN 5%
+        const teaOriginal = parseFloat(data.tea) || 0;
+        const teaReducida = Math.max(0, teaOriginal - 5); // Asegurar que no sea negativo
+        const rentabilidadAnual = `${teaReducida.toFixed(1)}%`;
         const plazo = data.Plazo || 'N/A';
         const ratioLTV = data.Valor_Estimado && data.Monto_raw 
             ? `${((data.Monto_raw / parseFloat(data.Valor_Estimado.replace(/[^\d.-]/g, ''))) * 100).toFixed(1)}%` 
@@ -233,15 +270,39 @@ const generatePDF = async () => {
         const riesgo = data.riesgo || 'N/A';
 
         // Posicionar valores directamente debajo de cada encabezado
-        pdf.text(pdf.splitTextToSize(importe, colWidth - 2), headerStartX, 25);
-        pdf.text(pdf.splitTextToSize(rentabilidadAnual, colWidth - 2), headerStartX + colWidth, 25);
-        pdf.text(pdf.splitTextToSize(plazo, colWidth - 2), headerStartX + (colWidth * 2.5), 25);
-        pdf.text(pdf.splitTextToSize(ratioLTV, colWidth - 2), headerStartX + (colWidth * 3.4), 25);
-        pdf.text(pdf.splitTextToSize(riesgo, colWidth - 2), headerStartX + (colWidth * 4.2), 25);
+        const valuesYOffset = headerYOffset + 7; // Valores debajo de títulos
+        pdf.text(pdf.splitTextToSize(importe, colWidth - 2), headerStartX, valuesYOffset);
+        pdf.text(pdf.splitTextToSize(rentabilidadAnual, colWidth - 2), headerStartX + colWidth, valuesYOffset);
+        pdf.text(pdf.splitTextToSize(plazo, colWidth - 2), headerStartX + (colWidth * 2.5), valuesYOffset);
+        pdf.text(pdf.splitTextToSize(ratioLTV, colWidth - 2), headerStartX + (colWidth * 3.4), valuesYOffset);
+        
+        // AQUÍ AGREGAMOS LA IMAGEN DE RIESGO EN LUGAR DE SOLO TEXTO
+        const riesgoImagePath = getRiesgoImagePath(riesgo);
+        if (riesgoImagePath) {
+            try {
+                const base64RiesgoImg = await loadImageAsBase64(riesgoImagePath);
+                // Posicionar la imagen de riesgo en la columna correspondiente
+                const riesgoImgWidth = 8;  // Ancho de la imagen
+                const riesgoImgHeight = 6; // Alto de la imagen
+                const riesgoImgX = headerStartX + (colWidth * 4.2) + 2; // Centrar en la columna
+                const riesgoImgY = valuesYOffset - 4; // Alineado con los valores
+                
+                pdf.addImage(base64RiesgoImg, 'PNG', riesgoImgX, riesgoImgY, riesgoImgWidth, riesgoImgHeight);
+            } catch (error) {
+                console.error('Error al cargar imagen de riesgo:', error);
+                // Fallback: mostrar texto si no se puede cargar la imagen
+                pdf.text(pdf.splitTextToSize(riesgo, colWidth - 2), headerStartX + (colWidth * 4.2), valuesYOffset);
+            }
+        } else {
+            // Fallback: mostrar texto si no hay imagen disponible
+            pdf.text(pdf.splitTextToSize(riesgo, colWidth - 2), headerStartX + (colWidth * 4.2), valuesYOffset);
+        }
+        
+        pdf.text(pdf.splitTextToSize(IR, colWidth - 2), headerStartX + (colWidth * 4.8), valuesYOffset);
 
         // LÍNEA SEPARADORA DEBAJO DE LOS VALORES
-        const lineY = 20;
-        const totalHeaderWidth = colWidth * 5.2;
+        const lineY = headerYOffset + 2;
+        const totalHeaderWidth = colWidth * 5.8;
         const lineStartX = headerStartX;
         const lineEndX = headerStartX + totalHeaderWidth;
 
@@ -249,7 +310,7 @@ const generatePDF = async () => {
         pdf.setDrawColor(0, 0, 0);
         pdf.line(lineStartX, lineY, lineEndX, lineY);
         
-        y = 55;
+        y = 60; // Ajustado para dar más espacio después del encabezado movido
 
         const col1X = margin;
         const col2X = centerX + 5;
@@ -276,37 +337,62 @@ const generatePDF = async () => {
 
         const initialY = y;
 
-        // CONTENIDO CON DATOS REALES
-        const solicitanteContent = `Profesión u ocupación: ${data.ocupacion_profesion || 'N/A'}\n\nIngresos mensuales promedio: ${data.inversionista?.documento || 'N/A'}\n\nRiesgo: ${data.riesgo || 'N/A'}`;
+        // CONTENIDO CON DATOS REALES - TAMBIÉN AGREGAMOS LA IMAGEN DE RIESGO EN LA SECCIÓN
+        const solicitanteContent = `Profesión u ocupación: ${data.ocupacion_profesion || 'N/A'}\n\nIngresos mensuales promedio: ${data.inversionista?.documento || 'N/A'}`;
         const solicitanteEndY = addSection("Sobre el solicitante:", solicitanteContent, col1X, initialY, sectionWidth);
 
-        const garantiaContent = `Tipo de inmueble: ${data.Property || 'N/A'}\n\nUbicación: ${data.garantia || 'N/A'}\n\nDescripción de la garantía: ${data.garantia || 'N/A'}`;
-        const garantiaEndY = addSection("Sobre la garantía:", garantiaContent, col1X, solicitanteEndY + 1, sectionWidth);
+        // Agregar imagen de riesgo después del contenido del solicitante
+        let currentY = solicitanteEndY;
+        if (riesgoImagePath) {
+            try {
+                
+            } catch (error) {
+                console.error('Error al cargar imagen de riesgo en sección:', error);
+                // Fallback: mostrar texto
+                pdf.setFontSize(8);
+                pdf.setFont("helvetica", "normal");
+                pdf.setTextColor(0, 0, 0);
+                pdf.text(`Riesgo: ${riesgo}`, col1X, currentY);
+                currentY += 6;
+            }
+        } else {
+            // Fallback: mostrar texto
+            pdf.setFontSize(8);
+            pdf.setFont("helvetica", "normal");
+            pdf.setTextColor(0, 0, 0);
+            pdf.text(`Riesgo: ${riesgo}`, col1X, currentY);
+            currentY += 6;
+        }
 
-        const financiamientoContent = `Importe del financiamiento: ${data.Monto || 'N/A'}\n\nMoneda del financiamiento: ${data.Monto ? 'PEN' : 'N/A'}\n\nPlazo: ${data.Plazo || 'N/A'}\n\nSistema de amortización: ${data.Esquema || 'N/A'}\n\nDestino de fondos: ${data.solicitud_prestamo_para || 'N/A'}\n\nTasa efectiva anual: ${data.tea || '0'}%\n\nTotal de intereses proyectados: ${data.tem || '0'}%`;
+        const garantiaContent = `Tipo de inmueble: ${data.Property || 'N/A'}`;
+        const garantiaEndY = addSection("Sobre la garantía:", garantiaContent, col1X, currentY + 4, sectionWidth);
+
+        // USAR LA RENTABILIDAD REDUCIDA TAMBIÉN EN LA SECCIÓN DE FINANCIAMIENTO
+        const financiamientoContent = `Importe del financiamiento: ${data.Monto || 'N/A'}\n\nMoneda del financiamiento: ${data.Monto ? 'PEN' : 'N/A'}\n\nPlazo: ${data.Plazo || 'N/A'}\n\nSistema de amortización: ${data.Esquema || 'N/A'}\n\nTasa efectiva anual: ${teaReducida.toFixed(1)}%\n\nTotal de intereses proyectados (IR): ${IR}`;
         const financiamientoEndY = addSection("Sobre el financiamiento:", financiamientoContent, col2X, initialY, sectionWidth);
 
         y = Math.max(garantiaEndY, financiamientoEndY);
         y += 2;
         
-        // ===== SECCIÓN DE FOTOS =====
+        // ===== SECCIÓN DE FOTOS CON DESCRIPCIONES =====
         pdf.setFontSize(12);
         pdf.setFont("helvetica", "bold");
         pdf.setTextColor(255, 102, 51);
         pdf.text("Fotos de la propiedad", col1X, y);
         y += 10;
 
-        // Configuración para las fotos
-        const photoSize = 50;
+        // Configuración para las fotos con espacio para descripciones
+        const photoSize = 45;
+        const descriptionHeight = 15; // Espacio para descripción
         const spacing = 10;
         const photosPerRow1 = 3;
         const photosPerRow2 = 2;
         const sectionPadding = 8;
 
-        // Calcular dimensiones de la sección completa
+        // Calcular dimensiones de la sección completa incluyendo descripciones
         const totalRowWidth1 = (photoSize * photosPerRow1) + (spacing * (photosPerRow1 - 1));
         const photoSectionWidth = totalRowWidth1 + (sectionPadding * 2);
-        const sectionHeight = (photoSize * 2) + spacing + (sectionPadding * 2);
+        const sectionHeight = (photoSize * 2) + descriptionHeight * 2 + spacing + (sectionPadding * 2);
         const sectionX = margin + (contentWidth - photoSectionWidth) / 2;
 
         // Dibujar fondo beige de toda la sección
@@ -320,7 +406,7 @@ const generatePDF = async () => {
         const imagenes = data.imagenes || [];
         const imagenesValidas = imagenes.filter(img => img && img !== 'no-image.png');
 
-        // PRIMERA FILA - 3 fotos
+        // PRIMERA FILA - 3 fotos con descripciones
         for (let i = 0; i < 3; i++) {
             const photoX = photoStartX1 + (i * (photoSize + spacing));
             const photoY = y + sectionPadding;
@@ -338,13 +424,13 @@ const generatePDF = async () => {
             
             if (i < imagenesValidas.length) {
                 try {
-                    const base64Image = await loadImageAsBase64(imagenesValidas[i]);
+                    const base64Image = await loadImageAsBase64(imagenesValidas[i].url);
                     
                     const imageSize = frameSize * 0.8;
                     const imageCenterX = frameX + (frameSize - imageSize) / 2;
                     const imageCenterY = frameY + (frameSize - imageSize) / 2;
                     
-                    const format = imagenesValidas[i].toLowerCase().includes('.svg') ? 'PNG' : 'JPEG';
+                    const format = imagenesValidas[i].url.toLowerCase().includes('.svg') ? 'PNG' : 'JPEG';
                     pdf.addImage(base64Image, format, imageCenterX, imageCenterY, imageSize, imageSize);
                     
                 } catch (error) {
@@ -353,6 +439,18 @@ const generatePDF = async () => {
                     pdf.setTextColor(150, 150, 150);
                     pdf.text("Sin imagen", frameX + frameSize/2, frameY + frameSize/2, { align: "center" });
                 }
+                
+                // Agregar descripción debajo de la imagen
+                pdf.setFontSize(6);
+                pdf.setTextColor(0, 0, 0);
+                pdf.setFont("helvetica", "normal");
+                const descripcion = imagenesValidas[i].descripcion || 'Sin descripción';
+                const descripcionLines = pdf.splitTextToSize(descripcion, photoSize);
+                let descY = photoY + photoSize + 2;
+                descripcionLines.forEach(line => {
+                    pdf.text(line, photoX + photoSize/2, descY, { align: "center" });
+                    descY += 3;
+                });
             } else {
                 pdf.setFontSize(6);
                 pdf.setTextColor(150, 150, 150);
@@ -360,8 +458,8 @@ const generatePDF = async () => {
             }
         }
 
-        // SEGUNDA FILA - 2 fotos
-        const secondRowY = y + sectionPadding + photoSize + spacing;
+        // SEGUNDA FILA - 2 fotos con descripciones
+        const secondRowY = y + sectionPadding + photoSize + descriptionHeight + spacing;
 
         for (let i = 3; i < 5; i++) {
             const photoIndex = i - 3;
@@ -381,13 +479,13 @@ const generatePDF = async () => {
             
             if (i < imagenesValidas.length) {
                 try {
-                    const base64Image = await loadImageAsBase64(imagenesValidas[i]);
+                    const base64Image = await loadImageAsBase64(imagenesValidas[i].url);
                     
                     const imageSize = frameSize * 0.8;
                     const imageCenterX = frameX + (frameSize - imageSize) / 2;
                     const imageCenterY = frameY + (frameSize - imageSize) / 2;
                     
-                    const format = imagenesValidas[i].toLowerCase().includes('.svg') ? 'PNG' : 'JPEG';
+                    const format = imagenesValidas[i].url.toLowerCase().includes('.svg') ? 'PNG' : 'JPEG';
                     pdf.addImage(base64Image, format, imageCenterX, imageCenterY, imageSize, imageSize);
                     
                 } catch (error) {
@@ -396,6 +494,18 @@ const generatePDF = async () => {
                     pdf.setTextColor(150, 150, 150);
                     pdf.text("Sin imagen", frameX + frameSize/2, frameY + frameSize/2, { align: "center" });
                 }
+                
+                // Agregar descripción debajo de la imagen
+                pdf.setFontSize(6);
+                pdf.setTextColor(0, 0, 0);
+                pdf.setFont("helvetica", "normal");
+                const descripcion = imagenesValidas[i].descripcion || 'Sin descripción';
+                const descripcionLines = pdf.splitTextToSize(descripcion, photoSize);
+                let descY = photoY + photoSize + 2;
+                descripcionLines.forEach(line => {
+                    pdf.text(line, photoX + photoSize/2, descY, { align: "center" });
+                    descY += 3;
+                });
             } else {
                 pdf.setFontSize(6);
                 pdf.setTextColor(150, 150, 150);
@@ -405,37 +515,38 @@ const generatePDF = async () => {
 
         // IMAGEN PRINCIPAL EN LA ESQUINA INFERIOR DERECHA
         const logoSize = photoSize * 0.85;
-const logoX = photoStartX1 + (2 * (photoSize + spacing));
-const logoY = secondRowY;
+        const logoX = photoStartX1 + (2 * (photoSize + spacing));
+        const logoY = secondRowY;
 
-if (data.principal) {
-    try {
-        const base64Principal = await loadImageAsBase64(data.principal);
-        const frameX = logoX + (photoSize - logoSize) / 3;
-        const frameY = logoY + (photoSize - logoSize) / 2;
-        const imageCenterX = frameX + (logoSize * 0.1);
-        const imageCenterY = frameY + (logoSize * 0.1);
+        if (data.principal) {
+            try {
+                const base64Principal = await loadImageAsBase64(data.principal);
+                const frameX = logoX + (photoSize - logoSize) / 3;
+                const frameY = logoY + (photoSize - logoSize) / 2;
+                const imageCenterX = frameX + (logoSize * 0.1);
+                const imageCenterY = frameY + (logoSize * 0.1);
+                
+                // Hacer la imagen un poco más ancha
+                const finalImageWidth = logoSize * 1.0;   // Un poco más ancho
+                const finalImageHeight = logoSize * 0.7;  // Mantener la altura original
+                
+                pdf.addImage(base64Principal, 'PNG', imageCenterX, imageCenterY, finalImageWidth, finalImageHeight);
+            } catch (error) {
+                console.error('Error al cargar imagen principal:', error);
+                pdf.setFontSize(8);
+                pdf.setFont("helvetica", "bold");
+                pdf.setTextColor(0, 0, 0);
+                pdf.text("LOGO", logoX + photoSize/2, logoY + photoSize/2, { align: "center" });
+            }
+        } else {
+            pdf.setFontSize(8);
+            pdf.setFont("helvetica", "bold");
+            pdf.setTextColor(0, 0, 0);
+            pdf.text("LOGO", logoX + photoSize/2, logoY + photoSize/2, { align: "center" });
+        }
         
-        // Hacer la imagen un poco más ancha
-        const finalImageWidth = logoSize * 1.0;   // Un poco más ancho
-        const finalImageHeight = logoSize * 0.7;  // Mantener la altura original
-        
-        pdf.addImage(base64Principal, 'PNG', imageCenterX, imageCenterY, finalImageWidth, finalImageHeight);
-    } catch (error) {
-        console.error('Error al cargar imagen principal:', error);
-        pdf.setFontSize(8);
-        pdf.setFont("helvetica", "bold");
+        y = y + sectionHeight + 10;
         pdf.setTextColor(0, 0, 0);
-        pdf.text("LOGO", logoX + photoSize/2, logoY + photoSize/2, { align: "center" });
-    }
-} else {
-    pdf.setFontSize(8);
-    pdf.setFont("helvetica", "bold");
-    pdf.setTextColor(0, 0, 0);
-    pdf.text("LOGO", logoX + photoSize/2, logoY + photoSize/2, { align: "center" });
-}
-y = y + sectionHeight + 10;
-pdf.setTextColor(0, 0, 0);
 
         // ===== SEGUNDA PÁGINA - CRONOGRAMA =====
         pdf.addPage();
@@ -464,16 +575,16 @@ pdf.setTextColor(0, 0, 0);
         pdf.setTextColor(0, 0, 0);
 
         const tem = data.tem || '0';
-        const tea = data.tea || '0';
+        const tea = teaReducida.toFixed(1); // Usar la TEA reducida también aquí
         const garantiaTotal = data.Valor_Estimado || data.Monto || '0';
         const montoOtorgado = data.Monto || '0';
 
         const lineSpacing = 8;
         const sidePadding = -5;
 
-        // ---- Línea 1 ----
-        let text1 = `Tasa efectiva Mensual: `;
-        let text2 = `${tem}%      Garantía Total: `;
+        // ---- Línea 1 - IR ----
+        let text1 = `Total de Intereses (IR): `;
+        let text2 = `${IR}      Garantía Total: `;
         let text3 = `${garantiaTotal}`;
 
         let line1 = text1 + text2 + text3;
@@ -485,9 +596,9 @@ pdf.setTextColor(0, 0, 0);
 
         let x1 = startX + pdf.getTextWidth(text1);
         pdf.setFont("helvetica", "normal");
-        pdf.text(tem + '%', x1, y);
+        pdf.text(IR, x1, y);
 
-        let x2 = x1 + pdf.getTextWidth(tem + "%      ");
+        let x2 = x1 + pdf.getTextWidth(IR + "      ");
         pdf.setFont("helvetica", "bold");
         pdf.text("Garantía Total: ", x2, y);
 
@@ -522,6 +633,8 @@ pdf.setTextColor(0, 0, 0);
         pdf.text(montoOtorgado, x3, y);
 
         y += lineSpacing;
+
+        y += lineSpacing + 5;
 
         // FUNCIÓN PARA CREAR HEADER DE TABLA
         const drawTableHeader = (startY) => {

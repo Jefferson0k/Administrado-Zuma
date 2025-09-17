@@ -60,15 +60,33 @@
                     <label class="font-bold mb-1">Monto requerido <span class="text-red-500">*</span></label>
                     <InputNumber v-model="form.valor_requerido" class="w-full" :useGrouping="true" :locale="'es-PE'" />
                 </div>
-                <!-- Imágenes actuales -->
+                
+                <!-- Imágenes actuales con descripción -->
                 <div v-if="imagenesActuales.length > 0">
                     <label class="font-bold mb-2 block">Imágenes actuales</label>
-                    <div class="grid grid-cols-2 gap-2">
+                    <div class="flex flex-col gap-3">
                         <div v-for="imagen in imagenesActuales" :key="imagen.id"
-                            class="relative border border-gray-300 rounded p-2">
-                            <img :src="imagen.url" :alt="imagen.imagen" class="w-full h-20 object-cover rounded mb-2" />
-                            <Button icon="pi pi-trash" severity="danger" size="small" @click="eliminarImagen(imagen)"
-                                class="absolute top-1 right-1 p-1" />
+                            class="flex gap-3 p-3 border border-gray-300 rounded-lg">
+                            <!-- Imagen -->
+                            <div class="relative flex-shrink-0">
+                                <img :src="imagen.url" :alt="imagen.imagen" 
+                                     class="w-20 h-20 object-cover rounded border" />
+                                <Button icon="pi pi-trash" severity="danger" size="small" 
+                                        @click="eliminarImagen(imagen)"
+                                        class="absolute -top-2 -right-2 p-1 w-6 h-6" />
+                            </div>
+                            
+                            <!-- Descripción -->
+                            <div class="flex-1 min-w-0">
+                                <label class="text-sm font-medium text-gray-600 mb-1 block">Descripción:</label>
+                                <p class="text-sm text-gray-800 break-words leading-relaxed">
+                                    {{ truncateText(imagen.description || 'Sin descripción', 35) }}
+                                </p>
+                                <span v-if="imagen.description && imagen.description.length > 35" 
+                                      class="text-xs text-gray-500 italic">
+                                    ({{ imagen.description.length - 35 }} caracteres más...)
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -152,6 +170,13 @@ const departamentos = ref([]);
 const provincias = ref([]);
 const distritos = ref([]);
 
+// Función para truncar texto
+const truncateText = (text, maxLength) => {
+    if (!text) return 'Sin descripción';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength);
+};
+
 onMounted(async () => {
     try {
         const { data } = await axios.get('https://novalink.oswa.workers.dev/api/v1/peru/ubigeo');
@@ -221,11 +246,13 @@ const cargarPropiedad = async () => {
 
         await buscarUbicacion(property.departamento, property.provincia, property.distrito);
 
+        // Mapear las imágenes incluyendo la descripción
         imagenesActuales.value = property.images
             ? property.images.map(img => ({
                 id: img.id || img.imagen,
                 imagen: img.imagen,
-                url: img.url || `/s3/${img.path}`
+                url: img.url || `/s3/${img.path}`,
+                description: img.description || ''
             }))
         : [];
     } catch (error) {
@@ -384,8 +411,12 @@ const resetForm = () => {
     archivos.value = [];
     imagenesActuales.value = [];
     imagenesAEliminar.value = [];
+    imagenesNuevas.value = [];
     provincias.value = [];
     distritos.value = [];
+    if (fileUpload.value) {
+        fileUpload.value.clear();
+    }
 };
 
 const cerrarModal = () => {

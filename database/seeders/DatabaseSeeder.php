@@ -17,8 +17,8 @@ class DatabaseSeeder extends Seeder{
             SectorSeeder::class,
             SubsectorSeeder::class,
             TermSeeder::class,
-            CompanySeeder::class,
             BankSeeder::class,
+            #CompanySeeder::class,
             InvestorSeeder::class,
             BankAccountSeeder::class,
             ExchangeSeeder::class,
@@ -31,6 +31,7 @@ class DatabaseSeeder extends Seeder{
             CoopacInclusivaSeeder::class,
             CoopacLosAndesSeeder::class,
             ProductSeeder::class,
+            TipoDocumentoSeeder::class,
         ]);
     }
 }

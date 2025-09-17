@@ -21,7 +21,8 @@ return new class extends Migration
             $table->longText('description')->nullable();
 
             $table->foreignUlid('investor_id')->constrained();
-            $table->foreignUlid('movement_id')->constrained();
+            $table->foreignUlid('movement_id')->nullable()->constrained();
+
             $table->foreignUlid('bank_account_id')->nullable()->constrained();
 
             $table->string('payment_source')->nullable();

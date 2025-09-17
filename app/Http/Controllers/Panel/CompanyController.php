@@ -28,18 +28,43 @@ use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use Throwable;
 
-class CompanyController extends Controller
-{
-    public function index(Request $request)
-    {
+class CompanyController extends Controller{
+     public function index(Request $request){
         try {
             Gate::authorize('viewAny', Company::class);
+
+            // Debug switch (?debug=1)
+            $debug = $request->boolean('debug', false);
+            if ($debug) {
+                DB::enableQueryLog();
+            }
+
+            Log::info('Company.index incoming', [
+                'query' => $request->query(),
+                'path'  => $request->path(),
+            ]);
+
 
             $perPage     = $request->input('per_page', 15);
             $search      = $request->input('search', '');
             $sectorId    = $request->input('sector_id');
             $subsectorId = $request->input('subsector_id');
             $risk        = $request->input('risk');
+
+            $sortField   = $request->input('sort_field'); // ui fields
+            $sortOrder   = strtolower($request->input('sort_order', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+            // UI -> real columns
+            $sortableMap = [
+                'document'      => 'companies.document',
+                'business_name' => 'companies.business_name',
+                'name'          => 'companies.name',
+                'risk'          => 'companies.risk',
+                'creacion'      => 'companies.created_at',
+                'sectornom'     => 'sectors.name',
+                'subsectornom'  => 'subsectors.name',
+            ];
+
 
             $query = app(Pipeline::class)
                 ->send(Company::query()->with(['sector', 'subsector']))
@@ -52,14 +77,61 @@ class CompanyController extends Controller
                 ->thenReturn()
                 ->latest(); // ORDER BY created_at DESC
 
+
+            $sortApplied = ['companies.id', 'desc'];
+
+            if ($sortField && isset($sortableMap[$sortField])) {
+                $column = $sortableMap[$sortField];
+                $sortApplied = [$column, $sortOrder];
+
+                if ($sortField === 'sectornom') {
+                    $query->leftJoin('sectors', 'companies.sector_id', '=', 'sectors.id')
+                          ->select('companies.*')
+                          ->orderBy($column, $sortOrder);
+                } elseif ($sortField === 'subsectornom') {
+                    $query->leftJoin('subsectors', 'companies.subsector_id', '=', 'subsectors.id')
+                          ->select('companies.*')
+                          ->orderBy($column, $sortOrder);
+                } else {
+                    $query->orderBy($column, $sortOrder);
+                }
+            } else {
+                $query->latest('companies.id');
+            }
+
+            if ($debug) {
+                $sql = (clone $query)->toSql();
+                $bindings = (clone $query)->getBindings();
+                Log::info('Company.index SQL', ['sql' => $sql, 'bindings' => $bindings]);
+            }
+
             $companies = $query->paginate($perPage);
 
+            if ($debug) {
+                Log::info('Company.index QueryLog', DB::getQueryLog());
+            }
+
+
             return CompanyResource::collection($companies)
-                ->additional(['total' => $companies->total()]);
+                ->additional([
+                    'total' => $companies->total(),
+                    'meta'  => [
+                        'sort_field_requested' => $sortField,
+                        'sort_order_requested' => $request->input('sort_order'),
+                        'sort_field_applied'   => $sortApplied[0] ?? null,
+                        'sort_order_applied'   => $sortApplied[1] ?? null,
+                    ],
+                ]);
         } catch (AuthorizationException $e) {
             return response()->json(['message' => 'No tienes permiso para ver las compañías.'], 403);
+            return response()->json(['message' => 'No tienes permiso para ver las compañías.'], 403);
         } catch (Throwable $e) {
-            Log::error('Error al listar las compañías: ' . $e->getMessage());
+            Log::error('Error al listar las compañías', [
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+                'trace' => collect($e->getTrace())->take(3),
+            ]);
             return response()->json(['message' => 'Error al listar las compañías.'], 500);
         }
     }

@@ -223,4 +223,21 @@ class Invoice extends Model implements AuditableContract{
     $investors = Investor::whereIn('id', $ids)->get();
     return $investors->toArray();
     }
+    public function anularFactura(int $userId, string $comment = null): bool{
+        if (in_array($this->status, ['paid', 'annulled'])) {
+            return false;
+        }
+        $this->status = 'annulled';
+        $this->approval2_status = 'rejected';
+        $this->approval2_by = $userId;
+        $this->approval2_comment = $comment;
+        $this->approval2_at = now();
+        if ($this->codigo && !str_ends_with($this->codigo, '- ANULADA')) {
+            $this->codigo .= ' - ANULADA';
+        }
+        if ($this->invoice_number && !str_ends_with($this->invoice_number, '- ANULADA')) {
+            $this->invoice_number .= ' - ANULADA';
+        }
+        return $this->save();
+    }
 }
