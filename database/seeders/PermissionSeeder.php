@@ -125,12 +125,5 @@ class PermissionSeeder extends Seeder{
         Permission::create(['name' => 'editar permisos']);
         Permission::create(['name' => 'eliminar permisos']);
         Permission::create(['name' => 'ver permisos']);
-        // Bank Accounts
-        Permission::create(['name' => 'crear cuenta bancaria']);
-        Permission::create(['name' => 'editar cuenta bancaria']);
-        Permission::create(['name' => 'eliminar cuenta bancaria']);
-        Permission::create(['name' => 'ver cuenta bancaria']);
-    
-
     }
 }

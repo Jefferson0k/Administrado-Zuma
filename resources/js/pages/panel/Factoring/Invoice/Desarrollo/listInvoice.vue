@@ -62,11 +62,11 @@ const filterFieldOptions = ref([
   { label: 'Estado', value: 'estado' }
 ]);
 
-const showSearchField  = computed(() => selectedFilterFields.value.includes('razonSocial') || selectedFilterFields.value.includes('codigo'));
-const showCurrencyField= computed(() => selectedFilterFields.value.includes('moneda'));
+const showSearchField = computed(() => selectedFilterFields.value.includes('razonSocial') || selectedFilterFields.value.includes('codigo'));
+const showCurrencyField = computed(() => selectedFilterFields.value.includes('moneda'));
 const showAmountFields = computed(() => selectedFilterFields.value.includes('montoFactura'));
-const showRateFields   = computed(() => selectedFilterFields.value.includes('tasa'));
-const showStatusField  = computed(() => selectedFilterFields.value.includes('estado'));
+const showRateFields = computed(() => selectedFilterFields.value.includes('tasa'));
+const showStatusField = computed(() => selectedFilterFields.value.includes('estado'));
 
 const pagination = ref({
   page: 1,
@@ -133,58 +133,58 @@ async function exportToExcel() {
 
 // Exponer la función de exportación para que el componente padre pueda usarla
 defineExpose({
-    exportToExcel
+  exportToExcel
 });
 
 // Funciones para los estados de aprobación
 function getApprovalStatusLabel(status) {
-    const approvalLabels = {
-        'pending': 'Inactivo',
-        'approved': 'Activo',
-        'rejected': 'Anulado'
-    };
-    return approvalLabels[status] || status;
+  const approvalLabels = {
+    'pending': 'Inactivo',
+    'approved': 'Activo',
+    'rejected': 'Anulado'
+  };
+  return approvalLabels[status] || status;
 }
 
 function getApprovalStatusSeverity(status) {
-    switch (status) {
-        case 'pending': return 'secondary';
-        case 'approved': return 'success';
-        case 'rejected': return 'danger';
-        default: return 'secondary';
-    }
+  switch (status) {
+    case 'pending': return 'secondary';
+    case 'approved': return 'success';
+    case 'rejected': return 'danger';
+    default: return 'secondary';
+  }
 }
 
 function getStatusLabel(status) {
-    const statusLabels = {
-        'inactive': 'Inactivo',
-        'active': 'Activo',
-        'expired': 'Vencido',
-        'judicialized': 'Judicializado',
-        'reprogramed': 'Reprogramado',
-        'paid': 'Pagado',
-        'canceled': 'Cancelado',
-        'daStandby': 'Standby',
-        'observed': 'Observado',
-        'annulled': 'Anulado'   // 👈 nuevo estado
-    };
-    return statusLabels[status] || status;
+  const statusLabels = {
+    'inactive': 'Inactivo',
+    'active': 'Activo',
+    'expired': 'Vencido',
+    'judicialized': 'Judicializado',
+    'reprogramed': 'Reprogramado',
+    'paid': 'Pagado',
+    'canceled': 'Cancelado',
+    'daStandby': 'Standby',
+    'observed': 'Observado',
+    'annulled': 'Anulado'   // 👈 nuevo estado
+  };
+  return statusLabels[status] || status;
 }
 
 function getStatusSeverity(status) {
-    switch (status) {
-        case 'inactive': return 'secondary';
-        case 'active': return 'success';
-        case 'expired': return 'danger';
-        case 'judicialized': return 'warn';
-        case 'reprogramed': return 'info';
-        case 'paid': return 'contrast';
-        case 'canceled': return 'danger';
-        case 'daStandby': return 'warn';
-        case 'observed': return 'info';
-        case 'annulled': return 'danger'; // 👈 mismo estilo que canceled
-        default: return 'secondary';
-    }
+  switch (status) {
+    case 'inactive': return 'secondary';
+    case 'active': return 'success';
+    case 'expired': return 'danger';
+    case 'judicialized': return 'warn';
+    case 'reprogramed': return 'info';
+    case 'paid': return 'contrast';
+    case 'canceled': return 'danger';
+    case 'daStandby': return 'warn';
+    case 'observed': return 'info';
+    case 'annulled': return 'danger'; // 👈 mismo estilo que canceled
+    default: return 'secondary';
+  }
 }
 
 const formatCurrency = (value, moneda) => {
@@ -197,9 +197,9 @@ const formatCurrency = (value, moneda) => {
 function clearUnselectedFilters() {
   if (!showCurrencyField.value) filters.value.currency = null;
   if (!showAmountFields.value) { filters.value.min_amount = null; filters.value.max_amount = null; }
-  if (!showRateFields.value)   { filters.value.min_rate = null; filters.value.max_rate = null; }
-  if (!showStatusField.value)  filters.value.status = null;
-  if (!showSearchField.value)  filters.value.search = '';
+  if (!showRateFields.value) { filters.value.min_rate = null; filters.value.max_rate = null; }
+  if (!showStatusField.value) filters.value.status = null;
+  if (!showSearchField.value) filters.value.search = '';
 }
 
 async function loadData() {
@@ -249,13 +249,13 @@ async function loadData() {
 }
 
 function gestionarPago(factura) {
-    selectedFacturaId.value = factura.id;
-    showPaymentDialog.value = true;
+  selectedFacturaId.value = factura.id;
+  showPaymentDialog.value = true;
 }
 
 function onPaymentCancelled() {
-    selectedFacturaId.value = null;
-    showPaymentDialog.value = false;
+  selectedFacturaId.value = null;
+  showPaymentDialog.value = false;
 }
 
 function clearFilters() {
@@ -331,73 +331,73 @@ const toggleMenu = (event, factura) => {
     { label: 'Ver factura', icon: 'pi pi-file', command: () => verFactura(factura) }
   ];
 
-    if (factura.estado?.toLowerCase().trim() === 'inactive') {
-        items = items.concat([
-            {
-                label: 'Activo',
-                icon: 'pi pi-check-circle',
-                command: () => ponerActivo(factura)
-            },
-            { separator: true },
-            {
-                label: 'Editar',
-                icon: 'pi pi-pencil',
-                command: () => editFactura(factura)
-            },
-            {
-                label: 'Eliminar',
-                icon: 'pi pi-trash',
-                command: () => confirmDelete(factura),
-                class: 'p-menuitem-link-danger'
-            }
-        ]);
-    } else if (factura.estado === 'active') {
-        items = items.concat([
-            {
-                label: 'Ver inversionistas',
-                icon: 'pi pi-eye',
-                command: () => verInversionistas(factura)
-            },
-            { separator: true },
-            {
-                label: 'Poner en standby',
-                icon: 'pi pi-pause',
-                command: () => ponerEnStandby(factura)
-            }
-        ]);
-    } else if (factura.estado === 'daStandby') {
-        items = items.concat([
-            {
-                label: 'Gestionar pago',
-                icon: 'pi pi-wallet',
-                command: () => gestionarPago(factura)
-            }
-        ]);
-    } else if (factura.estado === 'reprogramed') {
-        items = items.concat([
-            {
-                label: 'Ver inversionistas',
-                icon: 'pi pi-eye',
-                command: () => verInversionistas(factura)
-            }
-        ]);
-    } else if (factura.estado === 'observed') {
-        items = items.concat([
-            {
-                label: 'Editar',
-                icon: 'pi pi-pencil',
-                command: () => editFactura(factura)
-            }
-        ]);
-    } else {
-        items = items.concat([
-            {
-                label: 'Ver inversionistas',
-                icon: 'pi pi-eye',
-                command: () => verInversionistas(factura)
-            }
-        ]);
-    }
+  if (factura.estado?.toLowerCase().trim() === 'inactive') {
+    items = items.concat([
+      {
+        label: 'Activo',
+        icon: 'pi pi-check-circle',
+        command: () => ponerActivo(factura)
+      },
+      { separator: true },
+      {
+        label: 'Editar',
+        icon: 'pi pi-pencil',
+        command: () => editFactura(factura)
+      },
+      {
+        label: 'Eliminar',
+        icon: 'pi pi-trash',
+        command: () => confirmDelete(factura),
+        class: 'p-menuitem-link-danger'
+      }
+    ]);
+  } else if (factura.estado === 'active') {
+    items = items.concat([
+      {
+        label: 'Ver inversionistas',
+        icon: 'pi pi-eye',
+        command: () => verInversionistas(factura)
+      },
+      { separator: true },
+      {
+        label: 'Poner en standby',
+        icon: 'pi pi-pause',
+        command: () => ponerEnStandby(factura)
+      }
+    ]);
+  } else if (factura.estado === 'daStandby') {
+    items = items.concat([
+      {
+        label: 'Gestionar pago',
+        icon: 'pi pi-wallet',
+        command: () => gestionarPago(factura)
+      }
+    ]);
+  } else if (factura.estado === 'reprogramed') {
+    items = items.concat([
+      {
+        label: 'Ver inversionistas',
+        icon: 'pi pi-eye',
+        command: () => verInversionistas(factura)
+      }
+    ]);
+  } else if (factura.estado === 'observed') {
+    items = items.concat([
+      {
+        label: 'Editar',
+        icon: 'pi pi-pencil',
+        command: () => editFactura(factura)
+      }
+    ]);
+  } else {
+    items = items.concat([
+      {
+        label: 'Ver inversionistas',
+        icon: 'pi pi-eye',
+        command: () => verInversionistas(factura)
+      }
+    ]);
+  }
 
   menuItems.value = items;
   menu.value.toggle(event);
@@ -427,30 +427,12 @@ onMounted(() => {
 
 <template>
   <div class="space-y-4">
-    <DataTable
-      ref="dt"
-      v-model:selection="selectedFacturas"
-      :value="facturas"
-      dataKey="codigo"
-      :paginator="true"
-      :rows="pagination.per_page"
-      :totalRecords="pagination.total"
-      :first="(pagination.page - 1) * pagination.per_page"
-      :loading="loading"
-      @page="onPage"
-      :rowsPerPageOptions="[5, 10, 20, 50]"
-      scrollable
-      scrollHeight="500px"
-      lazy
+    <DataTable ref="dt" v-model:selection="selectedFacturas" :value="facturas" dataKey="codigo" :paginator="true"
+      :rows="pagination.per_page" :totalRecords="pagination.total" :first="(pagination.page - 1) * pagination.per_page"
+      :loading="loading" @page="onPage" :rowsPerPageOptions="[5, 10, 20, 50]" scrollable scrollHeight="500px" lazy
       paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
       :currentPageReportTemplate="`Mostrando ${pagination.from} a ${pagination.to} de ${pagination.total} facturas`"
-      class="p-datatable-sm"
-
-      :sortField="sortField"
-      :sortOrder="sortOrder"
-      sortMode="single"
-      @sort="onSort"
-    >
+      class="p-datatable-sm" :sortField="sortField" :sortOrder="sortOrder" sortMode="single" @sort="onSort">
       <template #header>
         <div class="flex flex-wrap gap-2 items-center justify-between">
           <h4 class="m-0">
@@ -458,15 +440,8 @@ onMounted(() => {
             <Tag severity="contrast" :value="pagination.total" />
           </h4>
           <div class="flex flex-wrap gap-2">
-            <MultiSelect
-              v-model="selectedFilterFields"
-              :options="filterFieldOptions"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Seleccionar campos de filtro"
-              class="w-15"
-              display="chip"
-            />
+            <MultiSelect v-model="selectedFilterFields" :options="filterFieldOptions" optionLabel="label"
+              optionValue="value" placeholder="Seleccionar campos de filtro" class="w-15" display="chip" />
             <div v-if="showSearchField" class="lg:col-span-2">
               <IconField>
                 <InputIcon><i class="pi pi-search" /></InputIcon>
@@ -474,32 +449,22 @@ onMounted(() => {
               </IconField>
             </div>
             <div v-if="showCurrencyField">
-              <Select
-                v-model="filters.currency"
-                :options="currencyOptions"
-                optionLabel="label"
-                optionValue="value"
-                placeholder="Seleccionar moneda"
-                class="w-15"
-              />
+              <Select v-model="filters.currency" :options="currencyOptions" optionLabel="label" optionValue="value"
+                placeholder="Seleccionar moneda" class="w-15" />
             </div>
             <div v-if="showStatusField">
-              <Select
-                v-model="filters.status"
-                :options="statusOptions"
-                optionLabel="label"
-                optionValue="value"
-                placeholder="Seleccionar estado"
-                class="w-15"
-              />
+              <Select v-model="filters.status" :options="statusOptions" optionLabel="label" optionValue="value"
+                placeholder="Seleccionar estado" class="w-15" />
             </div>
 
             <template v-if="showRateFields">
               <div>
-                <InputNumber v-model="filters.min_rate" :minFractionDigits="2" :maxFractionDigits="2" :min="0" :max="100" placeholder="0.00" class="w-full" />
+                <InputNumber v-model="filters.min_rate" :minFractionDigits="2" :maxFractionDigits="2" :min="0"
+                  :max="100" placeholder="0.00" class="w-full" />
               </div>
               <div>
-                <InputNumber v-model="filters.max_rate" :minFractionDigits="2" :maxFractionDigits="2" :min="0" :max="100" placeholder="0.00" class="w-full" />
+                <InputNumber v-model="filters.max_rate" :minFractionDigits="2" :maxFractionDigits="2" :min="0"
+                  :max="100" placeholder="0.00" class="w-full" />
               </div>
             </template>
 
@@ -524,121 +489,155 @@ onMounted(() => {
         </div>
       </template>
 
-            <Column selectionMode="multiple" style="width: 1rem" :exportable="false" />
-            <Column field="razonSocial" header="Razón Social" sortable style="min-width: 20rem" />
-            <Column field="codigo" header="Código" sortable style="min-width: 5rem" />
-            <Column field="moneda" header="Moneda" sortable style="min-width: 5rem" />
-            <Column field="montoFactura" header="M. Factura" sortable style="min-width: 8rem">
-                <template #body="slotProps">
-                    {{ formatCurrency(slotProps.data.montoFactura, slotProps.data.moneda) }}
-                </template>
-            </Column>
-            <Column field="montoAsumidoZuma" header="M. asumido zuma" sortable style="min-width: 11rem">
-                <template #body="slotProps">
-                    {{ formatCurrency(slotProps.data.montoAsumidoZuma, slotProps.data.moneda) }}
-                </template>
-            </Column>
-            <Column field="montoDisponible" header="Monto Disponible" sortable style="min-width: 11rem">
-                <template #body="slotProps">
-                    {{ formatCurrency(slotProps.data.montoDisponible, slotProps.data.moneda) }}
-                </template>
-            </Column>
-            <Column field="tasa" header="Tasa (%)" sortable style="min-width: 7rem" />
-            <Column field="fechaPago" header="Fecha de Pago" sortable style="min-width: 10rem" />
-            <Column field="estado" header="Estado" sortable style="min-width: 7rem">
-                <template #body="slotProps">
-                    <Tag :value="getStatusLabel(slotProps.data.estado)" :severity="getStatusSeverity(slotProps.data.estado)" />
-                </template>
-            </Column>
-            <!-- Columnas de aprobación -->
-            <Column field="PrimerStado" header="1ª Estado" sortable style="min-width: 7rem">
-                <template #body="slotProps">
-                    <Tag :value="getApprovalStatusLabel(slotProps.data.PrimerStado)" :severity="getApprovalStatusSeverity(slotProps.data.PrimerStado)" />
-                </template>
-            </Column>
-            
-            <Column field="userprimer" header="1ª Usuario" sortable style="min-width: 8rem">
-                <template #body="slotProps">
-                    <span :class="slotProps.data.userprimer === 'Sin aprobar' ? 'italic' : ''">
-                        {{ slotProps.data.userprimer || 'Sin asignar' }}
-                    </span>
-                </template>
-            </Column>
-            
-            <Column field="tiempoUno" header="T. 1ª Aprobación" sortable style="min-width: 12rem">
-                <template #body="slotProps">
-                    <span :class="!slotProps.data.tiempoUno ? 'italic' : ''">
-                        {{ slotProps.data.tiempoUno || 'Sin tiempo' }}
-                    </span>
-                </template>
-            </Column>
-            
-            <Column field="SegundaStado" header="2ª Estado" sortable style="min-width: 7rem">
-            <template #body="slotProps">
-                <template v-if="!slotProps.data.SegundaStado">
-                    <span class="italic">Sin estado</span>
-                </template>
-                <template v-else>
-                    <Tag 
-                        :value="getApprovalStatusLabel(slotProps.data.SegundaStado)" 
-                        :severity="getApprovalStatusSeverity(slotProps.data.SegundaStado)" 
-                    />
-                    </template>
-                </template>
-            </Column>
-
-            <Column field="userdos" header="2do Usuario" sortable style="min-width: 8rem">
-                <template #body="slotProps">
-                    <span :class="slotProps.data.userdos === 'Sin aprobar' ? 'italic' : ''">
-                        {{ slotProps.data.userdos || 'Sin asignar' }}
-                    </span>
-                </template>
-            </Column>
-            
-            <Column field="tiempoDos" header="T. 2ª Aprobación" sortable style="min-width: 12rem">
-                <template #body="slotProps">
-                    <span :class="!slotProps.data.tiempoDos ? 'italic' : ''">
-                        {{ slotProps.data.tiempoDos || 'Sin tiempo' }}
-                    </span>
-                </template>
-            </Column>
-            <Column field="situacion" header="Situacion" sortable style="min-width: 12rem">
-                <template #body="slotProps">
-                    <span :class="!slotProps.data.situacion ? 'italic' : ''">
-                        {{ slotProps.data.situacion || 'Sin situacion' }}
-                    </span>
-                </template>
-            </Column>
-            
-            <Column field="fechaCreacion" header="Fecha Creación" sortable style="min-width: 13rem" />
-
+      <Column selectionMode="multiple" style="width: 1rem" :exportable="false" />
+      <Column field="razonSocial" header="RUC Pagador" sortable style="min-width: 20rem" />
+      <Column field="codigo" header="Código" sortable style="min-width: 12rem" />
+      <Column field="moneda" header="Moneda" sortable style="min-width: 5rem" />
+      <Column field="montoFactura" header="M. Factura" sortable style="min-width: 8rem">
+        <template #body="slotProps">
+          {{ formatCurrency(slotProps.data.montoFactura, slotProps.data.moneda) }}
+        </template>
+      </Column>
+      <Column field="montoAsumidoZuma" header="M. asumido zuma" sortable style="min-width: 11rem">
+        <template #body="slotProps">
+          {{ formatCurrency(slotProps.data.montoAsumidoZuma, slotProps.data.moneda) }}
+        </template>
+      </Column>
+      <Column field="montoDisponible" header="Monto Disponible" sortable style="min-width: 11rem">
+        <template #body="slotProps">
+          {{ formatCurrency(slotProps.data.montoDisponible, slotProps.data.moneda) }}
+        </template>
+      </Column>
+      <Column field="tasa" header="Tasa (%)" sortable style="min-width: 7rem" />
+      <Column field="fechaPago" header="Fecha de Pago" sortable style="min-width: 10rem" />
+      <Column field="PrimerStado" header="1ª Aprob" sortable style="min-width: 7rem">
+        <template #body="slotProps">
+          <template v-if="slotProps.data.PrimerStado">
+            <Tag 
+              :value="getStatusLabel(slotProps.data.PrimerStado)" 
+              :severity="getStatusSeverity(slotProps.data.PrimerStado)" 
+            />
+          </template>
+          <template v-else>
+            <span class="italic text-gray-500">Sin dato</span>
+          </template>
+        </template>
+      </Column>
+      <Column field="userprimer" header="1ª Usuario" sortable style="min-width: 8rem">
+        <template #body="slotProps">
+          <span :class="slotProps.data.userprimer === 'Sin aprobar' ? 'italic' : ''">
+            {{ slotProps.data.userprimer || 'Sin asignar' }}
+          </span>
+        </template>
+      </Column>
+      <Column field="tiempoUno" header="T. 1ª Aprobación" sortable style="min-width: 12rem">
+        <template #body="slotProps">
+          <span :class="!slotProps.data.tiempoUno ? 'italic' : ''">
+            {{ slotProps.data.tiempoUno || 'Sin tiempo' }}
+          </span>
+        </template>
+      </Column>
+      <Column field="SegundaStado" header="2ª Aprob" sortable style="min-width: 7rem">
+        <template #body="slotProps">
+          <template v-if="slotProps.data.SegundaStado">
+            <Tag 
+              :value="getApprovalStatusLabel(slotProps.data.SegundaStado)" 
+              :severity="getApprovalStatusSeverity(slotProps.data.SegundaStado)" 
+            />
+          </template>
+          <template v-else>
+            <span class="italic text-gray-500">Sin dato</span>
+          </template>
+        </template>
+      </Column>
+      <Column field="userdos" header="2do Usuario" sortable style="min-width: 8rem">
+        <template #body="slotProps">
+          <span :class="slotProps.data.userdos === 'Sin aprobar' ? 'italic' : ''">
+            {{ slotProps.data.userdos || 'Sin asignar' }}
+          </span>
+        </template>
+      </Column>
+      <Column field="tiempoDos" header="T. 2ª Aprobación" sortable style="min-width: 12rem">
+        <template #body="slotProps">
+          <span :class="!slotProps.data.tiempoDos ? 'italic' : ''">
+            {{ slotProps.data.tiempoDos || 'Sin tiempo' }}
+          </span>
+        </template>
+      </Column>
+      <Column field="estado" header="Estado" sortable style="min-width: 7rem">
+        <template #body="slotProps">
+          <template v-if="!slotProps.data.estado">
+            <span class="italic">Sin estado</span>
+          </template>
+          <template v-else>
+            <Tag :value="getApprovalStatusLabel(slotProps.data.estado)"
+              :severity="getApprovalStatusSeverity(slotProps.data.estado)" />
+          </template>
+        </template>
+      </Column>
+      <Column field="tipo" header="Tipo" sortable style="min-width: 5rem">
+        <template #body="slotProps">
+          <span :class="!slotProps.data.tipo ? 'italic' : ''">
+            {{ slotProps.data.tipo || 'Sin tipo' }}
+          </span>
+        </template>
+      </Column>
+      <Column field="situacion" header="Situacion" sortable style="min-width: 12rem">
+        <template #body="slotProps">
+          <span :class="!slotProps.data.situacion ? 'italic' : ''">
+            {{ slotProps.data.situacion || 'Sin situación' }}
+          </span>
+        </template>
+      </Column>
+      <Column field="condicionOportunidadInversion" header="Cond. Oportunidad de Inversión" sortable
+        style="min-width: 18rem">
+        <template #body="slotProps">
+          <span :class="!slotProps.data.condicionOportunidadInversion ? 'italic' : ''">
+            {{ slotProps.data.condicionOportunidadInversion || 'Sin condición' }}
+          </span>
+        </template>
+      </Column>
+      <Column field="fechaHoraCierreInversion" header="Fecha y Hora Cierre de Inversión" sortable
+        style="min-width: 18rem">
+        <template #body="slotProps">
+          <span :class="!slotProps.data.fechaHoraCierreInversion ? 'italic' : ''">
+            {{ slotProps.data.fechaHoraCierreInversion || 'Sin fecha y sin hora de cierre' }}
+          </span>
+        </template>
+      </Column>
+      <Column field="porcentajeObjetivoTerceros" header="% Obj Terceros" sortable style="min-width: 10rem">
+        <template #body="slotProps">
+          <span :class="!slotProps.data.porcentajeObjetivoTerceros ? 'italic' : ''">
+            {{ slotProps.data.porcentajeObjetivoTerceros || 'Sin dato' }}
+          </span>
+        </template>
+      </Column>
+      <Column field="porcentajeInversionTerceros" header="% Inv Terceros" sortable style="min-width: 9rem">
+        <template #body="slotProps">
+          <span :class="!slotProps.data.porcentajeInversionTerceros ? 'italic' : ''">
+            {{ slotProps.data.porcentajeInversionTerceros || 'Sin dato' }}
+          </span>
+        </template>
+      </Column>
+      <Column field="fechaCreacion" header="Fecha Creación" sortable style="min-width: 13rem" />
       <Column header="" :exportable="false">
         <template #body="slotProps">
-          <Button
-            icon="pi pi-ellipsis-v"
-            text
-            rounded
-            severity="secondary"
-            @click="toggleMenu($event, slotProps.data)"
-            aria-label="Opciones"
-          />
+          <Button icon="pi pi-ellipsis-v" text rounded severity="secondary" @click="toggleMenu($event, slotProps.data)"
+            aria-label="Opciones" />
         </template>
       </Column>
     </DataTable>
-
     <Menu ref="menu" :model="menuItems" :popup="true" />
-
     <!-- Dialogs -->
-    <UpdateStandby v-model="showStandbyDialog" :factura-id="selectedFacturaId" @confirmed="onStandbyConfirmed" @cancelled="onStandbyCancelled" />
-    <updateActive  v-model="showActiveDialog"  :factura-id="selectedFacturaId" @confirmed="onStandbyConfirmed" @cancelled="onStandbyCancelled" />
-    <deleteInvoice v-model="showDeleteDialog"  :factura-id="selectedFacturaId" :factura-data="selectedFacturaData" @confirmed="onDeleteConfirmed" @cancelled="onDeleteCancelled" />
-    <showFacturas  v-model="showFacturaDialog" :factura-id="selectedFacturaId" @cancelled="onFacturaDialogCancelled" />
-    <updateInvoice v-model="showUpdateDialog"  :factura-id="selectedFacturaId" @updated="onUpdateConfirmed" @cancelled="onUpdateCancelled" />
-
-        <paymentInvoice
-            v-model="showPaymentDialog"
-            :factura-id="selectedFacturaId"
-            @cancelled="onPaymentCancelled"
-        />
+    <UpdateStandby v-model="showStandbyDialog" :factura-id="selectedFacturaId" @confirmed="onStandbyConfirmed"
+      @cancelled="onStandbyCancelled" />
+    <updateActive v-model="showActiveDialog" :factura-id="selectedFacturaId" @confirmed="onStandbyConfirmed"
+      @cancelled="onStandbyCancelled" />
+    <deleteInvoice v-model="showDeleteDialog" :factura-id="selectedFacturaId" :factura-data="selectedFacturaData"
+      @confirmed="onDeleteConfirmed" @cancelled="onDeleteCancelled" />
+    <showFacturas v-model="showFacturaDialog" :factura-id="selectedFacturaId" @cancelled="onFacturaDialogCancelled" />
+    <updateInvoice v-model="showUpdateDialog" :factura-id="selectedFacturaId" @updated="onUpdateConfirmed"
+      @cancelled="onUpdateCancelled" />
+    <paymentInvoice v-model="showPaymentDialog" :factura-id="selectedFacturaId" @cancelled="onPaymentCancelled" />
   </div>
 </template>
