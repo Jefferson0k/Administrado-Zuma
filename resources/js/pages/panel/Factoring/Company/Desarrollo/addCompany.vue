@@ -296,8 +296,7 @@
                 <h4 class="mb-4 font-bold">Información Financiera</h4>
 
                 <!-- Si es PEN o BOTH -->
-                <!-- <div v-if="empresa.moneda === 'PEN' || empresa.moneda === 'BOTH'" class="mb-6"> -->
-                <div class="mb-6">
+                <div v-if="empresa.moneda === 'PEN' || empresa.moneda === 'BOTH'" class="mb-6">
                     <h5 class="mb-3 font-semibold text-green-700">Datos en PEN (Soles)</h5>
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                         <div>
@@ -349,7 +348,7 @@
                             />
                         </div>
 
-                        <!-- <div>
+                        <div>
                             <label class="mb-1 block font-medium">Facturas Pendientes <span class="text-red-500">*</span></label>
                             <InputNumber
                                 v-model="empresa.pendientes_pen"
@@ -359,10 +358,10 @@
                                 :class="{ 'p-invalid': submitted && (empresa.pendientes_pen === null || empresa.pendientes_pen === undefined) }"
                                 :disabled="!rucConsultado"
                             />
-                        </div> -->
+                        </div>
 
                         <div>
-                            <label class="mb-1 block font-medium">Plazo Promedio (pago) <span class="text-red-500">*</span></label>
+                            <label class="mb-1 block font-medium">Plazo Promedio (días) <span class="text-red-500">*</span></label>
                             <InputNumber
                                 v-model="empresa.plazo_promedio_pago_pen"
                                 :min="0"
@@ -379,8 +378,7 @@
                 </div>
 
                 <!-- Si es USD o BOTH -->
-                <!-- <div v-if="empresa.moneda === 'USD' || empresa.moneda === 'BOTH'"> -->
-                <div>
+                <div v-if="empresa.moneda === 'USD' || empresa.moneda === 'BOTH'">
                     <h5 class="mb-3 font-semibold text-blue-700">Datos en USD (Dólares)</h5>
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                         <div>
@@ -432,7 +430,7 @@
                             />
                         </div>
 
-                        <!-- <div>
+                        <div>
                             <label class="mb-1 block font-medium">Facturas Pendientes <span class="text-red-500">*</span></label>
                             <InputNumber
                                 v-model="empresa.pendientes_usd"
@@ -442,10 +440,10 @@
                                 :class="{ 'p-invalid': submitted && (empresa.pendientes_usd === null || empresa.pendientes_usd === undefined) }"
                                 :disabled="!rucConsultado"
                             />
-                        </div> -->
+                        </div>
 
                         <div>
-                            <label class="mb-1 block font-medium">Plazo Promedio (pago) <span class="text-red-500">*</span></label>
+                            <label class="mb-1 block font-medium">Plazo Promedio (días) <span class="text-red-500">*</span></label>
                             <InputNumber
                                 v-model="empresa.plazo_promedio_pago_usd"
                                 :min="0"
@@ -595,28 +593,12 @@ function isFormValid() {
     }
 
     if (empresa.value.moneda === 'PEN' || empresa.value.moneda === 'BOTH') {
-        const requiredPenFields = [
-            'facturas_financiadas_pen',
-            'monto_total_financiado_pen',
-            'pagadas_pen',
-            //'pendientes_pen',
-            'plazo_promedio_pago_pen',
-        ];
-        for (const field of requiredPenFields) {
-            if (empresa.value[field] === null || empresa.value[field] === undefined) return false;
-        }
+        const requiredPenFields = ['facturas_financiadas_pen','monto_total_financiado_pen','pagadas_pen','pendientes_pen','plazo_promedio_pago_pen'];
+        for (const f of requiredPenFields) { if (empresa.value[f] === null || empresa.value[f] === undefined) return false; }
     }
     if (empresa.value.moneda === 'USD' || empresa.value.moneda === 'BOTH') {
-        const requiredUsdFields = [
-            'facturas_financiadas_usd',
-            'monto_total_financiado_usd',
-            'pagadas_usd',
-            //'pendientes_usd',
-            'plazo_promedio_pago_usd',
-        ];
-        for (const field of requiredUsdFields) {
-            if (empresa.value[field] === null || empresa.value[field] === undefined) return false;
-        }
+        const requiredUsdFields = ['facturas_financiadas_usd','monto_total_financiado_usd','pagadas_usd','pendientes_usd','plazo_promedio_pago_usd'];
+        for (const f of requiredUsdFields) { if (empresa.value[f] === null || empresa.value[f] === undefined) return false; }
     }
 
     if (!empresa.value.document || empresa.value.document.toString().length !== 11) return false;
@@ -701,35 +683,9 @@ async function consultarRuc() {
         const data = response.data;
         rucConsultado.value = true;
 
-        // 🔹 Si el backend indica que el RUC ya existe en tu BD
-        if (data.exists) {
-            toast.add({
-                severity: 'error',
-                summary: 'RUC duplicado',
-                detail: 'Este RUC ya está registrado en el sistema',
-                life: 4000,
-            });
-
-            empresa.value.business_name = '';
-            empresa.value.name = '';
-            empresa.value.description = '';
-            return;
-        }
-
-        // 🔹 Si viene info de SUNAT
-        if (data.data?.razonSocial) {
-            empresa.value.business_name = data.data.razonSocial;
-            empresa.value.name = data.data.razonSocial;
-        } else {
-            empresa.value.business_name = '';
-            empresa.value.name = '';
-        }
-
-        if (data.data?.actividadEconomica) {
-            empresa.value.description = data.data.actividadEconomica;
-        } else {
-            empresa.value.description = '';
-        }
+        empresa.value.business_name = data.razonSocial || '';
+        empresa.value.name = data.razonSocial || '';
+        empresa.value.description = data.actividadEconomica || '';
 
         toast.add({ severity: 'success', summary: 'Datos cargados', detail: 'Información del RUC obtenida correctamente', life: 3000 });
     } catch (error) {
@@ -737,24 +693,7 @@ async function consultarRuc() {
         empresa.value.business_name = '';
         empresa.value.name = '';
         empresa.value.description = '';
-
-        // 🔹 Manejo de errores
-        if (error.response?.status === 409) {
-            // RUC ya existe en la BD
-            toast.add({
-                severity: 'error',
-                summary: 'RUC duplicado',
-                detail: error.response.data.error || 'Este RUC ya está registrado',
-                life: 4000,
-            });
-        } else {
-            toast.add({
-                severity: 'error',
-                summary: 'Error',
-                detail: error.response?.data?.error || 'No se pudo obtener información del RUC',
-                life: 5000,
-            });
-        }
+        toast.add({ severity: 'error', summary: 'Error', detail: error.response?.data?.message || 'No se pudo obtener información del RUC', life: 5000 });
     }
 }
 
