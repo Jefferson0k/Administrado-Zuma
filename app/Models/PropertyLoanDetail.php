@@ -26,6 +26,7 @@ class PropertyLoanDetail extends Model implements AuditableContract
         'porcentaje_prestamo',
         'monto_invertir',
         'monto_prestamo',
+        'solicitud_prestamo_para',
         'created_by',
         'updated_by',
         'deleted_by',
