@@ -213,6 +213,7 @@ class InvestmentController extends Controller{
                     'invoices.invoice_code as invoice_code',
                     'invoices.estimated_pay_date as invoice_estimated_pay_date',
                     'companies.name as company_name',
+                    'investments.company_risk_at_investment as company_risk_at_investment',
                 ])
                 ->join('invoices', 'invoices.id', '=', 'investments.invoice_id')
                 ->join('companies', 'companies.id', '=', 'invoices.company_id')

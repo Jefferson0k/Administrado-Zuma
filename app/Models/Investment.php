@@ -26,7 +26,8 @@ class Investment extends Model{
         'operation_number',
         'receipt_path',
         'comment',
-        'movement_reembloso'
+        'movement_reembloso',
+        'company_risk_at_investment'
     ];
     public function investor(){
         return $this->belongsTo(Investor::class);

@@ -46,6 +46,7 @@ class FixedTermInvestmentControllers extends Controller{
                 'payment_frequency_id' => $request->payment_frequency_id,
                 'amount' => $request->amount,
                 'status' => 'pendiente',
+                'company_risk_at_investment' => $request->risk,
             ]);
 
             $scheduleData = $this->simulatorService->generatePaymentSchedule(
