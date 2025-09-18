@@ -207,7 +207,7 @@ const generatePDF = async () => {
         // FUNCIÓN PARA OBTENER IMAGEN DE RIESGO
         const getRiskImage = (riesgo) => {
             const riskMap = {
-                'A+': 'A+.png',
+                'A+': 'Amas.png',
                 'A': 'A.png', 
                 'B': 'B.png',
                 'C': 'C.png'
