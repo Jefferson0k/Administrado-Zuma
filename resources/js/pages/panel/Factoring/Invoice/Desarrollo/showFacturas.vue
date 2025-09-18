@@ -56,7 +56,7 @@
                     </div>
 
                     <div>
-                        <span class="font-medium">RUC del Cliente:</span>
+                        <span class="font-medium">RUC del Proveedor:</span>
                         <p class="">{{ facturaData.RUC_client }}</p>
                     </div>
                 </div>

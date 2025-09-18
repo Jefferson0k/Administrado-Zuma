@@ -438,7 +438,7 @@ const getCommentSectionTitle = () => {
         return 'Comentario (Requerido)';
     }
     
-    return 'Comentario (Opcional)';
+    return 'Comentario';
 };
 
 const getCommentPlaceholder = () => {
@@ -454,7 +454,7 @@ const getCommentPlaceholder = () => {
         return 'Describe el motivo del rechazo (requerido)...';
     }
     
-    return 'Escribe tu comentario (opcional)...';
+    return 'Escribe tu comentario...';
 };
 
 const getActionStepInfo = () => {

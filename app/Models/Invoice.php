@@ -34,6 +34,7 @@ class Invoice extends Model implements AuditableContract{
         'invoice_number',
         'RUC_client',
         'type',
+        'statusPago',
 
         // --- Aprobaciones ---
         'approval1_status',
@@ -220,15 +221,15 @@ class Invoice extends Model implements AuditableContract{
         }
     }
     public function getInvestors(): array{
-    $ids = $this->investments->pluck('investor_id');
-    $investors = Investor::whereIn('id', $ids)->get();
-    return $investors->toArray();
+        $ids = $this->investments->pluck('investor_id');
+        $investors = Investor::whereIn('id', $ids)->get();
+        return $investors->toArray();
     }
     public function anularFactura(int $userId, string $comment = null): bool{
         if (in_array($this->status, ['paid', 'annulled'])) {
             return false;
         }
-        $this->status = 'annulled';
+        $this->type = 'annulled';
         $this->approval2_status = 'rejected';
         $this->approval2_by = $userId;
         $this->approval2_comment = $comment;
