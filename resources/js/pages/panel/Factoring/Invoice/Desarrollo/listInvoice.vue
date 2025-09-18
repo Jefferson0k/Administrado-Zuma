@@ -140,8 +140,12 @@ defineExpose({
 function getApprovalStatusLabel(status) {
   const approvalLabels = {
     'pending': 'Inactivo',
-    'approved': 'Activo',
-    'rejected': 'Anulado'
+    'approved': 'Aprobado',
+    'rejected': 'Anulado',
+    'active': 'Activado',
+    'inactive': 'Inactivo',
+    'daStandby': 'Standby',
+    'observed': 'Observado'
   };
   return approvalLabels[status] || status;
 }
@@ -151,12 +155,17 @@ function getApprovalStatusSeverity(status) {
     case 'pending': return 'secondary';
     case 'approved': return 'success';
     case 'rejected': return 'danger';
+    case 'daStandby': return 'warn';
+    case 'observed': return 'info';
+    case 'active': return 'success';
     default: return 'secondary';
   }
 }
 
 function getStatusLabel(status) {
   const statusLabels = {
+    'approved': 'Aprobado',
+    'rejected': 'Rechazado',
     'inactive': 'Inactivo',
     'active': 'Activo',
     'expired': 'Vencido',
@@ -173,9 +182,11 @@ function getStatusLabel(status) {
 
 function getStatusSeverity(status) {
   switch (status) {
+    case 'approved': return 'success';
     case 'inactive': return 'secondary';
     case 'active': return 'success';
     case 'expired': return 'danger';
+    case 'rejected': return 'danger';
     case 'judicialized': return 'warn';
     case 'reprogramed': return 'info';
     case 'paid': return 'contrast';
@@ -331,7 +342,8 @@ const toggleMenu = (event, factura) => {
     { label: 'Ver factura', icon: 'pi pi-file', command: () => verFactura(factura) }
   ];
 
-  if (factura.estado?.toLowerCase().trim() === 'inactive') {
+  // 👇 inactive y observed tendrán las mismas opciones
+  if (['inactive', 'observed'].includes(factura.estado?.toLowerCase().trim())) {
     items = items.concat([
       {
         label: 'Activo',
@@ -381,14 +393,6 @@ const toggleMenu = (event, factura) => {
         command: () => verInversionistas(factura)
       }
     ]);
-  } else if (factura.estado === 'observed') {
-    items = items.concat([
-      {
-        label: 'Editar',
-        icon: 'pi pi-pencil',
-        command: () => editFactura(factura)
-      }
-    ]);
   } else {
     items = items.concat([
       {
@@ -402,7 +406,6 @@ const toggleMenu = (event, factura) => {
   menuItems.value = items;
   menu.value.toggle(event);
 };
-
 
 let searchTimeout;
 watch(() => filters.value.search, () => {
@@ -510,7 +513,7 @@ onMounted(() => {
       </Column>
       <Column field="tasa" header="Tasa (%)" sortable style="min-width: 7rem" />
       <Column field="fechaPago" header="Fecha de Pago" sortable style="min-width: 10rem" />
-      <Column field="PrimerStado" header="1ª Aprob" sortable style="min-width: 7rem">
+      <Column field="PrimerStado" header="1ª Aprobador" sortable style="min-width: 9rem">
         <template #body="slotProps">
           <template v-if="slotProps.data.PrimerStado">
             <Tag 
@@ -523,10 +526,10 @@ onMounted(() => {
           </template>
         </template>
       </Column>
-      <Column field="userprimer" header="1ª Usuario" sortable style="min-width: 8rem">
+      <Column field="userprimerNombre" header="1ª Usuario" sortable style="min-width: 16rem">
         <template #body="slotProps">
-          <span :class="slotProps.data.userprimer === 'Sin aprobar' ? 'italic' : ''">
-            {{ slotProps.data.userprimer || 'Sin asignar' }}
+          <span :class="slotProps.data.userprimerNombre === 'Sin aprobar' ? 'italic' : ''">
+            {{ slotProps.data.userprimerNombre || 'Sin asignar' }}
           </span>
         </template>
       </Column>
@@ -537,7 +540,7 @@ onMounted(() => {
           </span>
         </template>
       </Column>
-      <Column field="SegundaStado" header="2ª Aprob" sortable style="min-width: 7rem">
+      <Column field="SegundaStado" header="2ª Aprobador" sortable style="min-width: 9rem">
         <template #body="slotProps">
           <template v-if="slotProps.data.SegundaStado">
             <Tag 
@@ -550,10 +553,10 @@ onMounted(() => {
           </template>
         </template>
       </Column>
-      <Column field="userdos" header="2do Usuario" sortable style="min-width: 8rem">
+      <Column field="userdosNombre" header="2do Usuario" sortable style="min-width: 16rem">
         <template #body="slotProps">
-          <span :class="slotProps.data.userdos === 'Sin aprobar' ? 'italic' : ''">
-            {{ slotProps.data.userdos || 'Sin asignar' }}
+          <span :class="slotProps.data.userdosNombre === 'Sin aprobar' ? 'italic' : ''">
+            {{ slotProps.data.userdosNombre || 'Sin asignar' }}
           </span>
         </template>
       </Column>
@@ -564,7 +567,7 @@ onMounted(() => {
           </span>
         </template>
       </Column>
-      <Column field="estado" header="Estado" sortable style="min-width: 7rem">
+      <Column field="estado" header="Estado Conclusion" sortable style="min-width: 11rem">
         <template #body="slotProps">
           <template v-if="!slotProps.data.estado">
             <span class="italic">Sin estado</span>
@@ -582,7 +585,7 @@ onMounted(() => {
           </span>
         </template>
       </Column>
-      <Column field="situacion" header="Situacion" sortable style="min-width: 12rem">
+      <Column field="situacion" header="Situacion" sortable style="min-width: 10rem">
         <template #body="slotProps">
           <span :class="!slotProps.data.situacion ? 'italic' : ''">
             {{ slotProps.data.situacion || 'Sin situación' }}
@@ -605,20 +608,29 @@ onMounted(() => {
           </span>
         </template>
       </Column>
-      <Column field="porcentajeObjetivoTerceros" header="% Obj Terceros" sortable style="min-width: 10rem">
+      <Column field="porcentajeZuma" header="% Obj Terceros" sortable style="min-width: 10rem">
+        <template #body="slotProps">
+          <span :class="!slotProps.data.porcentajeZuma ? 'italic' : ''">
+            {{ slotProps.data.porcentajeZuma || 'Sin dato' }}
+          </span>
+        </template>
+      </Column>
+      <Column field="porcentajeObjetivoTerceros" header="% Meta Terceros" sortable style="min-width: 11rem">
         <template #body="slotProps">
           <span :class="!slotProps.data.porcentajeObjetivoTerceros ? 'italic' : ''">
             {{ slotProps.data.porcentajeObjetivoTerceros || 'Sin dato' }}
           </span>
         </template>
       </Column>
-      <Column field="porcentajeInversionTerceros" header="% Inv Terceros" sortable style="min-width: 9rem">
+
+      <Column field="porcentajeInversionTerceros" header="% Invertido Terceros" sortable style="min-width: 12rem">
         <template #body="slotProps">
           <span :class="!slotProps.data.porcentajeInversionTerceros ? 'italic' : ''">
             {{ slotProps.data.porcentajeInversionTerceros || 'Sin dato' }}
           </span>
         </template>
       </Column>
+
       <Column field="fechaCreacion" header="Fecha Creación" sortable style="min-width: 13rem" />
       <Column header="" :exportable="false">
         <template #body="slotProps">

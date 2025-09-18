@@ -267,18 +267,19 @@ class InvestmentController extends Controller{
     }
     public function invest(CreateInvestmentResquest $request){
         $validatedData = $request->validated();
+
         try {
             $invoice_code = $validatedData['invoice_code'];
             $currency = $validatedData['currency'];
             $amountMoney = MoneyConverter::fromDecimal($validatedData['amount'], $currency);
             $expectedReturnMoney = MoneyConverter::fromDecimal($validatedData['expected_return'], $currency);
-            
+
             DB::beginTransaction();
-            
+
             /** @var \App\Models\Investor $investor */
             $investor = Auth::user();
             $invoice = Invoice::where('invoice_code', $invoice_code)->first();
-            
+
             if (!$invoice) {
                 return response()->json([
                     'success' => false,
@@ -286,37 +287,34 @@ class InvestmentController extends Controller{
                     'data' => null,
                 ], 404);
             }
-            
+
             $company = $invoice->company()->first();
-            
+
             // Verificar saldo disponible
             $invoiceFinancedAmountMoney = MoneyConverter::fromDecimal($invoice->financed_amount, $currency);
-            $invoiceAmountMoney = MoneyConverter::fromDecimal($invoice->amount, $currency);
-            $availableAmountMoney = $invoiceAmountMoney->subtract($invoiceFinancedAmountMoney);
-            
-            if ($amountMoney->greaterThan($availableAmountMoney)) {
+            if ($amountMoney->greaterThan($invoiceFinancedAmountMoney)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'La inversión excede el monto disponible de la factura.',
                     'data' => null,
                 ], 400);
             }
-            
+
             // Crear movimiento
             $movement = new Movement();
             $movement->currency = $currency;
-            $movement->amount = MoneyConverter::toDecimal($amountMoney); // Convert to decimal
+            $movement->amount = $amountMoney;
             $movement->type = MovementType::INVESTMENT;
             $movement->status = MovementStatus::VALID;
             $movement->confirm_status = MovementStatus::VALID;
             $movement->investor_id = $investor->id;
             $movement->save();
-            
+
             // Crear inversión
             $investment = new Investment();
             $investment->currency = $invoice->currency;
-            $investment->amount = MoneyConverter::toDecimal($amountMoney); // Convert to decimal
-            $investment->return = MoneyConverter::toDecimal($expectedReturnMoney); // Convert to decimal
+            $investment->amount = $amountMoney;
+            $investment->return = $expectedReturnMoney;
             $investment->rate = $invoice->rate;
             $investment->due_date = $invoice->estimated_pay_date;
             $investment->status = 'active';
@@ -324,33 +322,35 @@ class InvestmentController extends Controller{
             $investment->invoice_id = $invoice->id;
             $investment->movement_id = $movement->id;
             $investment->save();
-            
+
             // Actualizar balance del inversor
             $balance = $investor->getBalance($currency);
-            
-            // Use the model's convenient methods for Money operations
-            $balance->subtractAmount($amountMoney)
-                    ->addInvestedAmount($amountMoney)
-                    ->addExpectedAmount($expectedReturnMoney);
+            $investorBalanceAmountMoney = MoneyConverter::fromDecimal($balance->amount, $currency);
+            $investorBalanceInvestedAmountMoney = MoneyConverter::fromDecimal($balance->invested_amount, $currency);
+            $investorBalanceExpectedAmountMoney = MoneyConverter::fromDecimal($balance->expected_amount ?? 0, $currency);
+
+            $balance->amount = $investorBalanceAmountMoney->subtract($amountMoney);
+            $balance->invested_amount = $investorBalanceInvestedAmountMoney->add($amountMoney);
+            $balance->expected_amount = $investorBalanceExpectedAmountMoney->add($expectedReturnMoney);
             $balance->save();
-            
+
             // Restar del monto pendiente en la factura
-            $invoice->financed_amount = MoneyConverter::toDecimal($invoiceFinancedAmountMoney->add($amountMoney));
+            $invoice->financed_amount = $invoiceFinancedAmountMoney->subtract($amountMoney);
             $invoice->save();
-            
+
             // Notificación por correo
             $investor->sendInvestmentEmailNotification($invoice, $investment, $company);
-            
+
             DB::commit();
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Operación realizada con éxito.',
                 'data' => null,
             ], 201);
-            
         } catch (\Throwable $th) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
                 'message' => $th->getMessage(),

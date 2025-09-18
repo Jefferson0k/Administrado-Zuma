@@ -17,6 +17,7 @@ return new class extends Migration{
             $table->string('empresa_tasadora', 150)->nullable(); // 150 caracteres
             $table->string('motivo_prestamo', 300)->nullable(); // 300 caracteres
             $table->text('descripcion_financiamiento')->nullable(); // 500 caracteres (text para mayor flexibilidad)
+            $table->text('solicitud_prestamo_para')->nullable(); // 500 caracteres (text para mayor flexibilidad)
 
             // === NUEVOS CAMPOS ===
             $table->unsignedBigInteger('monto_tasacion')->nullable();     // Monto de la tasación

@@ -90,7 +90,7 @@
                 </Message>
             </div>
 
-                        <div class="mb-6">
+            <div class="mb-6">
                 <h4 class="font-semibold mb-4 flex items-center gap-2">
                     <i class="pi pi-users"></i>
                     Estado de Aprobaciones
@@ -113,16 +113,39 @@
                                 <b>Usuario:</b> {{ facturaData.userprimerNombre }}
                             </div>
                             <div class="text-sm text-gray-600 mt-1">
-                                <b>Comentarios:</b> {{ facturaData.approval1_comment }}
+                                <b>Comentarios:</b> {{ facturaData.approval1_comment || 'Sin comentarios' }}
                             </div>
                             <div v-if="facturaData.tiempoUno" class="text-xs text-gray-500 mt-1">
                                 <b>{{ facturaData.tiempoUno }}</b>
                             </div>
                         </div>
                     </div>
+                    <!-- Segunda Aprobación -->
+                    <div class="flex items-center gap-4 p-4 bg-white rounded-lg border-2" :class="getApprovalBorderClass(facturaData.SegundaStado)">
+                        <div class="flex-shrink-0">
+                            <div class="w-12 h-12 rounded-full flex items-center justify-center" :class="getApprovalBgClass(facturaData.SegundaStado)">
+                                <i :class="getApprovalIconClass(facturaData.SegundaStado)"></i>
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-semibold text-gray-800">Segunda Aprobación</div>
+                            <div class="text-sm" :class="getApprovalTextClass(facturaData.SegundaStado)">
+                                {{ getApprovalStatusText(facturaData.SegundaStado) }}
+                            </div>
+                            <div class="text-sm text-gray-600 mt-1">
+                                <b>Usuario:</b> {{ facturaData.userdosNombre }}
+                            </div>
+                            <div class="text-sm text-gray-600 mt-1">
+                                <b>Comentarios:</b> {{ facturaData.approval2_comment || 'Sin comentarios' }}
+                            </div>
+                            <div v-if="facturaData.tiempoDos" class="text-xs text-gray-500 mt-1">
+                                <b>{{ facturaData.tiempoDos }}</b>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
-
         </div>
 
         <!-- Botones de acción -->
@@ -471,13 +494,14 @@ const getStatusText = (status) => {
     return statusTranslations[status?.toLowerCase()] || status;
 };
 
-
+// Funciones para el estado de aprobaciones - ACTUALIZADAS CON OBSERVED
 const getApprovalBorderClass = (status) => {
     switch (status) {
         case 'approved': return 'border-green-200 bg-green-50';
         case 'pending': return 'border-orange-200 bg-orange-50';
         case 'rejected': return 'border-red-200 bg-red-50';
-        default: return 'border-gray-200';
+        case 'observed': return 'border-yellow-200 bg-yellow-50';
+        default: return 'border-gray-200 bg-gray-50';
     }
 };
 
@@ -486,15 +510,17 @@ const getApprovalIconClass = (status) => {
         case 'approved': return 'pi pi-check text-white';
         case 'pending': return 'pi pi-clock text-white';
         case 'rejected': return 'pi pi-times text-white';
+        case 'observed': return 'pi pi-eye text-white';
         default: return 'pi pi-question text-white';
     }
 };
 
 const getApprovalTextClass = (status) => {
     switch (status) {
-        case 'approved': return 'text-green-600';
-        case 'pending': return 'text-orange-600';
-        case 'rejected': return 'text-red-600';
+        case 'approved': return 'text-green-600 font-semibold';
+        case 'pending': return 'text-orange-600 font-semibold';
+        case 'rejected': return 'text-red-600 font-semibold';
+        case 'observed': return 'text-yellow-600 font-semibold';
         default: return 'text-gray-600';
     }
 };
@@ -504,6 +530,7 @@ const getApprovalBgClass = (status) => {
         case 'approved': return 'bg-green-500';
         case 'pending': return 'bg-orange-500';
         case 'rejected': return 'bg-red-500';
+        case 'observed': return 'bg-yellow-500';
         default: return 'bg-gray-400';
     }
 };
@@ -513,10 +540,10 @@ const getApprovalStatusText = (status) => {
         case 'approved': return 'Aprobado';
         case 'pending': return 'Pendiente';
         case 'rejected': return 'Rechazado';
+        case 'observed': return 'Observado';
         default: return 'Sin estado';
     }
 };
-
 
 // Reset page when filters change
 watch([searchTerm, selectedStatus], () => {
