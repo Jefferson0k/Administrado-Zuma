@@ -55,7 +55,7 @@ class InvoiceService{
             'rate'                         => $data['rate'],
             'due_date'                     => $dueDate,
             'estimated_pay_date'           => $data['estimated_pay_date'],
-            'status'                       => 'inactive', // siempre vuelve a inactive
+            'status'                       => 'observed',
             'company_id'                   => $company->id,
             'loan_number'                  => $data['loan_number'] ?? null,
             'RUC_client'                   => $data['RUC_client'] ?? null,
@@ -68,7 +68,7 @@ class InvoiceService{
             'client_distrito'              => $data['client_distrito'] ?? null,
             'updated_by'                   => $data['updated_by'],
             // resetear aprobación
-            'approval1_status'   => 'pending',
+            'approval1_status'   => null,
             'approval1_by'       => null,
             'approval1_comment'  => null,
             'approval1_at'       => null,

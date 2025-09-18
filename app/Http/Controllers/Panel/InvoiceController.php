@@ -29,14 +29,10 @@ use Throwable;
 class InvoiceController extends Controller
 {
     private int $codigoCorrelativo = 0;
-    public function index(Request $request)
-    {
+    public function index(Request $request){
         try {
             Gate::authorize('viewAny', Invoice::class);
-
             $perPage   = (int) $request->input('per_page', 15);
-
-            // Filtros existentes
             $search    = $request->input('search', '');
             $status    = $request->input('status');
             $currency  = $request->input('currency');
@@ -46,13 +42,11 @@ class InvoiceController extends Controller
             $minRate   = $request->input('min_rate');
             $maxRate   = $request->input('max_rate');
 
-            // 🚀 Nuevo: parámetros de ordenamiento desde el frontend
-            $sortField = $request->input('sort_field');                 // p.ej. 'razonSocial'
+            $sortField = $request->input('sort_field');                 
             $sortOrder = strtolower($request->input('sort_order', 'asc')) === 'desc' ? 'desc' : 'asc';
 
-            // Construir query vía Pipeline (como ya tenías)
             $query = app(Pipeline::class)
-                ->send(Invoice::query()->with(['company'])) // eager load
+                ->send(Invoice::query()->with(['company']))
                 ->through([
                     new SearchInvoiceFilter($search),
                     new StatusFilter($status),
@@ -63,34 +57,54 @@ class InvoiceController extends Controller
                 ])
                 ->thenReturn();
 
-            // Mapa de campos de la UI -> columnas reales en BD
+            // Mapeo campos UI -> columnas reales en BD
             $sortableMap = [
-                'razonSocial'      => 'companies.name',
-                'codigo'           => 'invoices.invoice_code',
-                'moneda'           => 'invoices.currency',
-                'montoFactura'     => 'invoices.amount',
-                'montoAsumidoZuma' => 'invoices.financed_amount',
-                // montoDisponible = amount - financed_amount
-                'montoDisponible'  => DB::raw('(invoices.amount - invoices.financed_amount)'),
-                'tasa'             => 'invoices.rate',
-                'fechaPago'        => 'invoices.estimated_pay_date', // o 'invoices.due_date' si prefieres
-                'fechaCreacion'    => 'invoices.created_at',
-                'estado'           => 'invoices.status',
+                // Relación con company
+                'razonSocial'               => 'companies.name',
+
+                // Campos de invoices
+                'codigo'                    => 'invoices.invoice_code',
+                'moneda'                    => 'invoices.currency',
+                'montoFactura'              => 'invoices.amount',
+                'montoAsumidoZuma'          => 'invoices.financed_amount',
+                'montoDisponible'           => DB::raw('(invoices.amount - invoices.financed_amount)'),
+                'tasa'                      => 'invoices.rate',
+                'fechaPago'                 => 'invoices.estimated_pay_date',
+                'fechaCreacion'             => 'invoices.created_at',
+                'estado'                    => 'invoices.status',
+                'tipo'                      => 'invoices.type',
+                'situacion'                 => 'invoices.situation',
+                'condicionOportunidadInversion' => 'invoices.investment_opportunity_condition',
+                'fechaHoraCierreInversion'  => 'invoices.investment_close_datetime',
+                'porcentajeObjetivoTerceros'=> 'invoices.third_party_goal_percent',
+                'porcentajeInversionTerceros'=> 'invoices.third_party_investment_percent',
+
+                // Campos de aprobaciones (primer nivel)
+                'PrimerStado'               => 'invoices.approval1_status',
+                'userprimer'                => 'invoices.approval1_user',
+                'tiempoUno'                 => 'invoices.approval1_time',
+
+                // Campos de aprobaciones (segundo nivel)
+                'SegundaStado'              => 'invoices.approval2_status',
+                'userdos'                   => 'invoices.approval2_user',
+                'tiempoDos'                 => 'invoices.approval2_time',
             ];
 
-            // Si se ordena por un campo de companies.*, aseguramos el JOIN
+            // Asegurar JOIN si el campo viene de companies
             if ($sortField === 'razonSocial') {
                 $alreadyJoined = collect($query->getQuery()->joins ?? [])->contains(
                     fn($join) => $join->table === 'companies'
                 );
 
                 if (!$alreadyJoined) {
-                    $query->leftJoin('companies', 'companies.id', '=', 'invoices.company_id')
-                        ->select('invoices.*'); // mantener hidratación de modelo limpia
+                    $query->leftJoin('companies', 'companies.id', '=', 'invoices.company_id');
                 }
             }
 
-            // Aplicar orden (y limpiar órdenes previas)
+            // Asegurar select de invoices.* SIEMPRE
+            $query->select('invoices.*');
+
+            // Aplicar orden
             $query->reorder();
             if ($sortField && array_key_exists($sortField, $sortableMap)) {
                 if ($sortField === 'montoDisponible') {
@@ -99,19 +113,15 @@ class InvoiceController extends Controller
                     $query->orderBy($sortableMap[$sortField], $sortOrder);
                 }
             } else {
-                // Orden por defecto si no se envía sort desde el cliente
+                // Orden por defecto
                 $query->orderBy('invoices.created_at', 'desc');
             }
 
-            // Logs de depuración (revisar storage/logs/laravel.log)
-            $dbg = clone $query;
-            Log::info('Invoice index sorting', [
-                'sort_field' => $sortField,
-                'sort_order' => $sortOrder,
-            ]);
+            // Logs debug
+            Log::info('Invoice index sorting', compact('sortField', 'sortOrder'));
             Log::info('Invoice index SQL', [
-                'sql'      => $dbg->toSql(),
-                'bindings' => $dbg->getBindings(),
+                'sql'      => $query->toSql(),
+                'bindings' => $query->getBindings(),
             ]);
 
             $invoices = $query->paginate($perPage);
@@ -222,15 +232,11 @@ class InvoiceController extends Controller
         try {
             $invoice = Invoice::findOrFail($id);
             $userId = Auth::id();
-            $nivel = $request->input('nivel');
-            if ($nivel == 1) {
-                Gate::authorize('aprobar factura nivel 1');
-                if ($invoice->approval1_status === 'approved') {
-                    return response()->json([
-                        'message' => 'La factura ya fue aprobada en nivel 1.',
-                        'data'    => $invoice
-                    ], 400);
-                }
+
+            // --- VALIDACIÓN NIVEL 1 ---
+            if (is_null($invoice->approval1_status)) {
+                //Gate::authorize('aprobar factura nivel 1');
+
                 $invoice->update([
                     'approval1_status'  => 'approved',
                     'approval1_by'      => $userId,
@@ -238,36 +244,52 @@ class InvoiceController extends Controller
                     'approval1_comment' => $request->input('comment'),
                     'updated_by'        => $userId,
                 ]);
-            } elseif ($nivel == 2) {
-                Gate::authorize('aprobar factura nivel 2');
-                if ($invoice->approval1_status !== 'approved') {
-                    return response()->json([
-                        'message' => 'No puedes aprobar en nivel 2 hasta que el nivel 1 apruebe.',
-                    ], 403);
-                }
-                if ($invoice->approval2_status === 'approved') {
-                    return response()->json([
-                        'message' => 'La factura ya fue aprobada en nivel 2.',
-                        'data'    => $invoice
-                    ], 400);
-                }
+
+                return response()->json([
+                    'message' => 'Factura aprobada correctamente en nivel 1.',
+                    'data'    => $invoice
+                ], 200);
+            }
+
+            if ($invoice->approval1_status === 'observed') {
+                return response()->json([
+                    'message' => 'La factura está observada en nivel 1. No puede pasar a nivel 2.',
+                    'data'    => $invoice
+                ], 400);
+            }
+
+            // --- VALIDACIÓN NIVEL 2 ---
+            if ($invoice->approval1_status === 'approved' && is_null($invoice->approval2_status)) {
+                //Gate::authorize('aprobar factura nivel 2');
+
                 $invoice->update([
                     'approval2_status'  => 'approved',
                     'approval2_by'      => $userId,
                     'approval2_at'      => now(),
                     'approval2_comment' => $request->input('comment'),
                     'status'            => 'active',
+                    'type'              => 'normal',
                     'updated_by'        => $userId,
                 ]);
-            } else {
+
                 return response()->json([
-                    'message' => 'Debes indicar un nivel válido (1 o 2).'
+                    'message' => 'Factura aprobada correctamente en nivel 2.',
+                    'data'    => $invoice
+                ], 200);
+            }
+
+            // --- YA APROBADA ---
+            if ($invoice->approval2_status === 'approved') {
+                return response()->json([
+                    'message' => 'La factura ya fue aprobada en nivel 2.',
+                    'data'    => $invoice
                 ], 400);
             }
+
             return response()->json([
-                'message' => "Factura aprobada correctamente en nivel {$nivel}.",
-                'data'    => $invoice
-            ], 200);
+                'message' => 'No se pudo procesar la aprobación.',
+            ], 400);
+
         } catch (AuthorizationException $e) {
             return response()->json(['message' => 'No tienes permiso.'], 403);
         } catch (Throwable $e) {
@@ -282,24 +304,37 @@ class InvoiceController extends Controller
             $invoice = Invoice::findOrFail($id);
             Gate::authorize('update', $invoice);
             $userId = Auth::id();
-            if ($invoice->status === 'observed') {
+
+            // --- Validar comentario requerido ---
+            $request->validate([
+                'comment' => 'required|string|min:3'
+            ], [
+                'comment.required' => 'El comentario es obligatorio.',
+                'comment.string'   => 'El comentario debe ser texto.',
+                'comment.min'      => 'El comentario debe tener al menos 3 caracteres.'
+            ]);
+
+            if ($invoice->approval1_status === 'observed') {
                 return response()->json([
                     'message' => 'La factura ya fue observada.',
                     'data'    => $invoice
                 ], 400);
             }
+
             $invoice->update([
-                'approval1_status'  => 'rejected',
+                'approval1_status'  => 'observed',
                 'approval1_by'      => $userId,
                 'approval1_at'      => now(),
                 'approval1_comment' => $request->input('comment'),
-                'status'            => 'observed',
+                'status'            => 'inactive',
                 'updated_by'        => $userId,
             ]);
+
             return response()->json([
                 'message' => 'Factura observada correctamente.',
                 'data'    => $invoice
             ], 200);
+
         } catch (AuthorizationException $e) {
             return response()->json(['message' => 'No tienes permiso.'], 403);
         } catch (Throwable $e) {
@@ -313,8 +348,11 @@ class InvoiceController extends Controller
         try {
             $invoice = Invoice::findOrFail($id);
             Gate::authorize('update', $invoice);
+
             $userId = Auth::id();
-            if ($invoice->approval1_status === 'pending') {
+
+            // Primera aprobación
+            if (is_null($invoice->approval1_status)) {
                 $invoice->update([
                     'approval1_status'  => 'rejected',
                     'approval1_by'      => $userId,
@@ -322,33 +360,36 @@ class InvoiceController extends Controller
                     'approval1_comment' => $request->input('comment'),
                     'updated_by'        => $userId,
                 ]);
+
                 return response()->json([
                     'message' => "Primera aprobación rechazada.",
                     'data'    => $invoice
                 ], 200);
             }
-            if ($invoice->approval2_status === 'pending') {
-                if ($invoice->approval1_status === 'pending') {
+
+            // Segunda aprobación (solo si la primera ya fue resuelta)
+            if (is_null($invoice->approval2_status)) {
+                if ($invoice->approval1_status !== 'approved') {
                     return response()->json([
                         'message' => 'No puedes rechazar en la segunda activación hasta que la primera esté resuelta.'
                     ], 400);
                 }
+
                 $invoice->update([
                     'approval2_status'  => 'rejected',
                     'approval2_by'      => $userId,
                     'approval2_at'      => now(),
                     'approval2_comment' => $request->input('comment'),
+                    'status'            => 'inactive',
                     'updated_by'        => $userId,
                 ]);
-                $invoice->update([
-                    'status'     => 'inactive',
-                    'updated_by' => $userId,
-                ]);
+
                 return response()->json([
                     'message' => "Segunda aprobación rechazada.",
                     'data'    => $invoice
                 ], 200);
             }
+
             return response()->json([
                 'message' => 'Ya se registró esta acción.'
             ], 400);
@@ -361,6 +402,7 @@ class InvoiceController extends Controller
             ], 500);
         }
     }
+
     public function delete($id)
     {
         try {
