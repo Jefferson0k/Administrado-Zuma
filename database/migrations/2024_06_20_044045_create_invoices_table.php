@@ -28,8 +28,14 @@ return new class extends Migration
                 'daStandby'
             ])->default('inactive');
 
+            $table->enum('statusPago', [
+                'paid',
+                'reprogramed',
+            ])->default('inactive');
+
             $table->enum('type', [
                 'normal',
+                'annulled',
                 'reprogramed',
             ])->nullable();
 

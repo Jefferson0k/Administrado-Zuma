@@ -9,6 +9,8 @@ use App\Helpers\MoneyConverter;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Factoring\Deposit\DepositResources;
 use App\Http\Resources\Factoring\Investment\InvestmentResource;
+use App\Jobs\SendInvestmentFullyPaidEmail;
+use App\Jobs\SendInvestmentPartialEmail;
 use App\Models\Company;
 use App\Models\Deposit;
 use App\Models\Investment;
@@ -26,9 +28,9 @@ use Maatwebsite\Excel\Excel as ExcelType;
 use Illuminate\Support\Str;
 
 class PaymentsController extends Controller{
-    public function comparacion(Request $request){
+     public function comparacion(Request $request){
         $request->validate([
-            'excel_file' => 'required|file|mimes:xlsx,xls,csv',
+            'excel_file' => 'required|file|mimetypes:application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/plain,application/octet-stream',
         ]);
 
         $file = $request->file('excel_file');
@@ -154,12 +156,16 @@ class PaymentsController extends Controller{
                 }
 
                 // Comparar fecha estimada
-                if ($fechaExcelFormatted && $invoice->estimated_pay_date === $fechaExcelFormatted) {
+                $fechaBD = \Carbon\Carbon::parse($invoice->estimated_pay_date)->format('Y-m-d');
+                $fechaExcel = \Carbon\Carbon::parse($fechaExcelFormatted)->format('Y-m-d');
+
+                if ($fechaBD === $fechaExcel) {
                     $detalle[] = 'Fecha estimada: OK';
                 } else {
-                    $detalle[] = "Fecha estimada: Diferente (BD: {$invoice->estimated_pay_date} vs Excel: {$fechaExcelFormatted})";
+                    $detalle[] = "Fecha estimada: Diferente (BD: {$fechaBD} vs Excel: {$fechaExcel})";
                     $estado = 'No coincide';
                 }
+
 
                 // Comparar currency
                 $currencyInvoice = strtoupper($invoice->currency);
@@ -214,42 +220,57 @@ class PaymentsController extends Controller{
             'data' => $jsonData,
         ]);
     }
-    public function store(Request $request, $invoiceId){
-        $request->validate([
-            "amount_to_be_paid" => "required|numeric",
-            "pay_date" => "required|date",
-            "pay_type" => "required|in:total,partial",
-            "reprogramation_date" => "nullable|date|required_if:pay_type,partial",
-            "reprogramation_rate" => "nullable|numeric|required_if:pay_type,partial",
-            "evidencia" => "required|file|mimes:pdf,jpg,jpeg,png,gif,doc,docx|max:10240",
-        ]);
-        try {
-            $invoice = Invoice::findOrFail($invoiceId);
-            $company = $invoice->company()->first();
-            $amountToBePaidMoney = MoneyConverter::fromDecimal(
-                $request->amount_to_be_paid,
-                $invoice->currency
-            );
-            DB::beginTransaction();
-            $payment = new Payment();
-            $payment->invoice_id = $invoice->id;
-            $payment->pay_type = $request->pay_type;
-            $payment->pay_date = $request->pay_date;
-            $payment->amount_to_be_paid = MoneyConverter::getValue($amountToBePaidMoney);
-            $payment->reprogramation_date = $request->reprogramation_date;
-            $payment->reprogramation_rate = $request->reprogramation_rate;
-            if ($request->hasFile('evidencia')) {
-                $disk = Storage::disk('s3');
-                $evidenceFile = $request->file('evidencia');
+    public function store(Request $request, $invoiceId)
+{
+    $request->validate([
+        "amount_to_be_paid" => "required|numeric",
+        "pay_date" => "required|date",
+        "pay_type" => "required|in:total,partial",
+        "reprogramation_date" => "nullable|date|required_if:pay_type,partial",
+        "reprogramation_rate" => "nullable|numeric|required_if:pay_type,partial",
+        "payment_attachments" => "required|array|min:1",
+        "payment_attachments.*" => "file|mimes:pdf,jpg,jpeg,png,gif,doc,docx|max:10240",
+    ]);
+
+    try {
+        $invoice = Invoice::findOrFail($invoiceId);
+        $company = $invoice->company()->first();
+        $amountToBePaidMoney = MoneyConverter::fromDecimal(
+            $request->amount_to_be_paid,
+            $invoice->currency
+        );
+        
+        DB::beginTransaction();
+        $payment = new Payment();
+        $payment->invoice_id = $invoice->id;
+        $payment->pay_type = $request->pay_type;
+        $payment->pay_date = $request->pay_date;
+        $payment->amount_to_be_paid = MoneyConverter::getValue($amountToBePaidMoney);
+        $payment->reprogramation_date = $request->reprogramation_date;
+        $payment->reprogramation_rate = $request->reprogramation_rate;
+
+        // Manejar múltiples archivos
+        $attachmentsData = [];
+        if ($request->hasFile('payment_attachments')) {
+            $disk = Storage::disk('s3');
+            $evidenceFiles = $request->file('payment_attachments');
+
+            foreach ($evidenceFiles as $evidenceFile) {
                 $filename = Str::uuid() . '.' . $evidenceFile->getClientOriginalExtension();
                 $path = "pagos/evidencias/{$invoice->id}/{$filename}";
+                
                 try {
                     $disk->putFileAs("pagos/evidencias/{$invoice->id}", $evidenceFile, $filename);
-                    $payment->evidencia = $filename;
-                    $payment->evidencia_path = $path;
-                    $payment->evidencia_original_name = $evidenceFile->getClientOriginalName();
-                    $payment->evidencia_size = $evidenceFile->getSize();
-                    $payment->evidencia_mime_type = $evidenceFile->getMimeType();
+                    
+                    $attachmentsData[] = [
+                        'filename' => $filename,
+                        'path' => $path,
+                        'original_name' => $evidenceFile->getClientOriginalName(),
+                        'size' => $evidenceFile->getSize(),
+                        'mime_type' => $evidenceFile->getMimeType(),
+                        'uploaded_at' => now()->toDateTimeString()
+                    ];
+                    
                 } catch (Exception $e) {
                     DB::rollBack();
                     return response()->json([
@@ -257,111 +278,137 @@ class PaymentsController extends Controller{
                     ], 422);
                 }
             }
-            $invoicePaidAmountMoney = MoneyConverter::fromDecimal($invoice->paid_amount, $invoice->currency);
-            $invoice->paid_amount = $invoicePaidAmountMoney->add($amountToBePaidMoney);
-            if ($request->pay_type == "partial") {
-                $invoice->status = "reprogramed";
-                [$error, $partialPayment] = $payment->createPartialPayments(
-                    $invoice,
-                    $invoice->convertToDecimalPercent($request->input("apportioment_percentage", 0)),
-                    $invoice->convertToDecimalPercent($request->reprogramation_rate)
-                );
+            
+            // Guardar información de archivos
+            $payment->evidencia = json_encode(array_column($attachmentsData, 'filename'));
+            $payment->evidencia_data = json_encode($attachmentsData);
+            $payment->evidencia_count = count($attachmentsData);
+            
+            // Mantener compatibilidad con el campo original para el primer archivo
+            if (!empty($attachmentsData)) {
+                $firstFile = $attachmentsData[0];
+                $payment->evidencia_path = $firstFile['path'];
+                $payment->evidencia_original_name = $firstFile['original_name'];
+                $payment->evidencia_size = $firstFile['size'];
+                $payment->evidencia_mime_type = $firstFile['mime_type'];
+            }
+        }
 
-                if ($error) {
-                    DB::rollBack();
-                    return response()->json(["error" => $error->getMessage()], 422);
-                }
+        $invoicePaidAmountMoney = MoneyConverter::fromDecimal($invoice->paid_amount, $invoice->currency);
+        $invoice->paid_amount = $invoicePaidAmountMoney->add($amountToBePaidMoney);
+        
+        if ($request->pay_type == "partial") {
+            $invoice->status = "reprogramed";
+            [$error, $partialPayment] = $payment->createPartialPayments(
+                $invoice,
+                $invoice->convertToDecimalPercent($request->input("apportioment_percentage", 0)),
+                $invoice->convertToDecimalPercent($request->reprogramation_rate)
+            );
 
-                foreach ($partialPayment["items"] as $item) {
-                    $investment = $item["investment"];
-                    $investor = $item["investor"];
-                    $amountToPay = new MoneyCast($item["amountToPay"]);
-                    $newExpectedReturn = new MoneyCast($item["newExpectedReturn"]);
-                    $newInvestmentAmount = new MoneyCast($item["newInvestmentAmount"]);
-
-                    $investment->status = "reprogramed";
-                    $investment->save();
-
-                    $movement = new Movement();
-                    $movement->currency = $invoice->currency;
-                    $movement->amount = $amountToPay->money;
-                    $movement->type = MovementType::PAYMENT;
-                    $movement->status = MovementStatus::VALID;
-                    $movement->confirm_status = MovementStatus::VALID;
-                    $movement->investor_id = $investor->id;
-                    $movement->description = "Pago parcial - Factura #{$invoice->invoice_number}";
-                    $movement->save();
-
-                    $reprogramedInvestment = new Investment();
-                    $reprogramedInvestment->currency = $invoice->currency;
-                    $reprogramedInvestment->amount = $newInvestmentAmount->money;
-                    $reprogramedInvestment->return = $newExpectedReturn->money;
-                    $reprogramedInvestment->rate = $request->reprogramation_rate;
-                    $reprogramedInvestment->due_date = $request->reprogramation_date;
-                    $reprogramedInvestment->status = "active";
-                    $reprogramedInvestment->investor_id = $investor->id;
-                    $reprogramedInvestment->invoice_id = $invoice->id;
-                    $reprogramedInvestment->previous_investment_id = $investment->id;
-                    $reprogramedInvestment->original_investment_id = $investment->original_investment_id ?? $investment->id;
-                    $reprogramedInvestment->movement_id = $movement->id;
-                    $reprogramedInvestment->save();
-
-                    $wallet = $investor->getBalance($invoice->currency);
-                    $walletAmountMoney = MoneyConverter::fromDecimal($wallet->amount, $invoice->currency);
-                    $walletInvestedAmountMoney = MoneyConverter::fromDecimal($wallet->invested_amount, $invoice->currency);
-                    $wallet->amount = $walletAmountMoney->add($amountToPay->money);
-                    $wallet->invested_amount = $walletInvestedAmountMoney->subtract($amountToPay->money);
-                    $wallet->save();
-
-                    $investor->sendInvestmentPartialEmailNotification($payment, $investment, $amountToPay->money);
-                }
-            } else {
-                $invoice->status = "paid";
-
-                [$_, $items] = $payment->createTotalPayments($invoice);
-
-                foreach ($items["items"] as $item) {
-                    $investor = $item["investor"];
-                    $investment = $item["investment"];
-                    $netExpectedReturn = $item["net_expected_return"];
-                    $itfAmount = $item["itf_amount"];
-
-                    $investor->sendInvestmentFullyPaidEmailNotification(
-                        $payment,
-                        $investment,
-                        $netExpectedReturn,
-                        $itfAmount
-                    );
-                }
+            if ($error) {
+                DB::rollBack();
+                return response()->json(["error" => $error->getMessage()], 422);
             }
 
-            $invoice->save();
-            $payment->save();
+            foreach ($partialPayment["items"] as $index => $item) {
+                $investment = $item["investment"];
+                $investor = $item["investor"];
+                $amountToPay = new MoneyCast($item["amountToPay"]);
+                $newExpectedReturn = new MoneyCast($item["newExpectedReturn"]);
+                $newInvestmentAmount = new MoneyCast($item["newInvestmentAmount"]);
 
-            DB::commit();
+                $investment->status = "reprogramed";
+                $investment->save();
 
-            return response()->json([
-                "message" => $request->pay_type === "partial" ? "Pago parcial creado exitosamente." : "Pago total creado exitosamente.",
-                "payment" => $payment,
-                "invoice" => $invoice,
-                "evidencia_info" => [
-                    "filename" => $payment->evidencia,
-                    "original_name" => $payment->evidencia_original_name,
-                    "size" => $payment->evidencia_size,
-                    "uploaded" => true
-                ]
-            ]);
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            Log::error('Error en el procesamiento de pago', [
-                'error' => $th->getMessage(),
-                'trace' => $th->getTraceAsString(),
-                'invoice_id' => $invoiceId,
-                'request_data' => $request->except(['evidencia'])
-            ]);
-            throw new Exception($th->getMessage());
+                $movement = new Movement();
+                $movement->currency = $invoice->currency;
+                $movement->amount = $amountToPay->money;
+                $movement->type = MovementType::PAYMENT;
+                $movement->status = MovementStatus::VALID;
+                $movement->confirm_status = MovementStatus::VALID;
+                $movement->investor_id = $investor->id;
+                $movement->description = "Pago parcial - Factura #{$invoice->invoice_number}";
+                $movement->save();
+
+                $reprogramedInvestment = new Investment();
+                $reprogramedInvestment->currency = $invoice->currency;
+                $reprogramedInvestment->amount = $newInvestmentAmount->money;
+                $reprogramedInvestment->return = $newExpectedReturn->money;
+                $reprogramedInvestment->rate = $request->reprogramation_rate;
+                $reprogramedInvestment->due_date = $request->reprogramation_date;
+                $reprogramedInvestment->status = "active";
+                $reprogramedInvestment->investor_id = $investor->id;
+                $reprogramedInvestment->invoice_id = $invoice->id;
+                $reprogramedInvestment->previous_investment_id = $investment->id;
+                $reprogramedInvestment->original_investment_id = $investment->original_investment_id ?? $investment->id;
+                $reprogramedInvestment->movement_id = $movement->id;
+                $reprogramedInvestment->save();
+
+                $wallet = $investor->getBalance($invoice->currency);
+                $walletAmountMoney = MoneyConverter::fromDecimal($wallet->amount, $invoice->currency);
+                $walletInvestedAmountMoney = MoneyConverter::fromDecimal($wallet->invested_amount, $invoice->currency);
+                $wallet->amount = $walletAmountMoney->add($amountToPay->money);
+                $wallet->invested_amount = $walletInvestedAmountMoney->subtract($amountToPay->money);
+                $wallet->save();
+
+                // REEMPLAZADO: Envío de email directo por Job
+                SendInvestmentPartialEmail::dispatch(
+                    $investor, 
+                    $payment, 
+                    $investment, 
+                    MoneyConverter::getValue($amountToPay->money)
+                )->delay(now()->addSeconds($index * 2)); // Espaciar emails cada 2 segundos
+            }
+        } else {
+            $invoice->statusPago = "paid";
+
+            [$_, $items] = $payment->createTotalPayments($invoice);
+
+            foreach ($items["items"] as $index => $item) {
+                $investor = $item["investor"];
+                $investment = $item["investment"];
+                $netExpectedReturn = $item["net_expected_return"];
+                $itfAmount = $item["itf_amount"];
+
+                // REEMPLAZADO: Envío de email directo por Job
+                SendInvestmentFullyPaidEmail::dispatch(
+                    $investor,
+                    $payment,
+                    $investment,
+                    MoneyConverter::getValue($netExpectedReturn),
+                    MoneyConverter::getValue($itfAmount)
+                )->delay(now()->addSeconds($index * 2)); // Espaciar emails cada 2 segundos
+            }
         }
+
+        $invoice->save();
+        $payment->save();
+
+        DB::commit();
+
+        return response()->json([
+            "message" => $request->pay_type === "partial" ? "Pago parcial creado exitosamente." : "Pago total creado exitosamente.",
+            "payment" => $payment,
+            "invoice" => $invoice,
+            "attachments_info" => $attachmentsData,
+            "email_status" => "Los emails de notificación se están enviando en segundo plano"
+        ]);
+        
+    } catch (\Throwable $th) {
+        DB::rollBack();
+        Log::error('Error en el procesamiento de pago', [
+            'error' => $th->getMessage(),
+            'trace' => $th->getTraceAsString(),
+            'invoice_id' => $invoiceId,
+            'request_data' => $request->except(['payment_attachments'])
+        ]);
+        
+        return response()->json([
+            "error" => "Error interno del servidor al procesar el pago",
+            "details" => config('app.debug') ? $th->getMessage() : null
+        ], 500);
     }
+}
     public function storeReembloso(Request $request)
 {
     $request->validate([

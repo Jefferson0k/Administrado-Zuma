@@ -608,17 +608,10 @@ onMounted(() => {
           </span>
         </template>
       </Column>
-      <Column field="porcentajeZuma" header="% Obj Terceros" sortable style="min-width: 10rem">
+      <Column field="porcentajeMetaTerceros" header="% Obj Terceros" sortable style="min-width: 10rem">
         <template #body="slotProps">
-          <span :class="!slotProps.data.porcentajeZuma ? 'italic' : ''">
-            {{ slotProps.data.porcentajeZuma || 'Sin dato' }}
-          </span>
-        </template>
-      </Column>
-      <Column field="porcentajeObjetivoTerceros" header="% Meta Terceros" sortable style="min-width: 11rem">
-        <template #body="slotProps">
-          <span :class="!slotProps.data.porcentajeObjetivoTerceros ? 'italic' : ''">
-            {{ slotProps.data.porcentajeObjetivoTerceros || 'Sin dato' }}
+          <span :class="!slotProps.data.porcentajeMetaTerceros ? 'italic' : ''">
+            {{ slotProps.data.porcentajeMetaTerceros || 'Sin dato' }}
           </span>
         </template>
       </Column>

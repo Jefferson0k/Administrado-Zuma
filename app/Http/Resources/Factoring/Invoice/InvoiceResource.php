@@ -6,63 +6,62 @@ use Carbon\Carbon;
 use Illuminate\Http\Resources\Json\JsonResource;
 use App\Http\Resources\Subastas\Investment\InvestmentListResource;
 
-class InvoiceResource extends JsonResource
-{
-    public function toArray($request)
-    {
-        // Estados que NO deben mostrar información sensible
+class InvoiceResource extends JsonResource{
+    public function toArray($request){
         $ocultarEstados = ['rejected', 'observed', 'inactive'];
 
-        // 1️⃣ Situación
+        // 🔹 Situación considerando statusPago y fecha estimada
         $situacion = null;
-        if (!in_array($this->status, $ocultarEstados)) {
-            if ($this->estimated_pay_date) {
-                $estimatedPayDate = Carbon::parse($this->estimated_pay_date);
-                $situacion = Carbon::now()->greaterThan($estimatedPayDate)
-                    ? 'vigente mas 8'
-                    : 'vigente';
+        if ($this->type === 'annulled') {
+            $situacion = 'anulado';
+        } elseif (!in_array($this->status, $ocultarEstados)) {
+            if ($this->statusPago === 'paid') {
+                $situacion = 'pagado';
+            } elseif ($this->statusPago === 'reprogramed') {
+                $situacion = 'reprogramado';
             } else {
-                $situacion = 'vigente';
+                if ($this->estimated_pay_date) {
+                    $estimatedPayDate = Carbon::parse($this->estimated_pay_date);
+                    $situacion = Carbon::now()->greaterThan($estimatedPayDate->copy()->addDays(8))
+                        ? 'vigente más 8'
+                        : 'vigente';
+                } else {
+                    $situacion = 'vigente';
+                }
             }
         }
 
-        // 2️⃣ Porcentajes de inversión
-        $porcentajeZuma = $porcentajeObjetivoTerceros = $porcentajeInversionTerceros = null;
+        // 2️⃣ Porcentajes
+        $porcentajeZuma = $porcentajeMetaTerceros = $porcentajeInversionTerceros = null;
 
-        if (!in_array($this->status, $ocultarEstados) && $this->amount > 0) {
-            // 1️⃣ Porcentaje Zuma (sobre el monto total de la factura)
+        if ($this->type !== 'annulled' && !in_array($this->status, $ocultarEstados) && $this->amount > 0) {
             $porcentajeZuma = ($this->financed_amount_by_garantia / $this->amount) * 100;
-            
-            // 2️⃣ Porcentaje objetivo terceros (independiente de Zuma)
-            $porcentajeObjetivoTerceros = 100 - $porcentajeZuma;
-            
-            // 3️⃣ Total de inversiones reales de terceros
-            $totalInversionTerceros = $this->relationLoaded('investments')
-                ? $this->investments->sum('amount')
-                : $this->investments()->sum('amount');
+            $metaTercerosMonto = $this->amount - $this->financed_amount_by_garantia;
+            $porcentajeMetaTerceros = 100 - $porcentajeZuma;
 
-            // 4️⃣ Porcentaje de terceros (basado en el monto DISPONIBLE, no en el total)
-            if ($this->financed_amount > 0) {
-                $porcentajeInversionTerceros = ($totalInversionTerceros / $this->financed_amount) * 100;
-                
-                // Limitar al 100% del disponible
-                if ($porcentajeInversionTerceros > 100) {
-                    $porcentajeInversionTerceros = 100;
-                }
+            $invertidoTerceros = $metaTercerosMonto - $this->financed_amount;
+            if ($invertidoTerceros < 0) $invertidoTerceros = 0;
+
+            if ($metaTercerosMonto > 0) {
+                $porcentajeInversionTerceros = ($invertidoTerceros / $metaTercerosMonto) * 100;
+                if ($porcentajeInversionTerceros > 100) $porcentajeInversionTerceros = 100;
             } else {
                 $porcentajeInversionTerceros = 0;
             }
 
-            // Redondear
             $porcentajeZuma = round($porcentajeZuma, 2);
-            $porcentajeObjetivoTerceros = round($porcentajeObjetivoTerceros, 2);
+            $porcentajeMetaTerceros = round($porcentajeMetaTerceros, 2);
             $porcentajeInversionTerceros = round($porcentajeInversionTerceros, 2);
         }
 
         // 3️⃣ Condición oportunidad y fecha cierre
         $condicionOportunidadInversion = $fechaHoraCierreInversion = null;
-        if (!in_array($this->status, $ocultarEstados) && $this->due_date) {
-            $condicionOportunidadInversion = Carbon::now()->greaterThan(Carbon::parse($this->due_date)) ? 'cerrada' : 'abierta';
+        if ($this->type === 'annulled') {
+            $condicionOportunidadInversion = 'cerrada';
+        } elseif (!in_array($this->status, $ocultarEstados) && $this->due_date) {
+            $condicionOportunidadInversion = Carbon::now()->greaterThan(Carbon::parse($this->due_date))
+                ? 'cerrada'
+                : 'abierta';
             $fechaHoraCierreInversion = Carbon::parse($this->due_date)->format('d-m-Y H:i:s A');
         }
 
@@ -77,6 +76,7 @@ class InvoiceResource extends JsonResource
             'montoDisponible'            => $this->financed_amount,
             'tasa'                       => $this->rate,
             'estado'                     => $this->status,
+            'statusPago'                 => $this->statusPago,
             'situacion'                  => $situacion,
             'invoice_number'             => $this->invoice_number,
             'loan_number'                => $this->loan_number,
@@ -93,7 +93,7 @@ class InvoiceResource extends JsonResource
             'condicionOportunidadInversion'=> $condicionOportunidadInversion,
             'fechaHoraCierreInversion'   => $fechaHoraCierreInversion,
             'porcentajeZuma'             => $porcentajeZuma !== null ? $porcentajeZuma.'%' : null,
-            'porcentajeObjetivoTerceros' => $porcentajeObjetivoTerceros !== null ? $porcentajeObjetivoTerceros.'%' : null,
+            'porcentajeMetaTerceros'     => $porcentajeMetaTerceros !== null ? $porcentajeMetaTerceros.'%' : null,
             'porcentajeInversionTerceros'=> $porcentajeInversionTerceros !== null ? $porcentajeInversionTerceros.'%' : null,
             'approval2_comment'          => $this->approval2_comment,
             'userdos'                    => $this->aprovacionuserdos?->dni ?? 'Sin aprobar',
