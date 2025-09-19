@@ -347,7 +347,7 @@ class InvestmentController extends Controller{
                 'message' => 'Operación realizada con éxito.',
                 'data' => null,
             ], 201);
-        } catch (\Throwable $th) {
+        } catch (Throwable $th) {
             DB::rollBack();
 
             return response()->json([
