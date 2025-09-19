@@ -988,10 +988,6 @@ function onGlobalSearch() {
 </script>
 
 <style scoped>
-.p-datatable-sm .p-datatable-tbody > tr > td {
-  padding: 0.5rem;
-}
-
 .font-mono {
   font-family: 'Courier New', monospace;
 }

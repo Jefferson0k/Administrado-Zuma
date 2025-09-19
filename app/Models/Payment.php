@@ -11,26 +11,38 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Helpers\MoneyConverter;
 use Money\Money;
 
-class Payment extends Model
-{
+class Payment extends Model{
   use HasFactory;
 
   protected $fillable = [
-    'invoice_id',
-    'status',
-    'amount_to_be_paid',
-    'pay_date',
-    'reprogramation_date',
-    'reprogramation_rate',
-    'evidencia',
-    'approval1_status',
-    'approval1_by',
-    'approval1_comment',
-    'approval1_at',
-    'approval2_status',
-    'approval2_by',
-    'approval2_comment',
-    'approval2_at'
+      'invoice_id',
+      'status',
+      'pay_type',
+      'amount_to_be_paid',
+      'pay_date',
+      'reprogramation_date',
+      'reprogramation_rate',
+
+      // Evidencias
+      'evidencia',
+      'evidencia_data',
+      'evidencia_count',
+      'evidencia_path',
+      'evidencia_original_name',
+      'evidencia_size',
+      'evidencia_mime_type',
+
+      // Aprobación nivel 1
+      'approval1_status',
+      'approval1_by',
+      'approval1_comment',
+      'approval1_at',
+
+      // Aprobación nivel 2
+      'approval2_status',
+      'approval2_by',
+      'approval2_comment',
+      'approval2_at',
   ];
 
   public $timestamps = true;
