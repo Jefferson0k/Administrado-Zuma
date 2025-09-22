@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 
+use App\Notifications\BankAccountObserved;
 class BankAccount extends Model
 {
     use HasFactory, HasUlids;
@@ -23,6 +24,7 @@ class BankAccount extends Model
         'alias',
         'status',
         'status0',
+        'status_conclusion',
         'investor_id',
         'comment0',
         'comment',
@@ -67,6 +69,14 @@ class BankAccount extends Model
             $this->investor->notify(new BankAccountRejected($this));
         }
     }
+
+    public function sendBankAccountObservedEmail(?string $message = null)
+    {
+        if ($this->investor && $this->investor->email) {
+            $this->investor->notify(new BankAccountObserved($this, $message));
+        }
+    }
+    
 
     public function attachments()
     {

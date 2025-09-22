@@ -20,6 +20,7 @@ class StoreCompanyRequest extends FormRequest
             'sector_id'          => 'required|exists:sectors,id',
             'subsector_id'       => 'required|exists:subsectors,id',
             'incorporation_year' => 'required|digits:4|integer|min:1800|max:' . date('Y'),
+            'nuevonombreempresa' => 'nullable|string|max:255',
 
             'sales_PEN' => [
                 'nullable',

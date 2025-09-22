@@ -1,72 +1,82 @@
 <template>
   <DataTable :lazy="true" ref="dt" v-model:selection="selectedAccounts" :value="accounts" dataKey="id" :paginator="true"
     :rows="rowsPerPage" :totalRecords="totalRecords" :first="(currentPage - 1) * rowsPerPage" :loading="loading"
-    :rowsPerPageOptions="[5,10,20,50]"
+    :rowsPerPageOptions="[5, 10, 20, 50]"
     paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
     currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} cuentas" @page="onPage" scrollable
-    scrollHeight="574px" class="p-datatable-sm" >
+    scrollHeight="574px" class="p-datatable-sm">
 
-  <!-- Header -->
-  <template #header>
-    <div class="flex flex-wrap gap-2 items-center justify-between">
-      <h4 class="m-0">
-        Cuentas Bancarias
-        <Tag severity="contrast" :value="totalRecords" />
-      </h4>
-      <div class="flex flex-wrap gap-2">
-        <IconField>
-          <InputIcon><i class="pi pi-search" /></InputIcon>
-          <InputText v-model="globalFilter" @input="onGlobalSearch" placeholder="Buscar..." />
-        </IconField>
-        <Button icon="pi pi-refresh" outlined rounded aria-label="Refresh" severity="contrast" @click="loadAccounts" />
-      </div>
-    </div>
-  </template>
-
-  <!-- Columns -->
-  <Column selectionMode="multiple" style="width: 1rem" :exportable="false" />
-  <Column field="inversionista" header="Inversionista" sortable style="min-width: 18rem" />
-  <Column field="banco" header="Banco" sortable style="min-width: 15rem" />
-  <Column field="type" header="Tipo" sortable style="min-width: 10rem" />
-  <Column field="currency" header="Moneda" sortable style="min-width: 8rem" />
-  <Column field="cc" header="Cuenta" sortable style="min-width: 12rem" />
-  <Column field="cci" header="CCI" sortable style="min-width: 15rem" />
-
-  <!-- Estado 0 -->
-  <Column field="estado0" header="1º estado" sortable style="min-width: 10rem">
-    <template #body="{ data }">
-      <Tag :value="data.estado0" :severity="getStatus0Severity(data.estado0)" />
-    </template>
-  </Column>
-
-  <Column field="updated0_by_name" header="1º apr. user" sortable style="min-width: 8rem" />
-
-  <Column header="1º apr. fecha" style="min-width: 15rem" sortable>
-    <template #body="{ data }">{{ data.updated0_at ?? '—' }}</template>
-  </Column>
-
-  <!-- Estado principal -->
-  <Column field="estado" header="2º estado" sortable style="min-width: 10rem">
-    <template #body="{ data }">
-      <Tag :value="data.estado" :severity="getStatusSeverity(data.estado)" />
-    </template>
-  </Column>
-
-  <Column field="updated_by_name" header="2º apr. user" sortable style="min-width: 8rem" />
-  <Column header="2º apr. fecha" sortable style="min-width: 15rem">
-    <template #body="{ data }">{{ data.updated_last_at ?? '—' }}</template>
-  </Column>
-
-  <Column field="creacion" header="Creación" sortable style="min-width: 15rem" />
-
-  <!-- Acciones -->
-  <Column header="" style="min-width: 7rem; text-align:center">
-    <template #body="{ data }">
-      <div class="flex items-center gap-2">
-        <Button icon="pi pi-eye" text rounded @click="openShowModal(data)" />
+    <!-- Header -->
+    <template #header>
+      <div class="flex flex-wrap gap-2 items-center justify-between">
+        <h4 class="m-0">
+          Cuentas Bancarias
+          <Tag severity="contrast" :value="totalRecords" />
+        </h4>
+        <div class="flex flex-wrap gap-2">
+          <IconField>
+            <InputIcon><i class="pi pi-search" /></InputIcon>
+            <InputText v-model="globalFilter" @input="onGlobalSearch" placeholder="Buscar..." />
+          </IconField>
+          <Button icon="pi pi-refresh" outlined rounded aria-label="Refresh" severity="contrast"
+            @click="loadAccounts" />
+        </div>
       </div>
     </template>
-  </Column>
+
+    <!-- Columns -->
+    <Column selectionMode="multiple" style="width: 1rem" :exportable="false" />
+    <Column field="inversionista" header="Inversionista" sortable style="min-width: 18rem" />
+    <Column field="banco" header="Banco" sortable style="min-width: 15rem" />
+    <Column field="type" header="Tipo" sortable style="min-width: 10rem" />
+    <Column field="currency" header="Moneda" sortable style="min-width: 8rem" />
+    <Column field="cc" header="Cuenta" sortable style="min-width: 12rem" />
+    <Column field="cci" header="CCI" sortable style="min-width: 15rem" />
+
+    <!-- Estado 0 -->
+    <Column field="estado0" header="1º Aprobador" sortable style="min-width: 10rem">
+      <template #body="{ data }">
+        <Tag :value="data.estado0" :severity="getStatus0Severity(data.estado0)" />
+      </template>
+    </Column>
+
+    <Column field="updated0_by_name" header="1º user Apr." sortable style="min-width: 8rem" />
+
+    <Column header="Tº 1ª Aprobación" style="min-width: 15rem" sortable>
+      <template #body="{ data }">{{ data.updated0_at ?? '—' }}</template>
+    </Column>
+
+    <!-- Estado principal -->
+    <Column field="estado" header="2º Aprobador" sortable style="min-width: 10rem">
+      <template #body="{ data }">
+        <Tag :value="data.estado" :severity="getStatusSeverity(data.estado)" />
+      </template>
+    </Column>
+
+    <Column field="updated_by_name" header="2º user Apr." sortable style="min-width: 8rem" />
+    <Column header="Tº 2ª Aprobación" sortable style="min-width: 15rem">
+      <template #body="{ data }">{{ data.updated_last_at ?? '—' }}</template>
+    </Column>
+
+    <!-- Estado de Conclusión -->
+    <Column field="estado_conclusion" header="Estado Conclusión" sortable style="min-width: 10rem">
+      <template #body="{ data }">
+        <Tag :value="data.can_show_conclusion ? (data.estado_conclusion ?? '—') : 'N/A'"
+          :severity="data.can_show_conclusion ? getConclusionSeverity(data.estado_conclusion) : 'secondary'" />
+      </template>
+    </Column>
+
+    <Column field="creacion" header="Creación" sortable style="min-width: 15rem" />
+
+    <!-- Acciones -->
+    <Column header="" style="min-width: 7rem; text-align:center">
+      <template #body="{ data }">
+        <div class="flex items-center gap-2 justify-center">
+          <Button v-if="data.can_show_conclusion" icon="pi pi-eye" text rounded @click="openShowModal(data)" />
+          <span v-else class="text-xs text-gray-400">N/A</span>
+        </div>
+      </template>
+    </Column>
   </DataTable>
 
   <!-- Modal de Detalle -->
@@ -120,33 +130,11 @@
         <p class="font-semibold">{{ formatDateTime(selectedAccount.updated_at ?? selectedAccount.update) }}</p>
       </div>
 
-      <!-- Auditoría detallada -->
-      <div class="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div class="p-3 rounded border border-amber-300 bg-amber-50">
-          <p class="text-xs text-amber-700 font-semibold uppercase tracking-wide">Auditoría Primera Validación</p>
-          <p class="text-xs text-gray-500 mt-2">Actualizado por</p>
-          <p class="font-medium">{{ selectedAccount.updated0_by_name ?? selectedAccount.updated0_by ?? '—' }}</p>
-          <p class="text-xs text-gray-500 mt-2">Fecha</p>
-          <p class="font-medium">{{ formatDateTime(selectedAccount.updated0_at) }}</p>
-        </div>
-
-        <div class="p-3 rounded border border-indigo-300 bg-indigo-50">
-          <p class="text-xs text-indigo-700 font-semibold uppercase tracking-wide">Auditoría Segunda Validación</p>
-          <p class="text-xs text-gray-500 mt-2">Actualizado por</p>
-          <p class="font-medium">{{ selectedAccount.updated_by_name ?? selectedAccount.updated_by ?? '—' }}</p>
-          <p class="text-xs text-gray-500 mt-2">Fecha</p>
-          <p class="font-medium">{{ formatDateTime(selectedAccount.updated_last_at ?? selectedAccount.updates_last_at)
-            }}
-          </p>
-        </div>
-      </div>
-
-      <!-- ADJUNTOS (ambas etapas; uploader solo en 1ra) -->
+      <!-- ADJUNTOS -->
       <div class="sm:col-span-2 mt-2">
         <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Adjuntos</p>
 
         <div v-if="!isFirstApproved">
-          <!-- Subida automática sin botón Subir ni sección Pendientes -->
           <FileUpload name="files[]" :customUpload="true" multiple :auto="true" accept=".pdf,image/*"
             :maxFileSize="10485760" chooseLabel="Seleccionar" :showUploadButton="false" :showCancelButton="false"
             @uploader="onAutoUpload" />
@@ -178,23 +166,38 @@
           </div>
         </div>
 
-        <!-- Previsualizaciones SIEMPRE -->
+        <!-- Previsualizaciones (contenidas con botón ojo) -->
         <div v-if="imageFiles.length" class="mt-4">
           <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Previsualizaciones</p>
           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             <div v-for="(img, idx) in imageFiles" :key="img.id ?? img.url ?? idx"
-              class="border rounded-lg overflow-hidden" title="Click para abrir en nueva pestaña">
-              <a :href="img.url" target="_blank" rel="noopener">
-                <img :src="img.url" :alt="img.original_name ?? 'imagen'" class="w-full h-36 object-cover"
-                  loading="lazy" />
-              </a>
-              <div class="p-2 text-xs truncate">{{ img.original_name ?? img.name }}</div>
+              class="relative group border rounded-lg bg-gray-50">
+              <!-- Caja de contención fija -->
+              <div class="w-full h-40 flex items-center justify-center overflow-hidden">
+                <img :src="img.url" :alt="img.original_name ?? img.name ?? 'imagen'"
+                  class="max-h-full max-w-full object-contain" loading="lazy" />
+              </div>
+
+              <!-- Overlay suave al hover -->
+              <div
+                class="absolute inset-0 rounded-lg bg-black/0 group-hover:bg-black/15 transition-colors duration-150">
+              </div>
+
+              <!-- Botón ojo -->
+              <Button icon="pi pi-eye" class="!absolute right-2 bottom-2" rounded @click="openImageModal(img.url)"
+                v-tooltip.bottom="'Ver en modal'" />
+
+              <!-- Pie con nombre, truncado -->
+              <div class="px-2 py-1 text-xs truncate bg-white/90 border-t border-gray-200 rounded-b-lg">
+                {{ img.original_name ?? img.name }}
+              </div>
             </div>
           </div>
         </div>
+
       </div>
 
-      <!-- COMENTARIOS (ambas etapas; el editable cambia según etapa) -->
+      <!-- COMENTARIOS -->
       <div class="sm:col-span-2 mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
         <div class="p-3 rounded border border-amber-200">
           <p class="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">
@@ -224,7 +227,41 @@
             <template v-if="isFullyApproved"> • Solo lectura: validación completada</template>
           </small>
         </div>
+      </div>
 
+      <!-- Auditoría (compacta) -->
+      <div class="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <!-- Primera -->
+        <div class="p-2 rounded-md border border-amber-300 bg-amber-50">
+          <p class="text-[10px] text-amber-700 font-semibold uppercase tracking-wide">Primera Validación</p>
+          <p class="mt-1 text-[11px] leading-tight text-gray-700">
+            <span class="text-gray-500">Actualizado por:</span>
+            <span class="font-medium">
+              {{ selectedAccount.updated0_by_name ?? selectedAccount.updated0_by ?? '—' }}
+            </span>
+            <span class="mx-1 text-gray-400">•</span>
+            <span class="text-gray-500">Fecha:</span>
+            <span class="font-medium">
+              {{ formatDateTime(selectedAccount.updated0_at) }}
+            </span>
+          </p>
+        </div>
+
+        <!-- Segunda -->
+        <div class="p-2 rounded-md border border-indigo-300 bg-indigo-50">
+          <p class="text-[10px] text-indigo-700 font-semibold uppercase tracking-wide">Segunda Validación</p>
+          <p class="mt-1 text-[11px] leading-tight text-gray-700">
+            <span class="text-gray-500">Actualizado por:</span>
+            <span class="font-medium">
+              {{ selectedAccount.updated_by_name ?? selectedAccount.updated_by ?? '—' }}
+            </span>
+            <span class="mx-1 text-gray-400">•</span>
+            <span class="text-gray-500">Fecha:</span>
+            <span class="font-medium">
+              {{ formatDateTime(selectedAccount.updated_last_at ?? selectedAccount.updates_last_at) }}
+            </span>
+          </p>
+        </div>
       </div>
     </div>
 
@@ -237,8 +274,6 @@
           <i class="pi pi-file"></i> Primera Validación
         </p>
 
-        <!-- (Eliminados los textareas duplicados del footer) -->
-
         <div v-if="!hasAnyAttachment" class="text-xs text-amber-800 bg-amber-100 border border-amber-300 rounded p-2">
           Debes adjuntar y subir al menos un archivo para poder <strong>aprobar</strong> esta etapa.
         </div>
@@ -248,8 +283,11 @@
           <Button label="Aprobar" icon="pi pi-check" severity="success" :loading="loading && actionBusy === 'approve'"
             :disabled="!hasAnyAttachment" :title="!hasAnyAttachment ? 'Sube al menos un archivo antes de aprobar' : ''"
             @click="approveWithFiles()" />
+
+          <!-- OBSERVAR abre popup con input -->
           <Button label="Observar" icon="pi pi-eye" severity="info" :loading="loading && actionBusy === 'observe'"
-            @click="changeStatus0('observed', { closeAfter: false })" />
+            @click="openObserveFirstDialog" />
+
           <Button label="Rechazar" icon="pi pi-times" severity="danger" :loading="loading && actionBusy === 'reject'"
             @click="changeStatus0('rejected', { closeAfter: true })" />
         </div>
@@ -265,8 +303,11 @@
           <Button label="Cerrar" icon="pi pi-times" @click="showDialog = false" />
           <Button label="Aprobar" icon="pi pi-check" severity="success" :loading="loading && actionBusy === 'approve2'"
             :disabled="isFullyApproved" @click="confirmSecond('approved', 'aprobar')" />
+
+          <!-- OBSERVAR abre popup con input -->
           <Button label="Observar" icon="pi pi-eye" severity="info" :loading="loading && actionBusy === 'observe2'"
-            :disabled="isFullyApproved" @click="confirmSecond('observed', 'observar')" />
+            :disabled="isFullyApproved" @click="openObserveSecondDialog" />
+
           <Button label="Rechazar" icon="pi pi-times" severity="danger" :loading="loading && actionBusy === 'reject2'"
             :disabled="isFullyApproved" @click="confirmSecond('rejected', 'rechazar')" />
         </div>
@@ -275,6 +316,55 @@
   </Dialog>
 
   <ConfirmDialog />
+
+  <!-- Popup: Observación 1ª Validación -->
+  <Dialog v-model:visible="showObserveFirst" header="Observar — Primera Validación" :modal="true"
+    :style="{ width: '620px' }">
+    <div class="space-y-2">
+      <p class="text-sm text-gray-600">Mensaje para el cliente:</p>
+      <Textarea v-model="observeMessage" :maxlength="OBSERVE_MAX" rows="7" autoResize class="w-full"
+        placeholder="Escribe el mensaje que se enviará por correo (máx. 500 caracteres)" />
+      <div class="mt-1 text-xs flex items-center justify-between">
+        <small class="text-gray-500">Este mensaje se enviará por correo al cliente.</small>
+        <span :class="observeCount >= OBSERVE_MAX - 20 ? 'text-red-600' : 'text-gray-500'">
+          {{ observeCount }}/{{ OBSERVE_MAX }}
+        </span>
+      </div>
+    </div>
+    <template #footer>
+      <Button label="Cancelar" icon="pi pi-times" text @click="cancelObserveFirst" />
+      <Button label="Observar" icon="pi pi-eye" severity="info" @click="confirmObserveFirst" />
+    </template>
+  </Dialog>
+
+  <!-- Popup: Observación 2ª Validación -->
+  <Dialog v-model:visible="showObserveSecond" header="Observar — Segunda Validación" :modal="true"
+    :style="{ width: '620px' }">
+    <div class="space-y-2">
+      <p class="text-sm text-gray-600">Mensaje para el cliente:</p>
+      <Textarea v-model="observeMessage" :maxlength="OBSERVE_MAX" rows="7" autoResize class="w-full"
+        placeholder="Escribe el mensaje que se enviará por correo (máx. 500 caracteres)" />
+      <div class="mt-1 text-xs flex items-center justify-between">
+        <small class="text-gray-500">Este mensaje se enviará por correo al cliente.</small>
+        <span :class="observeCount >= OBSERVE_MAX - 20 ? 'text-red-600' : 'text-gray-500'">
+          {{ observeCount }}/{{ OBSERVE_MAX }}
+        </span>
+      </div>
+    </div>
+    <template #footer>
+      <Button label="Cancelar" icon="pi pi-times" text @click="cancelObserveSecond" />
+      <Button label="Observar" icon="pi pi-eye" severity="info" @click="confirmObserveSecond" />
+    </template>
+  </Dialog>
+
+  <!-- Modal de imagen grande -->
+  <Dialog v-model:visible="showImageModal" header="Vista de Imagen" :modal="true"
+    :style="{ width: '90vw', maxWidth: '1100px' }">
+    <div class="flex items-center justify-center">
+      <img v-if="previewImageUrl" :src="previewImageUrl" alt="Vista previa"
+        class="max-h-[75vh] w-auto object-contain rounded-lg" />
+    </div>
+  </Dialog>
 </template>
 
 <script setup lang="ts">
@@ -312,6 +402,8 @@ type UploadedFile = {
 const toast = useToast();
 const confirm = useConfirm();
 
+const OBSERVE_MAX = 500;
+
 const accounts = ref<any[]>([]);
 const selectedAccounts = ref<any[]>([]);
 const loading = ref(false);
@@ -343,6 +435,15 @@ const imageFiles = computed(() =>
   })
 );
 
+// ===== Modal de imagen =====
+const showImageModal = ref(false);
+const previewImageUrl = ref<string | null>(null);
+const openImageModal = (url?: string) => {
+  if (!url) return;
+  previewImageUrl.value = url;
+  showImageModal.value = true;
+};
+
 // ¿Primera validación aprobada?
 const isFirstApproved = computed(() => {
   const es = selectedAccount.value?.estado0;
@@ -350,7 +451,7 @@ const isFirstApproved = computed(() => {
   return es === 'Aprobado' || api === 'approved';
 });
 
-// <script setup> section
+// ¿Ambas aprobadas?
 const isFullyApproved = computed(() => {
   const s0 = selectedAccount.value?.status0
     ?? (selectedAccount.value?.estado0 === 'Aprobado' ? 'approved' : null);
@@ -371,11 +472,10 @@ const loadAccounts = async (event: any = {}) => {
 
     accounts.value = payload.data ?? [];
 
-    // Pull totals & sync page/size from Laravel paginator meta
     const meta = payload.meta ?? {};
     totalRecords.value = meta.total ?? 0;
-    currentPage.value   = meta.current_page ?? page;
-    rowsPerPage.value   = meta.per_page ? Number(meta.per_page) : perPage;
+    currentPage.value = meta.current_page ?? page;
+    rowsPerPage.value = meta.per_page ? Number(meta.per_page) : perPage;
   } catch (error) {
     console.error('Error al cargar cuentas bancarias:', error);
     toast.add({ severity: 'error', summary: 'Error', detail: 'Error al cargar las cuentas bancarias', life: 5000 });
@@ -384,19 +484,15 @@ const loadAccounts = async (event: any = {}) => {
   }
 };
 
-
 const onGlobalSearch = debounce(() => { currentPage.value = 1; loadAccounts(); }, 500);
 const onPage = (event: any) => { loadAccounts(event); };
 
 const getStatusSeverity = (estado: string) => {
   switch (estado) {
     case 'Aprobado': return 'success';
-    case 'Rechazado': return 'danger';
     case 'Observado': return 'info';
+    case 'Rechazado': return 'danger';
     case 'Pendiente': return 'warn';
-    case 'Preaprobado': return 'warn';
-    case 'Válido': return 'success';
-    case 'Inválido': return 'danger';
     default: return 'secondary';
   }
 };
@@ -410,6 +506,16 @@ const getStatus0Severity = (estado0: string) => {
   }
 };
 
+const getConclusionSeverity = (estado: string) => {
+  switch (estado) {
+    case 'Aprobado': return 'success';
+    case 'Rechazado': return 'danger';
+    case 'Pendiente': return 'warn';
+    case 'Registro Iconcluso': return 'secondary';
+    default: return 'secondary';
+  }
+};
+
 const openShowModal = async (row: any) => {
   selectedAccount.value = row;
   comment0.value = row.comment0 ?? '';
@@ -419,7 +525,26 @@ const openShowModal = async (row: any) => {
   await loadAttachments();
 };
 
-// Segunda Validación (cambia status)
+/** ---------- CONFIRMS (genéricos) ---------- **/
+const confirmFirst = (newStatus0: Status0Api, actionText: 'aprobar' | 'observar' | 'rechazar') => {
+  if (!selectedAccount.value) {
+    toast.add({ severity: 'warn', summary: 'Advertencia', detail: 'No se ha seleccionado ninguna cuenta', life: 3000 });
+    return;
+  }
+  confirm.require({
+    message: `¿Está seguro que desea ${actionText} la cuenta bancaria de ${selectedAccount.value.inversionista}?`,
+    header: `Confirmar ${actionText.charAt(0).toUpperCase() + actionText.slice(1)}`,
+    icon: newStatus0 === 'approved'
+      ? 'pi pi-check-circle'
+      : (newStatus0 === 'rejected' ? 'pi pi-exclamation-triangle' : 'pi pi-pencil'),
+    rejectClass: 'p-button-secondary p-button-outlined',
+    rejectLabel: 'Cancelar',
+    acceptLabel: actionText.charAt(0).toUpperCase() + actionText.slice(1),
+    accept: () => changeStatus0(newStatus0, { closeAfter: false }),
+    reject: () => toast.add({ severity: 'info', summary: 'Cancelado', detail: 'Operación cancelada', life: 3000 })
+  });
+};
+
 const confirmSecond = (newStatus: StatusApi, actionText: 'aprobar' | 'observar' | 'rechazar') => {
   if (!selectedAccount.value) {
     toast.add({ severity: 'warn', summary: 'Advertencia', detail: 'No se ha seleccionado ninguna cuenta', life: 3000 });
@@ -436,8 +561,13 @@ const confirmSecond = (newStatus: StatusApi, actionText: 'aprobar' | 'observar' 
     reject: () => toast.add({ severity: 'info', summary: 'Cancelado', detail: 'Operación cancelada', life: 3000 })
   });
 };
+/** -------------------------------- **/
 
-const changeStatusSecond = async (newStatus: 'approved' | 'observed' | 'rejected') => {
+// Segunda Validación (cambia status) — admite notify_message para "observed"
+const changeStatusSecond = async (
+  newStatus: 'approved' | 'observed' | 'rejected',
+  opts?: { notifyMessage?: string }
+) => {
   if (!selectedAccount.value?.id) {
     toast.add({ severity: 'warn', summary: 'Advertencia', detail: 'No hay cuenta seleccionada', life: 3000 });
     return;
@@ -447,7 +577,11 @@ const changeStatusSecond = async (newStatus: 'approved' | 'observed' | 'rejected
 
   loading.value = true;
   try {
-    await axios.patch(`/ban/${selectedAccount.value.id}/status`, { status: newStatus, comment: comment.value });
+    await axios.patch(`/ban/${selectedAccount.value.id}/status`, {
+      status: newStatus,
+      comment: comment.value,
+      notify_message: newStatus === 'observed' ? (opts?.notifyMessage ?? null) : null
+    });
 
     const mapEs = { approved: 'Aprobado', observed: 'Observado', rejected: 'Rechazado' } as const;
 
@@ -486,7 +620,7 @@ const loadAttachments = async () => {
   }
 };
 
-// Subida automática al seleccionar archivos (customUpload + auto)
+// Subida automática al seleccionar archivos
 const onAutoUpload = async (e: any) => {
   await uploadFiles(e.files ?? []);
 };
@@ -544,7 +678,11 @@ const approveWithFiles = async () => {
   actionBusy.value = null;
 };
 
-const changeStatus0 = async (newStatus0: Status0Api, opts: { closeAfter?: boolean } = { closeAfter: true }) => {
+// Primera Validación — admite notify_message para "observed"
+const changeStatus0 = async (
+  newStatus0: Status0Api,
+  opts: { closeAfter?: boolean; notifyMessage?: string } = { closeAfter: true }
+) => {
   if (!selectedAccount.value?.id) {
     toast.add({ severity: 'warn', summary: 'Advertencia', detail: 'No hay cuenta seleccionada', life: 3000 });
     return;
@@ -553,7 +691,11 @@ const changeStatus0 = async (newStatus0: Status0Api, opts: { closeAfter?: boolea
 
   loading.value = true;
   try {
-    await axios.patch(`/ban/${selectedAccount.value.id}/status0`, { status0: newStatus0, comment0: comment0.value });
+    await axios.patch(`/ban/${selectedAccount.value.id}/status0`, {
+      status0: newStatus0,
+      comment0: comment0.value,
+      notify_message: newStatus0 === 'observed' ? (opts?.notifyMessage ?? null) : null
+    });
 
     const msgMap: Record<Status0Api, string> = { approved: 'Aprobado', observed: 'Observado', rejected: 'Rechazado' };
 
@@ -561,7 +703,7 @@ const changeStatus0 = async (newStatus0: Status0Api, opts: { closeAfter?: boolea
     selectedAccount.value.estado0 = msgMap[newStatus0];
     selectedAccount.value.comment0 = comment0.value;
 
-    // Cuando se toca status0, status => pending
+    // Al tocar status0, status => pending
     selectedAccount.value.status = 'pending';
     selectedAccount.value.estado = 'Pendiente';
 
@@ -597,6 +739,41 @@ const formatDateTime = (val: any) => {
   if (isNaN(d.getTime())) return String(val);
   return new Intl.DateTimeFormat(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(d);
 };
+
+/** ---------- OBSERVAR POPUPS ---------- **/
+const showObserveFirst = ref(false);
+const showObserveSecond = ref(false);
+const observeMessage = ref<string>('');
+const observeCount = computed(() => observeMessage.value.length);
+
+// abrir popups
+const openObserveFirstDialog = () => {
+  observeMessage.value = '';
+  showObserveFirst.value = true;
+};
+const openObserveSecondDialog = () => {
+  observeMessage.value = '';
+  showObserveSecond.value = true;
+};
+
+// cancelar
+const cancelObserveFirst = () => { showObserveFirst.value = false; };
+const cancelObserveSecond = () => { showObserveSecond.value = false; };
+
+// confirmar (recorta/limpia a 500)
+const confirmObserveFirst = async () => {
+  const message = observeMessage.value.slice(0, OBSERVE_MAX).trim();
+  comment0.value = message; // opcional: registrar
+  showObserveFirst.value = false;
+  await changeStatus0('observed', { closeAfter: false, notifyMessage: message });
+};
+
+const confirmObserveSecond = async () => {
+  const message = observeMessage.value.slice(0, OBSERVE_MAX).trim();
+  showObserveSecond.value = false;
+  await changeStatusSecond('observed', { notifyMessage: message });
+};
+/** ----------------------------------- **/
 
 onMounted(() => { loadAccounts(); });
 </script>

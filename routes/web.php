@@ -79,21 +79,24 @@ Route::get('/investors/{id}', [InvestorController::class, 'show']);
 Route::middleware(['auth', 'verified'])->group(function () {
 
 
+
+
+
     Route::get('/ban/{id}/attachments', [BankAccountsController::class, 'indexAttachments'])
-    ->name('bank-accounts.attachments.index');
+        ->name('bank-accounts.attachments.index');
 
     Route::post('/ban/{id}/validate', [BankAccountsController::class, 'validateStatus'])
-    ->name('bank-accounts.validate');
+        ->name('bank-accounts.validate');
 
 
 
 
     Route::post('/ban/{id}/attachments', [BankAccountsController::class, 'storeAttachments']);
     Route::patch('/ban/{id}/status0', [BankAccountsController::class, 'updateStatus0'])
-     ->name('bank-accounts.update-status0');
+        ->name('bank-accounts.update-status0');
 
-     Route::patch('/ban/{bankAccount}/status', [BankAccountsController::class, 'updateStatus'])
-    ->name('bank-accounts.update-status');
+    Route::patch('/ban/{bankAccount}/status', [BankAccountsController::class, 'updateStatus'])
+        ->name('bank-accounts.update-status');
 
     #PARA QUE CUANDO SE CREA UN USUARIO O MODIFICA SU PASSWORD LO REDIRECCIONE PARA QUE PUEDA ACTUALIZAR
     Route::get('/dashboard', function () {
@@ -101,7 +104,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('dashboard');
 
     #VISTAS DEL FRONTEND
-    Route::get('/usuario', [UsuarioWebController::class,'index'])->name('index.view');
+    Route::get('/usuario', [UsuarioWebController::class, 'index'])->name('index.view');
     Route::get('/roles', [UsuarioWebController::class, 'roles'])->name('roles.view');
     Route::get('/online', [SubastasOnlineWebController::class, 'views'])->name('online.view');
     Route::get('/Ambiente-Pruebas', [SubastasOnlineWebController::class, 'viewsTC']);
@@ -123,12 +126,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     #Cargos
-    Route::prefix('cargos')->group(function(){
+    Route::prefix('cargos')->group(function () {
         Route::get('/', [CargoController::class, 'index'])->name('cargos.index');
     });
 
     #RUTAS DE WEB EN LA PARTE DE FACTORING
-    
+
     Route::prefix('factoring')->group(function () {
         Route::get('/empresas', [CompanyWeb::class, 'views'])->name('empresas.views');
         Route::get('/sectores', [SectorWeb::class, 'views'])->name('sectores.views');
@@ -146,7 +149,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     #RUTAS DE WEB EN LA PARTE DE TASAS FIJAS
-    Route::prefix('tasas-fijas')->group(function(){
+    Route::prefix('tasas-fijas')->group(function () {
         Route::get('/depositos', [DepositosWebController::class, 'views'])->name('depositos.views');
         Route::get('/empresas', [EmpresasWebController::class, 'views'])->name('empresas.views');
         Route::get('/pagos', [PagosWebController::class, 'views'])->name('pagos.views');
@@ -155,7 +158,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     #RUTAS DE WEB EN LA PARTE DE SUBASTA HIPOTECARIA
-    Route::prefix('subasta-hipotecas')->group(function(){
+    Route::prefix('subasta-hipotecas')->group(function () {
         Route::get('/reserva', [CuentasBancariasWebControler::class, 'views'])->name('reserva.views');
         Route::get('/depositos', [DepositosWebControler::class, 'views'])->name('depositos.views');
         Route::get('/historicos', [HistoricoWebController::class, 'views'])->name('historicos.views');
@@ -193,25 +196,38 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/{id}/reject', [WithdrawController::class, 'reject'])->name('withdraws.reject');
     });
 
-    Route::prefix('investment')->group(function() {
+    Route::prefix('investment')->group(function () {
         Route::get('/all', [InvestmentControllers::class, 'indexAll']);
         Route::get('/{invoice_id}', [InvestmentControllers::class, 'show']);
     });
 
-    Route::prefix('deposit')->group(function () {
-        Route::get('/', [DepositController::class, 'index'])->name('deposits.index');
-        Route::get('/{id}', [DepositController::class, 'show'])->name('deposits.show');
-        Route::post('/{movementId}/validate', [DepositController::class, 'validateDeposit'])
-            ->name('deposits.validate');
-        Route::post('/{depositId}/{movementId}/reject', [DepositController::class, 'rejectDeposit'])
-            ->name('deposits.reject');
-        Route::post('/{depositId}/{movementId}/approve', [DepositController::class, 'approveDeposit'])
-            ->name('deposits.approve');
-        Route::post('/{depositId}/{movementId}/reject-confirm', [DepositController::class, 'rejectConfirmDeposit'])
-            ->name('deposits.rejectConfirm');
-        Route::get('/export/excel', [DepositController::class, 'exportExcel'])
-            ->name('deposits.exportExcel');
+    Route::prefix('deposit')->name('deposits.')->group(function () {
+        // List & export
+        Route::get('/', [DepositController::class, 'index'])->name('index');
+        Route::get('/export/excel', [DepositController::class, 'exportExcel'])->name('exportExcel');
+
+        // Children of {id} come BEFORE the catch-all `/{id}`
+        // Attachments (multi-file)
+        Route::get('/{id}/attachments', [DepositController::class, 'listAttachments']);
+        Route::post('/{id}/attachments', [DepositController::class, 'uploadAttachments']);
+        Route::delete('/{id}/attachments/{attachmentId}', [DepositController::class, 'deleteAttachment']);
+
+        // Status updates
+        Route::post('/{id}/update-status0', [DepositController::class, 'updateStatus0']);
+        Route::post('/{id}/update-status',  [DepositController::class, 'updateStatus']);
+
+        // Movement-based actions (keep these before the catch-all)
+        Route::post('/{movementId}/validate', [DepositController::class, 'validateDeposit'])->name('validate');
+        Route::post('/{depositId}/{movementId}/reject', [DepositController::class, 'rejectDeposit'])->name('reject');
+        Route::post('/{depositId}/{movementId}/approve', [DepositController::class, 'approveDeposit'])->name('approve');
+        Route::post('/{depositId}/{movementId}/reject-confirm', [DepositController::class, 'rejectConfirmDeposit'])->name('rejectConfirm');
+
+        // Show (catch-all) — must be LAST
+        Route::get('/{id}', [DepositController::class, 'show'])->name('show');
     });
+
+
+
 
 
     Route::prefix('ban')->group(function () {
@@ -225,38 +241,38 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{id}/reject', [BankAccountsController::class, 'rejectBankAccount'])->name('bankaccounts.reject');
     });
 
-# INVERSIONISTA -> BACKEND
+    # INVERSIONISTA -> BACKEND
     Route::prefix('investor')->group(function () {
         Route::get('/', [InvestorController::class, 'index'])
-        ->name('investor.index');
+            ->name('investor.index');
         Route::get('/{id}', [InvestorController::class, 'showInvestor'])
-        ->name('investor.showInvestor');
+            ->name('investor.showInvestor');
         // 📂 Archivos
         Route::post('/{id}/adjuntar-primera', [InvestorController::class, 'adjuntarEvidenciaPrimeraValidacion'])
-        ->name('investor.adjuntarPrimera');
+            ->name('investor.adjuntarPrimera');
         // 📂 Subida de documentos individuales
         Route::post('/{id}/upload-document-front', [InvestorController::class, 'uploadDocumentFront'])
-        ->name('investor.uploadDocumentFront');
+            ->name('investor.uploadDocumentFront');
         Route::post('/{id}/upload-document-back', [InvestorController::class, 'uploadDocumentBack'])
-        ->name('investor.uploadDocumentBack');
+            ->name('investor.uploadDocumentBack');
         Route::post('/{id}/upload-investor-photo', [InvestorController::class, 'uploadInvestorPhoto'])
-        ->name('investor.uploadInvestorPhoto');
+            ->name('investor.uploadInvestorPhoto');
         // ✅ Primera validación
         Route::put('/{id}/aprobar-primera', [InvestorController::class, 'aprobarPrimeraValidacion'])
-        ->name('investor.aprobarPrimera');
+            ->name('investor.aprobarPrimera');
         Route::put('/{id}/rechazar-primera', [InvestorController::class, 'rechazarPrimeraValidacion'])
-        ->name('investor.rechazarPrimera');
+            ->name('investor.rechazarPrimera');
         Route::put('/{id}/comentar-primera', [InvestorController::class, 'comentarPrimeraValidacion'])
-        ->name('investor.comentarPrimera');
+            ->name('investor.comentarPrimera');
         // ✅ Segunda validación
         Route::put('/{id}/aprobar-segunda', [InvestorController::class, 'aprobarSegundaValidacion'])
-        ->name('investor.aprobarSegunda');
+            ->name('investor.aprobarSegunda');
         Route::put('/{id}/rechazar-segunda', [InvestorController::class, 'rechazarSegundaValidacion'])
-        ->name('investor.rechazarSegunda');
+            ->name('investor.rechazarSegunda');
         Route::put('/{id}/comentar-segunda', [InvestorController::class, 'comentarSegundaValidacion'])
-        ->name('investor.comentarSegunda');
+            ->name('investor.comentarSegunda');
         Route::put('/{id}/observaciones', [InvestorController::class, 'observarPrimeraValidacion'])
-        ->name('investor.observaciones');
+            ->name('investor.observaciones');
     });
     # COMPANIA -> BACKEND
     Route::prefix('companies')->group(function () {
@@ -295,12 +311,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     #USUARIOS -> BACKEND
-    Route::prefix('usuarios')->group(function(){
+    Route::prefix('usuarios')->group(function () {
         Route::get('/', [UsuariosController::class, 'index'])->name('usuarios.index');
-        Route::post('/',[UsuariosController::class, 'store'])->name('usuarios.store');
-        Route::get('/{user}',[UsuariosController::class, 'show'])->name('usuarios.show');
-        Route::put('/{user}',[UsuariosController::class, 'update'])->name('usuarios.update');
-        Route::delete('/{user}',[UsuariosController::class, 'destroy'])->name('usuarios.destroy');
+        Route::post('/', [UsuariosController::class, 'store'])->name('usuarios.store');
+        Route::get('/{user}', [UsuariosController::class, 'show'])->name('usuarios.show');
+        Route::put('/{user}', [UsuariosController::class, 'update'])->name('usuarios.update');
+        Route::delete('/{user}', [UsuariosController::class, 'destroy'])->name('usuarios.destroy');
     });
 
     #ROLES => BACKEND
@@ -325,7 +341,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/{id}/observacion', [InvoiceController::class, 'observacion']);
         Route::get('/{id}', [InvoiceController::class, 'show'])->name('invoices.show');
         Route::delete('/{id}', [InvoiceController::class, 'delete'])->name('invoices.delete');
-        
+
         # Exportación a Excel
         Route::get('/export/excel', [InvoiceController::class, 'exportExcel'])->name('invoices.export');
     });
@@ -344,7 +360,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/reglas/{id}/show', [PropertyControllers::class, 'showReglas']);
         Route::post('/enviar-emails', [PropertyControllers::class, 'enviar']);
     });
-    
+
     Route::get('/propiedad/{id}/cronograma', [PaymentScheduleController::class, 'getCronogramaPorPropiedad']);
     Route::get('/cronograma/{property_investor_id}', [PaymentScheduleController::class, 'getCronograma']);
     #Seccion de apis x mientas
@@ -354,10 +370,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     #ESTA ES UNA CALCULADORA SOLO SIMULACION NO SUMA NI RESTA
     Route::prefix('Calculadora')->group(function () {
-        Route::get('/', [CalculadoraController::class,'calcular']);
+        Route::get('/', [CalculadoraController::class, 'calcular']);
     });
 
-    Route::prefix('coperativa')->group(function(){
+    Route::prefix('coperativa')->group(function () {
         Route::get('/', [CorporateEntityController::class, 'index']);
         Route::post('/', [CorporateEntityController::class, 'store']);
         Route::get('{id}', [CorporateEntityController::class, 'show']);
@@ -366,17 +382,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('{id}/pdf', [CorporateEntityController::class, 'showPdf']);
     });
 
-    Route::prefix('term-plans')->group(function(){
+    Route::prefix('term-plans')->group(function () {
         Route::post('/', [TermPlanController::class, 'store']);
         Route::get('/', [TermPlanController::class, 'list']);
         Route::put('/{termPlan}', [TermPlanController::class, 'update']);
-
     });
 
     Route::get('/deadlines', [DeadlinesControllers::class, 'index']);
 
     Route::apiResource('payment-frequencies', PaymentFrequencyController::class);
-    
+
     Route::prefix('rate-types')->name('rate-types.')->group(function () {
         Route::get('/', [RateTypeController::class, 'list']);
         Route::post('/', [RateTypeController::class, 'store']);
@@ -391,7 +406,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('', 'store');
         Route::delete('{id}', 'delete');
     });
-    
+
     Route::get('/fixed-term-matrix/{empresaId}', [FixedTermRateController::class, 'matrix']);
 
     #BUSCADPRES
@@ -413,7 +428,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::post('/properties/{id}/activacion', [PropertyLoanDetailController::class, 'activacion']);
-    
+
     Route::prefix('fixed-term-rates')->controller(FixedTermRateController::class)->group(function () {
         Route::post('/bulk', 'storeBulk');
         Route::get('/entidad/{id}', 'showByEntidad');
@@ -488,7 +503,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::post('/invoices/{invoiceId}/anular', [PaymentsController::class, 'anular'])
-    ->name('invoices.anular');
+        ->name('invoices.anular');
 });
 
 
@@ -518,5 +533,5 @@ Route::get('/s3/{path}', function ($path) {
 })->where('path', '.*');
 
 Route::get('/tipo-documentos', [TipoDocumento::class, 'index']);
-require __DIR__.'/settings.php';
-require __DIR__.'/auth.php';
+require __DIR__ . '/settings.php';
+require __DIR__ . '/auth.php';

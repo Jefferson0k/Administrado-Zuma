@@ -24,6 +24,10 @@ return new class extends Migration
             $table->enum('status', ['pending', 'observed', 'approved', 'rejected'])
                 ->default('pending');
 
+            $table->enum('status_conclusion', ['pending', 'approved', 'rejected'])
+                ->default('pending');
+
+
             $table->foreignUlid('investor_id')->constrained();
             $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
 

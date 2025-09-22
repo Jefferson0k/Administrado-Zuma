@@ -152,6 +152,11 @@ class CompanyController extends Controller{
                 CompanyFinance::create($financeData);
                 return $company;
             });
+            // CompanyController@store
+            // temporalmente:
+            Log::info('StoreCompany payload', $request->all());
+            // y también:
+            Log::info('StoreCompany validated', $request->validated());
             return response()->json([
                 'message' => 'Empresa y finanzas creadas correctamente.',
                 'data'    => new CompanyResource($company)

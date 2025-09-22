@@ -18,7 +18,12 @@ return new class extends Migration
                 Currency::USD->value
             ]);
             $table->string('resource_path', 2048)->nullable();
-            $table->longText('description')->nullable();
+            $table->longText('comment0')->nullable();
+            $table->longText('comment')->nullable();
+
+            $table->enum('status_conclusion', ['pending', 'approved', 'rejected'])
+                ->default('pending');
+
 
             $table->foreignUlid('investor_id')->constrained();
             $table->foreignUlid('movement_id')->nullable()->constrained();
@@ -29,17 +34,17 @@ return new class extends Migration
             $table->string('type')->nullable();
 
             $table->foreignId('fixed_term_investment_id')
-                  ->nullable()
-                  ->constrained('fixed_term_investments')
-                  ->onDelete('cascade');
+                ->nullable()
+                ->constrained('fixed_term_investments')
+                ->onDelete('cascade');
             $table->foreignId('property_reservations_id')
-                  ->nullable()
-                  ->constrained('property_reservations')
-                  ->onDelete('cascade');
+                ->nullable()
+                ->constrained('property_reservations')
+                ->onDelete('cascade');
             $table->foreignId('payment_schedules_id')
-                  ->nullable()
-                  ->constrained('payment_schedules')
-                  ->onDelete('cascade');
+                ->nullable()
+                ->constrained('payment_schedules')
+                ->onDelete('cascade');
             $table->string('created_by')->nullable();
             $table->string('updated_by')->nullable();
             $table->timestamps();

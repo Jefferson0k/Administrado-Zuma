@@ -3,6 +3,10 @@
 namespace App\Models;
 
 use App\Helpers\MoneyConverter;
+use App\Notifications\DepositObserved;
+use App\Notifications\InvestorDepositApprovalNotification;
+use App\Notifications\InvestorDepositRejectedNotification;
+use App\Models\Investor;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,7 +29,12 @@ class Deposit extends Model{
         'updated_by',
         'fixed_term_investment_id',
         'property_reservations_id',
-        'conclusion'
+        'conclusion',
+        'comment0',
+        'status_conclusion',
+        'comment',
+    //    'conclusion' --- IGNORE ---
+
     ];
 
     protected $casts = [
@@ -105,4 +114,39 @@ class Deposit extends Model{
             )->getAmount();
         }
     }
+
+    
+    public function attachments()
+    {
+        return $this->hasMany(DepositAttachment::class);
+    }
+
+
+
+    public function sendDepositObservedEmail(?string $message = null, string $stage = 'first'): void
+    {
+        // $stage: 'first' (Primera Validación) | 'second' (Aprobación Final)
+        if ($this->investor && $this->investor->email) {
+            $this->investor->notify(new DepositObserved($this, $message, $stage));
+        }
+    }
+
+
+    public function sendDepositApprovedEmail(): void
+    {
+        // $stage: 'first' (Primera Validación) | 'second' (Aprobación Final)
+        if ($this->investor && $this->investor->email) {
+            $this->investor->notify(new InvestorDepositApprovalNotification($this));
+        }
+    }
+
+
+    public function sendDepositRejecteddEmail(): void
+    {
+        // $stage: 'first' (Primera Validación) | 'second' (Aprobación Final)
+        if ($this->investor && $this->investor->email) {
+            $this->investor->notify(new InvestorDepositRejectedNotification($this));
+        }
+    }
+
 }

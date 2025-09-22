@@ -27,12 +27,13 @@ class InvestorAccountObservedNotification extends Notification
         $dashboardUrl = env('CLIENT_APP_URL', 'http://localhost:5173') . '/dashboard';
 
         return (new MailMessage)
-            ->subject('Cuenta de inversionista observada - ZUMA')
-            ->greeting('Hola ' . $notifiable->name . ',')
-            ->line('Tu cuenta de inversionista ha sido observada.')
-            ->line('Motivo: ' . $this->comment)
-            ->line('Por favor revisa la información y realiza las correcciones necesarias.')
-            ->action('Ir al Dashboard', $dashboardUrl)
-            ->line('Gracias por usar ZUMA.');
+            ->subject('Observación en tu registro de usuario')
+            ->greeting('Hola ' . $notifiable->name)
+            ->line('Tu usuario ha sido observado en el proceso de validación.')
+            ->line('Comentario del validador:')
+            ->line($this->comment)
+            ->line('Por favor ingresa a la plataforma y actualiza la información requerida.')
+            ->action('Acceder a la plataforma', url('/login'))
+            ->line('Gracias por tu atención.');
     }
 }

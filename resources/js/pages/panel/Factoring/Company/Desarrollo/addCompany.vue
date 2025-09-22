@@ -68,6 +68,22 @@
                 </div>
             </div>
 
+            <!-- Nuevo nombre de empresa (nuevonombreempresa) -->
+            <div>
+                <label class="mb-2 block font-bold">Nuevo nombre de empresa</label>
+                <InputText
+                    v-model.trim="empresa.nuevonombreempresa"
+                    placeholder="Nombre alternativo / nuevo nombre"
+                    class="w-full"
+                    maxlength="255"
+                    :class="{ 'p-invalid': serverErrors.nuevonombreempresa }"
+                    :disabled="!rucConsultado"
+                />
+                <small v-if="serverErrors.nuevonombreempresa" class="text-red-500">
+                    {{ serverErrors.nuevonombreempresa[0] }}
+                </small>
+            </div>
+
             <!-- Descripción -->
             <div>
                 <label class="mb-2 block font-bold">Descripción <span class="text-red-500">*</span></label>
@@ -529,6 +545,9 @@ const empresa = ref({
     // moneda: '',
     moneda: 'PEN',
     description: '',
+    // NUEVO: campo opcional para “Nuevo nombre de empresa”
+    nuevonombreempresa: '',
+
     // Campos financieros integrados - estos van al CompanyFinance
     sales_volume_pen: null,
     sales_volume_usd: null,
@@ -640,6 +659,7 @@ function isFormValid() {
     // Validar longitudes
     if (empresa.value.business_name.length > 255) return false;
     if (empresa.value.name.length > 255) return false;
+    if (empresa.value.nuevonombreempresa && empresa.value.nuevonombreempresa.length > 255) return false;
     if (empresa.value.description && empresa.value.description.length > 250) return false;
     if (empresa.value.link_web_page.length > 255) return false;
 
@@ -834,6 +854,8 @@ function resetEmpresa() {
         link_web_page: '',
         moneda: 'PEN',
         description: '',
+        nuevonombreempresa: '',
+
         sales_volume_pen: null,
         sales_volume_usd: null,
         facturas_financiadas_pen: null,
@@ -874,6 +896,8 @@ function loadEmpresaData(data) {
         link_web_page: data.link_web_page,
         moneda: data.moneda,
         description: data.description,
+        nuevonombreempresa: data.nuevonombreempresa || '',
+
         sales_volume_pen: data.sales_PEN,
         sales_volume_usd: data.sales_USD,
         facturas_financiadas_pen: data.facturas_financiadas_pen,

@@ -240,14 +240,14 @@
         </div>
       </Message>
       
-      <!-- Sección de Evidencia Spectro y Comentarios lado a lado -->
+      <!-- Sección de Evidencia Espectro y Comentarios lado a lado -->
       <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        <!-- Evidencia Spectro -->
+        <!-- Evidencia Espectro -->
         <div>
           <h3 class="text-lg font-bold mb-3 text-gray-900 flex items-center gap-2">
             <i class="pi pi-upload text-blue-600"></i>
-            Evidencia Spectro
+            Evidencia Espectro
           </h3>
           
           <!-- Mostrar evidencia existente -->
@@ -412,7 +412,7 @@
               :disabled="loading" />
           </template>
 
-          <!-- Botones de segunda validación (SOLO si primera fue APROBADA Y hay evidencia Spectro) -->
+          <!-- Botones de segunda validación (SOLO si primera fue APROBADA Y hay evidencia Espectro) -->
           <template v-if="canShowSecondValidation">
             <Button label="Aprobar Final" icon="pi pi-check" severity="success" @click="showConfirmDialog('approve2')"
               :disabled="loading" />
@@ -424,7 +424,7 @@
           <div v-if="editableInvestor.approval1_status === 'approved' && !editableInvestor.file_path" 
             class="flex items-center gap-2 mr-4 px-3 py-2 bg-yellow-50 rounded-lg border border-yellow-300">
             <i class="pi pi-exclamation-triangle text-yellow-600"></i>
-            <span class="text-yellow-800 text-sm font-medium">Falta evidencia Spectro para validación final</span>
+            <span class="text-yellow-800 text-sm font-medium">Falta evidencia Espectro para validación final</span>
           </div>
         </template>
 

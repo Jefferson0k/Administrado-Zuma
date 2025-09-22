@@ -119,6 +119,14 @@
                 </template>
             </Column>
 
+            <Column field="newname" header="Nuevo nombre de empresa" sortable style="min-width: 12rem">
+                <template #body="{ data }">
+                    <div class="max-w-xs">
+                        <span class="truncate block font-medium" :title="data.newname">{{ data.nuevonombreempresa }}</span>
+                    </div>
+                </template>
+            </Column>
+
             <Column field="risk" header="Calificación" sortable style="min-width: 6rem">
                 <template #body="{ data }">
                     <Tag :value="getRiskLabel(data.risk)" :severity="getRiskSeverity(data.risk)" class="px-3 py-1 rounded-lg font-bold" />
