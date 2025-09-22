@@ -34,6 +34,7 @@ class Investor extends Authenticatable implements MustVerifyEmail{
         'first_last_name',
         'second_last_name',
         'document',
+        'nacionalidad',
         'alias',
         'email',
         'password',

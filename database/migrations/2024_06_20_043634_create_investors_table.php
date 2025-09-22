@@ -13,6 +13,7 @@ return new class extends Migration {
             $table->string('second_last_name');
             $table->char('document', 15)->comment('DNI, RUC, CARNET DE EXTRANJERIA, PASAPORTE');
             $table->string('alias')->nullable();
+            $table->string('nacionalidad')->nullable();
             $table->string('email')->nullable();
             $table->string('password')->nullable();
             $table->string('telephone')->nullable();
