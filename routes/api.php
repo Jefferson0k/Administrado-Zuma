@@ -96,7 +96,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
 
     Route::get('/subastadas', [PropertyControllers::class, 'subastadas'])->name('property.subastadas');
-    Route::post('/investments/property', [InvestmentControllers::class, 'store'])->name('bids.index');
+    Route::post('/xd/property', [InvestmentControllers::class, 'store'])->name('bids.index');
     Route::get('/inversiones/usuario', [InvestmentControllers::class, 'indexUser']);
     Route::get('/currencies', [CurrencyControllers::class, 'index']);
     Route::get('/deadlines', [DeadlinesControllers::class, 'index']);

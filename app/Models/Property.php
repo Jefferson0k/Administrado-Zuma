@@ -22,23 +22,11 @@ class Property extends Model implements AuditableContract
     protected $table = 'properties';
     public $incrementing = false;
     protected $keyType = 'string';
-
     protected $fillable = [
-        'investor_id',
-        'nombre',
-        'departamento',
-        'provincia',
-        'distrito',
-        'direccion',
-        'descripcion',
-        'valor_estimado',
-        'valor_subasta',
-        'valor_requerido',
-        'currency_id',
-        'estado',
-        'created_by',
-        'updated_by',
-        'deleted_by',
+        'investor_id', 'nombre', 'departamento', 'provincia', 'distrito',
+        'direccion', 'descripcion', 'valor_estimado', 'valor_subasta',
+        'valor_requerido', 'currency_id', 'estado', 'created_by', 
+        'updated_by', 'deleted_by'
     ];
 
     protected $casts = [
