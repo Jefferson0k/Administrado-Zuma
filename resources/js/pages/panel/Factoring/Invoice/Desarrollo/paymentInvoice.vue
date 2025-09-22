@@ -757,11 +757,16 @@ function getAccountStatusSeverity(status) {
 }
 
 function maskAccountNumber(accountNumber) {
-    if (!accountNumber) return '';
-    const str = accountNumber.toString();
-    if (str.length <= 4) return str;
-    return str.slice(0, 4) + '*'.repeat(str.length - 8) + str.slice(-4);
+  if (!accountNumber) return '';
+  const str = String(accountNumber);
+  if (str.length <= 4) {
+    return str;
+  }
+  const visible = str.slice(-4);
+  const masked = '*'.repeat(str.length - 4);
+  return masked + visible;
 }
+
 
 function viewDetails(investment) {
     selectedInvestorId.value = investment.id; // Usar el ID del investment (2), no el investor_id

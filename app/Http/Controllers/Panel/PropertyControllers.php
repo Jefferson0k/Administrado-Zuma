@@ -643,7 +643,7 @@ private function processPropertyImages($request, $property)
                 'property' => $property->fresh()->load('currency'),
                 'property_investor_id' => $propertyInvestor->id,
             ]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             DB::rollBack();
 
             return response()->json([
@@ -920,8 +920,8 @@ private function processPropertyImages($request, $property)
             $sortOrder = strtolower($request->input('sort_order', 'asc')) === 'desc' ? 'desc' : 'asc';
 
             // Resolve table names
-            $pcTable   = (new \App\Models\PropertyConfiguracion)->getTable(); // property_configuracions
-            $propTable = (new \App\Models\Property)->getTable();              // properties
+            $pcTable   = (new PropertyConfiguracion)->getTable(); // property_configuracions
+            $propTable = (new Property)->getTable();              // properties
 
             // UI field -> DB column (whitelist)
             $sortableMap = [
@@ -940,7 +940,7 @@ private function processPropertyImages($request, $property)
                 'updated_at'       => "{$pcTable}.updated_at",
             ];
 
-            $query = \App\Models\PropertyConfiguracion::query()
+            $query = PropertyConfiguracion::query()
                 ->where("{$pcTable}.estado", $estado)
                 ->with(['property.currency', 'plazo']);
 
@@ -984,8 +984,8 @@ private function processPropertyImages($request, $property)
 
             $configuraciones = $query->paginate($perPage);
 
-            return \App\Http\Resources\Subastas\Property\PropertyConfiguracionResource::collection($configuraciones);
-        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            return PropertyConfiguracionResource::collection($configuraciones);
+        } catch (AuthorizationException $e) {
             return response()->json(['message' => 'No tienes permiso para ver las reglas del inmueble.'], 403);
         }
     }

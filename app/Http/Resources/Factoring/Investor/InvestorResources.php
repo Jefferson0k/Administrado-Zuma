@@ -36,13 +36,12 @@ class InvestorResources extends JsonResource
 
             'file_path'          => $this->file_path,
             'approval1_status'   => $this->approval1_status,
-            'approval1_by'       => $this->aprovacionuseruno?->dni,
+            
             'approval1_comment'  => $this->approval1_comment,
             'approval1_at'       => $this->approval1_at
                                         ? Carbon::parse($this->approval1_at)->format('d-m-Y H:i:s A')
                                         : null,
             'approval2_status'   => $this->approval2_status,
-            'approval2_by'       => $this->aprovacionuserdos?->dni,
             'approval2_comment'  => $this->approval2_comment,
             'approval2_at'       => $this->approval2_at
                                         ? Carbon::parse($this->approval2_at)->format('d-m-Y H:i:s A')
@@ -53,6 +52,13 @@ class InvestorResources extends JsonResource
             'creacion'           => $this->created_at
                                         ? Carbon::parse($this->created_at)->format('d-m-Y H:i:s A')
                                         : null,
+            'approval1_by' => $this->aprovacionuseruno
+                    ? $this->aprovacionuseruno->name . ' ' . $this->aprovacionuseruno->apellidos
+                    : null,
+            'approval2_by' => $this->aprovacionuserdos
+                                ? $this->aprovacionuserdos->name . ' ' . $this->aprovacionuserdos->apellidos
+                                : null,
+                            
         ];
     }
 }

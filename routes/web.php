@@ -422,7 +422,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('property-loan-details')->group(function () {
         Route::get('/', [PropertyLoanDetailController::class, 'index']);
         Route::post('/', [PropertyLoanDetailController::class, 'store']);
-        Route::get('/{id}', [PropertyLoanDetailController::class, 'show']);
+        Route::get('/{id}', [PropertyLoanDetailController::class, 'show']); // Cliente
         Route::put('/{id}', [PropertyLoanDetailController::class, 'update']);
         Route::delete('/{id}', [PropertyLoanDetailController::class, 'destroy']);
     });

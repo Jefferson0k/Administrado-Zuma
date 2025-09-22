@@ -128,33 +128,53 @@ class Balance extends Model
     }
     
     // ========================
-    // Money manipulation methods
+    // Money manipulation methods - CORREGIDOS
     // ========================
     public function addAmount(Money $amount): self
     {
         $newAmount = $this->getAmountMoney()->add($amount);
-        $this->attributes['amount'] = $newAmount->getAmount();
+        // ✅ Usar el mutator en lugar de manipular attributes directamente
+        $this->amount = $newAmount;
         return $this;
     }
     
     public function subtractAmount(Money $amount): self
     {
         $newAmount = $this->getAmountMoney()->subtract($amount);
-        $this->attributes['amount'] = $newAmount->getAmount();
+        // ✅ Usar el mutator en lugar de manipular attributes directamente
+        $this->amount = $newAmount;
         return $this;
     }
     
     public function addInvestedAmount(Money $amount): self
     {
         $newAmount = $this->getInvestedAmountMoney()->add($amount);
-        $this->attributes['invested_amount'] = $newAmount->getAmount();
+        // ✅ Usar el mutator en lugar de manipular attributes directamente
+        $this->invested_amount = $newAmount;
         return $this;
     }
     
     public function addExpectedAmount(Money $amount): self
     {
         $newAmount = $this->getExpectedAmountMoney()->add($amount);
-        $this->attributes['expected_amount'] = $newAmount->getAmount();
+        // ✅ Usar el mutator en lugar de manipular attributes directamente
+        $this->expected_amount = $newAmount;
+        return $this;
+    }
+    
+    public function subtractInvestedAmount(Money $amount): self
+    {
+        $newAmount = $this->getInvestedAmountMoney()->subtract($amount);
+        // ✅ Usar el mutator en lugar de manipular attributes directamente
+        $this->invested_amount = $newAmount;
+        return $this;
+    }
+    
+    public function subtractExpectedAmount(Money $amount): self
+    {
+        $newAmount = $this->getExpectedAmountMoney()->subtract($amount);
+        // ✅ Usar el mutator en lugar de manipular attributes directamente
+        $this->expected_amount = $newAmount;
         return $this;
     }
     
@@ -164,15 +184,5 @@ class Balance extends Model
     public function hasEnoughBalance(Money $amount): bool
     {
         return $this->getAmountMoney()->greaterThanOrEqual($amount);
-    }
-    public function subtractInvestedAmount(Money $amount): self{
-        $newAmount = $this->getInvestedAmountMoney()->subtract($amount);
-        $this->attributes['invested_amount'] = $newAmount->getAmount();
-        return $this;
-    }
-    public function subtractExpectedAmount(Money $amount): self{
-        $newAmount = $this->getExpectedAmountMoney()->subtract($amount);
-        $this->attributes['expected_amount'] = $newAmount->getAmount();
-        return $this;
     }
 }

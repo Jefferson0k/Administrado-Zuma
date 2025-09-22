@@ -659,7 +659,7 @@ const actualizarPropiedad = async (tipoUsuario) => {
     }
 }
 const riesgos = [
-    { label: 'A+', value: 'A+' },
+    { label: 'Amas', value: 'Amas' },
     { label: 'A', value: 'A' },
     { label: 'B', value: 'B' },
     { label: 'C', value: 'C' }

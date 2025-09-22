@@ -57,13 +57,13 @@ class UpdateCompanyRequest extends FormRequest
             'facturas_financiadas_pen'    => ['sometimes', 'nullable', 'integer', 'min:0'],
             'monto_total_financiado_pen'  => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'pagadas_pen'                 => ['sometimes', 'nullable', 'integer', 'min:0'],
-            'pendientes_pen'              => ['sometimes', 'nullable', 'integer', 'min:0'],
+            // 'pendientes_pen'              => ['sometimes', 'nullable', 'integer', 'min:0'],
             'plazo_promedio_pago_pen'     => ['sometimes', 'nullable', 'integer', 'min:0'],
 
             'facturas_financiadas_usd'    => ['sometimes', 'nullable', 'integer', 'min:0'],
             'monto_total_financiado_usd'  => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'pagadas_usd'                 => ['sometimes', 'nullable', 'integer', 'min:0'],
-            'pendientes_usd'              => ['sometimes', 'nullable', 'integer', 'min:0'],
+            // 'pendientes_usd'              => ['sometimes', 'nullable', 'integer', 'min:0'],
             'plazo_promedio_pago_usd'     => ['sometimes', 'nullable', 'integer', 'min:0'],
 
             // ✅ NUEVO CAMPO (solo en update)

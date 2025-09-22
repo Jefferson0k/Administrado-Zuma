@@ -5,8 +5,12 @@
             <!-- Mensaje de confirmación -->
             <div class="mb-6 text-center">
                 <i class="pi pi-exclamation-triangle text-orange-500 text-4xl mb-4"></i>
-                <p class="text-xl font-semibold mb-2 text-gray-800">¿Qué acción deseas realizar con esta factura?</p>
-                <p class="text-sm text-gray-600">Tu decisión será registrada en el sistema</p>
+                <p class="text-xl font-semibold mb-2 text-gray-800">
+                    {{ isFacturaInReadOnlyState ? 'Detalles de la Factura' : '¿Qué acción deseas realizar con esta factura?' }}
+                </p>
+                <p class="text-sm text-gray-600">
+                    {{ isFacturaInReadOnlyState ? 'La factura ya ha sido procesada' : 'Tu decisión será registrada en el sistema' }}
+                </p>
             </div>
 
             <!-- Detalles de la factura -->
@@ -63,10 +67,10 @@
             </div>
             
             <!-- Sección de Comentario -->
-            <div v-if="canUserTakeAction" class="border-t pt-6">
+            <div class="border-t pt-6">
                 <h4 class="font-semibold mb-4 flex items-center gap-2">
                     <i class="pi pi-comment"></i>
-                    Comentario {{ isObservacionAction ? '(Requerido para observación)' : '(Opcional)' }}
+                    {{ getCommentSectionTitle() }}
                 </h4>
                 
                 <!-- Comentario estilo Facebook -->
@@ -82,13 +86,15 @@
                             
                             <!-- Área de comentario -->
                             <div class="flex-1">
-                                <div class="bg-gray-50 rounded-2xl px-4 py-3 border border-gray-200 hover:bg-gray-100 transition-colors focus-within:bg-white focus-within:border-blue-300">
+                                <div class="bg-gray-50 rounded-2xl px-4 py-3 border border-gray-200 hover:bg-gray-100 transition-colors focus-within:bg-white focus-within:border-blue-300"
+                                     :class="{ 'bg-gray-100 opacity-60': isFacturaInReadOnlyState }">
                                     <Textarea 
                                         v-model="comentario" 
                                         rows="3" 
                                         class="w-full border-0 bg-transparent resize-none text-sm focus:ring-0 focus:outline-none p-0 placeholder-gray-500"
                                         :placeholder="getCommentPlaceholder()"
                                         :maxlength="300"
+                                        :disabled="isFacturaInReadOnlyState"
                                         ref="textareaRef"
                                     />
                                 </div>
@@ -99,47 +105,24 @@
                                         <i class="pi pi-info-circle"></i>
                                         <span>{{ getActionStepInfo() }}</span>
                                     </div>
-                                    <span class="text-gray-500" :class="{ 'text-red-500': comentario.length > 250 }">
+                                    <span v-if="!isFacturaInReadOnlyState" class="text-gray-500" :class="{ 'text-red-500': comentario.length > 250 }">
                                         {{ comentario.length }}/300
                                     </span>
                                 </div>
 
-                                <!-- Indicador visual del paso -->
-                                <div class="mt-3 p-2 rounded-lg" :class="getCurrentStepIndicatorClass()">
+                                <!-- Información general de acción -->
+                                <div class="mt-3 p-2 rounded-lg" :class="getInfoBoxClass()">
                                     <div class="flex items-center gap-2 text-sm">
                                         <div class="w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-xs" 
-                                             :class="getCurrentStepNumberClass()">
-                                            {{ getCurrentApprovalStep() }}
+                                             :class="getInfoBoxIconClass()">
+                                            <i :class="getInfoBoxIcon()" class="text-xs"></i>
                                         </div>
-                                        <span class="font-medium">{{ getCurrentStepLabel() }}</span>
+                                        <span class="font-medium">{{ getInfoBoxText() }}</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Mensaje de validación si no puede tomar acción -->
-                <div v-if="!canTakeAction && canUserTakeAction" class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <div class="flex gap-3">
-                        <i class="pi pi-exclamation-triangle text-yellow-600 text-lg"></i>
-                        <div class="flex-1">
-                            <div class="text-sm font-medium text-yellow-800 mb-1">
-                                No puedes realizar acciones en este momento
-                            </div>
-                            <p class="text-sm text-yellow-700">
-                                {{ getCannotTakeActionReason() }}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Mensaje si no tiene permisos -->
-            <div v-else class="border-t pt-6">
-                <div class="p-4 bg-gray-50 border border-gray-200 rounded-lg text-center">
-                    <i class="pi pi-lock text-gray-400 text-2xl mb-2"></i>
-                    <p class="text-sm text-gray-600">No tienes permisos para realizar acciones sobre esta factura</p>
                 </div>
             </div>
         </div>
@@ -148,24 +131,26 @@
         <template #footer>
             <div class="flex justify-between items-center w-full">
                 <div class="text-sm text-gray-600">
-                    <i v-if="facturaData?.status === 'active'" class="pi pi-check-circle text-green-500 mr-1"></i>
-                    <i v-else-if="facturaData?.status === 'inactive'" class="pi pi-clock text-gray-500 mr-1"></i>
-                    <i v-else-if="facturaData?.status === 'expired'" class="pi pi-exclamation-circle text-orange-500 mr-1"></i>
-                    <i v-else-if="facturaData?.status === 'judicialized'" class="pi pi-ban text-red-500 mr-1"></i>
-                    <i v-else-if="facturaData?.status === 'reprogramed'" class="pi pi-calendar text-blue-500 mr-1"></i>
-                    <i v-else-if="facturaData?.status === 'paid'" class="pi pi-check text-green-600 mr-1"></i>
-                    <i v-else-if="facturaData?.status === 'canceled'" class="pi pi-times-circle text-red-500 mr-1"></i>
-                    <i v-else-if="facturaData?.status === 'daStandby'" class="pi pi-pause text-yellow-500 mr-1"></i>
-                    <i v-else-if="facturaData?.status === 'observed'" class="pi pi-eye text-orange-600 mr-1"></i>
+                    <i v-if="facturaData?.estado === 'active'" class="pi pi-check-circle text-green-500 mr-1"></i>
+                    <i v-else-if="facturaData?.estado === 'inactive'" class="pi pi-clock text-gray-500 mr-1"></i>
+                    <i v-else-if="facturaData?.estado === 'expired'" class="pi pi-exclamation-circle text-orange-500 mr-1"></i>
+                    <i v-else-if="facturaData?.estado === 'judicialized'" class="pi pi-ban text-red-500 mr-1"></i>
+                    <i v-else-if="facturaData?.estado === 'reprogramed'" class="pi pi-calendar text-blue-500 mr-1"></i>
+                    <i v-else-if="facturaData?.estado === 'paid'" class="pi pi-check text-green-600 mr-1"></i>
+                    <i v-else-if="facturaData?.estado === 'canceled'" class="pi pi-times-circle text-red-500 mr-1"></i>
+                    <i v-else-if="facturaData?.estado === 'daStandby'" class="pi pi-pause text-yellow-500 mr-1"></i>
+                    <i v-else-if="facturaData?.PrimerStado === 'observed'" class="pi pi-eye text-orange-600 mr-1"></i>
+                    <i v-else-if="facturaData?.PrimerStado === 'rejected'" class="pi pi-times-circle text-red-600 mr-1"></i>
+                    <i v-else-if="facturaData?.estado === 'annulled'" class="pi pi-times-circle text-gray-500 mr-1"></i>
                     
-                    <span :class="getStatusTextClass(facturaData?.status)">
-                        {{ getStatusLabel(facturaData?.status) }}
+                    <span :class="getStatusTextClass()">
+                        {{ getStatusLabel() }}
                     </span>
                 </div>
                 
                 <div class="flex gap-2">
                     <Button 
-                        label="Cancelar" 
+                        label="Cerrar" 
                         severity="secondary" 
                         text 
                         @click="onCancel" 
@@ -173,41 +158,40 @@
                         icon="pi pi-times"
                     />
                     
-                    <!-- Botón de Observación -->
-                    <Button 
-                        v-if="canTakeAction && canUserTakeAction"
-                        label="Observar"
-                        @click="onObservar" 
-                        :loading="loading && actionType === 'observe'" 
-                        :disabled="!canTakeActionForObservacion"
-                        icon="pi pi-eye" 
-                        severity="warning"
-                        class="px-4"
-                    />
-                    
-                    <!-- Botón de Rechazo -->
-                    <Button 
-                        v-if="canTakeAction && canUserTakeAction"
-                        label="Rechazar"
-                        @click="onReject" 
-                        :loading="loading && actionType === 'reject'" 
-                        :disabled="!canTakeActionOptional"
-                        icon="pi pi-times" 
-                        severity="danger"
-                        class="px-4"
-                    />
-                    
-                    <!-- Botón de Aprobación -->
-                    <Button 
-                        v-if="canTakeAction && canUserTakeAction"
-                        :label="getApproveButtonLabel()"
-                        @click="onApprove" 
-                        :loading="loading && actionType === 'approve'" 
-                        :disabled="!canTakeActionOptional"
-                        icon="pi pi-check" 
-                        severity="success"
-                        class="px-4"
-                    />
+                    <!-- Botones de acción - Solo se muestran si la factura NO está en estado readonly -->
+                    <template v-if="!isFacturaInReadOnlyState">
+                        <!-- Botón de Observación -->
+                        <Button 
+                            label="Observar"
+                            @click="onObservar" 
+                            :loading="loading && actionType === 'observe'" 
+                            :disabled="isObservacionAction && !comentario.trim()"
+                            icon="pi pi-eye" 
+                            severity="warn"
+                            class="px-4"
+                        />
+                        
+                        <!-- Botón de Rechazo -->
+                        <Button 
+                            label="Rechazar"
+                            @click="onReject" 
+                            :loading="loading && actionType === 'reject'" 
+                            :disabled="isRechazoAction && !comentario.trim()"
+                            icon="pi pi-times" 
+                            severity="danger"
+                            class="px-4"
+                        />
+                        
+                        <!-- Botón de Aprobación -->
+                        <Button 
+                            label="Aprobar"
+                            @click="onApprove" 
+                            :loading="loading && actionType === 'approve'" 
+                            icon="pi pi-check" 
+                            severity="success"
+                            class="px-4"
+                        />
+                    </template>
                 </div>
             </div>
         </template>
@@ -247,46 +231,18 @@ const comentario = ref('');
 const textareaRef = ref(null);
 const actionType = ref(''); // 'approve', 'reject', 'observe'
 
-// Computed
-const canUserTakeAction = computed(() => {
-    // Aquí deberías verificar si el usuario tiene permisos para aprobar/rechazar/observar
-    return true; // Placeholder - implementar según tu lógica de permisos
-});
-
-const canTakeAction = computed(() => {
-    if (!facturaData.value || !canUserTakeAction.value) return false;
-    
-    const { PrimerStado, SegundaStado, status } = facturaData.value;
-    
-    // No puede tomar acción si ya está en ciertos estados finales
-    if (['active', 'paid', 'canceled'].includes(status)) return false;
-    
-    const userId = getCurrentUserId();
-    
-    // Puede tomar acción si está en estados que permiten modificación
-    return PrimerStado === 'pending' || 
-           (PrimerStado === 'approved' && SegundaStado === 'pending' && !hasUserAlreadyApproved(userId));
-});
-
+// Computed properties
 const isObservacionAction = computed(() => {
     return actionType.value === 'observe';
 });
 
-// Para observación: comentario es requerido
-const canTakeActionForObservacion = computed(() => {
-    return canTakeAction.value && comentario.value.trim().length > 0;
+const isRechazoAction = computed(() => {
+    return actionType.value === 'reject';
 });
 
-// Para aprobar/rechazar: comentario es opcional
-const canTakeActionOptional = computed(() => {
-    return canTakeAction.value;
-});
-
-const isWaitingForApprovals = computed(() => {
+const isFacturaInReadOnlyState = computed(() => {
     if (!facturaData.value) return false;
-    const { status } = facturaData.value;
-    return !['active', 'paid', 'canceled'].includes(status) && 
-           (facturaData.value.PrimerStado === 'pending' || facturaData.value.SegundaStado === 'pending');
+    return facturaData.value.PrimerStado === 'observed' || facturaData.value.PrimerStado === 'rejected';
 });
 
 // Watchers
@@ -308,16 +264,6 @@ const resetForm = () => {
     actionType.value = '';
 };
 
-const getCurrentUserId = () => {
-    // Implementa aquí la lógica para obtener el ID del usuario actual
-    return 1; // Placeholder
-};
-
-const hasUserAlreadyApproved = (userId) => {
-    // Implementa la lógica para verificar si el usuario ya aprobó
-    return false; // Placeholder
-};
-
 const fetchFacturaData = async () => {
     if (!props.facturaId) return;
 
@@ -325,6 +271,11 @@ const fetchFacturaData = async () => {
         loading.value = true;
         const response = await axios.get(`/invoices/${props.facturaId}`);
         facturaData.value = response.data?.data || null;
+        
+        // Si la factura está en estado readonly, cargar el comentario existente
+        if (isFacturaInReadOnlyState.value && facturaData.value?.approval1_comment) {
+            comentario.value = facturaData.value.approval1_comment;
+        }
     } catch (error) {
         console.error('Error al cargar datos de la factura:', error);
         toast.add({
@@ -340,13 +291,14 @@ const fetchFacturaData = async () => {
 };
 
 const onApprove = async () => {
-    if (!props.facturaId || !canTakeActionOptional.value) return;
+    if (!props.facturaId) return;
 
     try {
         loading.value = true;
         actionType.value = 'approve';
 
         const payload = {};
+        
         if (comentario.value.trim()) {
             payload.comment = comentario.value.trim();
         }
@@ -374,16 +326,23 @@ const onApprove = async () => {
 };
 
 const onReject = async () => {
-    if (!props.facturaId || !canTakeActionOptional.value) return;
+    if (!props.facturaId || !comentario.value.trim()) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Comentario requerido',
+            detail: 'Debes agregar un comentario para rechazar la factura',
+            life: 5000
+        });
+        return;
+    }
 
     try {
         loading.value = true;
         actionType.value = 'reject';
 
-        const payload = {};
-        if (comentario.value.trim()) {
-            payload.comment = comentario.value.trim();
-        }
+        const payload = {
+            comment: comentario.value.trim()
+        };
 
         const response = await axios.patch(`/invoices/${props.facturaId}/rechazar`, payload);
 
@@ -408,7 +367,15 @@ const onReject = async () => {
 };
 
 const onObservar = async () => {
-    if (!props.facturaId || !canTakeActionForObservacion.value) return;
+    if (!props.facturaId || !comentario.value.trim()) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Comentario requerido',
+            detail: 'Debes agregar un comentario para observar la factura',
+            life: 5000
+        });
+        return;
+    }
 
     try {
         loading.value = true;
@@ -462,92 +429,121 @@ const onHide = () => {
     }
 };
 
-const getCurrentApprovalStep = () => {
-    if (!facturaData.value) return '';
-    return facturaData.value.PrimerStado === 'pending' ? '1' : '2';
-};
-
-const getCurrentStepLabel = () => {
-    if (!facturaData.value) return '';
-    return facturaData.value.PrimerStado === 'pending' ? 'Primera Aprobación' : 'Segunda Aprobación';
-};
-
-const getCurrentStepIndicatorClass = () => {
-    if (!facturaData.value) return '';
-    return facturaData.value.PrimerStado === 'pending' ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200';
-};
-
-const getCurrentStepNumberClass = () => {
-    if (!facturaData.value) return '';
-    return facturaData.value.PrimerStado === 'pending' ? 'bg-blue-500' : 'bg-green-500';
+const getCommentSectionTitle = () => {
+    if (isFacturaInReadOnlyState.value) {
+        return 'Comentario registrado';
+    }
+    
+    if (isObservacionAction.value || isRechazoAction.value) {
+        return 'Comentario (Requerido)';
+    }
+    
+    return 'Comentario';
 };
 
 const getCommentPlaceholder = () => {
-    if (!facturaData.value) return 'Escribe tu comentario...';
+    if (isFacturaInReadOnlyState.value) {
+        return 'Comentario registrado en el sistema';
+    }
     
     if (isObservacionAction.value) {
         return 'Describe la observación que deseas realizar (requerido)...';
     }
     
-    return facturaData.value.PrimerStado === 'pending' 
-        ? 'Escribe tu comentario para la primera aprobación/rechazo (opcional)...' 
-        : 'Escribe tu comentario para la segunda aprobación/rechazo (opcional)...';
+    if (isRechazoAction.value) {
+        return 'Describe el motivo del rechazo (requerido)...';
+    }
+    
+    return 'Escribe tu comentario...';
 };
 
 const getActionStepInfo = () => {
-    if (!facturaData.value) return '';
+    if (isFacturaInReadOnlyState.value) {
+        const estado = facturaData.value?.PrimerStado;
+        if (estado === 'observed') {
+            return 'Esta factura ha sido marcada como observada';
+        }
+        if (estado === 'rejected') {
+            return 'Esta factura ha sido rechazada';
+        }
+        return 'Esta factura ya ha sido procesada';
+    }
     
     if (isObservacionAction.value) {
         return 'La observación cambiará el estado de la factura y requerirá revisión';
     }
     
-    return facturaData.value.PrimerStado === 'pending' 
-        ? 'Tu comentario será registrado con tu decisión sobre la primera aprobación' 
-        : 'Tu comentario será registrado con tu decisión sobre la segunda aprobación';
+    if (isRechazoAction.value) {
+        return 'El rechazo cambiará el estado de la factura permanentemente';
+    }
+    
+    return 'Tu comentario será registrado con tu decisión sobre la factura';
 };
 
-const getApproveButtonLabel = () => {
-    if (!facturaData.value) return 'Aprobar';
-    return facturaData.value.PrimerStado === 'pending' ? 'Aprobar' : 'Segunda Aprobación';
+const getInfoBoxClass = () => {
+    if (isFacturaInReadOnlyState.value) {
+        const estado = facturaData.value?.PrimerStado;
+        if (estado === 'observed') {
+            return 'bg-orange-50 border border-orange-200';
+        }
+        if (estado === 'rejected') {
+            return 'bg-red-50 border border-red-200';
+        }
+    }
+    return 'bg-blue-50 border border-blue-200';
 };
 
-const getCannotTakeActionReason = () => {
+const getInfoBoxIconClass = () => {
+    if (isFacturaInReadOnlyState.value) {
+        const estado = facturaData.value?.PrimerStado;
+        if (estado === 'observed') {
+            return 'bg-orange-500';
+        }
+        if (estado === 'rejected') {
+            return 'bg-red-500';
+        }
+    }
+    return 'bg-blue-500';
+};
+
+const getInfoBoxIcon = () => {
+    if (isFacturaInReadOnlyState.value) {
+        const estado = facturaData.value?.PrimerStado;
+        if (estado === 'observed') {
+            return 'pi pi-eye';
+        }
+        if (estado === 'rejected') {
+            return 'pi pi-times';
+        }
+    }
+    return 'pi pi-user';
+};
+
+const getInfoBoxText = () => {
+    if (isFacturaInReadOnlyState.value) {
+        const estado = facturaData.value?.PrimerStado;
+        if (estado === 'observed') {
+            return 'Factura Observada';
+        }
+        if (estado === 'rejected') {
+            return 'Factura Rechazada';
+        }
+    }
+    return 'Acción de Usuario';
+};
+
+const getStatusLabel = () => {
     if (!facturaData.value) return '';
     
-    const { PrimerStado, SegundaStado, status } = facturaData.value;
-    
-    if (status === 'active') {
-        return 'Esta factura ya ha sido activada.';
+    // Prioridad al PrimerStado si existe
+    if (facturaData.value.PrimerStado === 'observed') {
+        return 'Observada';
+    }
+    if (facturaData.value.PrimerStado === 'rejected') {
+        return 'Rechazada';
     }
     
-    if (['paid', 'canceled'].includes(status)) {
-        return `Esta factura ya ha sido ${status === 'paid' ? 'pagada' : 'cancelada'}.`;
-    }
-    
-    if (PrimerStado === 'approved' && SegundaStado === 'approved') {
-        return 'Esta factura ya ha sido completamente aprobada.';
-    }
-    
-    if (hasUserAlreadyApproved(getCurrentUserId())) {
-        return 'Ya realizaste una acción sobre esta factura. No puedes realizar ambas aprobaciones.';
-    }
-    
-    return 'No cumples los requisitos para realizar acciones sobre esta factura.';
-};
-
-const getWaitingMessage = () => {
-    if (!facturaData.value) return '';
-    
-    if (facturaData.value.PrimerStado === 'pending') {
-        return 'Esperando primera aprobación';
-    }
-    if (facturaData.value.SegundaStado === 'pending') {
-        return 'Esperando segunda aprobación';
-    }
-    return '';
-};
-
-const getStatusLabel = (status) => {
+    // Si no hay PrimerStado, usar el estado normal
     const statusLabels = {
         'inactive': 'Inactiva',
         'active': 'Activa',
@@ -557,12 +553,23 @@ const getStatusLabel = (status) => {
         'paid': 'Pagada',
         'canceled': 'Cancelada',
         'daStandby': 'En Espera DA',
-        'observed': 'Observada'
+        'annulled': 'Anulada'
     };
-    return statusLabels[status] || status;
+    return statusLabels[facturaData.value.estado] || facturaData.value.estado;
 };
 
-const getStatusTextClass = (status) => {
+const getStatusTextClass = () => {
+    if (!facturaData.value) return 'text-gray-600';
+    
+    // Prioridad al PrimerStado si existe
+    if (facturaData.value.PrimerStado === 'observed') {
+        return 'text-orange-600 font-medium';
+    }
+    if (facturaData.value.PrimerStado === 'rejected') {
+        return 'text-red-600 font-medium';
+    }
+    
+    // Si no hay PrimerStado, usar el estado normal
     const statusClasses = {
         'inactive': 'text-gray-600 font-medium',
         'active': 'text-green-600 font-medium',
@@ -572,12 +579,11 @@ const getStatusTextClass = (status) => {
         'paid': 'text-green-700 font-medium',
         'canceled': 'text-red-600 font-medium',
         'daStandby': 'text-yellow-600 font-medium',
-        'observed': 'text-orange-600 font-medium'
+        'annulled': 'text-gray-500 font-medium'
     };
-    return statusClasses[status] || 'text-gray-600';
+    return statusClasses[facturaData.value.estado] || 'text-gray-600';
 };
 
-// Utility functions
 const formatCurrency = (value, moneda) => {
     if (!value) return '';
     const number = parseFloat(value);

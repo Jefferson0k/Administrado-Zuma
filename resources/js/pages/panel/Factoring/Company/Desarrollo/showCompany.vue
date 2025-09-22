@@ -117,12 +117,12 @@
                             </div>
                         </div>
                         
-                        <div>
+                        <!-- <div>
                             <label class="block font-medium mb-1">Facturas Pendientes</label>
                             <div class="p-3 bg-white rounded font-mono">
                                 {{ company.finances?.pendientes_pen !== null && company.finances?.pendientes_pen !== undefined ? formatNumber(company.finances.pendientes_pen) : 'N/A' }}
                             </div>
-                        </div>
+                        </div> -->
                         
                         <div>
                             <label class="block font-medium mb-1">Plazo Pago (días)</label>
@@ -158,12 +158,12 @@
                             </div>
                         </div>
                         
-                        <div>
+                        <!-- <div>
                             <label class="block font-medium mb-1">Facturas Pendientes</label>
                             <div class="p-3 bg-white rounded font-mono">
                                 {{ company.finances?.pendientes_usd !== null && company.finances?.pendientes_usd !== undefined ? formatNumber(company.finances.pendientes_usd) : 'N/A' }}
                             </div>
-                        </div>
+                        </div> -->
                         
                         <div>
                             <label class="block font-medium mb-1">Plazo Pago (días)</label>
@@ -206,12 +206,12 @@ interface Company {
         facturas_financiadas_pen?: number;
         monto_total_financiado_pen?: string;
         pagadas_pen?: number;
-        pendientes_pen?: number;
+        // pendientes_pen?: number;
         plazo_promedio_pago_pen?: number;
         facturas_financiadas_usd?: number;
         monto_total_financiado_usd?: string;
         pagadas_usd?: number;
-        pendientes_usd?: number;
+        // pendientes_usd?: number;
         plazo_promedio_pago_usd?: number;
     };
 }

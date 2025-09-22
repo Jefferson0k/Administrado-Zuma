@@ -33,15 +33,15 @@ class CompanyResource extends JsonResource
                 return [
                     'facturas_financiadas_pen' => $this->finances->facturas_financiadas_pen,
                     'monto_total_financiado_pen' => $this->finances->monto_total_financiado_pen,
-                    'pagadas_pen' => $this->finances->pagadas_pen,
-                    'pendientes_pen' => $this->finances->pendientes_pen,
+                    // 'pagadas_pen' => $this->finances->pagadas_pen,
+                    // 'pendientes_pen' => $this->finances->pendientes_pen,
                     'plazo_promedio_pago_pen' => $this->finances->plazo_promedio_pago_pen,
 
                     #NOtas
                     'facturas_financiadas_usd' => $this->finances->facturas_financiadas_usd,
                     'monto_total_financiado_usd' => $this->finances->monto_total_financiado_usd,
                     'pagadas_usd' => $this->finances->pagadas_usd,
-                    'pendientes_usd' => $this->finances->pendientes_usd,
+                    // 'pendientes_usd' => $this->finances->pendientes_usd,
                     'plazo_promedio_pago_usd' => $this->finances->plazo_promedio_pago_usd,
                 ];
             }),

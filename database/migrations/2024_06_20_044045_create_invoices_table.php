@@ -23,15 +23,22 @@ return new class extends Migration
             $table->enum('status', [
                 'inactive',
                 'active',
-                'expired',
-                'judicialized',
-                'reprogramed',
-                'paid',
-                'canceled',
-                'daStandby',
+                'rejected',
                 'observed',
-                'annulled'
+                'daStandby'
             ])->default('inactive');
+
+            $table->enum('statusPago', [
+                'paid',
+                'reprogramed',
+            ])->nullable();
+
+            $table->enum('type', [
+                'normal',
+                'annulled',
+                'reprogramed',
+            ])->nullable();
+
 
             $table->foreignUlid('company_id')->constrained();
 
@@ -40,12 +47,12 @@ return new class extends Migration
             $table->char('RUC_client', 20)->nullable();
 
             // --- Aprobaciones ---
-            $table->enum('approval1_status', ['approved', 'rejected'])->nullable();
+            $table->enum('approval1_status', ['approved', 'rejected', 'observed'])->nullable();
             $table->foreignId('approval1_by')->nullable()->constrained('users')->nullOnDelete();
             $table->text('approval1_comment')->nullable();
             $table->timestamp('approval1_at')->nullable();
             
-            $table->enum('approval2_status', ['approved', 'rejected'])->nullable();
+            $table->enum('approval2_status', ['approved', 'rejected', 'observed'])->nullable();
             $table->foreignId('approval2_by')->nullable()->constrained('users')->nullOnDelete();
             $table->text('approval2_comment')->nullable();
             $table->timestamp('approval2_at')->nullable();

@@ -21,8 +21,7 @@ class StorePropertyLoanDetailRequests extends FormRequest
             'empresa_tasadora' => ['nullable', 'string', 'max:150'],
             'motivo_prestamo' => ['nullable', 'string', 'max:300'],
             'descripcion_financiamiento' => ['nullable', 'string', 'max:500'],
-
-            // === Nuevos campos ===
+            'solicitud_prestamo_para' => ['nullable', 'string', 'max:500'],
             'monto_tasacion' => ['nullable', 'integer', 'min:0'],
             'porcentaje_prestamo' => ['nullable', 'integer', 'min:0', 'max:100'],
             'monto_invertir' => ['nullable', 'integer', 'min:0'],

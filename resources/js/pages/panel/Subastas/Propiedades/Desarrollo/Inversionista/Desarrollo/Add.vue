@@ -208,7 +208,6 @@
                                         <small class="text-500 float-right mt-2">{{ form.ocupacion_profesion.length }}/200
                                             caracteres</small>
                                     </div>
-
                                     <!-- Motivo del Préstamo -->
                                     <div class="col-12 md:col-6 field">
                                         <label class="font-semibold text-900 mb-3 block text-lg">
@@ -220,7 +219,6 @@
                                         <small class="text-500 float-right mt-2">{{ form.motivo_prestamo.length }}/300
                                             caracteres</small>
                                     </div>
-
                                     <!-- Descripción del Financiamiento -->
                                     <div class="col-12 field">
                                         <label class="font-semibold text-900 mb-3 block text-lg">
@@ -230,6 +228,17 @@
                                             :maxlength="500"
                                             placeholder="Detalla las características del financiamiento solicitado..." />
                                         <small class="text-500 float-right mt-2">{{ form.descripcion_financiamiento.length
+                                        }}/500 caracteres</small>
+                                    </div>
+                                    <!-- Descripción del Financiamiento -->
+                                    <div class="col-12 field">
+                                        <label class="font-semibold text-900 mb-3 block text-lg">
+                                            Sobre la garantia <span class="text-red-500">*</span>
+                                        </label>
+                                        <Textarea v-model="form.solicitud_prestamo_para" autoResize rows="4" class="w-full"
+                                            :maxlength="500"
+                                            placeholder="Detalla las características del financiamiento solicitado..." />
+                                        <small class="text-500 float-right mt-2">{{ form.solicitud_prestamo_para.length
                                         }}/500 caracteres</small>
                                     </div>
                                 </div>
@@ -335,6 +344,16 @@
                                     </div>
                                 </div>
 
+                                <div class="mb-4">
+                                    <div class="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 border-round-lg border-2 border-indigo-200">
+                                        <h6 class="font-bold text-900 mb-3 flex align-items-center gap-2">
+                                            <i class="pi pi-file-edit text-indigo-600"></i>
+                                            Sobre la garantia
+                                        </h6>
+                                        <div class="text-900">{{ form.solicitud_prestamo_para }}</div>
+                                    </div>
+                                </div>
+
                                 <!-- Confirmación Final -->
                                 <div class="p-4 bg-gradient-to-r from-orange-50 to-yellow-50 border-round-lg border-2 border-orange-200 mt-4">
                                     <div class="flex align-items-center gap-3">
@@ -412,7 +431,8 @@ const form = ref({
     monto_invertir: null,
     monto_prestamo: null,
     motivo_prestamo: '',
-    descripcion_financiamiento: ''
+    descripcion_financiamiento: '',
+    solicitud_prestamo_para: '',
 })
 
 // Watch para recalcular automáticamente cuando cambien los valores o la propiedad
@@ -455,7 +475,8 @@ const puedeAvanzar = computed(() => {
         case 2: 
             return form.value.ocupacion_profesion.trim() &&
                    form.value.motivo_prestamo.trim() &&
-                   form.value.descripcion_financiamiento.trim()
+                   form.value.descripcion_financiamiento.trim() &&
+                   form.value.solicitud_prestamo_para.trim()
         default: 
             return true
     }
@@ -470,7 +491,8 @@ const formularioCompleto = computed(() => {
         form.value.monto_invertir &&
         form.value.monto_prestamo &&
         form.value.motivo_prestamo.trim() &&
-        form.value.descripcion_financiamiento.trim()
+        form.value.descripcion_financiamiento.trim() &&
+        form.value.solicitud_prestamo_para
 })
 
 const calcularMontos = () => {
@@ -662,7 +684,8 @@ const resetForm = () => {
         monto_invertir: null,
         monto_prestamo: null,
         motivo_prestamo: '',
-        descripcion_financiamiento: ''
+        descripcion_financiamiento: '',
+        solicitud_prestamo_para: '',
     }
     propiedadSeleccionada.value = null
     clienteVinculado.value = null

@@ -26,13 +26,14 @@ class Investment extends Model{
         'operation_number',
         'receipt_path',
         'comment',
-        'movement_reembloso'
+        'movement_reembloso',
+        'auction_id',
+        'property_id',
+        'fecha_inversion',
+        'company_risk_at_investment'
     ];
     public function investor(){
         return $this->belongsTo(Investor::class);
-    }
-    public function property(){
-        return $this->belongsTo(Property::class);
     }
     public function invoice(){
         return $this->belongsTo(Invoice::class);
@@ -53,6 +54,9 @@ class Investment extends Model{
     public function movement(){
         return $this->belongsTo(Movement::class);
     }
+    public function property(){
+    return $this->belongsTo(Property::class);
+}
 
     public function getAmountFormattedAttribute(): string
     {

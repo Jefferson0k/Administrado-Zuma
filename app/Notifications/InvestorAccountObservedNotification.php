@@ -3,7 +3,6 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -11,7 +10,7 @@ class InvestorAccountObservedNotification extends Notification
 {
     use Queueable;
 
-    protected string $comment;
+    protected $comment;
 
     public function __construct(string $comment)
     {
@@ -20,11 +19,13 @@ class InvestorAccountObservedNotification extends Notification
 
     public function via($notifiable)
     {
-        return ['mail'];
+        return ['mail']; // si quieres también puedes añadir 'database'
     }
 
     public function toMail($notifiable)
     {
+        $dashboardUrl = env('CLIENT_APP_URL', 'http://localhost:5173') . '/dashboard';
+
         return (new MailMessage)
             ->subject('Observación en tu registro de usuario')
             ->greeting('Hola ' . $notifiable->name)
@@ -36,4 +37,3 @@ class InvestorAccountObservedNotification extends Notification
             ->line('Gracias por tu atención.');
     }
 }
-

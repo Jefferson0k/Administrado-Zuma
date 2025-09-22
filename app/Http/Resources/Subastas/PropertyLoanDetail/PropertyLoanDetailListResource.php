@@ -28,7 +28,6 @@ class PropertyLoanDetailListResource extends JsonResource{
             'perfil_riesgo' => $this->perfil_riesgo,
             'empresa_tasadora' => $this->empresa_tasadora,
             'config_id' => $this->config_id,
-
             // Datos relacionados con verificaciones adicionales
             'documento' => $investor?->document ?? 'Sin documento',
             'cliente' => $investor 

@@ -165,7 +165,7 @@
         <!-- RUC del Cliente con botón de consulta -->
         <div>
           <label for="RUC_client" class="block font-bold mb-2">
-            RUC del Cliente <span class="text-red-500">*</span>
+            RUC del Proveedor <span class="text-red-500">*</span>
           </label>
           <div class="flex gap-2">
             <InputText id="RUC_client" v-model.trim="factura.RUC_client" maxlength="11" placeholder="11 dígitos"
