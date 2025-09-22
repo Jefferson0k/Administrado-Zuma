@@ -29,7 +29,8 @@ class Investment extends Model{
         'movement_reembloso',
         'auction_id',
         'property_id',
-        'fecha_inversion'
+        'fecha_inversion',
+        'company_risk_at_investment'
     ];
     public function investor(){
         return $this->belongsTo(Investor::class);
