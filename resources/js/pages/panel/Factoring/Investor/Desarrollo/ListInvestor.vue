@@ -54,21 +54,8 @@
     <Column field="alias" header="Alias" sortable style="min-width: 10rem" />
     <Column field="telephone" header="Teléfono" sortable style="min-width: 7rem" />
     <Column field="email" header="Email" sortable style="min-width: 18rem" />
-
-    <!-- Estado principal -->
-    <Column field="status" header="Estado" sortable style="min-width: 6rem">
-      <template #body="slotProps">
-        <Tag
-          v-if="slotProps.data.status"
-          :value="getStatusLabel(slotProps.data.status)"
-          :severity="getStatusSeverity(slotProps.data.status)"
-        />
-        <span v-else class="italic">Sin estado</span>
-      </template>
-    </Column>
-
     <!-- Validación 1 -->
-    <Column field="approval1_status" header="1ª Estado" sortable style="min-width: 7rem">
+    <Column field="approval1_status" header="1ª Aprobador" sortable style="min-width: 9rem">
       <template #body="slotProps">
         <Tag
           v-if="slotProps.data.approval1_status"
@@ -79,7 +66,7 @@
       </template>
     </Column>
 
-    <Column field="approval1_by" header="1ª Usuario" sortable style="min-width: 8rem">
+    <Column field="approval1_by" header="1ª User Aprobador" sortable style="min-width: 15rem">
       <template #body="slotProps">
         <span :class="!slotProps.data.approval1_by ? 'italic' : ''">
           {{ slotProps.data.approval1_by || 'Sin usuario' }}
@@ -87,7 +74,7 @@
       </template>
     </Column>
 
-    <Column field="approval1_at" header="T. 1ª Aprobación" sortable style="min-width: 13rem">
+    <Column field="approval1_at" header="T. 1ª Aprobador" sortable style="min-width: 13rem">
       <template #body="slotProps">
         <span :class="!slotProps.data.approval1_at ? 'italic' : ''">
           {{ slotProps.data.approval1_at || 'Sin fecha' }}
@@ -96,7 +83,7 @@
     </Column>
 
     <!-- Validación 2 -->
-    <Column field="approval2_status" header="2ª Estado" sortable style="min-width: 7rem">
+    <Column field="approval2_status" header="2ª Aprobado" sortable style="min-width: 9rem">
       <template #body="slotProps">
         <Tag
           v-if="slotProps.data.approval2_status"
@@ -107,7 +94,7 @@
       </template>
     </Column>
 
-    <Column field="approval2_by" header="2do Usuario" sortable style="min-width: 8rem">
+    <Column field="approval2_by" header="2º User Aprob" sortable style="min-width: 15rem">
       <template #body="slotProps">
         <span :class="!slotProps.data.approval2_by ? 'italic' : ''">
           {{ slotProps.data.approval2_by || 'Sin usuario' }}
@@ -120,6 +107,17 @@
         <span :class="!slotProps.data.approval2_at ? 'italic' : ''">
           {{ slotProps.data.approval2_at || 'Sin fecha' }}
         </span>
+      </template>
+    </Column>
+    <!-- Estado principal -->
+    <Column field="status" header="Estado Conclusion" sortable style="min-width: 11rem">
+      <template #body="slotProps">
+        <Tag
+          v-if="slotProps.data.status"
+          :value="getStatusLabel(slotProps.data.status)"
+          :severity="getStatusSeverity(slotProps.data.status)"
+        />
+        <span v-else class="italic">Sin estado</span>
       </template>
     </Column>
 

@@ -29,7 +29,7 @@ return new class extends Migration
             $table->string('receipt_path')->nullable();     
             $table->text('comment')->nullable();
 
-            $table->foreignId('property_id')->constrained()->onDelete('cascade');
+            $table->foreignId('property_id')->nullable();
             $table->timestamp('fecha_inversion')->nullable();
             $table->timestamps();
         });

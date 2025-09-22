@@ -69,6 +69,7 @@ class InvoiceResource extends JsonResource{
         $data = [
             'id'                         => $this->id,
             'razonSocial'                => $this->company?->name ?? '',
+            'ruc'                        => $this->company?->document ?? '',
             'codigo'                     => $this->codigo,
             'moneda'                     => $this->currency,
             'montoFactura'               => $this->amount,

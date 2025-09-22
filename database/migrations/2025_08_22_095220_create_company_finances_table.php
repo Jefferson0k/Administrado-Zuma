@@ -24,7 +24,7 @@ return new class extends Migration
             $table->integer('facturas_financiadas_pen')->nullable();
             $table->decimal('monto_total_financiado_pen', 15, 2)->nullable();
             $table->integer('pagadas_pen')->nullable();
-            $table->integer('pendientes_pen')->nullable();
+            // $table->integer('pendientes_pen')->nullable();
             $table->integer('plazo_promedio_pago_pen')->nullable();
 
             // Datos en USD
@@ -32,7 +32,7 @@ return new class extends Migration
             $table->integer('facturas_financiadas_usd')->nullable();
             $table->decimal('monto_total_financiado_usd', 15, 2)->nullable();
             $table->integer('pagadas_usd')->nullable();
-            $table->integer('pendientes_usd')->nullable();
+            // $table->integer('pendientes_usd')->nullable();
             $table->integer('plazo_promedio_pago_usd')->nullable();
 
             // Auditoría
