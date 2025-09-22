@@ -176,8 +176,8 @@ class BankAccountsController extends Controller
             $stored[] = [
                 'id'            => $attachment->id,
                 'original_name' => $attachment->original_name,
-                'url'          => Storage::disk('s3')->temporaryUrl($attachment->path, now()->addMinutes(60)),
-                'download_url' => Storage::disk('s3')->temporaryUrl($attachment->path, now()->addMinutes(60)),
+                'url'           => url('/s3/' . $attachment->path),      // 👈 uses your proxy route
+                'download_url'  => url('/s3/' . $attachment->path),      // 👈 same
                 'mime_type'     => $attachment->mime_type,
                 'size'          => $attachment->size,
             ];
@@ -199,17 +199,44 @@ class BankAccountsController extends Controller
         $validated = $request->validate([
             'status0' => 'required|in:approved,observed,rejected',
             'comment0' => 'nullable|string|max:1000',
+            'notify_message'  => 'nullable|string|max:1000',
         ]);
 
         // ❗ Si intentan aprobar (approved), exigir al menos 1 adjunto
         if ($validated['status0'] === 'approved') {
             // Asegúrate de tener la relación attachments() en el modelo
+
             if (!$account->attachments()->exists()) {
                 return response()->json([
                     'message' => 'Debes adjuntar y subir al menos un archivo antes de aprobar la primera validación.'
                 ], 422);
             }
         }
+
+
+        if ($validated['status0'] === 'rejected') {
+            $account->status_conclusion = 'rejected';
+            try {
+                $account->sendBankAccountRejectionEmail();
+            } catch (\Throwable $e) {
+            }
+        } else {
+            $account->status_conclusion = 'pending';
+        }
+
+
+        if ($validated['status0'] === 'observed') {
+            try {
+                // usa SOLO el mensaje del popup (notify_message), no el comment
+                $messageForClient = $validated['notify_message'] ?? null;
+                if ($messageForClient) {
+                    // requiere el helper en el modelo + la notificación BankAccountObserved
+                    $account->sendBankAccountObservedEmail($messageForClient);
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+
 
         $account->status0 = $validated['status0']; // approved|observed|rejected
         $account->status = 'pending'; // approved|observed|rejected
@@ -236,6 +263,7 @@ class BankAccountsController extends Controller
         $validated = $request->validate([
             'status' => 'required|in:approved,observed,rejected',
             'comment' => 'nullable|string|max:1000',
+            'notify_message'  => 'nullable|string|max:1000',
         ]);
 
         $account->status = $validated['status'];
@@ -246,23 +274,43 @@ class BankAccountsController extends Controller
             $account->status0 = 'pending';
         }
 
+        if (in_array($account->status, ['rejected'], true)) {
+            $account->status_conclusion = 'rejected';
+        } else if (in_array($account->status, ['approved'], true)) {
+            $account->status_conclusion = 'approved';
+        } else {
+            $account->status_conclusion = 'pending';
+        }
+
+
+
         $account->updated_by = Auth::id();
         $account->updated_last_at = now();
 
         $account->save();
 
-        // Notificaciones (si ya las tienes)
-        // if ($account->status === 'approved') {
-        //     try {
-        //         $account->sendBankAccountValidationEmail();
-        //     } catch (\Throwable $e) {
-        //     }
-        // } elseif ($account->status === 'rejected') {
-        //     try {
-        //         $account->sendBankAccountRejectionEmail();
-        //     } catch (\Throwable $e) {
-        //     }
-        // }
+        //Notificaciones (si ya las tienes)
+        if ($account->status === 'approved') {
+            try {
+                $account->sendBankAccountValidationEmail();
+            } catch (\Throwable $e) {
+            }
+        } elseif ($account->status === 'rejected') {
+            try {
+                $account->sendBankAccountRejectionEmail();
+            } catch (\Throwable $e) {
+            }
+        } elseif ($account->status === 'observed') {
+            try {
+                // usa SOLO el mensaje del popup (notify_message), no el comment
+                $messageForClient = $validated['notify_message'] ?? null;
+                if ($messageForClient) {
+                    // requiere el helper en el modelo + la notificación BankAccountObserved
+                    $account->sendBankAccountObservedEmail($messageForClient);
+                }
+            } catch (\Throwable $e) {
+            }
+        }
 
         return new BankAccountResource($account);
     }
@@ -279,8 +327,8 @@ class BankAccountsController extends Controller
             ->map(fn($a) => [
                 'id'            => $a->id,
                 'original_name' => $a->original_name,
-                'url'          => Storage::disk('s3')->temporaryUrl($a->path, now()->addMinutes(60)), // URL presignada (preview)
-                'download_url' => Storage::disk('s3')->temporaryUrl($a->path, now()->addMinutes(60)), // URL presignada (descarga)
+                'url'           => url('/s3/' . $a->path),      // 👈 proxy URL (resolvable)
+                'download_url'  => url('/s3/' . $a->path),      // 👈 proxy URL (resolvable)
                 'mime_type'     => $a->mime_type,
                 'size'          => $a->size,
             ]);

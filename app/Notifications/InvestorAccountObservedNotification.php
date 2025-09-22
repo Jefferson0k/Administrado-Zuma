@@ -26,9 +26,9 @@ class InvestorAccountObservedNotification extends Notification
     public function toMail($notifiable)
     {
         return (new MailMessage)
-            ->subject('Observación en tu registro de cuenta')
+            ->subject('Observación en tu registro de usuario')
             ->greeting('Hola ' . $notifiable->name)
-            ->line('Tu cuenta ha sido observada en el proceso de validación.')
+            ->line('Tu usuario ha sido observado en el proceso de validación.')
             ->line('Comentario del validador:')
             ->line($this->comment)
             ->line('Por favor ingresa a la plataforma y actualiza la información requerida.')

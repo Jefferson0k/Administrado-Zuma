@@ -20,10 +20,16 @@ class BankAccountResource extends JsonResource
             'inversionista' => $this->investor->name . ' ' . $this->investor->first_last_name . ' ' . $this->investor->second_last_name,
             'estado'      => $this->getStatusInSpanish(),
             'estado0'       => $this->getStatus0InSpanish(),
+
+            'estado_conclusion'       => $this->getStatusConclusionInSpanish(),
             'comment0'      => $this->comment0,
             'comment'       => $this->comment,
             'creacion'    => Carbon::parse($this->created_at)->format('d-m-Y H:i:s A'),
             'update'      => Carbon::parse($this->updated_at)->format('d-m-Y H:i:s A'),
+
+            'can_show_conclusion' => (bool) optional($this->investor)->approval1_status
+                && (bool) optional($this->investor)->approval2_status,
+
 
 
             // 1ra validación
@@ -57,6 +63,17 @@ class BankAccountResource extends JsonResource
         return match ($this->status0) {
             'pending'        => 'Pendiente',
             'observed'      => 'Observado',
+            'approved' => 'Aprobado',
+            'rejected'     => 'Rechazado',
+            default        => 'Pendiente',
+        };
+    }
+
+
+    private function getStatusConclusionInSpanish()
+    {
+        return match ($this->status_conclusion) {
+            'pending'        => 'Pendiente',
             'approved' => 'Aprobado',
             'rejected'     => 'Rechazado',
             default        => 'Pendiente',

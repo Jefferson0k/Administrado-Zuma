@@ -68,19 +68,19 @@
                 </div>
             </div>
 
-            <!-- Nuevo nombre de empresa (Field4) -->
+            <!-- Nuevo nombre de empresa (nuevonombreempresa) -->
             <div>
                 <label class="mb-2 block font-bold">Nuevo nombre de empresa</label>
                 <InputText
-                    v-model.trim="empresa.field4"
+                    v-model.trim="empresa.nuevonombreempresa"
                     placeholder="Nombre alternativo / nuevo nombre"
                     class="w-full"
                     maxlength="255"
-                    :class="{ 'p-invalid': serverErrors.field4 }"
+                    :class="{ 'p-invalid': serverErrors.nuevonombreempresa }"
                     :disabled="!rucConsultado"
                 />
-                <small v-if="serverErrors.field4" class="text-red-500">
-                    {{ serverErrors.field4[0] }}
+                <small v-if="serverErrors.nuevonombreempresa" class="text-red-500">
+                    {{ serverErrors.nuevonombreempresa[0] }}
                 </small>
             </div>
 
@@ -536,7 +536,7 @@ const empresa = ref({
     moneda: 'PEN',
     description: '',
     // NUEVO: campo opcional para “Nuevo nombre de empresa”
-    field4: '',
+    nuevonombreempresa: '',
 
     // Campos financieros integrados - estos van al CompanyFinance
     sales_volume_pen: null,
@@ -605,7 +605,7 @@ function isFormValid() {
 
     if (empresa.value.business_name.length > 255) return false;
     if (empresa.value.name.length > 255) return false;
-    if (empresa.value.field4 && empresa.value.field4.length > 255) return false;
+    if (empresa.value.nuevonombreempresa && empresa.value.nuevonombreempresa.length > 255) return false;
     if (empresa.value.description && empresa.value.description.length > 250) return false;
     if (empresa.value.link_web_page.length > 255) return false;
 
@@ -715,7 +715,7 @@ function resetEmpresa() {
         link_web_page: '',
         moneda: 'PEN',
         description: '',
-        field4: '',
+        nuevonombreempresa: '',
 
         sales_volume_pen: null,
         sales_volume_usd: null,
@@ -757,7 +757,7 @@ function loadEmpresaData(data) {
         link_web_page: data.link_web_page,
         moneda: data.moneda,
         description: data.description,
-        field4: data.field4 || '',
+        nuevonombreempresa: data.nuevonombreempresa || '',
 
         sales_volume_pen: data.sales_PEN,
         sales_volume_usd: data.sales_USD,
