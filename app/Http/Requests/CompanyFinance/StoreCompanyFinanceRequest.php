@@ -16,14 +16,14 @@ class StoreCompanyFinanceRequest extends FormRequest{
             'facturas_financiadas_pen' => 'nullable|integer|min:0',
             'monto_total_financiado_pen' => 'nullable|numeric|min:0',
             'pagadas_pen' => 'nullable|integer|min:0',
-            'pendientes_pen' => 'nullable|integer|min:0',
+            // 'pendientes_pen' => 'nullable|integer|min:0',
             'plazo_promedio_pago_pen' => 'nullable|integer|min:0',
 
             'sales_volume_usd' => 'nullable|numeric|min:0',
             'facturas_financiadas_usd' => 'nullable|integer|min:0',
             'monto_total_financiado_usd' => 'nullable|numeric|min:0',
             'pagadas_usd' => 'nullable|integer|min:0',
-            'pendientes_usd' => 'nullable|integer|min:0',
+            // 'pendientes_usd' => 'nullable|integer|min:0',
             'plazo_promedio_pago_usd' => 'nullable|integer|min:0',
         ];
     }

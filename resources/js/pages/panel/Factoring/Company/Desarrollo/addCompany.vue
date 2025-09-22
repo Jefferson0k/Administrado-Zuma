@@ -536,12 +536,12 @@ const empresa = ref({
     monto_total_financiado_pen: null,
     pagadas_pen: null,
     // pendientes_pen: null,
-    pendientes_pen: 0,
+    // pendientes_pen: 0,
     plazo_promedio_pago_pen: null,
     facturas_financiadas_usd: null,
     monto_total_financiado_usd: null,
     pagadas_usd: null,
-    pendientes_usd: null,
+    // pendientes_usd: null,
     plazo_promedio_pago_usd: null,
 });
 
@@ -711,7 +711,7 @@ watch(
             empresa.value.facturas_financiadas_pen = null;
             empresa.value.monto_total_financiado_pen = null;
             empresa.value.pagadas_pen = null;
-            empresa.value.pendientes_pen = null;
+            // empresa.value.pendientes_pen = null;
             empresa.value.plazo_promedio_pago_pen = null;
         }
 
@@ -722,7 +722,7 @@ watch(
             empresa.value.facturas_financiadas_usd = null;
             empresa.value.monto_total_financiado_usd = null;
             empresa.value.pagadas_usd = null;
-            empresa.value.pendientes_usd = null;
+            // empresa.value.pendientes_usd = null;
             empresa.value.plazo_promedio_pago_usd = null;
         }
 
@@ -839,12 +839,12 @@ function resetEmpresa() {
         facturas_financiadas_pen: null,
         monto_total_financiado_pen: null,
         pagadas_pen: null,
-        pendientes_pen: null,
+        // pendientes_pen: null,
         plazo_promedio_pago_pen: null,
         facturas_financiadas_usd: null,
         monto_total_financiado_usd: null,
         pagadas_usd: null,
-        pendientes_usd: null,
+        // pendientes_usd: null,
         plazo_promedio_pago_usd: null,
     };
 }
@@ -879,12 +879,12 @@ function loadEmpresaData(data) {
         facturas_financiadas_pen: data.facturas_financiadas_pen,
         monto_total_financiado_pen: data.monto_total_financiado_pen,
         pagadas_pen: data.pagadas_pen,
-        pendientes_pen: data.pendientes_pen,
+        // pendientes_pen: data.pendientes_pen,
         plazo_promedio_pago_pen: data.plazo_promedio_pago_pen,
         facturas_financiadas_usd: data.facturas_financiadas_usd,
         monto_total_financiado_usd: data.monto_total_financiado_usd,
         pagadas_usd: data.pagadas_usd,
-        pendientes_usd: data.pendientes_usd,
+        // pendientes_usd: data.pendientes_usd,
         plazo_promedio_pago_usd: data.plazo_promedio_pago_usd,
     };
 

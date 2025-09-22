@@ -31,7 +31,7 @@ return new class extends Migration
             $table->enum('statusPago', [
                 'paid',
                 'reprogramed',
-            ])->default('inactive');
+            ])->nullable();
 
             $table->enum('type', [
                 'normal',

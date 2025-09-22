@@ -23,14 +23,14 @@ class CompanyFinance extends Model implements AuditableContract{
         'facturas_financiadas_pen',
         'monto_total_financiado_pen',
         'pagadas_pen',
-        'pendientes_pen',
+        // 'pendientes_pen',
         'plazo_promedio_pago_pen',
 
         'sales_volume_usd',
         'facturas_financiadas_usd',
         'monto_total_financiado_usd',
         'pagadas_usd',
-        'pendientes_usd',
+        // 'pendientes_usd',
         'plazo_promedio_pago_usd',
 
         'created_by',
@@ -98,7 +98,7 @@ class CompanyFinance extends Model implements AuditableContract{
      */
     public function getTotalPendientesAttribute()
     {
-        return ($this->pendientes_pen ?? 0) + ($this->pendientes_usd ?? 0);
+        // return ($this->pendientes_pen ?? 0) + ($this->pendientes_usd ?? 0);
     }
 
     /**

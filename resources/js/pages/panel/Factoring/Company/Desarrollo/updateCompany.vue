@@ -346,10 +346,10 @@
                             <label class="block font-medium mb-1">Facturas Pagadas <span class="text-red-500">*</span></label>
                             <InputNumber v-model="editForm.pagadas_pen" :min="0" placeholder="0" class="w-full" :disabled="true" />
                         </div>
-                        <div>
+                        <!-- <div>
                             <label class="block font-medium mb-1">Facturas Pendientes <span class="text-red-500">*</span></label>
                             <InputNumber v-model="editForm.pendientes_pen" :min="0" placeholder="0" class="w-full" :disabled="true" />
-                        </div>
+                        </div> -->
                         <div>
                             <label class="block font-medium mb-1">Plazo Pago (días) <span class="text-red-500">*</span></label>
                             <InputNumber v-model="editForm.plazo_promedio_pago_pen" :min="0" placeholder="30" class="w-full" :disabled="true" />
@@ -384,10 +384,10 @@
                             <label class="block font-medium mb-1">Facturas Pagadas <span class="text-red-500">*</span></label>
                             <InputNumber v-model="editForm.pagadas_usd" :min="0" placeholder="0" class="w-full" :disabled="true" />
                         </div>
-                        <div>
+                        <!-- <div>
                             <label class="block font-medium mb-1">Facturas Pendientes <span class="text-red-500">*</span></label>
                             <InputNumber v-model="editForm.pendientes_usd" :min="0" placeholder="0" class="w-full" :disabled="true" />
-                        </div>
+                        </div> -->
                         <div>
                             <label class="block font-medium mb-1">Plazo Pago (días) <span class="text-red-500">*</span></label>
                             <InputNumber v-model="editForm.plazo_promedio_pago_usd" :min="0" placeholder="30" class="w-full" :disabled="true" />
@@ -479,12 +479,12 @@ const editForm = ref({
     facturas_financiadas_pen: null,
     monto_total_financiado_pen: null,
     pagadas_pen: null,
-    pendientes_pen: null,
+    // pendientes_pen: null,
     plazo_promedio_pago_pen: null,
     facturas_financiadas_usd: null,
     monto_total_financiado_usd: null,
     pagadas_usd: null,
-    pendientes_usd: null,
+    // pendientes_usd: null,
     plazo_promedio_pago_usd: null
 });
 
@@ -559,7 +559,7 @@ watch(() => editForm.value.moneda, (nuevaMoneda) => {
         editForm.value.facturas_financiadas_pen = null;
         editForm.value.monto_total_financiado_pen = null;
         editForm.value.pagadas_pen = null;
-        editForm.value.pendientes_pen = null;
+        // editForm.value.pendientes_pen = null;
         editForm.value.plazo_promedio_pago_pen = null;
     }
     if (nuevaMoneda !== 'USD' && nuevaMoneda !== 'BOTH') {
@@ -567,7 +567,7 @@ watch(() => editForm.value.moneda, (nuevaMoneda) => {
         editForm.value.facturas_financiadas_usd = null;
         editForm.value.monto_total_financiado_usd = null;
         editForm.value.pagadas_usd = null;
-        editForm.value.pendientes_usd = null;
+        // editForm.value.pendientes_usd = null;
         editForm.value.plazo_promedio_pago_usd = null;
     }
 });
@@ -594,12 +594,12 @@ watch([() => props.visible, () => props.company], ([visible, company]) => {
             facturas_financiadas_pen: company.finances?.facturas_financiadas_pen || null,
             monto_total_financiado_pen: parseFloat(company.finances?.monto_total_financiado_pen) || null,
             pagadas_pen: company.finances?.pagadas_pen || null,
-            pendientes_pen: company.finances?.pendientes_pen || null,
+            // pendientes_pen: company.finances?.pendientes_pen || null,
             plazo_promedio_pago_pen: company.finances?.plazo_promedio_pago_pen || null,
             facturas_financiadas_usd: company.finances?.facturas_financiadas_usd || null,
             monto_total_financiado_usd: parseFloat(company.finances?.monto_total_financiado_usd) || null,
             pagadas_usd: company.finances?.pagadas_usd || null,
-            pendientes_usd: company.finances?.pendientes_usd || null,
+            // pendientes_usd: company.finances?.pendientes_usd || null,
             plazo_promedio_pago_usd: company.finances?.plazo_promedio_pago_usd || null
         };
 

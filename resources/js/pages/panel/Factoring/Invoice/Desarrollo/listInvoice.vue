@@ -493,7 +493,17 @@ onMounted(() => {
       </template>
 
       <Column selectionMode="multiple" style="width: 1rem" :exportable="false" />
-      <Column field="razonSocial" header="RUC Pagador" sortable style="min-width: 20rem" />
+      <Column field="razonSocial" header="Razón Social" sortable style="min-width: 9rem">
+        <template #body="slotProps">
+          <span 
+            class="truncate block max-w-[5rem] cursor-pointer"
+            v-tooltip.top="slotProps.data.razonSocial"
+          >
+            {{ slotProps.data.razonSocial }}
+          </span>
+        </template>
+      </Column>
+      <Column field="ruc" header="Ruc" sortable style="min-width: 7rem" />
       <Column field="codigo" header="Código" sortable style="min-width: 12rem" />
       <Column field="moneda" header="Moneda" sortable style="min-width: 5rem" />
       <Column field="montoFactura" header="M. Factura" sortable style="min-width: 8rem">

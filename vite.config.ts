@@ -35,12 +35,9 @@ export default defineConfig({
     },
     server: {
         host: '0.0.0.0',
-        port: 4000,         // Puerto que deseas usar
-        strictPort: true,   // Si true, falla si 4000 está ocupado
         hmr: {
             host: 'localhost',
         },
         cors: true,
     },
-
 });
