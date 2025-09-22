@@ -46,12 +46,12 @@ class StoreInvestorRequest extends FormRequest
             return $input->tipo_documento_id == 1;
         });
 
-        $validator->sometimes('document', 'digits:20', function ($input) {
+        $validator->sometimes('document', 'digits:11', function ($input) {
             // RUC
             return $input->tipo_documento_id == 2;
         });
 
-        $validator->sometimes('document', 'min:9|max:12', function ($input) {
+        $validator->sometimes('document', 'digits_between:6,20', function ($input) {
             // Carnet de Extranjería
             return $input->tipo_documento_id == 3;
         });
@@ -68,10 +68,9 @@ class StoreInvestorRequest extends FormRequest
             'second_last_name.max' => 'Apellido materno no puede tener más de 255 caracteres.',
 
             'document.required' => 'Documento es obligatorio.',
-            'document.numeric' => 'Documento debe ser numérico.',
+            'document.numeric' => 'El documento debe contener solo números.',
             'document.digits' => 'El documento no tiene la longitud correcta.',
-            'document.min' => 'El Carnet de Extranjería debe tener al menos :min dígitos.',
-            'document.max' => 'El Carnet de Extranjería no puede tener más de :max dígitos.',
+            'document.digits_between' => 'El Carnet de extranjería debe tener entre :min y :max dígitos.',
             'document.unique' => 'Este documento ya se encuentra registrado.',
 
             'tipo_documento_id.required' => 'Debe seleccionar un tipo de documento.',

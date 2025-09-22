@@ -15,23 +15,28 @@ class RegisteredCustomerController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
+            'nacionalidad' => 'required|string|max:255',
             'first_last_name' => 'required|string|max:255',
             'second_last_name' => 'required|string|max:255',
             'document' => [
                 'required',
                 'unique:customers,document',
+                'numeric', // Asegura que solo haya números
                 function ($attribute, $value, $fail) use ($request) {
                     if ($request->tipo_documento_id == 1 && strlen($value) !== 8) {
-                        // 1 = DNI
                         $fail('El DNI debe tener exactamente 8 dígitos.');
                     }
 
-                    if ($request->tipo_documento_id == 2 && (strlen($value) < 9 || strlen($value) > 20)) {
-                        // 2 = Carnet de extranjería
-                        $fail('El Carnet de extranjería debe tener entre 9 y 20 dígitos.');
+                    if ($request->tipo_documento_id == 2 && strlen($value) !== 11) {
+                        $fail('El RUC debe tener exactamente 11 dígitos.');
+                    }
+
+                    if ($request->tipo_documento_id == 3 && (strlen($value) < 6 || strlen($value) > 20)) {
+                        $fail('El Carnet de extranjería debe tener entre 6 y 20 dígitos.');
                     }
                 },
             ],
+
             'email' => 'required|email|unique:customers,email',
             'telephone' => 'required|string|max:15',
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
@@ -39,6 +44,7 @@ class RegisteredCustomerController extends Controller
 
         $customer = Customer::create([
             'name' => $request->name,
+            'nacionalidad' => $request->nacionalidad,
             'first_last_name' => $request->first_last_name,
             'second_last_name' => $request->second_last_name,
             'document' => $request->document,

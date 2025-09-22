@@ -110,6 +110,7 @@ class InvestorController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'nacionalidad' => 'required|string|max:255',
             'first_last_name' => 'required|string|max:255',
             'second_last_name' => 'required|string|max:255',
             'document' => 'required|string|max:20|unique:investors,document',
@@ -187,6 +188,7 @@ class InvestorController extends Controller
             'email' => 'sometimes|email|max:255|unique:investors,email,' . $id,
             'telephone' => 'sometimes|string|max:20',
             'password' => 'nullable|string|min:6|confirmed',
+            'nacionalidad' => 'sometimes|string|max:255',
         ]);
         if (!empty($validated['alias'])) {
             $aliasSlug = Str::slug($validated['alias']);
@@ -248,6 +250,7 @@ class InvestorController extends Controller
                 'alias' => $request->alias,
                 'tipo_documento_id' => $request->tipo_documento_id,
                 'document' => $request->document,
+                'nacionalidad' => $request->nacionalidad,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
                 'telephone' => $request->telephone,
