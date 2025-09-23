@@ -23,11 +23,13 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
+use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
+use OwenIt\Auditing\Auditable;
 use Laravel\Sanctum\HasApiTokens;
 use Money\Money;
 
-class Investor extends Authenticatable implements MustVerifyEmail{
-    use HasApiTokens, HasFactory, Notifiable, HasUlids;
+class Investor extends Authenticatable implements MustVerifyEmail , AuditableContract{
+    use HasApiTokens, HasFactory, Notifiable, HasUlids, Auditable;
     protected $table = 'investors';
     protected $fillable = [
         'name',
@@ -114,6 +116,11 @@ class Investor extends Authenticatable implements MustVerifyEmail{
     public function sendEmailVerificationNotification(){
         $this->notify(new InvestorEmailVerificationNotification());
     }
+    public function deposits()
+    {
+        return $this->hasMany(Deposit::class);
+    }
+    
     public function codigoAsignado(){
         return $this->hasOne(InvestorCode::class);
     }

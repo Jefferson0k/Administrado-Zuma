@@ -24,10 +24,22 @@ return new class extends Migration
             $table->string('resource_path', 2048)->nullable();
             $table->longText('description')->nullable();
             $table->string('purpouse')->nullable();
-
+            $table->enum('status', [
+                'approved', 'rejected', 'observed', 'pending'
+            ])->default('pending');
             $table->foreignUlid('movement_id')->constrained();
             $table->foreignUlid('investor_id')->constrained();
             $table->foreignUlid('bank_account_id')->constrained();
+
+            $table->enum('approval1_status', ['approved', 'rejected', 'observed'])->nullable();
+            $table->foreignId('approval1_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->text('approval1_comment')->nullable();
+            $table->timestamp('approval1_at')->nullable();
+            
+            $table->enum('approval2_status', ['approved', 'rejected', 'observed'])->nullable();
+            $table->foreignId('approval2_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->text('approval2_comment')->nullable();
+            $table->timestamp('approval2_at')->nullable();
 
             $table->string('created_by')->nullable();
             $table->string('updated_by')->nullable();
