@@ -74,7 +74,7 @@
       </template>
     </Column>
 
-    <Column field="approval1_at" header="T. 1ª Aprobador" sortable style="min-width: 13rem">
+    <Column field="approval1_at" header="T. 1º Aprobador" sortable style="min-width: 13rem">
       <template #body="slotProps">
         <span :class="!slotProps.data.approval1_at ? 'italic' : ''">
           {{ slotProps.data.approval1_at || 'Sin fecha' }}
@@ -83,7 +83,7 @@
     </Column>
 
     <!-- Validación 2 -->
-    <Column field="approval2_status" header="2ª Aprobado" sortable style="min-width: 9rem">
+    <Column field="approval2_status" header="2º Aprobador" sortable style="min-width: 9rem">
       <template #body="slotProps">
         <Tag
           v-if="slotProps.data.approval2_status"

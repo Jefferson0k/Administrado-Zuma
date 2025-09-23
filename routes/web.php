@@ -273,6 +273,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('investor.comentarSegunda');
         Route::put('/{id}/observaciones', [InvestorController::class, 'observarPrimeraValidacion'])
             ->name('investor.observaciones');
+
+        Route::put('/{id}/observar-dni-frontal',   [InvestorController::class, 'observarDniFrontal'])
+            ->name('investor.observarDniFrontal');
+        Route::put('/{id}/observar-dni-posterior', [InvestorController::class, 'observarDniPosterior'])
+            ->name('investor.observarDniPosterior');
+        Route::put('/{id}/observar-foto',          [InvestorController::class, 'observarFotoInversionista'])
+            ->name('investor.observarFoto');
+
+        // --- EVIDENCIAS SPECTRO ---
+        Route::post('/{id}/adjuntar-evidencia-spectro', [InvestorController::class, 'uploadSpectroEvidence']);
+        Route::get('/{id}/evidencias-spectro',          [InvestorController::class, 'listSpectroEvidences']);
+        Route::delete('/{id}/evidencias-spectro/{evidenceId}', [InvestorController::class, 'deleteSpectroEvidence'])
+            ->whereNumber('evidenceId');
+
+        // --- EVIDENCIAS PEP ---
+        Route::post('/{id}/adjuntar-evidencia-pep',     [InvestorController::class, 'uploadPepEvidence']);
+        Route::get('/{id}/evidencias-pep',              [InvestorController::class, 'listPepEvidences']);
+        Route::delete('/{id}/evidencias-pep/{evidenceId}', [InvestorController::class, 'deletePepEvidence'])
+            ->whereNumber('evidenceId');
     });
     # COMPANIA -> BACKEND
     Route::prefix('companies')->group(function () {

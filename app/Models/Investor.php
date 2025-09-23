@@ -25,8 +25,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Laravel\Sanctum\HasApiTokens;
 use Money\Money;
+// App\Models\Investor.php
+use Illuminate\Support\Facades\Storage;
 
-class Investor extends Authenticatable implements MustVerifyEmail{
+class Investor extends Authenticatable implements MustVerifyEmail
+{
     use HasApiTokens, HasFactory, Notifiable, HasUlids;
     protected $table = 'investors';
     protected $fillable = [
@@ -77,33 +80,41 @@ class Investor extends Authenticatable implements MustVerifyEmail{
         'is_pep' => 'boolean',
         'has_relationship_pep' => 'boolean',
     ];
-    public function investments(){
+    public function investments()
+    {
         return $this->hasMany(Investment::class);
     }
-    public function aprovacionuseruno() {
+    public function aprovacionuseruno()
+    {
         return $this->belongsTo(User::class, 'approval1_by');
     }
 
-    public function aprovacionuserdos() {
+    public function aprovacionuserdos()
+    {
         return $this->belongsTo(User::class, 'approval2_by');
     }
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
     }
-    public function balances(){
+    public function balances()
+    {
         return $this->hasMany(Balance::class);
     }
-    public function investment(){
+    public function investment()
+    {
         return $this->hasMany(FixedTermInvestment::class);
     }
-    public function lastInvestment(){
+    public function lastInvestment()
+    {
         return $this->hasOne(FixedTermInvestment::class)->latestOfMany();
     }
-    public function propertyStatuses(){
+    public function propertyStatuses()
+    {
         return $this->hasMany(InvestorPropertyStatus::class);
     }
-    public function createBalance(string $currency, int $amount){
+    public function createBalance(string $currency, int $amount)
+    {
         $balance = new Balance();
         $balance->currency = $currency;
         $balance->amount = $amount;
@@ -112,53 +123,52 @@ class Investor extends Authenticatable implements MustVerifyEmail{
 
         return $balance;
     }
-    public function sendEmailVerificationNotification(){
+    public function sendEmailVerificationNotification()
+    {
         $this->notify(new InvestorEmailVerificationNotification());
     }
-    public function codigoAsignado(){
+    public function codigoAsignado()
+    {
         return $this->hasOne(InvestorCode::class);
     }
-    public function bankAccounts(){
+    public function bankAccounts()
+    {
         return $this->hasMany(BankAccount::class);
     }
-    public function movements(){
+    public function movements()
+    {
         return $this->hasMany(Movement::class);
     }
     public function invoices()
     {
         return $this->hasMany(Invoice::class);
     }
-    public function withdraws(){
+    public function withdraws()
+    {
         return $this->hasMany(Withdraw::class);
     }
-    public function avatar(){
+    public function avatar()
+    {
         return $this->hasOne(InvestorAvatar::class);
     }
-    public function getBalance(string $currency): Balance{
+    public function getBalance(string $currency): Balance
+    {
         return $this->balances()->where('currency', $currency)->firstOrFail();
     }
-    public function getProfilePhotoPathRaw(): ?string{
+    public function getProfilePhotoPathRaw(): ?string
+    {
         return $this->attributes['profile_photo_path'];
     }
-    public function getProfilePhotoPathAttribute(): ?string{
+    public function getProfilePhotoPathAttribute(): ?string
+    {
         if (isset($this->attributes['profile_photo_path'])) {
             return env('APP_URL') . '/s3/' . $this->attributes['profile_photo_path'];
         }
         return null;
     }
-    public function getDocumentFrontAttribute(): ?string{
-        if (isset($this->attributes['document_front'])) {
-            return env('APP_URL') . '/s3/' . $this->attributes['document_front'];
-        }
-        return null;
-    }
-    public function getDocumentBackAttribute(): ?string{
-        if (isset($this->attributes['document_back'])) {
-            return env('APP_URL') . '/s3/' . $this->attributes['document_back'];
-        }
-        return null;
-    }
-    public function getInvestorPhotoAttribute(): ?string{
+
+    public function getInvestorPhotoAttribute(): ?string
+    {
         if (isset($this->attributes['investor_photo_path'])) {
             return env('APP_URL') . '/s3/' . $this->attributes['investor_photo_path'];
         }
@@ -182,7 +192,8 @@ class Investor extends Authenticatable implements MustVerifyEmail{
 
         return $movement;
     }
-    public function addBalance(float $amount, Currency $currency){
+    public function addBalance(float $amount, Currency $currency)
+    {
         if (!$currency) throw new \Exception('Currency is required', 400);
         $balance = $this->balances()->where('currency', $currency)->first();
         if (!$balance) throw new \Exception("No existe billetera para {$currency}", 404);
@@ -190,28 +201,36 @@ class Investor extends Authenticatable implements MustVerifyEmail{
         $balance->save();
         return $balance;
     }
-    public function sendBankAccountValidationEmailNotification(BankAccount $bankAccount){
+    public function sendBankAccountValidationEmailNotification(BankAccount $bankAccount)
+    {
         $this->notify(new InvestorAccountActivateNotification($bankAccount));
     }
-    public function sendDepositPendingEmailNotification(Deposit $deposit){
+    public function sendDepositPendingEmailNotification(Deposit $deposit)
+    {
         $this->notify(new InvestorDepositPendingNotification($deposit));
     }
-    public function sendDepositApprovalEmailNotification(Deposit $deposit){
+    public function sendDepositApprovalEmailNotification(Deposit $deposit)
+    {
         $this->notify(new InvestorDepositApprovalNotification($deposit));
     }
-    public function sendDepositRejectedEmailNotification(Deposit $deposit){
+    public function sendDepositRejectedEmailNotification(Deposit $deposit)
+    {
         $this->notify(new InvestorDepositRejectedNotification($deposit));
     }
-    public function sendWithdrawalPendingEmailNotification(Withdraw $withdraw){
+    public function sendWithdrawalPendingEmailNotification(Withdraw $withdraw)
+    {
         $this->notify(new InvestorWithdrawPendingNotification($withdraw));
     }
-    public function sendWithdrawApprovedEmailNotification(Withdraw $withdraw){
+    public function sendWithdrawApprovedEmailNotification(Withdraw $withdraw)
+    {
         $this->notify(new InvestorWithdrawApprovedNotification($withdraw));
     }
-    public function sendInvestmentEmailNotification(Invoice $invoice, Investment $investment, Company $company){
+    public function sendInvestmentEmailNotification(Invoice $invoice, Investment $investment, Company $company)
+    {
         $this->notify(new InvestorInvestedNotification($invoice, $investment, $company));
     }
-    public function sendInvestmentPartialEmailNotification(Payment $payment, Investment $investment, Money $amountToPay){
+    public function sendInvestmentPartialEmailNotification(Payment $payment, Investment $investment, Money $amountToPay)
+    {
         $this->notify(new InvestorPartialPaymentNotification($payment, $investment, $amountToPay));
     }
     public function sendInvestmentFullyPaidEmailNotification(Payment $payment, Investment $investment, Money $netExpectedReturn, Money $itfAmount)
@@ -222,10 +241,12 @@ class Investor extends Authenticatable implements MustVerifyEmail{
     {
         return $this->belongsTo(TipoDocumento::class, 'tipo_documento_id', 'id_tipo_documento');
     }
-    public function sendPasswordResetNotification($token){
+    public function sendPasswordResetNotification($token)
+    {
         $this->notify(new InvestorPasswordResetNotification($token));
     }
-    public function sendAccountRejectedEmailNotification(){
+    public function sendAccountRejectedEmailNotification()
+    {
         $this->notify(new InvestorAccountRejectedNotification());
     }
 
@@ -238,4 +259,36 @@ class Investor extends Authenticatable implements MustVerifyEmail{
         $this->notify(new InvestorAccountObservedNotification($comment));
     }
 
+
+
+    public function getDocumentFrontAttribute($value)
+    {
+        if (!$value) return null;
+        return str_starts_with($value, 'http') ? $value : Storage::disk('s3')->url($value);
+    }
+
+    public function getDocumentBackAttribute($value)
+    {
+        if (!$value) return null;
+        return str_starts_with($value, 'http') ? $value : Storage::disk('s3')->url($value);
+    }
+
+    public function getInvestorPhotoPathAttribute($value)
+    {
+        if (!$value) return null;
+        return str_starts_with($value, 'http') ? $value : Storage::disk('s3')->url($value);
+    }
+
+    // If you added evidence columns to Investor (file_path, pep_file_path) and you want the same behavior:
+    public function getFilePathAttribute($value)
+    {
+        if (!$value) return null;
+        return str_starts_with($value, 'http') ? $value : Storage::disk('s3')->url($value);
+    }
+
+    public function getPepFilePathAttribute($value)
+    {
+        if (!$value) return null;
+        return str_starts_with($value, 'http') ? $value : Storage::disk('s3')->url($value);
+    }
 }
