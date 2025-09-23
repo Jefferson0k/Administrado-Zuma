@@ -1088,7 +1088,7 @@ class InvestorController extends Controller
 
             $investor->update([
                 'document_front' => Storage::path($document_front_path),
-                'updated_by' => Auth::id(),
+                
             ]);
 
             return response()->json([
@@ -1096,6 +1096,12 @@ class InvestorController extends Controller
                 'data' => $investor,
             ], 200);
         } catch (\Exception $e) {
+
+            Log::error('Error al subir documento frontal', [
+                'investor_id' => $id,
+                'exception'  => $e->getMessage(),
+                'trace'      => $e->getTraceAsString(),
+            ]);
             return response()->json([
                 'message' => 'Error al subir documento frontal.',
                 'error' => $e->getMessage(),
@@ -1133,6 +1139,12 @@ class InvestorController extends Controller
                 'data' => $investor,
             ], 200);
         } catch (\Exception $e) {
+
+            Log::error('Error al subir documento frontal', [
+                'investor_id' => $id,
+                'exception'  => $e->getMessage(),
+                'trace'      => $e->getTraceAsString(),
+            ]);
             return response()->json([
                 'message' => 'Error al subir documento posterior.',
                 'error' => $e->getMessage(),
@@ -1162,7 +1174,7 @@ class InvestorController extends Controller
 
             $investor->update([
                 'investor_photo_path' => Storage::path($investor_photo_path),
-                'updated_by' => Auth::id(),
+                
             ]);
 
             return response()->json([
@@ -1170,6 +1182,11 @@ class InvestorController extends Controller
                 'data' => $investor,
             ], 200);
         } catch (\Exception $e) {
+            Log::error('Error al subir documento frontal', [
+                'investor_id' => $id,
+                'exception'  => $e->getMessage(),
+                'trace'      => $e->getTraceAsString(),
+            ]);
             return response()->json([
                 'message' => 'Error al subir foto del inversionista.',
                 'error' => $e->getMessage(),
@@ -1325,7 +1342,7 @@ class InvestorController extends Controller
             return ltrim(substr($norm, 4), '/');
         }
 
-        // Full URL (http://127.0.0.1:9000/mi-bucket/inversores/... )
+        // Full URL
         if (preg_match('#^https?://#i', $norm)) {
             $parts = parse_url($norm);
             if (!empty($parts['path'])) {
@@ -1609,6 +1626,37 @@ class InvestorController extends Controller
                 'success' => false,
                 'message' => 'Error al eliminar evidencia PEP.',
                 'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+    public function aprobarSegundaValidacion(Request $request, $id)
+    {
+        try {
+            $validated = $request->validate([
+                'approval2_comment' => 'nullable|string',
+            ]);
+
+            $investor = Investor::findOrFail($id);
+
+            $investor->update([
+                'approval2_status'  => 'approved',
+                'approval2_by'      => Auth::id(),
+                'approval2_comment' => $validated['approval2_comment'] ?? null,
+                'approval2_at'      => now(),
+                'status'            => 'validated',
+                'updated_by'        => Auth::id(),
+            ]);
+
+            return response()->json([
+                'message' => 'Segunda validación aprobada correctamente.',
+                'data'    => $investor,
+            ], 200);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'message' => 'Error al aprobar en segunda validación.',
+                'error'   => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
     }

@@ -20,11 +20,10 @@ class UpdateInvestorConfirmAccountRequest extends FormRequest
             'province' => 'required|regex:/^[0-9]{2}$/',
             'district' => 'required|regex:/^[0-9]{2}$/',
             'address' => 'required|string',
-
-            // imágenes obligatorias, máx 5MB
-            'document_front' => 'required|image|mimes:jpeg,png,jpg,svg|max:5120',
-            'document_back' => 'required|image|mimes:jpeg,png,jpg,svg|max:5120',
-            'investor_photo_path' => 'required|image|mimes:jpeg,png,jpg,svg|max:5120',
+            // 🔑 allow partial updates + PDFs
+            'document_front'       => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'document_back'        => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'investor_photo_path'  => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
         ];
     }
 

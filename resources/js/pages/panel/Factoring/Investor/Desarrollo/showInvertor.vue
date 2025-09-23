@@ -167,13 +167,13 @@
             <p class="text-sm">{{ getAvatarDisplay(investor.perfil) }}</p>
           </div>
           <div><span class="text-xs font-medium text-blue-800">Departamento:</span>
-            <p class="text-sm">{{ investor.department }}</p>
+            <p class="text-sm">{{ departmentName  }}</p>
           </div>
           <div><span class="text-xs font-medium text-blue-800">Provincia:</span>
-            <p class="text-sm">{{ investor.province }}</p>
+            <p class="text-sm">{{ provinceName  }}</p>
           </div>
           <div><span class="text-xs font-medium text-blue-800">Distrito:</span>
-            <p class="text-sm">{{ investor.district }}</p>
+            <p class="text-sm">{{ districtName  }}</p>
           </div>
           <div><span class="text-xs font-medium text-blue-800">Dirección:</span>
             <p class="text-sm">{{ investor.address }}</p>
@@ -498,6 +498,60 @@ import Badge from 'primevue/badge';
 import axios from 'axios';
 import { useToast } from 'primevue/usetoast';
 
+
+// === Ubigeo name resolvers (code -> name) ===
+const departmentName = ref<string>('')
+const provinceName = ref<string>('')
+const districtName = ref<string>('')
+
+
+const NOVALINK = import.meta.env.VITE_NOVALINK_URL
+
+const isCodeLike = (v?: string) => {
+  if (!v) return false
+  // Typical ubigeo codes are numeric strings; adjust if yours differ
+  return /^[0-9]+$/.test(v)
+}
+
+async function resolveUbigeoNames() {
+  try {
+    const depCode = editableInvestor.value.department
+    const provCode = editableInvestor.value.province
+    const distCode = editableInvestor.value.district
+
+    // If any are already names (not numeric), keep them
+    if (!isCodeLike(depCode)) departmentName.value = depCode || departmentName.value
+    if (!isCodeLike(provCode)) provinceName.value = provCode || provinceName.value
+    if (!isCodeLike(distCode)) districtName.value = distCode || districtName.value
+
+    // Resolve department name
+    if (isCodeLike(depCode)) {
+      const { data: deps } = await axios.get(`${NOVALINK}/api/v1/peru/ubigeo`)
+      const dep = deps?.find((d: any) => d.ubigeo_code === depCode)
+      if (dep) departmentName.value = dep.ubigeo_name
+    }
+
+    // Resolve province name
+    if (isCodeLike(depCode) && isCodeLike(provCode)) {
+      const { data: provs } = await axios.get(`${NOVALINK}/api/v1/peru/ubigeo/${depCode}`)
+      const p = provs?.provinces?.find((x: any) => x.ubigeo_code === provCode)
+      if (p) provinceName.value = p.ubigeo_name
+    }
+
+    // Resolve district name
+    if (isCodeLike(depCode) && isCodeLike(provCode) && isCodeLike(distCode)) {
+      const { data: dists } = await axios.get(`${NOVALINK}/api/v1/peru/ubigeo/${depCode}/${provCode}`)
+      const d = dists?.districts?.find((x: any) => x.ubigeo_code === distCode)
+      if (d) districtName.value = d.ubigeo_name
+    }
+  } catch {
+    // Silent fail; keep original values
+  }
+}
+
+// Re-resolve when the investor prop changes
+
+
 const toast = useToast();
 
 interface Investor {
@@ -612,6 +666,18 @@ const pepEvidences = ref<Evidence[]>([]);
 
 // Editable investor
 const editableInvestor = ref<Investor>({ ...props.investor });
+
+watch(
+  () => editableInvestor.value,
+  (inv) => {
+    departmentName.value = inv?.department ?? ''
+    provinceName.value = inv?.province ?? ''
+    districtName.value = inv?.district ?? ''
+    resolveUbigeoNames()
+  },
+  { immediate: true, deep: true }
+)
+
 
 watch(
   () => props.investor,
