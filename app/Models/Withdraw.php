@@ -22,7 +22,15 @@ class Withdraw extends Model
         'resource_path',
         'description',
         'purpouse',
-
+        'approval1_by',
+        'approval1_status',
+        'approval1_comment',
+        'approval1_at',
+        'approval2_by',
+        'approval2_status',
+        'approval2_comment',
+        'approval2_at',
+        'status',
         'created_by',
         'updated_by',
 
@@ -35,7 +43,15 @@ class Withdraw extends Model
     {
         return $this->belongsTo(Investor::class);
     }
+    public function approvalUserOne()
+    {
+        return $this->belongsTo(User::class, 'approval1_by');
+    }
 
+    public function approvalUserTwo()
+    {
+        return $this->belongsTo(User::class, 'approval2_by');
+}
     public function bank_account(): BelongsTo
     {
         return $this->belongsTo(BankAccount::class);
@@ -59,32 +75,17 @@ class Withdraw extends Model
     }
     public function getResourcePathAttribute(): ?string
     {
-        $disk = Storage::disk('s3');
-        $path = $this->attributes['resource_path'] ?? null;
-
-        if (empty($path)) {
-            return null;
+        if (isset($this->attributes['resource_path'])) {
+            return env('APP_URL') . '/s3/' . $this->attributes['resource_path'];
         }
-
-        try {
-            // Solo usar exists() en drivers que lo soportan bien
-            if ($disk->getDriver()->getAdapter() instanceof \League\Flysystem\AwsS3V3\AwsS3Adapter) {
-                // En S3: asumir que el archivo existe y devolver directamente la URL
-                return $disk->temporaryUrl($path, now()->addMinutes(10));
-            } else {
-                // En local u otros: sí validamos la existencia
-                if ($disk->exists($path)) {
-                    return $disk->temporaryUrl($path, now()->addMinutes(10));
-                }
-            }
-        } catch (\Throwable $e) {
-            // Si algo falla, mejor devolver null para no romper la app
-            return null;
-        }
-
         return null;
     }
 
+    // Si quieres conservar también el valor raw (sin URL)
+    public function getResourcePathRaw(): ?string
+    {
+        return $this->attributes['resource_path'] ?? null;
+    }
     // ========================
     // Accesores (setters)
     // ========================
@@ -104,4 +105,5 @@ class Withdraw extends Model
             )->getAmount();
         }
     }
+    
 }

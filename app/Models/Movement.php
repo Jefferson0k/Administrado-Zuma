@@ -70,6 +70,11 @@ class Movement extends Model{
         return Movement::where('type', 'deposit')->get();
     }
 
+    public function withdraw()
+    {
+        return $this->hasOne(Withdraw::class, 'movement_id');
+    }
+
     public function payments()
     {
         return Movement::where('type', 'payment')->get();
