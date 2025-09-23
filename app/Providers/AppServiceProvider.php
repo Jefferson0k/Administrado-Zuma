@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Route;
 use App\Http\Middleware\TrackUserActivity;
 use Illuminate\Support\ServiceProvider;
+use App\Models\Investor;
+use App\Observers\InvestorObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,5 +29,8 @@ class AppServiceProvider extends ServiceProvider
                 // Puedes registrar rutas o lógica adicional aquí
             });
         });
+
+        // Registrar el observer para inversionistas (verificación automática de WhatsApp)
+        Investor::observe(InvestorObserver::class);
     }
 }

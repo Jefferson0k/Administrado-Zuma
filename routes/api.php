@@ -33,6 +33,7 @@ use App\Http\Controllers\Panel\PaymentScheduleController;
 use App\Http\Controllers\Panel\PropertyInvestorController;
 use App\Http\Controllers\Panel\VisitaProductoController;
 use App\Http\Controllers\BlogController;
+use App\Http\Controllers\Panel\TwilioWebhookController;
 use App\Http\Controllers\TipoDocumentoController;
 
 
@@ -45,7 +46,18 @@ use App\Http\Controllers\TipoDocumentoController;
 Route::post('register', [InvestorController::class, 'register']);
 Route::post('register/cliente', [InvestorController::class, 'registerCustomer']);
 
+/*
+|--------------------------------------------------------------------------
+| RUTA PARA EL SERVICIO DE SMS X WHTS
+|--------------------------------------------------------------------------
+*/
 
+Route::post('/twilio/whatsapp/incoming', [TwilioWebhookController::class, 'handleIncomingMessage'])
+    ->name('twilio.whatsapp.incoming');
+
+Route::post('/twilio/whatsapp/status', [TwilioWebhookController::class, 'handleMessageStatus'])
+    ->name('twilio.whatsapp.status');
+    
 Route::post('login', [InvestorController::class, 'login']);
 Route::post('/customers/register', [RegisteredCustomerController::class, 'store']);
 Route::put('/email/verify/{id}/{hash}', [ProfileController::class, 'emailVerification']);
@@ -212,10 +224,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/usd-to-pen', [ExchangeControllerFonted::class, 'usdToPen']);
     });
 
-
-
-    
-
+    Route::post('/investors/{investor}/resend-whatsapp-verification', function(App\Models\Investor $investor) {
+        $service = app(App\Services\WhatsAppVerificationService::class);
+        $result = $service->resendVerificationMessage($investor);
+        
+        if ($result['success']) {
+            return back()->with('success', 'Mensaje de verificación reenviado correctamente');
+        } else {
+            return back()->with('error', 'Error al reenviar: ' . $result['error']);
+        }
+    })->name('investors.resend-whatsapp-verification');
 });
 
 Route::prefix('investments')->group(function () {

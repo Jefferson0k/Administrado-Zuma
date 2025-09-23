@@ -187,14 +187,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::prefix('withdraws')->group(function () {
         Route::get('/', [WithdrawController::class, 'index'])->name('withdraws.index');
-        Route::get('/{id}', [WithdrawController::class, 'show'])->name('withdraws.show');
+        Route::get('/{investorId}', [WithdrawController::class, 'show'])->name('withdraws.show');
         Route::post('/', [WithdrawController::class, 'store'])->name('withdraws.store');
         Route::put('/{id}', [WithdrawController::class, 'update'])->name('withdraws.update');
         Route::delete('/{id}', [WithdrawController::class, 'destroy'])->name('withdraws.destroy');
 
-        Route::put('/{id}/approve', [WithdrawController::class, 'approve'])->name('withdraws.approve');
-        Route::put('/{id}/reject', [WithdrawController::class, 'reject'])->name('withdraws.reject');
+        // Rutas adicionales
+        Route::post('/{id}/upload-voucher', [WithdrawController::class, 'uploadVoucher'])->name('withdraws.uploadVoucher');
+        Route::post('/{id}/approve-step-one', [WithdrawController::class, 'approveStepOne'])->name('withdraws.approveStepOne');
+        Route::post('/{id}/approve-step-two', [WithdrawController::class, 'approveStepTwo'])->name('withdraws.approveStepTwo');
     });
+
 
     Route::prefix('investment')->group(function () {
         Route::get('/all', [InvestmentControllers::class, 'indexAll']);
