@@ -67,6 +67,11 @@ class Investor extends Authenticatable implements MustVerifyEmail , AuditableCon
         'approval2_by',
         'approval2_comment',
         'approval2_at',
+        
+        'whatsapp_verified',
+        'whatsapp_verified_at',
+        'whatsapp_verification_code',
+        'whatsapp_verification_sent_at',
     ];
     protected $hidden = [
         'password',
@@ -77,6 +82,10 @@ class Investor extends Authenticatable implements MustVerifyEmail , AuditableCon
         'email_verified_at' => 'datetime',
         'is_pep' => 'boolean',
         'has_relationship_pep' => 'boolean',
+
+        'whatsapp_verified' => 'boolean',
+        'whatsapp_verified_at' => 'datetime',
+        'whatsapp_verification_sent_at' => 'datetime',
     ];
     public function investments(){
         return $this->hasMany(Investment::class);
@@ -244,4 +253,94 @@ class Investor extends Authenticatable implements MustVerifyEmail , AuditableCon
         $this->notify(new InvestorAccountObservedNotification($comment));
     }
 
+// Agrega estos métodos a tu modelo Investor existente
+
+/**
+ * Scope para inversionistas validados
+ */
+public function scopeValidated($query)
+{
+    return $query->where('status', 'validated');
+}
+
+/**
+ * Scope para inversionistas con teléfono
+ */
+public function scopeWithTelephone($query)
+{
+    return $query->whereNotNull('telephone')->where('telephone', '!=', '');
+}
+
+/**
+ * Scope por tipo de inversionista
+ */
+public function scopeByType($query, $type)
+{
+    return $query->where('type', $type);
+}
+
+/**
+ * Obtener el nombre completo
+ */
+public function getFullNameAttribute()
+{
+    return trim($this->name . ' ' . $this->first_last_name . ' ' . $this->second_last_name);
+}
+
+/**
+ * Obtener el teléfono formateado para WhatsApp
+ */
+public function getFormattedTelephoneAttribute()
+{
+    if (!$this->telephone) return null;
+    
+    $phone = preg_replace('/[^0-9+]/', '', $this->telephone);
+    
+    if (!str_starts_with($phone, '+')) {
+        if (str_starts_with($phone, '51')) {
+            $phone = '+' . $phone;
+        } else {
+            $phone = '+51' . $phone;
+        }
+    }
+    
+    return $phone;
+}
+
+public function scopeWhatsappVerified($query)
+{
+    return $query->where('whatsapp_verified', true);
+}
+
+/**
+ * Scope para inversionistas pendientes de verificación de WhatsApp
+ */
+public function scopeWhatsappPending($query)
+{
+    return $query->where('whatsapp_verified', false)
+                 ->whereNotNull('telephone')
+                 ->where('telephone', '!=', '');
+}
+
+/**
+ * Verificar si puede recibir mensajes de WhatsApp
+ */
+public function canReceiveWhatsApp()
+{
+    return $this->whatsapp_verified && $this->telephone;
+}
+
+/**
+ * Obtener el estado de verificación de WhatsApp
+ */
+public function getWhatsappVerificationStatusAttribute()
+{
+    if ($this->whatsapp_verified) {
+        return 'verified';
+    } elseif ($this->whatsapp_verification_sent_at) {
+        return 'pending';
+    } else {
+        return 'not_sent';
+    }
+}
 }

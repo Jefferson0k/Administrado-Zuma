@@ -30,6 +30,12 @@ return new class extends Migration {
             $table->string('api_token', 60)->unique()->nullable();
             $table->string('codigo')->unique()->nullable()->comment('Código único del inversionista');
             $table->enum('type', ['inversionista', 'cliente', 'mixto'])->default('inversionista');
+
+            $table->boolean('whatsapp_verified')->default(false);
+            $table->timestamp('whatsapp_verified_at')->nullable();
+            $table->string('whatsapp_verification_code', 10)->nullable();
+            $table->timestamp('whatsapp_verification_sent_at')->nullable();
+
             $table->integer('asignado')->default(0);
             $table->string('validacion_whatsapp', 255)->nullable();
             $table->string('investor_photo_path', 2048)->nullable();
