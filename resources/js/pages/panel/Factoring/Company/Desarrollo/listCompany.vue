@@ -1,28 +1,12 @@
 <template>
     <div>
-        <DataTable
-            ref="dt"
-            v-model:selection="selectedCompanies"
-            :value="companies"
-            dataKey="id"
-            :paginator="true"
-            :rows="rows"
-            :totalRecords="totalRecords"
-            :first="first"
-            :loading="loading"
+        <DataTable ref="dt" v-model:selection="selectedCompanies" :value="companies" dataKey="id" :paginator="true"
+            :rows="rows" :totalRecords="totalRecords" :first="first" :loading="loading"
             :rowsPerPageOptions="[15, 25, 50, 100]"
             paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-            currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} empresas"
-            @page="onPage"
-            scrollable
-            scrollHeight="574px"
-            class="p-datatable-sm"
-            :lazy="true"
-            :sortField="sortField"
-            :sortOrder="sortOrder"
-            :sortMode="'single'"
-            @sort="onSort"
-        >
+            currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} empresas" @page="onPage" scrollable
+            scrollHeight="574px" class="p-datatable-sm" :lazy="true" :sortField="sortField" :sortOrder="sortOrder"
+            :sortMode="'single'" @sort="onSort">
             <!-- Header -->
             <template #header>
                 <div class="flex flex-col gap-4">
@@ -32,63 +16,25 @@
                             <Tag severity="contrast" :value="totalRecords" />
                         </h4>
                         <div class="flex flex-wrap gap-2">
-                            <Select 
-                                v-model="selectedSector" 
-                                :options="sectors" 
-                                optionLabel="name" 
-                                optionValue="id"
-                                placeholder="Todos los sectores"
-                                :loading="loadingSectors"
-                                showClear
-                                @change="onSectorChange"
-                                class="w-15"
-                            />
-                            <Select 
-                                v-model="selectedSubsector" 
-                                :options="subsectors" 
-                                optionLabel="name" 
-                                optionValue="id"
-                                placeholder="Todos los subsectores"
-                                :loading="loadingSubsectors"
-                                :disabled="!selectedSector"
-                                showClear
-                                @change="onSubsectorChange"
-                                class="w-15"
-                            />
-                            <Select 
-                                v-model="selectedRisk" 
-                                :options="riskOptions" 
-                                optionLabel="label" 
-                                optionValue="value"
-                                placeholder="Todas las calificaciones"
-                                showClear
-                                @change="onRiskChange"
-                                class="w-15"
-                            />
+                            <Select v-model="selectedSector" :options="sectors" optionLabel="name" optionValue="id"
+                                placeholder="Todos los sectores" :loading="loadingSectors" showClear
+                                @change="onSectorChange" class="w-15" />
+                            <Select v-model="selectedSubsector" :options="subsectors" optionLabel="name"
+                                optionValue="id" placeholder="Todos los subsectores" :loading="loadingSubsectors"
+                                :disabled="!selectedSector" showClear @change="onSubsectorChange" class="w-15" />
+                            <Select v-model="selectedRisk" :options="riskOptions" optionLabel="label"
+                                optionValue="value" placeholder="Todas las calificaciones" showClear
+                                @change="onRiskChange" class="w-15" />
                             <IconField>
                                 <InputIcon>
                                     <i class="pi pi-search" />
                                 </InputIcon>
-                                <InputText
-                                    v-model="globalFilter"
-                                    @input="onGlobalSearch"
-                                    placeholder="Buscar por RUC, nombre, razón social..."
-                                />
+                                <InputText v-model="globalFilter" @input="onGlobalSearch"
+                                    placeholder="Buscar por RUC, nombre, razón social..." />
                             </IconField>
-                            <Button 
-                                icon="pi pi-filter-slash" 
-                                outlined 
-                                severity="contrast"
-                                @click="clearFilters"
-                            />
-                            <Button
-                                icon="pi pi-refresh"
-                                severity="contrast"
-                                outlined
-                                rounded
-                                aria-label="Refresh"
-                                @click="refreshData"
-                            />
+                            <Button icon="pi pi-filter-slash" outlined severity="contrast" @click="clearFilters" />
+                            <Button icon="pi pi-refresh" severity="contrast" outlined rounded aria-label="Refresh"
+                                @click="refreshData" />
                         </div>
                     </div>
                 </div>
@@ -119,17 +65,19 @@
                 </template>
             </Column>
 
-            <Column field="newname" header="Nuevo nombre de empresa" sortable style="min-width: 12rem">
+            <Column field="nuevonombreempresa" header="Nuevo nombre de empresa" sortable style="min-width: 12rem">
                 <template #body="{ data }">
                     <div class="max-w-xs">
-                        <span class="truncate block font-medium" :title="data.newname">{{ data.nuevonombreempresa }}</span>
+                        <span class="truncate block font-medium" :title="data.nuevonombreempresa">{{
+                            data.nuevonombreempresa }}</span>
                     </div>
                 </template>
             </Column>
 
             <Column field="risk" header="Calificación" sortable style="min-width: 6rem">
                 <template #body="{ data }">
-                    <Tag :value="getRiskLabel(data.risk)" :severity="getRiskSeverity(data.risk)" class="px-3 py-1 rounded-lg font-bold" />
+                    <Tag :value="getRiskLabel(data.risk)" :severity="getRiskSeverity(data.risk)"
+                        class="px-3 py-1 rounded-lg font-bold" />
                 </template>
             </Column>
 
@@ -154,25 +102,10 @@
             <Column style="min-width: 2rem">
                 <template #body="slotProps">
                     <div class="flex gap-1">
-                        <Button
-                            icon="pi pi-eye"
-                            outlined
-                            rounded
-                            class="mr-1"
-                            severity="info"
-                            size="small"
-                            @click="showCompanyDetails(slotProps.data)"
-                            v-tooltip.top="'Ver detalles'"
-                        />
-                        <Button
-                            icon="pi pi-pencil"
-                            outlined
-                            rounded
-                            class="mr-1"
-                            size="small"
-                            @click="editCompany(slotProps.data)"
-                            v-tooltip.top="'Editar'"
-                        />
+                        <Button icon="pi pi-eye" outlined rounded class="mr-1" severity="info" size="small"
+                            @click="showCompanyDetails(slotProps.data)" v-tooltip.top="'Ver detalles'" />
+                        <Button icon="pi pi-pencil" outlined rounded class="mr-1" size="small"
+                            @click="editCompany(slotProps.data)" v-tooltip.top="'Editar'" />
                         <!--<Button
                             icon="pi pi-trash"
                             outlined
@@ -222,7 +155,7 @@ import DeleteCompany from './deleteCompany.vue';
 /** Axios interceptors (once) **/
 if (DEBUG && typeof window !== 'undefined' && !window.__AXIOS_LOG_INSTALLED__) {
     axios.interceptors.request.use((config) => {
-        console.groupCollapsed('%cAXIOS REQ','color:#0aa;font-weight:bold');
+        console.groupCollapsed('%cAXIOS REQ', 'color:#0aa;font-weight:bold');
         console.log('URL:', config.url);
         console.log('Method:', config.method);
         console.log('Params:', config.params);
@@ -235,14 +168,14 @@ if (DEBUG && typeof window !== 'undefined' && !window.__AXIOS_LOG_INSTALLED__) {
     });
 
     axios.interceptors.response.use((response) => {
-        console.groupCollapsed('%cAXIOS RESP','color:#0a0;font-weight:bold');
+        console.groupCollapsed('%cAXIOS RESP', 'color:#0a0;font-weight:bold');
         console.log('URL:', response.config?.url);
         console.log('Status:', response.status);
         console.log('Data:', response.data);
         console.groupEnd();
         return response;
     }, (error) => {
-        console.groupCollapsed('%cAXIOS RESP ERROR','color:#a00;font-weight:bold');
+        console.groupCollapsed('%cAXIOS RESP ERROR', 'color:#a00;font-weight:bold');
         console.log('URL:', error.config?.url);
         console.log('Status:', error.response?.status);
         console.log('Data:', error.response?.data);
@@ -409,14 +342,11 @@ const loadCompanies = async () => {
     if (selectedSector.value !== null) params.sector_id = selectedSector.value;
     if (selectedSubsector.value !== null) params.subsector_id = selectedSubsector.value;
     if (selectedRisk.value !== null) params.risk = selectedRisk.value;
-    if (sortField.value) {
-        params.sort_field = sortField.value;
-        params.sort_order = sortOrder.value === 1 ? 'asc' : 'desc';
-    }
+
     if (API_DEBUG) params.debug = 1;
 
     if (DEBUG) {
-        console.groupCollapsed('%cLOAD COMPANIES PARAMS','color:#06c;font-weight:bold');
+        console.groupCollapsed('%cLOAD COMPANIES PARAMS', 'color:#06c;font-weight:bold');
         console.log(params);
         console.groupEnd();
     }
@@ -426,11 +356,29 @@ const loadCompanies = async () => {
         companies.value = response.data.data || [];
         totalRecords.value = response.data.total || 0;
 
-        if (DEBUG) {
-            console.groupCollapsed('%cSERVER META','color:#06c;font-weight:bold');
-            console.log(response.data?.meta);
-            console.groupEnd();
+        // 🔽 Client-side sort of the CURRENT PAGE ONLY
+        if (sortField.value && sortOrder.value) {
+            const dir = sortOrder.value === 1 ? 1 : -1;
+            const field = String(sortField.value);
+
+            companies.value = [...companies.value].sort((a, b) => {
+                const va = a?.[field];
+                const vb = b?.[field];
+
+                // Try number compare first
+                const na = typeof va === 'string' ? Number(va) : va;
+                const nb = typeof vb === 'string' ? Number(vb) : vb;
+                const bothNums = Number.isFinite(na) && Number.isFinite(nb);
+
+                if (bothNums) return (na - nb) * dir;
+
+                // Fallback to localeCompare on strings
+                const sa = (va ?? '').toString();
+                const sb = (vb ?? '').toString();
+                return sa.localeCompare(sb, undefined, { numeric: true, sensitivity: 'base' }) * dir;
+            });
         }
+
     } catch (error) {
         console.error('Error al cargar empresas:', error);
         toast.add({ severity: 'error', summary: 'Error', detail: 'Error al cargar las empresas', life: 5000 });
@@ -450,7 +398,7 @@ const onGlobalSearch = debounce(() => {
 // Paginación
 const onPage = (event) => {
     if (DEBUG) {
-        console.groupCollapsed('%cDT PAGE','color:#884;font-weight:bold');
+        console.groupCollapsed('%cDT PAGE', 'color:#884;font-weight:bold');
         console.log('event:', event);
         console.groupEnd();
     }
@@ -522,7 +470,7 @@ const exportCSV = () => dt.value.exportCSV();
 // Sort handler
 const onSort = (event) => {
     if (DEBUG) {
-        console.groupCollapsed('%cDT SORT','color:#884;font-weight:bold');
+        console.groupCollapsed('%cDT SORT', 'color:#884;font-weight:bold');
         console.log('event.sortField:', event.sortField);
         console.log('event.sortOrder:', event.sortOrder); // 1 asc, -1 desc
         console.groupEnd();

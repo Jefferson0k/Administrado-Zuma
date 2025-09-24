@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
 use App\Models\Alias;
 use App\Models\InvestorCode;
 use App\Models\Movement;
-use Dotenv\Exception\ValidationException;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -28,6 +28,9 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\PersonalAccessToken;
+use App\Models\InvestorSpectroEvidence;
+use App\Models\InvestorPepEvidence;
+use Illuminate\Support\Facades\Log;
 
 use Throwable;
 
@@ -84,7 +87,7 @@ class InvestorController extends Controller
         }
     }
 
-     public function showInvestor($id)
+    public function showInvestor($id)
     {
         try {
             $investor = Investor::findOrFail($id);
@@ -106,7 +109,7 @@ class InvestorController extends Controller
             ], 500);
         }
     }
-     public function store(Request $request)
+    public function store(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -607,42 +610,72 @@ class InvestorController extends Controller
             ], 500);
         }
     }
-    public function updateConfirmAccount(UpdateInvestorConfirmAccountRequest $request){
+    public function updateConfirmAccount(UpdateInvestorConfirmAccountRequest $request)
+    {
         try {
-            $validatedData = $request->validated();
+            $validated = $request->validated();
 
-            // Guardar documentos obligatorios
-            $document_front_path = Storage::putFile('inversores/documentos', $validatedData['document_front']);
-            $document_back_path = Storage::putFile('inversores/documentos', $validatedData['document_back']);
-            $investor_photo_path = Storage::putFile('inversores/fotos', $validatedData['investor_photo_path']);
+            // Disk S3 (MinIO)
+            $disk = Storage::disk('s3');
+
+            // Sube los archivos a MinIO. El tercer parámetro 'public' intenta marcar visibilidad pública
+            // (en MinIO la visibilidad depende de la política del bucket).
+            $documentFrontKey = $disk->putFile('inversores/documentos', $validated['document_front'], 'public');
+            $documentBackKey  = $disk->putFile('inversores/documentos', $validated['document_back'], 'public');
+            $photoKey         = $disk->putFile('inversores/fotos',      $validated['investor_photo_path'], 'public');
 
             /** @var \App\Models\User $investor */
             $investor = Auth::user();
 
+            // Guarda SOLO la clave/llave del objeto S3 (NO Storage::path)
             $investor->update([
-                'is_pep' => $validatedData['is_pep'],
-                'has_relationship_pep' => $validatedData['has_relationship_pep'],
-                'department' => $validatedData['department'],
-                'province' => $validatedData['province'],
-                'district' => $validatedData['district'],
-                'address' => $validatedData['address'],
-                'document_front' => Storage::path($document_front_path),
-                'document_back' => Storage::path($document_back_path),
-                'investor_photo_path' => Storage::path($investor_photo_path),
+                'is_pep'              => $validated['is_pep'],
+                'has_relationship_pep' => $validated['has_relationship_pep'],
+                'department'          => $validated['department'],
+                'province'            => $validated['province'],
+                'district'            => $validated['district'],
+                'address'             => $validated['address'],
+                'document_front'      => $documentFrontKey,
+                'document_back'       => $documentBackKey,
+                'investor_photo_path' => $photoKey,
             ]);
+
+            // Si el bucket es público y config('filesystems.disks.s3.url') está bien seteado,
+            // puedes devolver URLs públicas directas:
+            $publicFrontUrl = $disk->url($documentFrontKey);
+            $publicBackUrl  = $disk->url($documentBackKey);
+            $publicPhotoUrl = $disk->url($photoKey);
+
+            // Si el bucket es privado, usa URLs firmadas:
+            // $publicFrontUrl = $disk->temporaryUrl($documentFrontKey, now()->addMinutes(15));
+            // $publicBackUrl  = $disk->temporaryUrl($documentBackKey,  now()->addMinutes(15));
+            // $publicPhotoUrl = $disk->temporaryUrl($photoKey,         now()->addMinutes(15));
 
             return response()->json([
                 'success' => true,
                 'message' => 'Tu cuenta ha sido confirmada correctamente.',
-                'data' => Auth::user()
+                'data'    => [
+                    'user' => $investor->fresh(),
+                    'files' => [
+                        'document_front'      => $documentFrontKey,
+                        'document_back'       => $documentBackKey,
+                        'investor_photo_path' => $photoKey,
+                    ],
+                    'urls' => [
+                        'document_front'      => $publicFrontUrl,
+                        'document_back'       => $publicBackUrl,
+                        'investor_photo_path' => $publicPhotoUrl,
+                    ],
+                ],
             ]);
-        } catch (Throwable $th) {
+        } catch (\Throwable $th) {
             return response()->json([
                 'success' => false,
                 'message' => $th->getMessage(),
             ], 500);
         }
     }
+
 
     public function lastInvoiceInvested()
     {
@@ -748,7 +781,7 @@ class InvestorController extends Controller
             ]);
 
             $investor = Investor::findOrFail($id);
-            
+
             $investor->update([
                 'approval1_status' => 'rejected',
                 'approval1_by' => Auth::id(),
@@ -773,7 +806,6 @@ class InvestorController extends Controller
                 'message' => 'Inversionista rechazado y notificación enviada correctamente.',
                 'data' => $investor
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error al rechazar inversionista.',
@@ -781,65 +813,74 @@ class InvestorController extends Controller
             ], 500);
         }
     }
-    public function observarPrimeraValidacion(Request $request, $id){
-        try {
-            $request->validate([
-                'approval1_comment' => 'required|string',
-            ]);
 
+    public function observarPrimeraValidacion(Request $request, $id)
+    {
+        $request->validate([
+            'approval1_comment' => 'required|string',
+        ]);
+
+        try {
             $investor = Investor::findOrFail($id);
 
-            $investor->update([
-                'approval1_status'  => 'observed',         // se mantiene para control interno
-                'approval1_by'      => Auth::id(),
-                'approval1_comment' => $request->approval1_comment,
-                'approval1_at'      => now(),
-                'status'            => 'proceso',          // 👈 aquí cambias a proceso
-                'updated_by'        => Auth::id(),
-            ]);
+            DB::transaction(function () use ($investor, $request) {
+                // 1) Delete files from MinIO if present
+                $this->deleteFromMinioSafe($investor->document_front);
+                $this->deleteFromMinioSafe($investor->document_back);
+                $this->deleteFromMinioSafe($investor->investor_photo_path);
 
+                // 2) Update investor status + clear file fields
+                $investor->update([
+                    'approval1_status'      => 'observed',
+                    'approval1_by'          => Auth::id(),
+                    'approval1_comment'     => $request->approval1_comment,
+                    'approval1_at'          => now(),
+                    'status'                => 'proceso',
+                    'updated_by'            => Auth::id(),
+                    'document_front'        => null,
+                    'document_back'         => null,
+                    'investor_photo_path'   => null,
+                ]);
+            });
+
+            // 3) Notify AFTER commit
             $investor->sendAccountObservedEmailNotification($request->approval1_comment);
 
             return response()->json([
-                'message' => 'Inversionista marcado como observado (en proceso) y notificación enviada.',
-                'data'    => $investor
+                'message' => 'Inversionista marcado como observado (en proceso). Archivos eliminados y notificación enviada.',
+                'data'    => $investor->fresh(),
             ], 200);
-
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'message' => 'Error al marcar como observado.',
-                'error'   => $e->getMessage()
-            ], 500);
-        }
-    }
-    public function adjuntarEvidenciaPrimeraValidacion(Request $request, $id){
-        try {
-            $request->validate([
-                'file_path' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            ]);
-            $investor = Investor::findOrFail($id);
-            $path = $request->file('file_path')->store('inversores/evidencias', 'public');
-            $investor->update([
-                'file_path'  => Storage::disk('public')->url($path),
-                'updated_by' => Auth::id(),
-            ]);
-            return response()->json([
-                'message' => 'Archivo adjuntado correctamente.',
-                'data'    => $investor,
-            ], 200);
-        } catch (ValidationException $e) {
-            return response()->json([
-                'message' => 'Error de validación.',
-                'errors'  => $e->errors(),
-            ], 422);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Error al adjuntar el archivo.',
                 'error'   => $e->getMessage(),
             ], 500);
         }
     }
-    public function aprobarPrimeraValidacion(Request $request, $id){
+
+    /**
+     * Tries to delete a file from the s3 (MinIO) disk, regardless of how the path was stored.
+     * Accepts: absolute MinIO URL, /s3/... URL, path with bucket, or plain key.
+     */
+    protected function deleteFromMinioSafe(?string $storedPath): void
+    {
+        if (empty($storedPath)) return;
+
+        $key = $this->extractS3Key($storedPath);
+        if (!$key) return;
+
+        try {
+            // Avoid exceptions if it doesn’t exist
+            if (Storage::disk('s3')->exists($key)) {
+                Storage::disk('s3')->delete($key);
+            }
+        } catch (\Throwable $e) {
+            // Swallow errors to avoid blocking the main flow; log if you want:
+            // \Log::warning('MinIO delete failed', ['key' => $key, 'error' => $e->getMessage()]);
+        }
+    }
+    public function aprobarPrimeraValidacion(Request $request, $id)
+    {
         try {
             $request->validate([
                 'approval1_comment' => 'nullable|string',
@@ -848,7 +889,7 @@ class InvestorController extends Controller
             $investor->update([
                 'approval1_status' => 'approved',
                 'approval1_by'     => Auth::id(),
-                'approval1_comment'=> $request->approval1_comment,
+                'approval1_comment' => $request->approval1_comment,
                 'approval1_at'     => now(),
                 'updated_by'       => Auth::id(),
             ]);
@@ -863,7 +904,8 @@ class InvestorController extends Controller
             ], 500);
         }
     }
-    public function rechazarPrimeraValidacion(Request $request, $id){
+    public function rechazarPrimeraValidacion(Request $request, $id)
+    {
         try {
             $request->validate([
                 'approval1_comment' => 'required|string',
@@ -872,7 +914,7 @@ class InvestorController extends Controller
             $investor->update([
                 'approval1_status' => 'rejected',
                 'approval1_by'     => Auth::id(),
-                'approval1_comment'=> $request->approval1_comment,
+                'approval1_comment' => $request->approval1_comment,
                 'approval1_at'     => now(),
                 'status'           => 'rejected',
                 // Limpiar datos sensibles si aplica
@@ -896,7 +938,8 @@ class InvestorController extends Controller
             ], 500);
         }
     }
-    public function comentarPrimeraValidacion(Request $request, $id){
+    public function comentarPrimeraValidacion(Request $request, $id)
+    {
         try {
             $request->validate([
                 'approval1_comment' => 'required|string',
@@ -923,63 +966,53 @@ class InvestorController extends Controller
     // SEGUNDA VALIDACIÓN
     // ===============================
 
-    public function observarSegundaValidacion(Request $request, $id){
+
+
+    public function observarSegundaValidacion(Request $request, $id)
+    {
+        $request->validate([
+            'approval2_comment' => 'required|string',
+        ]);
+
         try {
-            $request->validate([
-                'approval2_comment' => 'required|string',
-            ]);
             $investor = Investor::findOrFail($id);
-            $investor->update([
-                'approval2_status' => 'observed',
-                'approval2_by'     => Auth::id(),
-                'approval2_comment'=> $request->approval2_comment,
-                'approval2_at'     => now(),
-                'status'           => 'observed',
-                'updated_by'       => Auth::id(),
-            ]);
-            // Si necesitas mandar correo, aquí va tu notificación
+
+            DB::transaction(function () use ($investor, $request) {
+                // 1) Delete files from MinIO if present
+                $this->deleteFromMinioSafe($investor->document_front);
+                $this->deleteFromMinioSafe($investor->document_back);
+                $this->deleteFromMinioSafe($investor->investor_photo_path);
+
+                // 2) Update flags + clear file columns
+                $investor->update([
+                    'approval2_status'     => 'observed',
+                    'approval2_by'         => Auth::id(),
+                    'approval2_comment'    => $request->approval2_comment,
+                    'approval2_at'         => now(),
+                    'status'               => 'observed', // ó 'proceso' si prefieres el mismo estado que en 1ra
+                    'updated_by'           => Auth::id(),
+                    'document_front'       => null,
+                    'document_back'        => null,
+                    'investor_photo_path'  => null,
+                ]);
+            });
+
+            // Notificación si aplica
             // $investor->sendAccountObservedEmailNotification($request->approval2_comment);
 
             return response()->json([
-                'message' => 'Inversionista observado en segunda validación.',
-                'data'    => $investor
+                'message' => 'Inversionista observado en segunda validación. Archivos eliminados.',
+                'data'    => $investor->fresh(),
             ], 200);
-
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'message' => 'Error al observar en segunda validación.',
-                'error'   => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    public function aprobarSegundaValidacion(Request $request, $id){
-        try {
-            $request->validate([
-                'approval2_comment' => 'nullable|string',
-            ]);
-            $investor = Investor::findOrFail($id);
-            $investor->update([
-                'approval2_status'  => 'approved',
-                'approval2_by'      => Auth::id(),
-                'approval2_comment' => $request->approval2_comment,
-                'approval2_at'      => now(),
-                'status'            => 'validated',
-                'updated_by'        => Auth::id(),
-            ]);
-            return response()->json([
-                'message' => 'Segunda validación aprobada correctamente.',
-                'data'    => $investor,
-            ], 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Error en segunda validación.',
                 'error'   => $e->getMessage(),
             ], 500);
         }
     }
-
-    public function rechazarSegundaValidacion(Request $request, $id){
+    public function rechazarSegundaValidacion(Request $request, $id)
+    {
         try {
             $request->validate([
                 'approval2_comment' => 'required|string',
@@ -1014,7 +1047,8 @@ class InvestorController extends Controller
         }
     }
 
-    public function comentarSegundaValidacion(Request $request, $id){
+    public function comentarSegundaValidacion(Request $request, $id)
+    {
         try {
             $request->validate([
                 'approval2_comment' => 'required|string',
@@ -1037,7 +1071,8 @@ class InvestorController extends Controller
             ], 500);
         }
     }
-    public function uploadDocumentFront(Request $request, $id){
+    public function uploadDocumentFront(Request $request, $id)
+    {
         try {
             $request->validate([
                 'document_front' => 'required|file|image|mimes:jpg,jpeg,png|max:5120'
@@ -1053,15 +1088,20 @@ class InvestorController extends Controller
 
             $investor->update([
                 'document_front' => Storage::path($document_front_path),
-                'updated_by' => Auth::id(),
+                
             ]);
 
             return response()->json([
                 'message' => 'Documento frontal actualizado correctamente.',
                 'data' => $investor,
             ], 200);
-
         } catch (\Exception $e) {
+
+            Log::error('Error al subir documento frontal', [
+                'investor_id' => $id,
+                'exception'  => $e->getMessage(),
+                'trace'      => $e->getTraceAsString(),
+            ]);
             return response()->json([
                 'message' => 'Error al subir documento frontal.',
                 'error' => $e->getMessage(),
@@ -1080,7 +1120,7 @@ class InvestorController extends Controller
             ]);
 
             $investor = Investor::findOrFail($id);
-            
+
             // Eliminar archivo anterior si existe
             if ($investor->document_back && Storage::exists($investor->document_back)) {
                 Storage::delete($investor->document_back);
@@ -1098,8 +1138,13 @@ class InvestorController extends Controller
                 'message' => 'Documento posterior actualizado correctamente.',
                 'data' => $investor,
             ], 200);
-
         } catch (\Exception $e) {
+
+            Log::error('Error al subir documento frontal', [
+                'investor_id' => $id,
+                'exception'  => $e->getMessage(),
+                'trace'      => $e->getTraceAsString(),
+            ]);
             return response()->json([
                 'message' => 'Error al subir documento posterior.',
                 'error' => $e->getMessage(),
@@ -1118,7 +1163,7 @@ class InvestorController extends Controller
             ]);
 
             $investor = Investor::findOrFail($id);
-            
+
             // Eliminar archivo anterior si existe
             if ($investor->investor_photo_path && Storage::exists($investor->investor_photo_path)) {
                 Storage::delete($investor->investor_photo_path);
@@ -1129,18 +1174,490 @@ class InvestorController extends Controller
 
             $investor->update([
                 'investor_photo_path' => Storage::path($investor_photo_path),
-                'updated_by' => Auth::id(),
+                
             ]);
 
             return response()->json([
                 'message' => 'Foto del inversionista actualizada correctamente.',
                 'data' => $investor,
             ], 200);
-
         } catch (\Exception $e) {
+            Log::error('Error al subir documento frontal', [
+                'investor_id' => $id,
+                'exception'  => $e->getMessage(),
+                'trace'      => $e->getTraceAsString(),
+            ]);
             return response()->json([
                 'message' => 'Error al subir foto del inversionista.',
                 'error' => $e->getMessage(),
             ], 500);
         }
-    }}
+    }
+
+
+
+
+
+
+
+    public function observarDniFrontal(Request $request, $id)
+    {
+        $request->validate([
+            'approval1_comment' => 'required|string',
+        ]);
+
+        try {
+            $investor = Investor::findOrFail($id);
+            $prefixedComment = '[DNI - Parte Frontal] ' . $request->approval1_comment;
+
+            DB::transaction(function () use ($investor, $prefixedComment) {
+                // 1) Borrar archivo en MinIO y limpiar columna
+                $this->deleteFromMinioSafe($investor->document_front);
+
+                // 2) Actualizar flags de 1ra validación y estado
+                $investor->update([
+                    'approval1_status'   => 'observed',
+                    'approval1_by'       => Auth::id(),
+                    'approval1_comment'  => $prefixedComment,
+                    'approval1_at'       => now(),
+                    'status'             => 'proceso',
+                    'updated_by'         => Auth::id(),
+                    'document_front'     => null, // limpiar columna
+                ]);
+            });
+
+            // 3) Notificar
+            $investor->sendAccountObservedEmailNotification($prefixedComment);
+
+            return response()->json([
+                'message' => 'Observación registrada para DNI frontal; archivo eliminado y notificación enviada.',
+                'data'    => $investor->fresh(),
+            ], 200);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Error al observar DNI frontal.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Observa y limpia el DNI posterior.
+     */
+    public function observarDniPosterior(Request $request, $id)
+    {
+        $request->validate([
+            'approval1_comment' => 'required|string',
+        ]);
+
+        try {
+            $investor = Investor::findOrFail($id);
+            $prefixedComment = '[DNI - Parte Posterior] ' . $request->approval1_comment;
+
+            DB::transaction(function () use ($investor, $prefixedComment) {
+                // 1) Borrar archivo en MinIO y limpiar columna
+                $this->deleteFromMinioSafe($investor->document_back);
+
+                // 2) Actualizar flags de 1ra validación y estado
+                $investor->update([
+                    'approval1_status'   => 'observed',
+                    'approval1_by'       => Auth::id(),
+                    'approval1_comment'  => $prefixedComment,
+                    'approval1_at'       => now(),
+                    'status'             => 'proceso',
+                    'updated_by'         => Auth::id(),
+                    'document_back'      => null, // limpiar columna
+                ]);
+            });
+
+            // 3) Notificar
+            $investor->sendAccountObservedEmailNotification($prefixedComment);
+
+            return response()->json([
+                'message' => 'Observación registrada para DNI posterior; archivo eliminado y notificación enviada.',
+                'data'    => $investor->fresh(),
+            ], 200);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Error al observar DNI posterior.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Observa y limpia la foto del inversionista.
+     */
+    public function observarFotoInversionista(Request $request, $id)
+    {
+        $request->validate([
+            'approval1_comment' => 'required|string',
+        ]);
+
+        try {
+            $investor = Investor::findOrFail($id);
+            $prefixedComment = '[Foto del Inversionista] ' . $request->approval1_comment;
+
+            DB::transaction(function () use ($investor, $prefixedComment) {
+                // 1) Borrar archivo en MinIO y limpiar columna
+                $this->deleteFromMinioSafe($investor->investor_photo_path);
+
+                // 2) Actualizar flags de 1ra validación y estado
+                $investor->update([
+                    'approval1_status'      => 'observed',
+                    'approval1_by'          => Auth::id(),
+                    'approval1_comment'     => $prefixedComment,
+                    'approval1_at'          => now(),
+                    'status'                => 'proceso',
+                    'updated_by'            => Auth::id(),
+                    'investor_photo_path'   => null, // limpiar columna
+                ]);
+            });
+
+            // 3) Notificar
+            $investor->sendAccountObservedEmailNotification($prefixedComment);
+
+            return response()->json([
+                'message' => 'Observación registrada para la foto del inversionista; archivo eliminado y notificación enviada.',
+                'data'    => $investor->fresh(),
+            ], 200);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Error al observar la foto del inversionista.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+
+
+    protected function extractS3Key(string $raw): ?string
+    {
+        $norm = trim(str_replace('\\', '/', $raw));
+        if ($norm === '') return null;
+
+        // /s3/KEY...
+        if (str_starts_with($norm, '/s3/')) {
+            return ltrim(substr($norm, 4), '/');
+        }
+
+        // Full URL
+        if (preg_match('#^https?://#i', $norm)) {
+            $parts = parse_url($norm);
+            if (!empty($parts['path'])) {
+                $path = ltrim($parts['path'], '/'); // "mi-bucket/inversores/documentos/file.jpg"
+                // Mantén solo la parte a partir de investors|inversores si existe
+                if (preg_match('#(?:^[^/]+/)?((?:investors|inversores)/.+)$#i', $path, $m)) {
+                    return $m[1];
+                }
+                // Fallback: quita el primer segmento (bucket)
+                $segments = explode('/', $path);
+                if (count($segments) > 1) {
+                    array_shift($segments);
+                    return implode('/', $segments);
+                }
+                return $path;
+            }
+            return null;
+        }
+
+        // Rutas que incluyen el key después de investors|inversores
+        if (preg_match('#(investors|inversores)/.+$#i', $norm, $m)) {
+            return ltrim($m[0], '/');
+        }
+
+        // Fallback: tratar como key directo
+        return ltrim($norm, '/');
+    }
+
+
+
+
+    // --- SPECTRO ---
+    public function uploadSpectroEvidence(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+                'notes' => 'nullable|string|max:500',
+            ]);
+
+            $investor = Investor::findOrFail($id);
+
+            $file = $request->file('file');
+            $disk = 's3';
+
+            $path = $file->store("investors/{$investor->id}/spectro", $disk); // <= MinIO/S3
+            // Persist
+            $evidence = InvestorSpectroEvidence::create([
+                'investor_id'   => $investor->id,
+                'file_path'       => $path,
+                'storage_disk'  => $disk,
+                'original_name' => $file->getClientOriginalName(),
+                'extension'     => $file->getClientOriginalExtension(),
+                'mime'          => $file->getClientMimeType(),
+                'size'          => $file->getSize(),
+                'notes'          => $request->input('notes'),
+                'uploaded_by'   => Auth::id(),
+            ]);
+            $publicUrl = url('/s3/' . ltrim($evidence->file_path, '/'));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Evidencia PEP subida correctamente.',
+                'data'    => [
+                    'id'           => $evidence->id,
+                    'name'         => $evidence->original_name,
+                    'mime'         => $evidence->mime,
+                    'size'         => $evidence->size,
+                    'url'          => $publicUrl,
+                    'download_url' => $publicUrl,
+                    'created_at'   => optional($evidence->created_at)->toISOString(),
+                ],
+            ], 201);
+        } catch (ValidationException $e) {
+            Log::error('Spectro upload failed (validation)', ['errors' => $e->errors()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de validación.',
+                'errors'  => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Spectro upload failed', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al subir evidencia Spectro.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function listSpectroEvidences($id)
+    {
+        try {
+            $investor = Investor::findOrFail($id);
+
+            $items = InvestorSpectroEvidence::where('investor_id', $investor->id)
+                ->orderByDesc('id')
+                ->get()
+                ->map(function ($a) {
+                    $url = url('/s3/' . ltrim($a->file_path, '/')); // 👈 usa file_path
+                    return [
+                        'id'           => $a->id,
+                        'name'         => $a->original_name,
+                        'mime'         => $a->mime,
+                        'size'         => $a->size,
+                        'url'          => $url,
+                        'download_url' => $url,
+                        'created_at'   => optional($a->created_at)->toISOString(),
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'data'    => $items,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al listar evidencias Spectro.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function deleteSpectroEvidence($id, $evidenceId)
+    {
+        try {
+            $investor = Investor::findOrFail($id);
+
+            $evidence = InvestorSpectroEvidence::where('investor_id', $investor->id)
+                ->where('id', $evidenceId)
+                ->firstOrFail();
+
+            if ($evidence->s3_path) {
+                Storage::disk('s3')->delete($evidence->s3_path);
+            }
+
+            $evidence->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Evidencia Spectro eliminada correctamente.',
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Evidencia no encontrada.',
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al eliminar evidencia Spectro.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // --- PEP ---
+    public function uploadPepEvidence(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'file'  => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+                'notes' => 'nullable|string|max:500', // 👈 usa "notes" (igual que la migración)
+            ]);
+
+            $investor = Investor::findOrFail($id);
+
+            $file = $request->file('file');
+            $disk = 's3';
+
+            // Guarda en S3 (o MinIO)
+            $path = $file->store("investors/{$investor->id}/pep", $disk);
+
+            // Persiste usando los nombres de columnas reales de la tabla
+            $evidence = InvestorPepEvidence::create([
+                'investor_id'   => $investor->id,
+                'file_path'     => $path,                                 // 👈 columna real
+                'storage_disk'  => $disk,                                 // 👈 columna real
+                'original_name' => $file->getClientOriginalName(),
+                'extension'     => $file->getClientOriginalExtension(),
+                'mime'          => $file->getClientMimeType(),
+                'size'          => $file->getSize(),
+                'notes'         => $request->input('notes'),              // 👈 columna real
+                'uploaded_by'   => Auth::id(),
+            ]);
+
+            // URL estable vía proxy /s3/<key> (si usas ese proxy)
+            $publicUrl = url('/s3/' . ltrim($evidence->file_path, '/'));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Evidencia PEP subida correctamente.',
+                'data'    => [
+                    'id'           => $evidence->id,
+                    'name'         => $evidence->original_name,
+                    'mime'         => $evidence->mime,
+                    'size'         => $evidence->size,
+                    'url'          => $publicUrl,
+                    'download_url' => $publicUrl,
+                    'created_at'   => optional($evidence->created_at)->toISOString(),
+                ],
+            ], 201);
+        } catch (ValidationException $e) {
+            Log::error('PEP upload failed (validation)', ['errors' => $e->errors()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de validación.',
+                'errors'  => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('PEP upload failed', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al subir evidencia PEP.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function listPepEvidences($id)
+    {
+        try {
+            $investor = Investor::findOrFail($id);
+
+            $items = InvestorPepEvidence::where('investor_id', $investor->id)
+                ->orderByDesc('id')
+                ->get()
+                ->map(function ($a) {
+                    $url = url('/s3/' . ltrim($a->file_path, '/')); // 👈 usa file_path
+                    return [
+                        'id'           => $a->id,
+                        'name'         => $a->original_name,
+                        'mime'         => $a->mime,
+                        'size'         => $a->size,
+                        'url'          => $url,
+                        'download_url' => $url,
+                        'created_at'   => optional($a->created_at)->toISOString(),
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'data'    => $items,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al listar evidencias PEP.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function deletePepEvidence($id, $evidenceId)
+    {
+        try {
+            $investor = Investor::findOrFail($id);
+
+            $evidence = InvestorPepEvidence::where('investor_id', $investor->id)
+                ->where('id', $evidenceId)
+                ->firstOrFail();
+
+            if ($evidence->file_path) { // 👈 usa file_path y su disk
+                Storage::disk($evidence->storage_disk ?? 's3')->delete($evidence->file_path);
+            }
+
+            $evidence->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Evidencia PEP eliminada correctamente.',
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Evidencia no encontrada.',
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al eliminar evidencia PEP.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+    public function aprobarSegundaValidacion(Request $request, $id)
+    {
+        try {
+            $validated = $request->validate([
+                'approval2_comment' => 'nullable|string',
+            ]);
+
+            $investor = Investor::findOrFail($id);
+
+            $investor->update([
+                'approval2_status'  => 'approved',
+                'approval2_by'      => Auth::id(),
+                'approval2_comment' => $validated['approval2_comment'] ?? null,
+                'approval2_at'      => now(),
+                'status'            => 'validated',
+                'updated_by'        => Auth::id(),
+            ]);
+
+            return response()->json([
+                'message' => 'Segunda validación aprobada correctamente.',
+                'data'    => $investor,
+            ], 200);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'message' => 'Error al aprobar en segunda validación.',
+                'error'   => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
+    }
+}

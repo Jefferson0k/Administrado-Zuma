@@ -5,9 +5,14 @@ use App\Enums\MovementStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Withdraw\StoreWithdrawRequests;
 use App\Http\Requests\Withdraw\UpdateWithdrawRequest;
+use App\Http\Resources\Factoring\Withdraw\WithdrawInvestorResource;
+use App\Http\Resources\Factoring\Withdraw\WithdrawMovementResource;
 use App\Http\Resources\Factoring\Withdraw\WithdrawResource;
+use App\Models\Investor;
 use App\Models\Movement;
 use App\Models\Withdraw;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Throwable;
@@ -21,11 +26,19 @@ class WithdrawController extends Controller
         return response()->json(WithdrawResource::collection($withdraws));
     }
 
-    public function show($id)
-    {
-        $withdraw = Withdraw::findOrFail($id);
-        Gate::authorize('view', $withdraw);
-        return response()->json(new WithdrawResource($withdraw));
+    public function show($investorId){
+        $investor = Investor::with([
+            'movements.deposit',
+            'movements.withdraw',
+            'movements.investment',
+        ])->findOrFail($investorId);
+        $movements = $investor->movements()
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+        return WithdrawMovementResource::collection($movements)
+            ->additional([
+                'investor' => new WithdrawInvestorResource($investor),
+            ]);
     }
 
     public function store(StoreWithdrawRequests $request)
@@ -58,56 +71,92 @@ class WithdrawController extends Controller
             'message' => 'Retiro eliminado correctamente',
         ]);
     }
-
-    // Método corregido - removí el parámetro $movementId ya que se obtiene del withdraw
-    public function approve(StoreWithdrawRequests $request, $id)
-    {
+    public function uploadVoucher(Request $request, $id){
         $withdraw = Withdraw::findOrFail($id);
-        $movement = Movement::findOrFail($withdraw->movement_id); // Obtenemos el movement del withdraw
-        
         Gate::authorize('update', $withdraw);
 
+        $request->validate([
+            'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
+        ]);
+
+        try {
+            $filePath = $request->file('file')->store('retiros', 's3');
+            $withdraw->update([
+                'resource_path' => $filePath,
+            ]);
+
+            return response()->json([
+                'message' => 'Archivo subido correctamente',
+                'file_path' => $filePath,
+            ]);
+        } catch (Throwable $th) {
+            return response()->json([
+                'message' => 'Error al subir el archivo',
+                'error'   => $th->getMessage(),
+            ], 500);
+        }
+    }
+    public function approveStepOne(Request $request, $id){
+        $withdraw = Withdraw::findOrFail($id);
+        Gate::authorize('update', $withdraw);
+        $request->validate([
+            'nro_operation'    => 'required|string|max:50',
+            'deposit_pay_date' => 'required|date',
+            'description'      => 'nullable|string',
+        ]);
         try {
             DB::beginTransaction();
-
-            // Validar que el archivo fue enviado
-            if (!$request->hasFile('file')) {
-                return response()->json([
-                    'message' => 'El archivo voucher es requerido',
-                ], 422);
-            }
-
-            // Subir el archivo
-            $filePath = $request->file('file')->store('retiros', 's3');
-
-            // Actualizar el withdraw
             $withdraw->update([
-                'nro_operation' => $request->nro_operation,
+                'nro_operation'    => $request->nro_operation,
                 'deposit_pay_date' => $request->deposit_pay_date,
-                'resource_path' => $filePath,
-                'description' => $request->description,
+                'description'      => $request->description,
+                'approval1_status' => 'approved',
+                'approval1_by'     => Auth::id(),
+                'approval1_comment'=> $request->input('approval1_comment'),
+                'approval1_at'     => now(),
             ]);
-
-            // Actualizar el status del movement
-            $movement->status = MovementStatus::VALID->value;
-            $movement->save();
-
-            // Enviar notificación por email
-            $withdraw->investor->sendWithdrawApprovedEmailNotification($withdraw);
-
             DB::commit();
-
             return response()->json([
-                'message' => 'Retiro aprobado correctamente',
-                'data' => new WithdrawResource($withdraw->fresh()), // fresh() para obtener los datos actualizados
+                'message' => 'Primera validación realizada correctamente',
+                'data'    => new WithdrawResource($withdraw->fresh()),
             ]);
-
         } catch (Throwable $th) {
             DB::rollBack();
-            
             return response()->json([
-                'message' => 'Error al aprobar el retiro',
-                'error' => $th->getMessage(),
+                'message' => 'Error en la primera validación',
+                'error'   => $th->getMessage(),
+            ], 500);
+        }
+    }
+    public function approveStepTwo(Request $request, $id){
+        $withdraw = Withdraw::findOrFail($id);
+        $movement = Movement::findOrFail($withdraw->movement_id);
+        Gate::authorize('update', $withdraw);
+        $request->validate([
+            'approval2_comment' => 'nullable|string',
+        ]);
+        try {
+            DB::beginTransaction();
+            $withdraw->update([
+                'status'       => 'approved',
+                'approval2_status' => 'approved',
+                'approval2_by'     => Auth::id(),
+                'approval2_comment'=> $request->input('approval2_comment'),
+                'approval2_at'     => now(),
+            ]);
+            $movement->status = MovementStatus::VALID->value;
+            $movement->save();
+            $withdraw->investor->sendWithdrawApprovedEmailNotification($withdraw);
+            DB::commit();
+            return response()->json([
+                'message' => 'Retiro aprobado en segunda validación correctamente',
+                'data'    => new WithdrawResource($withdraw->fresh()),
+            ]);
+        } catch (Throwable $th) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error en la segunda validación',
+                'error'   => $th->getMessage(),
             ], 500);
         }
     }

@@ -4,37 +4,18 @@
 
     <template #end>
       <div class="flex gap-2">
-        <Button
-          label="Export Excel"
-          icon="pi pi-file-excel"
-          severity="secondary"
-          @click="exportExcel"
-          :loading="exportingExcel"
-        />
+        <Button label="Export Excel" icon="pi pi-file-excel" severity="secondary" @click="exportExcel"
+          :loading="exportingExcel" />
       </div>
     </template>
   </Toolbar>
 
-  <DataTable
-    ref="dt"
-    v-model:selection="selectedDeposits"
-    :value="deposits"
-    dataKey="id"
-    :lazy="true"
-    :paginator="true"
-    :rows="rowsPerPage"
-    :totalRecords="totalRecords"
-    :first="(currentPage - 1) * rowsPerPage"
-    :loading="loading"
+  <DataTable ref="dt" v-model:selection="selectedDeposits" :value="deposits" dataKey="id" :lazy="true" :paginator="true"
+    :rows="rowsPerPage" :totalRecords="totalRecords" :first="(currentPage - 1) * rowsPerPage" :loading="loading"
     :rowsPerPageOptions="[5, 10, 20, 50]"
     paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-    currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} depósitos"
-    scrollable
-    scrollHeight="574px"
-    class="p-datatable-sm"
-    @page="onPage"
-    @sort="onSort"
-  >
+    currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} depósitos" scrollable scrollHeight="574px"
+    class="p-datatable-sm" @page="onPage" @sort="onSort">
     <template #header>
       <div class="flex flex-wrap gap-2 items-center justify-between">
         <h4 class="m-0">
@@ -47,22 +28,12 @@
             <InputIcon>
               <i class="pi pi-search" />
             </InputIcon>
-            <InputText
-              v-model="globalFilter"
-              @input="onGlobalSearch"
-              placeholder="Buscar inversor, banco u operación..."
-            />
+            <InputText v-model="globalFilter" @input="onGlobalSearch"
+              placeholder="Buscar inversor, banco u operación..." />
           </IconField>
 
-          <Button
-            icon="pi pi-refresh"
-            outlined
-            severity="contrast"
-            rounded
-            aria-label="Refrescar"
-            @click="refreshNow"
-            :disabled="loading"
-          />
+          <Button icon="pi pi-refresh" outlined severity="contrast" rounded aria-label="Refrescar" @click="refreshNow"
+            :disabled="loading" />
         </div>
       </div>
     </template>
@@ -118,10 +89,7 @@
 
     <Column field="status_conclusion" header="Conclusión" sortable style="min-width: 8rem">
       <template #body="{ data }">
-        <Tag
-          :value="traducirEstado(data.status_conclusion)"
-          :severity="obtenerColorEstado(data.status_conclusion)"
-        />
+        <Tag :value="traducirEstado(data.status_conclusion)" :severity="obtenerColorEstado(data.status_conclusion)" />
       </template>
     </Column>
 
@@ -135,24 +103,13 @@
 
     <Column header="" :exportable="false" style="width: 6rem">
       <template #body="{ data }">
-        <Button
-          icon="pi pi-eye"
-          severity="contrast"
-          outlined
-          rounded
-          @click="verDeposito(data)"
-          v-tooltip="'Ver Detalle'"
-        />
+        <Button icon="pi pi-eye" severity="contrast" outlined rounded @click="verDeposito(data)"
+          v-tooltip="'Ver Detalle'" />
       </template>
     </Column>
   </DataTable>
 
-  <ShowDeposit
-    v-if="selectedDeposit"
-    :deposit="selectedDeposit"
-    @close="cerrarDetalle"
-    @refresh="cargarDepositos"
-  />
+  <ShowDeposit v-if="selectedDeposit" :deposit="selectedDeposit" @close="cerrarDetalle" @refresh="cargarDepositos" />
 </template>
 
 <script setup lang="ts">
@@ -251,12 +208,17 @@ const onPage = (event: DataTablePageEvent) => {
 };
 
 const onSort = (event: DataTableSortEvent) => {
-  // event.sortField, event.sortOrder (1 asc, -1 desc, 0 none)
+  // update server-side sort state
   sortField.value = (event.sortField as string) || null;
   sortOrder.value = (event.sortOrder as SortOrder) ?? 0;
-  currentPage.value = 1;
+
+  // IMPORTANT: do NOT touch currentPage here.
+  // PrimeVue resets its internal paginator on sort, but since
+  // we bind :first="(currentPage - 1) * rowsPerPage", keeping
+  // currentPage unchanged preserves the visible page.
   cargarDepositos();
 };
+
 
 // -------- detalle modal ----------
 function verDeposito(depositData: any) {

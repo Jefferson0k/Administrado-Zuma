@@ -26,8 +26,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
-class InvoiceController extends Controller
-{
+class InvoiceController extends Controller{
     private int $codigoCorrelativo = 0;
     public function index(Request $request){
         try {
@@ -61,7 +60,7 @@ class InvoiceController extends Controller
             $sortableMap = [
                 // Relación con company
                 'razonSocial'               => 'companies.name',
-
+                'ruc'                       => 'companies.document',
                 // Campos de invoices
                 'codigo'                    => 'invoices.invoice_code',
                 'moneda'                    => 'invoices.currency',
@@ -91,7 +90,7 @@ class InvoiceController extends Controller
             ];
 
             // Asegurar JOIN si el campo viene de companies
-            if ($sortField === 'razonSocial') {
+            if (in_array($sortField, ['razonSocial', 'ruc'])) {
                 $alreadyJoined = collect($query->getQuery()->joins ?? [])->contains(
                     fn($join) => $join->table === 'companies'
                 );
@@ -143,7 +142,6 @@ class InvoiceController extends Controller
             ], 500);
         }
     }
-
     public function indexfilter()
     {
         try {

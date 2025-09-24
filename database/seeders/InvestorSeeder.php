@@ -20,8 +20,8 @@ class InvestorSeeder extends Seeder
         $faker = Factory::create();
         $faker_locale = Factory::create('es_PE');
 
-        // Create 5 investors as specified
-        for ($i = 0; $i < 5; $i++) {
+        // Create 30 investors as specified
+        for ($i = 0; $i < 30; $i++) {
             $investor = Investor::create([
                 'name' => $faker_locale->firstName(),
                 'first_last_name' => $faker_locale->lastName(),

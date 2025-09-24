@@ -33,6 +33,7 @@ use App\Http\Controllers\Panel\PaymentScheduleController;
 use App\Http\Controllers\Panel\PropertyInvestorController;
 use App\Http\Controllers\Panel\VisitaProductoController;
 use App\Http\Controllers\BlogController;
+use App\Http\Controllers\Panel\TwilioWebhookController;
 use App\Http\Controllers\TipoDocumentoController;
 
 
@@ -45,6 +46,17 @@ use App\Http\Controllers\TipoDocumentoController;
 Route::post('register', [InvestorController::class, 'register']);
 Route::post('register/cliente', [InvestorController::class, 'registerCustomer']);
 
+/*
+|--------------------------------------------------------------------------
+| RUTA PARA EL SERVICIO DE SMS X WHTS
+|--------------------------------------------------------------------------
+*/
+
+Route::post('/twilio/whatsapp/incoming', [TwilioWebhookController::class, 'handleIncomingMessage'])
+    ->name('twilio.whatsapp.incoming');
+
+Route::post('/twilio/whatsapp/status', [TwilioWebhookController::class, 'handleMessageStatus'])
+    ->name('twilio.whatsapp.status');
 
 Route::post('login', [InvestorController::class, 'login']);
 Route::post('/customers/register', [RegisteredCustomerController::class, 'store']);
@@ -86,6 +98,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::put('/update-password', [InvestorController::class, 'updatePassword']);
 
         Route::get('/last-invoice-invested', [InvestorController::class, 'lastInvoiceInvested']);
+        // 👇 NUEVAS rutas de subida condicional
+        Route::post('/{id}/document-front', [InvestorController::class, 'uploadDocumentFront']);
+        Route::post('/{id}/document-back',  [InvestorController::class, 'uploadDocumentBack']);
+        Route::post('/{id}/investor-photo', [InvestorController::class, 'uploadInvestorPhoto']);
     });
 
     Route::prefix('property')->group(function () {
@@ -113,7 +129,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/propiedad/{property_investor_id}/cronograma', [PaymentScheduleController::class, 'getCronogramaPorUsuario']);
     Route::get('/propiedad/{property_investor_id}/cronograma/subasta', [PaymentScheduleController::class, 'Cronograma']);
     Route::post('/calculate', [InvestmentControllers::class, 'simulateByAmount']);
-    
+
     Route::prefix('investments')->group(function () {
         #Factoring
         Route::get('/', [InvestmentController::class, 'index']);
@@ -140,7 +156,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/top', [FixedTermInvestmentControllers::class, 'top']);
         Route::get('/fixed-term-investments/pendientes', [FixedTermInvestmentControllers::class, 'pendingInvestments']);
     });
-    
+
 
     Route::get('/fixed-term-schedules/{id}/cronograma', [FixedTermScheduleController::class, 'showCronograma']);
     Route::get('/config/{id}/schedules', [PropertyControllers::class, 'showConfig']);
@@ -155,19 +171,19 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/missing-data', [NotificacionController::class, 'getMissingData'])->name('notifications.missing-data');
         Route::post('/mark-completed', [NotificacionController::class, 'markAsCompleted'])->name('notifications.mark-completed');
     });
-    
+
     Route::prefix('invoices')->group(function () {
         Route::get('/', [InvoiceController::class, 'index']);
         Route::get('/paid', [InvoiceController::class, 'paid']);
         Route::get('/getSectors', [InvoiceController::class, 'getSectors']);
         Route::get('/{code}', [InvoiceController::class, 'show']);
     });
-    
+
     Route::prefix(('companies'))->group(function () {
         Route::get('/{id}', [CompanyController::class, 'showcompany']);
         Route::get('/{id}/historical', [CompanyController::class, 'historicalData']);
     });
-    
+
     Route::prefix('reports')->group(function () {
         Route::get('/balances', [BalanceController::class, 'index']);
 
@@ -212,10 +228,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/usd-to-pen', [ExchangeControllerFonted::class, 'usdToPen']);
     });
 
+    Route::post('/investors/{investor}/resend-whatsapp-verification', function (App\Models\Investor $investor) {
+        $service = app(App\Services\WhatsAppVerificationService::class);
+        $result = $service->resendVerificationMessage($investor);
 
-
-    
-
+        if ($result['success']) {
+            return back()->with('success', 'Mensaje de verificación reenviado correctamente');
+        } else {
+            return back()->with('error', 'Error al reenviar: ' . $result['error']);
+        }
+    })->name('investors.resend-whatsapp-verification');
 });
 
 Route::prefix('investments')->group(function () {
@@ -226,7 +248,7 @@ Route::post('simulation/generate', [CreditSimulationController::class, 'generate
 Route::post('/calculadora', [CalculadoraController::class, 'calcular']);
 
 Route::prefix('online')->group(function () {
-     Route::get('/inversiones/{property_id}', [InvestmentControllers::class, 'index']);
+    Route::get('/inversiones/{property_id}', [InvestmentControllers::class, 'index']);
 });
 
 Route::get('/Tipo-Cambio-Sbs', [TipoCambioSbs::class, 'TipoCambioSbs']);

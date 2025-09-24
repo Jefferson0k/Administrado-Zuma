@@ -1,10 +1,11 @@
 <template>
   <DataTable :lazy="true" ref="dt" v-model:selection="selectedAccounts" :value="accounts" dataKey="id" :paginator="true"
-    :rows="rowsPerPage" :totalRecords="totalRecords" :first="(currentPage - 1) * rowsPerPage" :loading="loading"
+    :rows="rowsPerPage" :totalRecords="totalRecords" :first="first" :loading="loading"
     :rowsPerPageOptions="[5, 10, 20, 50]"
     paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
     currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} cuentas" @page="onPage" scrollable
-    scrollHeight="574px" class="p-datatable-sm">
+    scrollHeight="574px" class="p-datatable-sm" :sortField="sortField" :sortOrder="sortOrder" :sortMode="'single'"
+    @sort="onSort">
 
     <!-- Header -->
     <template #header>
@@ -385,6 +386,20 @@ import FileUpload from 'primevue/fileupload';
 import Textarea from 'primevue/textarea';
 import { debounce } from 'lodash';
 
+const sortField = ref<string | null>(null); // e.g. 'banco', 'inversionista', etc.
+const sortOrder = ref<number | null>(null); // 1 (asc) | -1 (desc)
+
+const onSort = (event: any) => {
+  sortField.value = event.sortField;   // e.g. 'banco'
+  sortOrder.value = event.sortOrder;   // 1 | -1
+  // re-fetch current page (keeps pagination in sync),
+  // then the local sort block in loadAccounts() will re-order this page.
+  loadAccounts({ first: first.value, rows: rowsPerPage.value });
+
+};
+
+
+
 type Status0Api = 'approved' | 'observed' | 'rejected';
 type StatusApi = 'approved' | 'observed' | 'rejected';
 type BusyKey = 'approve' | 'observe' | 'reject' | 'approve2' | 'observe2' | 'reject2' | null;
@@ -411,7 +426,6 @@ const actionBusy = ref<BusyKey>(null);
 const totalRecords = ref(0);
 const globalFilter = ref('');
 const rowsPerPage = ref(10);
-const currentPage = ref(1);
 const selectedAccount = ref<any>(null);
 const showDialog = ref(false);
 
@@ -444,6 +458,10 @@ const openImageModal = (url?: string) => {
   showImageModal.value = true;
 };
 
+const first = ref(0); // index of the first row in the current page
+
+
+
 // ¿Primera validación aprobada?
 const isFirstApproved = computed(() => {
   const es = selectedAccount.value?.estado0;
@@ -462,8 +480,12 @@ const isFullyApproved = computed(() => {
 
 const loadAccounts = async (event: any = {}) => {
   loading.value = true;
-  const page = event.page != null ? event.page + 1 : currentPage.value;
-  const perPage = event.rows != null ? Number(event.rows) : rowsPerPage.value;
+  if (event.first != null) first.value = event.first;
+  if (event.rows != null) rowsPerPage.value = Number(event.rows);
+
+  const perPage = rowsPerPage.value;
+  const page = Math.floor(first.value / perPage) + 1;
+
 
   try {
     const { data: payload } = await axios.get('/ban', {
@@ -472,10 +494,37 @@ const loadAccounts = async (event: any = {}) => {
 
     accounts.value = payload.data ?? [];
 
+
+    // Client-side sort of CURRENT PAGE ONLY (lazy table)
+    if (sortField.value && sortOrder.value) {
+      const dir = sortOrder.value === 1 ? 1 : -1;
+      const field = String(sortField.value);
+
+      accounts.value = [...accounts.value].sort((a, b) => {
+        const va = a?.[field];
+        const vb = b?.[field];
+
+        // number-first compare
+        const na = typeof va === 'string' ? Number(va) : va;
+        const nb = typeof vb === 'string' ? Number(vb) : vb;
+        const bothNums = Number.isFinite(na) && Number.isFinite(nb);
+        if (bothNums) return (na - nb) * dir;
+
+        // fallback: string compare (locale-aware, numeric)
+        const sa = (va ?? '').toString();
+        const sb = (vb ?? '').toString();
+        return sa.localeCompare(sb, undefined, { numeric: true, sensitivity: 'base' }) * dir;
+      });
+    }
+
+
+
     const meta = payload.meta ?? {};
     totalRecords.value = meta.total ?? 0;
-    currentPage.value = meta.current_page ?? page;
-    rowsPerPage.value = meta.per_page ? Number(meta.per_page) : perPage;
+    // Keep `first` as-is so we don't jump pages.
+    // Keep `rowsPerPage` unless you want to adopt server’s per_page:
+    rowsPerPage.value = meta.per_page ? Number(meta.per_page) : rowsPerPage.value;
+
   } catch (error) {
     console.error('Error al cargar cuentas bancarias:', error);
     toast.add({ severity: 'error', summary: 'Error', detail: 'Error al cargar las cuentas bancarias', life: 5000 });
@@ -484,7 +533,8 @@ const loadAccounts = async (event: any = {}) => {
   }
 };
 
-const onGlobalSearch = debounce(() => { currentPage.value = 1; loadAccounts(); }, 500);
+const onGlobalSearch = debounce(() => { first.value = 0; loadAccounts(); }, 500);
+
 const onPage = (event: any) => { loadAccounts(event); };
 
 const getStatusSeverity = (estado: string) => {

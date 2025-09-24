@@ -27,27 +27,83 @@ use Illuminate\Support\Facades\Storage;
 
 class DepositController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         try {
             Gate::authorize('viewAny', Deposit::class);
-            $primarySort = Schema::hasColumn('deposits', 'deposit_date') ? 'deposit_date'
-                : (Schema::hasColumn('deposits', 'date') ? 'date'
-                    : (Schema::hasColumn('deposits', 'created_at') ? 'created_at' : 'id'));
-            $deposits = Deposit::query()
-                ->orderByDesc($primarySort)
-                ->orderByDesc('id')
-                ->get();
+
+            $page     = max(1, (int) $request->input('page', 1));
+            $perPage  = max(1, min(100, (int) $request->input('perPage', 10)));
+            $search   = trim((string) $request->input('search', ''));
+            $sortField = $request->input('sortField');               // e.g. "amount", "investor", "nomBanco"
+            $sortDir   = strtolower((string) $request->input('sortDir', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+            // default fallback sort
+            $primarySort = Schema::hasColumn('deposits', 'deposit_date') ? 'deposits.deposit_date'
+                : (Schema::hasColumn('deposits', 'date') ? 'deposits.date'
+                    : (Schema::hasColumn('deposits', 'created_at') ? 'deposits.created_at' : 'deposits.id'));
+
+            // Map UI field -> DB column (with joins below)
+            $sortableMap = [
+                'investor'              => 'investors.name',
+                'nomBanco'              => 'banks.name',
+                'nro_operation'         => 'deposits.nro_operation',
+                'currency'              => 'deposits.currency',
+                'amount'                => 'deposits.amount',
+                'status0'               => 'movements.status',
+                'fecha_aprobacion_1'    => 'movements.aprobacion_1',
+                'aprobado_por_1_nombre' => 'u1.name',
+                'status'                => 'movements.confirm_status',
+                'fecha_aprobacion_2'    => 'movements.aprobacion_2',
+                'aprobado_por_2_nombre' => 'u2.name',
+                'status_conclusion'     => 'deposits.status_conclusion',
+                'creacion'              => 'deposits.created_at',
+            ];
+
+            $query = Deposit::query()
+                ->with([
+                    'bankAccount.bank',
+                    'investor',
+                    'movement.aprobadoPor1',
+                    'movement.aprobadoPor2',
+                    'attachments',
+                ])
+                // Joins for sorting/searching on related columns
+                ->leftJoin('movements', 'movements.id', '=', 'deposits.movement_id')
+                ->leftJoin('bank_accounts', 'bank_accounts.id', '=', 'deposits.bank_account_id')
+                ->leftJoin('banks', 'banks.id', '=', 'bank_accounts.bank_id')
+                ->leftJoin('investors', 'investors.id', '=', 'deposits.investor_id')
+                ->leftJoin('users as u1', 'u1.id', '=', 'movements.aprobado_por_1')
+                ->leftJoin('users as u2', 'u2.id', '=', 'movements.aprobado_por_2')
+                ->select('deposits.*');
+
+            // Quick search (investor name, bank name, nro_operation)
+            if ($search !== '') {
+                $query->where(function ($q) use ($search) {
+                    $q->where('deposits.nro_operation', 'like', "%{$search}%")
+                        ->orWhere('banks.name', 'like', "%{$search}%")
+                        ->orWhere('investors.name', 'like', "%{$search}%")
+                        ->orWhere('investors.first_last_name', 'like', "%{$search}%")
+                        ->orWhere('investors.second_last_name', 'like', "%{$search}%");
+                });
+            }
+
+            // Sorting
+            if ($sortField && isset($sortableMap[$sortField])) {
+                $query->orderBy($sortableMap[$sortField], $sortDir)->orderByDesc('deposits.id');
+            } else {
+                $query->orderByDesc($primarySort)->orderByDesc('deposits.id');
+            }
+
+            $paginator = $query->paginate($perPage, ['*'], 'page', $page);
 
             return response()->json([
-                'total' => $deposits->count(),
-                'data'  => DepositResource::collection($deposits),
+                'total' => $paginator->total(),
+                'data'  => DepositResource::collection($paginator->items()),
             ]);
         } catch (AuthorizationException $e) {
-            return response()->json([
-                'message' => 'No tienes permiso para ver los depósitos.'
-            ], 403);
-        } catch (Throwable $e) {
+            return response()->json(['message' => 'No tienes permiso para ver los depósitos.'], 403);
+        } catch (\Throwable $e) {
             return response()->json([
                 'message' => 'Error al listar los depósitos.',
                 'error'   => $e->getMessage(),
@@ -55,11 +111,7 @@ class DepositController extends Controller
                 'file'    => $e->getFile(),
             ], 500);
         }
-
-
-        
     }
-
 
 
     public function updateStatus0(string $id, Request $request)
@@ -78,7 +130,6 @@ class DepositController extends Controller
             return response()->json([
                 'message' => 'Debes adjuntar y subir el voucher antes de aprobar la primera validación.'
             ], 422);
-
         }
 
 
@@ -126,7 +177,7 @@ class DepositController extends Controller
         }
 
 
-         $deposit->save();
+        $deposit->save();
 
         return response()->json([
             'message' => 'Primera validación actualizada correctamente.',
@@ -424,13 +475,14 @@ class DepositController extends Controller
 
         $request->validate([
             'files'   => 'required|array',
-            'files.*' => 'file|max:20480', // 20MB per file; adjust as needed
+            'files.*' => 'file|max:20480', // 20MB por archivo
         ]);
 
         $stored = [];
 
         foreach ($request->file('files', []) as $file) {
-            $path = $file->store("deposits/{$deposit->id}", config('filesystems.default'));
+            // ⬅️ Guarda en MinIO usando el disk 's3'
+            $path = $file->store("deposits/{$deposit->id}", 's3');
 
             $attachment = $deposit->attachments()->create([
                 'path'        => $path,
@@ -446,18 +498,20 @@ class DepositController extends Controller
         return response()->json([
             'message'     => 'Archivos adjuntados correctamente.',
             'attachments' => collect($stored)->sortBy('created_at')->values()->map(fn($a) => [
-
-                'id'   => $a->id,
-                'name' => $a->name,
-                'mime' => $a->mime,
-                'size' => $a->size,
-                'url'  => $a->url,
-                'is_image' => $a->is_image,
-                'ext' => $a->ext,
+                'id'         => $a->id,
+                'name'       => $a->name,
+                'mime'       => $a->mime,
+                'size'       => $a->size,
+                // ⬅️ Proxy URL estable (sin temporary URL)
+                'url'        => url('/s3/' . $a->path),
+                'download_url' => url('/s3/' . $a->path),
+                'is_image'   => $a->is_image,
+                'ext'        => $a->ext,
                 'created_at' => optional($a->created_at)->toISOString(),
             ]),
         ], 201);
     }
+
 
 
 
@@ -467,19 +521,24 @@ class DepositController extends Controller
         Gate::authorize('view', $deposit);
 
         return response()->json([
-            'attachments' => $deposit->attachments()->orderBy('created_at', 'asc')->get()->map(fn($a) => [
-                'id'   => $a->id,
-                'name' => $a->name,
-                'mime' => $a->mime,
-                'size' => $a->size,
-                'url'  => $a->url,
-                'is_image' => $a->is_image,
-                'ext'  => $a->ext,
-                'created_at' => optional($a->created_at)->toISOString(),
-
-            ]),
+            'attachments' => $deposit->attachments()
+                ->orderBy('created_at', 'asc')
+                ->get()
+                ->map(fn($a) => [
+                    'id'         => $a->id,
+                    'name'       => $a->name,
+                    'mime'       => $a->mime,
+                    'size'       => $a->size,
+                    // ⬅️ Proxy URL estable (igual que en bank accounts)
+                    'url'        => url('/s3/' . $a->path),
+                    'download_url' => url('/s3/' . $a->path),
+                    'is_image'   => $a->is_image,
+                    'ext'        => $a->ext,
+                    'created_at' => optional($a->created_at)->toISOString(),
+                ]),
         ]);
     }
+
 
 
     public function deleteAttachment(string $id, string $attachmentId)
@@ -489,14 +548,13 @@ class DepositController extends Controller
 
         $attachment = DepositAttachment::where('deposit_id', $id)->findOrFail($attachmentId);
 
-        // Attempt to delete file from storage; ignore failure
-        if ($attachment->path && Storage::disk(config('filesystems.default'))->exists($attachment->path)) {
-            Storage::disk(config('filesystems.default'))->delete($attachment->path);
+        // ⬅️ Elimina desde MinIO (disk 's3'); ignora fallo si no existe
+        if ($attachment->path && Storage::disk('s3')->exists($attachment->path)) {
+            Storage::disk('s3')->delete($attachment->path);
         }
 
         $attachment->delete();
 
         return response()->json(['message' => 'Adjunto eliminado correctamente.']);
     }
-    
 }

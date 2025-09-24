@@ -28,8 +28,10 @@ use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use Throwable;
 
-class CompanyController extends Controller{
-     public function index(Request $request){
+class CompanyController extends Controller
+{
+    public function index(Request $request)
+    {
         try {
             Gate::authorize('viewAny', Company::class);
 
@@ -59,6 +61,7 @@ class CompanyController extends Controller{
                 'document'      => 'companies.document',
                 'business_name' => 'companies.business_name',
                 'name'          => 'companies.name',
+                'nuevonombreempresa' => 'companies.nuevonombreempresa',
                 'risk'          => 'companies.risk',
                 'creacion'      => 'companies.created_at',
                 'sectornom'     => 'sectors.name',
@@ -74,8 +77,7 @@ class CompanyController extends Controller{
                     new SubsectorFilter($subsectorId),
                     new RiskFilter($risk),
                 ])
-                ->thenReturn()
-                ->latest(); // ORDER BY created_at DESC
+                ->thenReturn(); // ORDER BY created_at DESC
 
 
             $sortApplied = ['companies.id', 'desc'];
@@ -86,12 +88,12 @@ class CompanyController extends Controller{
 
                 if ($sortField === 'sectornom') {
                     $query->leftJoin('sectors', 'companies.sector_id', '=', 'sectors.id')
-                          ->select('companies.*')
-                          ->orderBy($column, $sortOrder);
+                        ->select('companies.*')
+                        ->orderBy($column, $sortOrder);
                 } elseif ($sortField === 'subsectornom') {
                     $query->leftJoin('subsectors', 'companies.subsector_id', '=', 'subsectors.id')
-                          ->select('companies.*')
-                          ->orderBy($column, $sortOrder);
+                        ->select('companies.*')
+                        ->orderBy($column, $sortOrder);
                 } else {
                     $query->orderBy($column, $sortOrder);
                 }
@@ -123,7 +125,6 @@ class CompanyController extends Controller{
                     ],
                 ]);
         } catch (AuthorizationException $e) {
-            return response()->json(['message' => 'No tienes permiso para ver las compañías.'], 403);
             return response()->json(['message' => 'No tienes permiso para ver las compañías.'], 403);
         } catch (Throwable $e) {
             Log::error('Error al listar las compañías', [
