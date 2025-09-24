@@ -15,14 +15,25 @@ class ConsultasRucController extends Controller
             return response()->json(['error' => 'Debe proporcionar un RUC válido de 11 dígitos'], 400);
         }
 
-        // 1. Verificar en la base de datos
-        $exists = Company::where('document', $ruc)->exists();
-        if ($exists) {
-            return response()->json([
-                'error' => 'Este RUC ya está registrado en el sistema',
-                'exists' => true
-            ], 409);
+        // ✅ Solo validar existencia si viene el flag en el request
+        if (request()->boolean('validate_exists', false)) {
+            $exists = Company::where('document', $ruc)->exists();
+            if ($exists) {
+                return response()->json([
+                    'error' => 'Este RUC ya está registrado en el sistema',
+                    'exists' => true
+                ], 409);
+            }
         }
+
+        // 1. Verificar en la base de datos
+        // $exists = Company::where('document', $ruc)->exists();
+        // if ($exists) {
+        //     return response()->json([
+        //         'error' => 'Este RUC ya está registrado en el sistema',
+        //         'exists' => true
+        //     ], 409);
+        // }
 
         // 2. Consultar SUNAT
         $token = env('CONSULTA_RUC_API_TOKEN');

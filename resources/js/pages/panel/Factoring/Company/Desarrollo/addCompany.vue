@@ -768,7 +768,8 @@ async function consultarRuc() {
     }
 
     try {
-        const response = await axios.get(`/api/consultar-ruc/${empresa.value.document}`);
+        // const response = await axios.get(`/api/consultar-ruc/${empresa.value.document}`);
+        const response = await axios.get(`/api/consultar-ruc/${empresa.value.document}?validate_exists=true`);
         const data = response.data;
 
         rucConsultado.value = true;

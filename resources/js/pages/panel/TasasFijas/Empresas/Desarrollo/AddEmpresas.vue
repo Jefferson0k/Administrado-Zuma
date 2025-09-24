@@ -13,58 +13,65 @@
         <div class="flex flex-col gap-6">
             <!-- RUC -->
             <div>
-                <label class="block font-bold mb-3">RUC <span class="text-red-500">*</span></label>
-                <InputNumber v-model="empresa.ruc" :useGrouping="false" :maxlength="11" :loading="consultandoRuc"
-                    @keydown.enter="consultarRuc" placeholder="Nº 12345678910" inputId="ruc" class="w-full" />
+                <label class="mb-3 block font-bold">RUC <span class="text-red-500">*</span></label>
+                <InputNumber
+                    v-model="empresa.ruc"
+                    :useGrouping="false"
+                    :maxlength="11"
+                    :loading="consultandoRuc"
+                    @keydown.enter="consultarRuc"
+                    placeholder="Nº 12345678910"
+                    inputId="ruc"
+                    class="w-full"
+                />
                 <small>Presiona Enter para consultar</small>
             </div>
 
             <!-- Razón Social -->
             <div>
-                <label class="block font-bold mb-3">Razón social <span class="text-red-500">*</span></label>
+                <label class="mb-3 block font-bold">Razón social <span class="text-red-500">*</span></label>
                 <InputText v-model="empresa.razonSocial" disabled placeholder="Razón social de la empresa" class="w-full" />
             </div>
 
             <!-- Dirección -->
             <div>
-                <label class="block font-bold mb-3">Dirección <span class="text-red-500">*</span></label>
+                <label class="mb-3 block font-bold">Dirección <span class="text-red-500">*</span></label>
                 <InputText v-model="empresa.direccion" disabled placeholder="Dirección de la empresa" class="w-full" />
             </div>
 
             <!-- Actividad Económica -->
             <div>
-                <label class="block font-bold mb-3">Actividad económica <span class="text-red-500">*</span></label>
-                <Textarea v-model="empresa.actividadEconomica" disabled placeholder="Actividad económica" rows="3"
-                    class="w-full" />
+                <label class="mb-3 block font-bold">Actividad económica <span class="text-red-500">*</span></label>
+                <Textarea v-model="empresa.actividadEconomica" disabled placeholder="Actividad económica" rows="3" class="w-full" />
             </div>
 
             <!-- Estado -->
             <div>
-                <label class="block font-bold mb-3">Estado <span class="text-red-500">*</span></label>
+                <label class="mb-3 block font-bold">Estado <span class="text-red-500">*</span></label>
                 <Dropdown v-model="empresa.estado" :options="estados" placeholder="Seleccione el estado" class="w-full" />
             </div>
 
             <!-- Tipo de empresa -->
             <div>
-                <label class="block font-bold mb-3">Tipo <span class="text-red-500">*</span></label>
+                <label class="mb-3 block font-bold">Tipo <span class="text-red-500">*</span></label>
                 <Dropdown v-model="empresa.tipo" :options="tiposEntidad" placeholder="Seleccione el tipo de entidad" class="w-full" />
             </div>
 
             <!-- Teléfono -->
             <div>
-                <label class="block font-bold mb-3">Teléfono <span class="text-red-500">*</span></label>
+                <label class="mb-3 block font-bold">Teléfono <span class="text-red-500">*</span></label>
                 <InputText v-model="empresa.telefono" placeholder="Ingrese el teléfono" class="w-full" />
             </div>
 
             <!-- Email -->
             <div>
-                <label class="block font-bold mb-3">Email <span class="text-red-500">*</span></label>
+                <label class="mb-3 block font-bold">Email <span class="text-red-500">*</span></label>
                 <InputText v-model="empresa.email" placeholder="Ingrese el email" class="w-full" />
             </div>
 
             <!-- PDF -->
             <div>
-                <label class="block font-bold mb-3">PDF de autorización <span class="text-red-500">*</span></label>
+                <label class="mb-3 block font-bold">PDF de autorización <span class="text-red-500">*</span></label>
                 <FileUpload
                     mode="advanced"
                     name="pdf"
@@ -83,26 +90,25 @@
 
         <!-- Botones -->
         <template #footer>
-            <Button label="Cancelar" icon="pi pi-times" text @click="hideDialog" severity="secondary"/>
-            <Button label="Guardar" icon="pi pi-check" @click="guardarEmpresa" severity="contrast"/>
+            <Button label="Cancelar" icon="pi pi-times" text @click="hideDialog" severity="secondary" />
+            <Button label="Guardar" icon="pi pi-check" @click="guardarEmpresa" severity="contrast" />
         </template>
     </Dialog>
 </template>
 
 <script setup>
-import { ref } from 'vue';
 import axios from 'axios';
 import { useToast } from 'primevue/usetoast';
-import { defineEmits } from 'vue';
+import { defineEmits, ref } from 'vue';
 
-import Toolbar from 'primevue/toolbar';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
-import InputText from 'primevue/inputtext';
-import InputNumber from 'primevue/inputnumber';
 import Dropdown from 'primevue/dropdown';
-import Textarea from 'primevue/textarea';
 import FileUpload from 'primevue/fileupload';
+import InputNumber from 'primevue/inputnumber';
+import InputText from 'primevue/inputtext';
+import Textarea from 'primevue/textarea';
+import Toolbar from 'primevue/toolbar';
 
 const toast = useToast();
 const emit = defineEmits(['agregado']);
@@ -123,7 +129,7 @@ const empresa = ref({
     estado: '',
     tipo: '',
     telefono: '',
-    email: ''
+    email: '',
 });
 
 function openNew() {
@@ -145,7 +151,7 @@ function resetEmpresa() {
         estado: '',
         tipo: '',
         telefono: '',
-        email: ''
+        email: '',
     };
     archivoPdf.value = null;
     submitted.value = false;
@@ -153,20 +159,20 @@ function resetEmpresa() {
 
 function onUploadPdf(event) {
     const file = event.files[0];
-    if (file && file.type === "application/pdf") {
+    if (file && file.type === 'application/pdf') {
         archivoPdf.value = file;
         toast.add({
             severity: 'success',
             summary: 'PDF cargado',
             detail: `Archivo "${file.name}" listo para enviar`,
-            life: 3000
+            life: 3000,
         });
     } else {
         toast.add({
             severity: 'error',
             summary: 'Archivo inválido',
             detail: 'Debe subir un archivo PDF',
-            life: 4000
+            life: 4000,
         });
     }
 }
@@ -177,7 +183,7 @@ async function consultarRuc() {
             severity: 'warn',
             summary: 'Advertencia',
             detail: 'Debe ingresar un RUC válido de 11 dígitos',
-            life: 3000
+            life: 3000,
         });
         return;
     }
@@ -185,8 +191,8 @@ async function consultarRuc() {
     consultandoRuc.value = true;
 
     try {
-        const response = await axios.get(`/api/consultar-ruc/${empresa.value.ruc}`);
-
+        // const response = await axios.get(`/api/consultar-ruc/${empresa.value.ruc}`);
+        const response = await await axios.get(`/api/consultar-ruc/${empresa.value.ruc}?validate_exists=true`);
         if (response.data) {
             const data = response.data;
             empresa.value.razonSocial = data.razonSocial || '';
@@ -198,7 +204,7 @@ async function consultarRuc() {
                 severity: 'success',
                 summary: 'Éxito',
                 detail: 'Datos del RUC obtenidos correctamente',
-                life: 3000
+                life: 3000,
             });
         }
     } catch (error) {
@@ -207,7 +213,7 @@ async function consultarRuc() {
             severity: 'error',
             summary: 'Error',
             detail: error.response?.data?.message || 'Error al consultar el RUC',
-            life: 5000
+            life: 5000,
         });
         resetEmpresa();
     } finally {
@@ -260,15 +266,16 @@ function guardarEmpresa() {
     formData.append('estado', empresa.value.estado.toLowerCase());
     formData.append('pdf', archivoPdf.value);
 
-    axios.post('/coperativa', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    axios
+        .post('/coperativa', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        })
         .then(() => {
             toast.add({
                 severity: 'success',
                 summary: 'Empresa registrada',
                 detail: 'Los datos se guardaron correctamente',
-                life: 3000
+                life: 3000,
             });
             emit('agregado');
             hideDialog();
@@ -279,7 +286,7 @@ function guardarEmpresa() {
                 severity: 'error',
                 summary: 'Error',
                 detail: error.response?.data?.message || 'Ocurrió un error al guardar la empresa',
-                life: 5000
+                life: 5000,
             });
         });
 }
@@ -289,7 +296,7 @@ function showToast() {
         severity: 'info',
         summary: 'Información',
         detail: 'Aún se encuentra en desarrollo',
-        life: 3000
+        life: 3000,
     });
 }
 </script>
