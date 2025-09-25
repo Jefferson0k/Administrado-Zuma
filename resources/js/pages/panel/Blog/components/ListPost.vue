@@ -1,17 +1,11 @@
 <template>
-  <DataTable
-    ref="dt"
-    v-model:selection="selectedPost"
-    :value="posts"
-    dataKey="id"
-    :paginator="true"
-    :rows="10"
-    :filters="filters"
+  <DataTable ref="dt" v-model:selection="selectedPost" :value="posts" dataKey="id" :paginator="true" :rows="rows"
+    :totalRecords="totalRecords" :first="(page - 1) * rows" :lazy="true" :loading="loading" :sortField="sortField"
+    :sortOrder="sortOrder" @page="onPage" @sort="onSort" @filter="onFilter" :filters="filters"
     paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-    :rowsPerPageOptions="[5, 10, 25]"
-    currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} posts"
-    class="p-datatable-sm"
-  >
+    :rowsPerPageOptions="[5, 10, 25]" currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} posts"
+    class="p-datatable-sm">
+
     <template #header>
       <div class="flex flex-wrap gap-2 items-center justify-between">
         <h4 class="m-0">
@@ -35,8 +29,9 @@
     </Column>
     <Column field="categories" header="Categorías" sortable>
       <template #body="{ data }">
-        <div class="flex flex-wrap gap-1">
-          <Tag v-for="p in data.categories" :key="p.id" :value="p.nombre" severity="info" rounded />
+        <div class="flex items-center space-x-2">
+          <Rating :modelValue="Number(data.rating_avg || 0)" readonly :cancel="false" />
+          <span>({{ Number(data.rating_avg || 0).toFixed(1) }})</span>
         </div>
       </template>
     </Column>
@@ -62,13 +57,8 @@
   <Menu ref="menu" :model="menuItems" popup />
   <VerDialog ref="viewDialogRef" />
 
-  <Dialog
-    v-model:visible="editDialog"
-    :style="{ width: '820px' }"
-    header="Editar Publicación"
-    :modal="true"
-    @hide="cleanupPreview"
-  >
+  <Dialog v-model:visible="editDialog" :style="{ width: '820px' }" header="Editar Publicación" :modal="true"
+    @hide="cleanupPreview">
     <div class="flex flex-col gap-6">
       <!-- Título -->
       <div>
@@ -79,30 +69,15 @@
       <!-- Producto -->
       <div>
         <label class="block font-bold mb-3">Producto <span class="text-red-500">*</span></label>
-        <Select
-          v-model="selectedProduct"
-          :options="products"
-          optionLabel="nombre"
-          optionValue="id"
-          placeholder="Seleccione el producto"
-          class="w-full"
-        />
+        <Select v-model="selectedProduct" :options="products" optionLabel="nombre" optionValue="id"
+          placeholder="Seleccione el producto" class="w-full" />
       </div>
 
       <!-- Categorías -->
       <div>
         <label class="block font-bold mb-3">Categoría(s) <span class="text-red-500">*</span></label>
-        <MultiSelect
-          v-model="editForm.category_id"
-          display="chip"
-          :options="categories"
-          optionLabel="nombre"
-          optionValue="id"
-          filter
-          placeholder="Seleccione la categoría"
-          :maxSelectedLabels="3"
-          class="w-full"
-        />
+        <MultiSelect v-model="editForm.category_id" display="chip" :options="categories" optionLabel="nombre"
+          optionValue="id" filter placeholder="Seleccione la categoría" :maxSelectedLabels="3" class="w-full" />
       </div>
 
       <!-- Galería -->
@@ -113,44 +88,25 @@
         </div>
 
         <div v-if="allImages.length" class="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-2">
-          <div
-            v-for="img in allImages"
-            :key="img.key"
-            class="relative group rounded overflow-hidden border bg-white"
-            :class="img.markedForDeletion ? 'opacity-50 grayscale' : ''"
-          >
+          <div v-for="img in allImages" :key="img.key" class="relative group rounded overflow-hidden border bg-white"
+            :class="img.markedForDeletion ? 'opacity-50 grayscale' : ''">
             <img :src="img.src" :alt="img.alt" class="thumb-img" @error="onThumbError($event, img.path)" />
 
+
             <!-- Badge portada -->
-            <span
-              v-if="img.isMain || coverImageId === img.id"
-              class="absolute top-1 left-1 px-1.5 py-0.5 text-[10px] rounded bg-blue-600 text-white shadow"
-            >
+            <span v-if="img.isMain || coverImageId === img.id"
+              class="absolute top-1 left-1 px-1.5 py-0.5 text-[10px] rounded bg-blue-600 text-white shadow">
               Portada
             </span>
 
             <!-- Acciones -->
             <div
-              class="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 pb-1 opacity-0 group-hover:opacity-100 transition"
-            >
+              class="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 pb-1 opacity-0 group-hover:opacity-100 transition">
               <Button icon="pi pi-search" text rounded class="p-button-sm btn-icon-xs" @click="previewImg(img.src)" />
-              <Button
-                icon="pi pi-star"
-                text
-                rounded
-                class="p-button-sm btn-icon-xs"
-                @click="setAsCover(img)"
-                :disabled="img.isNew"
-              />
-              <Button
-                icon="pi pi-trash"
-                text
-                rounded
-                severity="danger"
-                class="p-button-sm btn-icon-xs"
-                @click="toggleDelete(img)"
-                :disabled="img.isMain && coverImageId == null"
-              />
+              <Button icon="pi pi-star" text rounded class="p-button-sm btn-icon-xs" @click="setAsCover(img)"
+                :disabled="img.isNew" />
+              <Button icon="pi pi-trash" text rounded severity="danger" class="p-button-sm btn-icon-xs"
+                @click="toggleDelete(img)" :disabled="img.isMain && coverImageId == null" />
             </div>
           </div>
         </div>
@@ -160,30 +116,16 @@
       <!-- Agregar nuevas imágenes -->
       <div>
         <label class="block font-bold mb-3">Agregar imagen(es) a la galería</label>
-        <FileUpload
-          mode="advanced"
-          name="imgs"
-          :multiple="true"
-          accept=".jpg,.jpeg,.png"
-          :auto="true"
-          customUpload
-          :maxFileSize="10000000"
-          @uploader="onUploadExtraImages"
-          :chooseLabel="'Seleccionar'"
-          :uploadLabel="'Agregar'"
-          :cancelLabel="'Cancelar'"
-          class="w-full"
-        />
+        <FileUpload mode="advanced" name="imgs" :multiple="true" accept=".jpg,.jpeg,.png" :auto="true" customUpload
+          :maxFileSize="10000000" @uploader="onUploadExtraImages" :chooseLabel="'Seleccionar'" :uploadLabel="'Agregar'"
+          :cancelLabel="'Cancelar'" class="w-full" />
         <div v-if="newImagesPreview.length" class="mt-3">
           <div class="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-2">
-            <div v-for="(src, i) in newImagesPreview" :key="'new-prev-' + i" class="relative rounded overflow-hidden border">
+            <div v-for="(src, i) in newImagesPreview" :key="'new-prev-' + i"
+              class="relative rounded overflow-hidden border">
               <img :src="src" alt="Nueva imagen" class="thumb-img object-cover" />
-              <button
-                type="button"
-                class="absolute top-1 right-1 p-1 rounded bg-white/90 hover:bg-white shadow"
-                @click="removeNewImage(i)"
-                title="Quitar de nuevas"
-              >
+              <button type="button" class="absolute top-1 right-1 p-1 rounded bg-white/90 hover:bg-white shadow"
+                @click="removeNewImage(i)" title="Quitar de nuevas">
                 <i class="pi pi-times text-xs"></i>
               </button>
             </div>
@@ -194,21 +136,15 @@
       <!-- Contenido -->
       <div>
         <label class="block font-bold mb-3">Contenido <span class="text-red-500">*</span></label>
-        <QuillEditor v-model:content="editForm.contenido" contentType="html" placeholder="Ingresa el contenido" class="w-full" />
+        <QuillEditor v-model:content="editForm.contenido" contentType="html" placeholder="Ingresa el contenido"
+          class="w-full" />
       </div>
 
       <!-- Fecha -->
       <div>
         <label class="block font-bold mb-3">Fecha Programada <span class="text-red-500">*</span></label>
-        <Calendar
-          v-model="editForm.fecha_programada"
-          dateFormat="dd/mm/yy"
-          placeholder="Selecciona la fecha"
-          showIcon
-          showTime
-          hourFormat="12"
-          class="w-full"
-        />
+        <Calendar v-model="editForm.fecha_programada" dateFormat="dd/mm/yy" placeholder="Selecciona la fecha" showIcon
+          showTime hourFormat="12" class="w-full" />
       </div>
     </div>
 
@@ -293,13 +229,32 @@ const props = defineProps({
   }
 })
 
+const page = ref(1)
+const rows = ref(10)
+const totalRecords = ref(0)
+const sortField = ref('created_at')
+const sortOrder = ref(-1) // -1 desc, 1 asc (PrimeVue)
+
+
+let searchTimer
+watch(() => filters.value.global?.value, () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    page.value = 1
+    obtenerPost()
+  }, 300)
+})
+
+
+
 // ==== Menú contextual ====
 const menuItems = ref([])
 function toggleMenu(event, item) {
   selectedItem.value = item
   menuItems.value = [
     { label: 'Publicar', icon: 'pi pi-play', command: () => publicar(item) },
-    { label: 'Ver imagen', icon: 'pi pi-image', command: () => verImagen(item), disabled: !item.imagen },
+    { label: 'Ver imagen', icon: 'pi pi-image', command: () => verImagen(item), disabled: !item.imagen_url && !item.imagen },
+
     { label: 'Editar', icon: 'pi pi-pencil', command: () => editar(item) },
     { label: 'Eliminar', icon: 'pi pi-trash', command: () => eliminar(item) },
   ]
@@ -307,55 +262,70 @@ function toggleMenu(event, item) {
 }
 
 // ==== Utils de rutas para imágenes ====
+// If backend sends absolute URLs (S3/MinIO), use them.
+// Otherwise, fall back to legacy local paths.
+// If backend sends absolute URLs (S3/MinIO), use them.
+// Otherwise, fall back to legacy local paths.
 function srcCandidates(name) {
-  return [
-    `/storage/images/${name}`,
-    `/image/${name}`,
-    `/images/${name}`,
-  ]
+  if (!name) return []
+  if (/^https?:\/\//i.test(name)) return [name] // backend gave full S3/MinIO URL
+  return [`/image/${name}`] // single local fallback (optional)
 }
-function thumbSrc(name) {
-  return srcCandidates(name)[0]
+
+
+function bestSrc(nameOrUrl) {
+  const list = srcCandidates(nameOrUrl)
+  return list[0] || ''
 }
-function onThumbError(e, name) {
-  const list = srcCandidates(name)
-  const idx = list.indexOf(e.target.src)
+function onThumbError(e, nameOrUrl) {
+  const list = srcCandidates(nameOrUrl)
+  const current = e.target.src
+  const idx = list.findIndex(u => u === current)
+  // If absolute single URL (S3), there’s nothing else to try — optionally set a placeholder
+  if (list.length <= 1) {
+    e.target.src = 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=200&fit=crop&crop=center'
+    return
+  }
   e.target.src = list[Math.min(idx + 1, list.length - 1)] || list[list.length - 1]
 }
+
 
 // Todas las imágenes (portada + relacionadas + nuevas)
 const allImages = computed(() => {
   const arr = []
-  // Principal (de Post.imagen)
-  const main = selectedItem.value?.imagen
-  if (main) {
-    const list = srcCandidates(main)
+
+  // Principal (de Post.imagen / imagen_url)
+  const mainUrl = selectedItem.value?.imagen_url || bestSrc(selectedItem.value?.imagen)
+  if (mainUrl) {
     arr.push({
-      key: `main-${main}`,
+      key: `main-${selectedItem.value?.imagen || 'url'}`,
       id: null,                // no pertenece a post_images
-      src: list[Math.min(mainTry.value, list.length - 1)],
-      path: main,
+      src: mainUrl,
+      path: selectedItem.value?.imagen_url || selectedItem.value?.imagen,
       alt: 'Portada actual',
       isMain: true,
       isNew: false,
       markedForDeletion: false
     })
   }
-  // Relacionadas (PostImage[])
+
+  // Relacionadas (PostImage[]), preferir image.url si viene del backend
   for (const im of extraImages.value || []) {
-    if (!im?.image_path) continue
+    if (!im) continue
+    const src = im.url || bestSrc(im.image_path)
     const marked = deletedImageIds.value.has(im.id)
     arr.push({
-      key: `extra-${im.id}-${im.image_path}`,
-      id: im.id,
-      src: thumbSrc(im.image_path),
-      path: im.image_path,
+      key: `extra-${im.id}-${im.image_path || 'url'}`,
+      id: im.id ?? null,
+      src,
+      path: im.url || im.image_path,
       alt: 'Imagen relacionada',
       isMain: false,
       isNew: false,
       markedForDeletion: marked
     })
   }
+
   // Nuevas (File previews)
   for (let i = 0; i < newImagesPreview.value.length; i++) {
     arr.push({
@@ -423,8 +393,10 @@ async function editar(item) {
       const { data } = await axios.get(`/api/blog/showpost/${item.id}`)
       if (Array.isArray(data?.images)) extraImages.value = data.images
       if (data?.imagen) selectedItem.value.imagen = data.imagen
-    } catch {}
+      if (data?.imagen_url) selectedItem.value.imagen_url = data.imagen_url
+    } catch { }
   }
+
 
   // deduce product desde categorías (si category tiene product_id)
   let pid = null
@@ -498,10 +470,23 @@ async function actualizarPost() {
 // ========= Carga de datos =========
 async function obtenerPost() {
   try {
-    const res = await axios.get('/api/blog/lista')
-    posts.value = res.data.posts || []
+    loading.value = true
+    const params = {
+      page: page.value,
+      rows: rows.value,
+      sortField: sortField.value,
+      sortOrder: sortOrder.value,
+      global: filters.value.global?.value || ''
+    }
+    const { data } = await axios.get('/api/blog/lista', { params })
+    posts.value = Array.isArray(data?.data) ? data.data : []
+    totalRecords.value = Number(data?.total || posts.value.length)
   } catch {
     toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar posts', life: 3000 })
+    posts.value = []
+    totalRecords.value = 0
+  } finally {
+    loading.value = false
   }
 }
 
@@ -583,12 +568,34 @@ function eliminar(item) {
 }
 
 function verImagen(item) {
-  if (!item.imagen) {
+  const url = item?.imagen_url || bestSrc(item?.imagen)
+  if (!url) {
     toast.add({ severity: 'warn', summary: 'Advertencia', detail: 'Esta publicación no tiene una imagen asociada', life: 3000 })
     return
   }
-  window.open(`/image/${item.imagen}`, '_blank')
+  window.open(url, '_blank', 'noopener')
 }
+
+
+function onPage(e) {
+  page.value = Math.floor(e.first / e.rows) + 1
+  rows.value = e.rows
+  obtenerPost()
+}
+
+function onSort(e) {
+  sortField.value = e.sortField || 'created_at'
+  sortOrder.value = e.sortOrder ?? -1
+  obtenerPost()
+}
+
+function onFilter() {
+  // PrimeVue passes filters via v-model already; just reset to page 1
+  page.value = 1
+  obtenerPost()
+}
+
+
 
 async function publicar(item) {
   try {
@@ -698,6 +705,7 @@ watch(selectedProduct, async () => {
 .btn-icon-xs :deep(.p-button-icon) {
   font-size: 0.7rem;
 }
+
 .btn-icon-xs :deep(.p-button) {
   padding: 0.15rem 0.3rem;
 }

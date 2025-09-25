@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Storage;
 use App\Models\ComentarioPost;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Schema;
 
 class BlogController extends Controller
 {
@@ -52,20 +53,62 @@ class BlogController extends Controller
         return Inertia::render('panel/Blog/Categorias');
     }
 
-    public function lista()
+    public function lista(Request $request)
     {
-        $posts = Post::with([
+        $rows      = (int) $request->input('rows', 10);     // page size
+        $page      = (int) $request->input('page', 1);      // 1-based
+        $sortField = $request->input('sortField', 'created_at');
+        $sortOrder = (int) $request->input('sortOrder', -1); // 1 asc, -1 desc (PrimeVue)
+        $global    = trim((string) $request->input('global', ''));
+
+        // allowlist to avoid SQL injection on sort field
+        $sortable = ['titulo', 'contenido', 'fecha_programada', 'state_id', 'created_at', 'updated_at', 'id'];
+        if (!in_array($sortField, $sortable, true)) {
+            $sortField = 'created_at';
+        }
+        $direction = $sortOrder === 1 ? 'asc' : 'desc';
+
+        $query = Post::with([
             'categories',
             'ratings',
             'user:id,name',
             'updated_user:id,name',
-            'images',              // ✅ eager-load gallery images so edit dialog has them
-        ])->get();
+            'images',
+        ])
+            // 👇 calcula media y conteo en SQL
+            ->withAvg('ratings as rating_avg', 'estrellas')
+            ->withCount('ratings as rating_count')
+            ->when($global !== '', function ($q) use ($global) {
+                $searchCols = ['titulo', 'contenido'];
+                if (Schema::hasColumn('posts', 'resumen')) {
+                    $searchCols[] = 'resumen';
+                }
+                $q->where(function ($qq) use ($global, $searchCols) {
+                    foreach ($searchCols as $col) {
+                        $qq->orWhere($col, 'like', '%' . $global . '%');
+                    }
+                });
+            })
+            ->orderBy($sortField, $direction);
+
+
+        $paginator = $query->paginate($rows, ['*'], 'page', $page);
+
+        // map image URLs (no key normalization here)
+        $paginator->getCollection()->transform(function ($p) {
+            $p->imagen_url = $p->imagen ? url("s3/images/{$p->imagen}") : null;
+            foreach ($p->images as $img) {
+                $img->url = $img->image_path ? url("s3/images/{$img->image_path}") : null;
+            }
+            return $p;
+        });
 
         return response()->json([
-            'message' => 'Datos cargados exitosamente.',
-            'posts' => $posts,
-        ], 201);
+            'data'  => $paginator->items(),
+            'total' => $paginator->total(),
+            'page'  => $paginator->currentPage(),
+            'rows'  => $paginator->perPage(),
+        ]);
     }
 
     public function productos()
@@ -142,13 +185,20 @@ class BlogController extends Controller
             return response()->json(['error' => 'Una o más categorías no existen.'], 422);
         }
 
-        $imagenes = $request->file('imagenes');
+        $imagenes = $request->hasFile('imagenes') ? $request->file('imagenes') : ($request->hasFile('imagen') ? [$request->file('imagen')] : []);
 
+        if (!empty($validated['fecha_programada']) && now()->gte($validated['fecha_programada'])) {
+            $validated['state_id'] = 2;
+            $validated['fecha_publicacion'] = now();
+        }
         return DB::transaction(function () use ($validated, $imagenes, $categoryIds) {
             // 1) Guardar imagen principal en posts.imagen
-            $principal   = $imagenes[0];
-            $mainName    = Str::random(10) . '.' . $principal->getClientOriginalExtension();
-            $principal->storeAs('images', $mainName, 'public');
+            $principal = $imagenes[0];
+            $disk = Storage::disk('s3');
+            $mainKey = $disk->putFile('images', $principal, 'public'); // e.g. images/abc.jpg
+            $mainName = basename($mainKey); // store only filename in DB
+
+
 
             // 2) Crear post (evitar mass-assign de "imagenes")
             $postData = $validated;
@@ -168,8 +218,8 @@ class BlogController extends Controller
             // 4) Guardar imágenes adicionales en post_image
             if (count($imagenes) > 1) {
                 foreach (array_slice($imagenes, 1) as $img) {
-                    $name = Str::random(10) . '.' . $img->getClientOriginalExtension();
-                    $img->storeAs('images', $name, 'public');
+                    $key = $disk->putFile('images', $img, 'public'); // images/<hash>.ext
+                    $name = basename($key);
 
                     PostImage::create([
                         'post_id'    => $post->id,
@@ -216,8 +266,8 @@ class BlogController extends Controller
 
         $rating = Rating::create([
             'post_id'    => $validated['post_id'],
-            'entrellas' => $validated['estrellas'] ?? 3.00,
-            'ip'      => '192.168.0.10',
+            'estrellas' => $validated['estrellas'] ?? 3.00,
+            'ip'        => $this->getRealIp($request),
 
         ]);
 
@@ -284,8 +334,8 @@ class BlogController extends Controller
         $rating = Rating::updateOrCreate(
             [
                 'post_id' => $request->post_id,
-                //'ip' => $this->getRealIp($request),
-                'ip' => $request->ip(),
+                'ip' => $this->getRealIp($request),
+
             ],
             [
                 'estrellas' => $request->estrellas,
@@ -307,17 +357,16 @@ class BlogController extends Controller
 
         return DB::transaction(function () use ($post) {
             // Eliminar imagen principal
-            if ($post->imagen && Storage::disk('public')->exists("images/{$post->imagen}")) {
-                Storage::disk('public')->delete("images/{$post->imagen}");
+            if ($post->imagen && Storage::disk('s3')->exists("images/{$post->imagen}")) {
+                Storage::disk('s3')->delete("images/{$post->imagen}");
             }
-
-            // Eliminar imágenes adicionales
             foreach ($post->images as $img) {
-                if (Storage::disk('public')->exists("images/{$img->image_path}")) {
-                    Storage::disk('public')->delete("images/{$img->image_path}");
+                if (Storage::disk('s3')->exists("images/{$img->image_path}")) {
+                    Storage::disk('s3')->delete("images/{$img->image_path}");
                 }
                 $img->delete();
             }
+
 
             // Eliminar categorías
             PostCategory::where('post_id', $post->id)->delete();
@@ -407,12 +456,11 @@ class BlogController extends Controller
         // Si subieron una NUEVA portada (imagen)
         if ($request->hasFile('imagen')) {
             $img = $request->file('imagen');
-            $name = Str::random(10) . '.' . $img->getClientOriginalExtension();
-            $img->storeAs('images', $name, 'public');
-
-            // borra la portada anterior si existía
-            if ($post->imagen && Storage::disk('public')->exists("images/{$post->imagen}")) {
-                Storage::disk('public')->delete("images/{$post->imagen}");
+            $disk = Storage::disk('s3');
+            $key = $disk->putFile('images', $img, 'public');
+            $name = basename($key);
+            if ($post->imagen && $disk->exists("images/{$post->imagen}")) {
+                $disk->delete("images/{$post->imagen}");
             }
             $post->imagen = $name;
             $post->save();
@@ -431,8 +479,10 @@ class BlogController extends Controller
         // Agregar nuevas imágenes a galería
         if ($request->hasFile('new_images')) {
             foreach ($request->file('new_images') as $file) {
-                $name = Str::random(10) . '.' . $file->getClientOriginalExtension();
-                $file->storeAs('images', $name, 'public');
+                $disk = Storage::disk('s3');
+                $key = $disk->putFile('images', $file, 'public');
+                $name = basename($key);
+
                 PostImage::create([
                     'post_id'    => $post->id,
                     'image_path' => $name,
@@ -445,12 +495,22 @@ class BlogController extends Controller
         if (!empty($deleteIds)) {
             $imgs = PostImage::where('post_id', $post->id)->whereIn('id', $deleteIds)->get();
             foreach ($imgs as $im) {
-                if (Storage::disk('public')->exists("images/{$im->image_path}")) {
-                    Storage::disk('public')->delete("images/{$im->image_path}");
+                if (Storage::disk('s3')->exists("images/{$im->image_path}")) {
+                    Storage::disk('s3')->delete("images/{$im->image_path}");
                 }
+
                 $im->delete();
             }
         }
+
+
+        // If schedule is in the past and still draft, publish now
+        if (!empty($validated['fecha_programada']) && $post->state_id == 1 && now()->gte($validated['fecha_programada'])) {
+            $post->state_id = 2;
+            $post->fecha_publicacion = now();
+            $post->save();
+        }
+
 
         return response()->json(['message' => 'Publicación actualizada correctamente']);
     }
@@ -496,6 +556,26 @@ class BlogController extends Controller
         $perPage = $request->get('per_page', 10);
         $posts = $query->paginate($perPage);
 
+        // add S3 URLs to each item in the page
+        $posts->getCollection()->transform(function ($p) {
+            $disk = Storage::disk('s3');
+
+            $p->imagen_url = $p->imagen
+                ? url("s3/images/{$p->imagen}")
+                : null;
+
+            if ($p->relationLoaded('images')) {
+                foreach ($p->images as $img) {
+                    $img->url = $img->image_path
+                        ? url("s3/images/{$img->image_path}")
+                        : null;
+                }
+            }
+
+
+            return $p;
+        });
+
         return response()->json($posts);
     }
 
@@ -525,6 +605,23 @@ class BlogController extends Controller
             ->get();
 
         $post->related_articles = $related;
+
+        // add S3 URLs for cover and gallery
+        $disk = Storage::disk('s3');
+
+        $post->imagen_url = $post->imagen
+            ? url("s3/images/{$post->imagen}")
+            : null;
+
+        if ($post->relationLoaded('images')) {
+            foreach ($post->images as $img) {
+                $img->url = $img->image_path
+                    ? url("s3/images/{$img->image_path}")
+                    : null;
+            }
+        }
+
+
 
         return response()->json($post);
     }

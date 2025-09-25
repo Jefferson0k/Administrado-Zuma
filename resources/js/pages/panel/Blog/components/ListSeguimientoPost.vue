@@ -1,22 +1,31 @@
 <template>
   <DataTable
-    ref="dt"
-    v-model:selection="selectedPost"
-    :value="posts"
-    dataKey="id"
-    :paginator="true"
-    :rows="10"
-    :filters="filters"
-    paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-    :rowsPerPageOptions="[5, 10, 25]"
-    currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} posts"
-    class="p-datatable-sm"
-  >
+  ref="dt"
+  v-model:selection="selectedPost"
+  :value="posts"
+  dataKey="id"
+  :paginator="true"
+  :rows="rows"
+  :first="first"
+  :totalRecords="total"
+  :lazy="true"
+  :loading="loading"
+  :filters="filters"
+  paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+  :rowsPerPageOptions="[5, 10, 25]"
+  currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} posts"
+  class="p-datatable-sm"
+  @page="onPage"
+  @sort="onSort"
+  @filter="onFilter"
+>
+
     <template #header>
       <div class="flex flex-wrap gap-2 items-center justify-between">
         <h4 class="m-0">
           Publicaciones
-          <Tag severity="contrast" :value="posts.length" />
+          <Tag severity="contrast" :value="total" />
+
         </h4>
         <IconField>
           <InputIcon><i class="pi pi-search" /></InputIcon>
@@ -247,6 +256,31 @@ const filters = ref({
   global: { value: null, matchMode: FilterMatchMode.CONTAINS }
 })
 
+const rows = ref(10);          // page size
+const first = ref(0);          // index of first row (0-based)
+const total = ref(0);          // total rows from backend
+const sortField = ref('created_at');
+const sortOrder = ref(-1);     // -1 desc, 1 asc
+
+
+function onPage(e) {
+  first.value = e.first;
+  rows.value = e.rows;
+  obtenerPost();
+}
+
+function onSort(e) {
+  sortField.value = e.sortField || 'created_at';
+  sortOrder.value = e.sortOrder ?? -1;
+  obtenerPost();
+}
+
+function onFilter() {
+  first.value = 0;
+  obtenerPost();
+}
+
+
 const menuItems = ref([
   { label: 'Publicar', icon: 'pi pi-play', command: () => publicar(selectedItem.value) },
   { label: 'Ver imagen', icon: 'pi pi-image', command: () => verImagen(selectedItem.value) },
@@ -383,12 +417,44 @@ async function actualizarPost() {
 
 async function obtenerPost() {
   try {
-    const res = await axios.get('/api/blog/lista')
-    posts.value = res.data.posts || []
+    loading.value = true;
+    const page = Math.floor(first.value / rows.value) + 1;
+
+    const res = await axios.get('/api/blog/lista', {
+      params: {
+        rows: rows.value,
+        page,
+        sortField: sortField.value,
+        sortOrder: sortOrder.value,                 // 1 asc, -1 desc
+        global: (filters.value.global?.value || '').trim()
+      }
+    });
+
+    posts.value = Array.isArray(res.data?.data) ? res.data.data : [];
+    total.value = Number(res.data?.total ?? 0);
   } catch (error) {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar posts', life: 3000 })
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar posts', life: 3000 });
+    posts.value = [];
+    total.value = 0;
+  } finally {
+    loading.value = false;
   }
 }
+
+
+watch(() => filters.value.global?.value, () => {
+  first.value = 0;
+  obtenerPost();
+});
+
+
+function formatNumber(n) {
+  n = Number(n || 0);
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (n >= 1_000)     return (n / 1_000).toFixed(1).replace(/\.0$/, '') + 'K';
+  return String(n);
+}
+
 
 function onUploadImage(event) {
   const file = event.files?.[0]
@@ -450,13 +516,7 @@ function getPromedioRating(ratings) {
   return Math.round((total / ratings.length) * 10) / 10 // 1 decimal
 }
 
-// 👁️ Helper para formatear visitas
-function formatNumber(n) {
-  n = Number(n || 0)
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M'
-  if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, '') + 'K'
-  return String(n)
-}
+
 
 onMounted(() => {
   obtenerPost()
