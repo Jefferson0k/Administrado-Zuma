@@ -113,7 +113,7 @@ class InvestorController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'nacionalidad' => 'required|string|max:255',
+            // 'nacionalidad' => 'required|string|max:255',
             'first_last_name' => 'required|string|max:255',
             'second_last_name' => 'required|string|max:255',
             'document' => 'required|string|max:20|unique:investors,document',
