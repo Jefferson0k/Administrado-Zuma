@@ -165,7 +165,7 @@ function getApprovalStatusSeverity(status) {
 function getStatusLabel(status) {
   const statusLabels = {
     'approved': 'Aprobado',
-    'rejected': 'Rechazado',
+    'rejected': 'Anulado',
     'inactive': 'Inactivo',
     'active': 'Activo',
     'expired': 'Vencido',
@@ -175,7 +175,7 @@ function getStatusLabel(status) {
     'canceled': 'Cancelado',
     'daStandby': 'Standby',
     'observed': 'Observado',
-    'annulled': 'Anulado'   // 👈 nuevo estado
+    'annulled': 'Anulado'
   };
   return statusLabels[status] || status;
 }
@@ -412,6 +412,20 @@ watch(() => filters.value.search, () => {
   clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => applyFilters(), 500);
 });
+
+const translateTipo = (value) => {
+  if (!value) return null;
+
+  const traducciones = {
+    'annulled': 'Anulado',
+    'pending': 'Pendiente',
+    'approved': 'Aprobado',
+    'rejected': 'Rechazado'
+  };
+
+  return traducciones[value] || value;
+};
+
 watch([
   () => filters.value.status,
   () => filters.value.currency,
@@ -504,7 +518,7 @@ onMounted(() => {
         </template>
       </Column>
       <Column field="ruc" header="Ruc" sortable style="min-width: 7rem" />
-      <Column field="codigo" header="Código" sortable style="min-width: 12rem" />
+      <Column field="codigo" header="Código" sortable style="min-width: 15rem" />
       <Column field="moneda" header="Moneda" sortable style="min-width: 5rem" />
       <Column field="montoFactura" header="M. Factura" sortable style="min-width: 8rem">
         <template #body="slotProps">
@@ -523,6 +537,24 @@ onMounted(() => {
       </Column>
       <Column field="tasa" header="Tasa (%)" sortable style="min-width: 7rem" />
       <Column field="fechaPago" header="Fecha de Pago" sortable style="min-width: 10rem" />
+      <Column field="semaforo" header="Semáforo" sortable style="min-width: 8rem">
+        <template #body="slotProps">
+          <div class="flex justify-center">
+            <div 
+              :class="[
+                'w-6 h-6 rounded-full',
+                ['active', 'inactive'].includes(slotProps.data.estado) ? 'bg-green-500' : 
+                ['observed', 'rejected', 'annulled'].includes(slotProps.data.estado) ? 'bg-red-500' : 
+                'bg-gray-300'
+              ]"
+              :title="['active', 'inactive'].includes(slotProps.data.estado) ? 
+                     getStatusLabel(slotProps.data.estado) : 
+                     ['observed', 'rejected', 'annulled'].includes(slotProps.data.estado) ? 
+                     getStatusLabel(slotProps.data.estado) : 'Sin estado'"
+            ></div>
+          </div>
+        </template>
+      </Column>
       <Column field="PrimerStado" header="1ª Aprobador" sortable style="min-width: 9rem">
         <template #body="slotProps">
           <template v-if="slotProps.data.PrimerStado">
@@ -532,24 +564,29 @@ onMounted(() => {
             />
           </template>
           <template v-else>
-            <span class="italic text-gray-500">Sin dato</span>
+            <span class="italic text-gray-500"> - </span>
           </template>
         </template>
       </Column>
+
       <Column field="userprimerNombre" header="1ª Usuario" sortable style="min-width: 16rem">
         <template #body="slotProps">
-          <span :class="slotProps.data.userprimerNombre === 'Sin aprobar' ? 'italic' : ''">
-            {{ slotProps.data.userprimerNombre || 'Sin asignar' }}
+          <span v-if="slotProps.data.userprimerNombre">
+            {{ slotProps.data.userprimerNombre }}
           </span>
+          <span v-else class="italic text-gray-500"> - </span>
         </template>
       </Column>
+
       <Column field="tiempoUno" header="T. 1ª Aprobación" sortable style="min-width: 12rem">
         <template #body="slotProps">
-          <span :class="!slotProps.data.tiempoUno ? 'italic' : ''">
-            {{ slotProps.data.tiempoUno || 'Sin tiempo' }}
+          <span v-if="slotProps.data.tiempoUno">
+            {{ slotProps.data.tiempoUno }}
           </span>
+          <span v-else class="italic text-gray-500"> - </span>
         </template>
       </Column>
+
       <Column field="SegundaStado" header="2ª Aprobador" sortable style="min-width: 9rem">
         <template #body="slotProps">
           <template v-if="slotProps.data.SegundaStado">
@@ -559,24 +596,29 @@ onMounted(() => {
             />
           </template>
           <template v-else>
-            <span class="italic text-gray-500">Sin dato</span>
+            <span class="italic text-gray-500"> - </span>
           </template>
         </template>
       </Column>
+
       <Column field="userdosNombre" header="2do Usuario" sortable style="min-width: 16rem">
         <template #body="slotProps">
-          <span :class="slotProps.data.userdosNombre === 'Sin aprobar' ? 'italic' : ''">
-            {{ slotProps.data.userdosNombre || 'Sin asignar' }}
+          <span v-if="slotProps.data.userdosNombre">
+            {{ slotProps.data.userdosNombre }}
           </span>
+          <span v-else class="italic text-gray-500"> - </span>
         </template>
       </Column>
+
       <Column field="tiempoDos" header="T. 2ª Aprobación" sortable style="min-width: 12rem">
         <template #body="slotProps">
-          <span :class="!slotProps.data.tiempoDos ? 'italic' : ''">
-            {{ slotProps.data.tiempoDos || 'Sin tiempo' }}
+          <span v-if="slotProps.data.tiempoDos">
+            {{ slotProps.data.tiempoDos }}
           </span>
+          <span v-else class="italic text-gray-500"> - </span>
         </template>
       </Column>
+
       <Column field="estado" header="Estado Conclusion" sortable style="min-width: 11rem">
         <template #body="slotProps">
           <template v-if="!slotProps.data.estado">
@@ -588,17 +630,17 @@ onMounted(() => {
           </template>
         </template>
       </Column>
+
       <Column field="tipo" header="Tipo" sortable style="min-width: 5rem">
-        <template #body="slotProps">
-          <span :class="!slotProps.data.tipo ? 'italic' : ''">
-            {{ slotProps.data.tipo || 'Sin tipo' }}
-          </span>
-        </template>
-      </Column>
+      <template #body="slotProps">
+        <span class="italic text-gray-500" v-if="!slotProps.data.tipo">-</span>
+        <span v-else>{{ translateTipo(slotProps.data.tipo) }}</span>
+      </template>
+    </Column>
       <Column field="situacion" header="Situacion" sortable style="min-width: 10rem">
         <template #body="slotProps">
           <span :class="!slotProps.data.situacion ? 'italic' : ''">
-            {{ slotProps.data.situacion || 'Sin situación' }}
+            {{ slotProps.data.situacion || '-' }}
           </span>
         </template>
       </Column>
@@ -606,7 +648,7 @@ onMounted(() => {
         style="min-width: 18rem">
         <template #body="slotProps">
           <span :class="!slotProps.data.condicionOportunidadInversion ? 'italic' : ''">
-            {{ slotProps.data.condicionOportunidadInversion || 'Sin condición' }}
+            {{ slotProps.data.condicionOportunidadInversion || '-' }}
           </span>
         </template>
       </Column>
@@ -614,14 +656,14 @@ onMounted(() => {
         style="min-width: 18rem">
         <template #body="slotProps">
           <span :class="!slotProps.data.fechaHoraCierreInversion ? 'italic' : ''">
-            {{ slotProps.data.fechaHoraCierreInversion || 'Sin fecha y sin hora de cierre' }}
+            {{ slotProps.data.fechaHoraCierreInversion || '-' }}
           </span>
         </template>
       </Column>
       <Column field="porcentajeMetaTerceros" header="% Obj Terceros" sortable style="min-width: 10rem">
         <template #body="slotProps">
           <span :class="!slotProps.data.porcentajeMetaTerceros ? 'italic' : ''">
-            {{ slotProps.data.porcentajeMetaTerceros || 'Sin dato' }}
+            {{ slotProps.data.porcentajeMetaTerceros || '-' }}
           </span>
         </template>
       </Column>
@@ -629,7 +671,7 @@ onMounted(() => {
       <Column field="porcentajeInversionTerceros" header="% Invertido Terceros" sortable style="min-width: 12rem">
         <template #body="slotProps">
           <span :class="!slotProps.data.porcentajeInversionTerceros ? 'italic' : ''">
-            {{ slotProps.data.porcentajeInversionTerceros || 'Sin dato' }}
+            {{ slotProps.data.porcentajeInversionTerceros || '-' }}
           </span>
         </template>
       </Column>
