@@ -8,6 +8,7 @@ enum MovementType: string{
     case WITHDRAW = "withdraw";
     case INVESTMENT = "investment";
     case TAX = "tax";
+    case REFUND = "refund";
     case EXCHANGE_UP = "exchange_up";
     case EXCHANGE_DOWN = "exchange_down";
     case FIXED_RATE_DISBURSEMENT = "fixed_rate_disbursement";

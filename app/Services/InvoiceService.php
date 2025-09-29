@@ -69,9 +69,6 @@ class InvoiceService{
             'updated_by'                   => $data['updated_by'],
             // resetear aprobación
             'approval1_status'   => null,
-            'approval1_by'       => null,
-            'approval1_comment'  => null,
-            'approval1_at'       => null,
         ]);
         return $invoice;
     }
