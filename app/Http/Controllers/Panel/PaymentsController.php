@@ -580,7 +580,6 @@ class PaymentsController extends Controller{
 
         return new InvestmentResource($investment);
     }
-
     public function anular(Request $request, $id){
         $request->validate([
             'comment' => 'nullable|string|max:500',
@@ -592,6 +591,10 @@ class PaymentsController extends Controller{
                 'error' => 'La factura no puede ser anulada (ya pagada o ya anulada).'
             ], 422);
         }
+        $invoice->status = 'rejected';
+        $invoice->approval1_status = 'rejected';
+        $invoice->approval2_status = 'rejected';
+        $invoice->save();
         return response()->json([
             'message' => 'Factura anulada correctamente',
             'invoice' => $invoice

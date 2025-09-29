@@ -27,7 +27,8 @@ class InvoiceController extends Controller{
             )
             ->join('companies', 'invoices.company_id', '=', 'companies.id')
             ->whereIn('invoices.status', ['active', 'daStandby'])
-            ->where('invoices.due_date', '>=', Carbon::now());
+            ->where('invoices.due_date', '>=', Carbon::now())
+            ->where('invoices.financed_amount', '>', 0); // 🔥 Excluir facturas sin saldo disponible
 
             if (!empty($monedas) && is_array($monedas)) {
                 $query->whereIn('invoices.currency', $monedas);
@@ -96,7 +97,7 @@ class InvoiceController extends Controller{
             return response()->json([
                 'success' => false,
                 'message' => "Error al obtener las facturas",
-                'error' => $th->getMessage() // opcional para debug
+                'error' => $th->getMessage()
             ], 500);
         }
     }

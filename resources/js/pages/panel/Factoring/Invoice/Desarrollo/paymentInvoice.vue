@@ -703,6 +703,7 @@ function getStatusLabel(status) {
         'reprogramed': 'Reprogramado',
         'paid': 'Pagado',
         'canceled': 'Cancelado',
+        'rejected': 'Anulado',
         'daStandby': 'En Standby'
     };
     return statusLabels[status] || status;
@@ -713,6 +714,7 @@ function getStatusSeverity(status) {
         case 'inactive': return 'secondary';
         case 'active': return 'success';
         case 'expired': return 'danger';
+        case 'rejected': return 'danger';
         case 'judicialized': return 'warn';
         case 'reprogramed': return 'info';
         case 'paid': return 'contrast';
