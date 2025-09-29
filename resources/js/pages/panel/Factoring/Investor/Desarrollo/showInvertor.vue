@@ -67,7 +67,7 @@
                 <Button label="Ver completo" icon="pi pi-eye" size="small" outlined class="w-full mt-2"
                   @click="viewDocument(toViewUrl(editableInvestor.document_front))" />
                 <Button v-if="!isValidated" label="Observar" icon="pi pi-exclamation-triangle" size="small"
-                  severity="warn" class="w-full mt-2" @click="showObserveDialog('dni_front')" />
+                  severity="warn" class="w-full mt-2" @click="showObserveDialog('dni_front')" :disabled="isAnyRejected" />
               </div>
 
               <div v-else class="text-center py-6 bg-gray-50 border-2 border-dashed border-gray-300 rounded">
@@ -103,7 +103,7 @@
                 <Button label="Ver completo" icon="pi pi-eye" size="small" outlined class="w-full mt-2"
                   @click="viewDocument(toViewUrl(editableInvestor.document_back))" />
                 <Button v-if="!isValidated" label="Observar" icon="pi pi-exclamation-triangle" size="small"
-                  severity="warn" class="w-full mt-2" @click="showObserveDialog('dni_back')" />
+                  severity="warn" class="w-full mt-2" @click="showObserveDialog('dni_back')" :disabled="isAnyRejected" />
               </div>
 
               <div v-else class="text-center py-6 bg-gray-50 border-2 border-dashed border-gray-300 rounded">
@@ -139,7 +139,7 @@
                 <Button label="Ver completo" icon="pi pi-eye" size="small" outlined class="w-full mt-2"
                   @click="viewDocument(toViewUrl(editableInvestor.investor_photo_path))" />
                 <Button v-if="!isValidated" label="Observar" icon="pi pi-exclamation-triangle" size="small"
-                  severity="warn" class="w-full mt-2" @click="showObserveDialog('investor_photo')" />
+                  severity="warn" class="w-full mt-2" @click="showObserveDialog('investor_photo')" :disabled="isAnyRejected" />
               </div>
 
               <div v-else class="text-center py-6 bg-gray-50 border-2 border-dashed border-gray-300 rounded">
@@ -167,13 +167,13 @@
             <p class="text-sm">{{ getAvatarDisplay(investor.perfil) }}</p>
           </div>
           <div><span class="text-xs font-medium text-blue-800">Departamento:</span>
-            <p class="text-sm">{{ departmentName  }}</p>
+            <p class="text-sm">{{ departmentName }}</p>
           </div>
           <div><span class="text-xs font-medium text-blue-800">Provincia:</span>
-            <p class="text-sm">{{ provinceName  }}</p>
+            <p class="text-sm">{{ provinceName }}</p>
           </div>
           <div><span class="text-xs font-medium text-blue-800">Distrito:</span>
-            <p class="text-sm">{{ districtName  }}</p>
+            <p class="text-sm">{{ districtName }}</p>
           </div>
           <div><span class="text-xs font-medium text-blue-800">Dirección:</span>
             <p class="text-sm">{{ investor.address }}</p>
@@ -215,7 +215,9 @@
                   <Button label="Ver" icon="pi pi-external-link" size="small" outlined
                     @click="viewDocument(toViewUrl(item.url))" />
                   <Button icon="pi pi-trash" size="small" outlined severity="danger"
-                    @click="deleteSpectroEvidence(item.id)" />
+                    @click="deleteSpectroEvidence(item.id)" :disabled="isAnyRejected" />
+
+
                 </div>
               </div>
             </template>
@@ -230,7 +232,8 @@
           <div class="bg-gray-50 p-3 rounded-md border">
             <FileUpload ref="fileUploader" mode="advanced" name="file" accept=".jpg,.jpeg,.png,.pdf"
               :maxFileSize="5120000" :multiple="true" :auto="true" :customUpload="true" @uploader="uploadEvidenceFile"
-              @select="onFileSelect" :showUploadButton="false" :showCancelButton="false">
+              @select="onFileSelect" :showUploadButton="false" :showCancelButton="false" :disabled="isAnyRejected">
+
               <template #header="{ chooseCallback, clearCallback, files }">
                 <div class="flex justify-between items-center w-full gap-2">
                   <div class="flex gap-2">
@@ -290,8 +293,8 @@
                 <div class="flex gap-2 shrink-0">
                   <Button label="Ver" icon="pi pi-external-link" size="small" outlined
                     @click="viewDocument(toViewUrl(item.url))" />
-                  <Button icon="pi pi-trash" size="small" outlined severity="danger"
-                    @click="deletePepEvidence(item.id)" />
+                  <Button icon="pi pi-trash" size="small" outlined severity="danger" @click="deletePepEvidence(item.id)"
+                    :disabled="isAnyRejected" />
                 </div>
               </div>
             </template>
@@ -307,7 +310,8 @@
             <FileUpload ref="pepFileUploader" mode="advanced" name="file" accept=".jpg,.jpeg,.png,.pdf"
               :maxFileSize="5120000" :multiple="true" :auto="true" :customUpload="true"
               @uploader="uploadPepEvidenceFile" @select="onFileSelect" :showUploadButton="false"
-              :showCancelButton="false">
+              :showCancelButton="false" :disabled="isAnyRejected">
+
               <template #header="{ chooseCallback, clearCallback, files }">
                 <div class="flex justify-between items-center w-full gap-2">
                   <div class="flex gap-2">
@@ -355,20 +359,22 @@
           </h3>
 
           <div class="space-y-3 mb-3">
-            <div v-if="editableInvestor.approval1_comment" class="bg-blue-50 p-3 rounded-md border border-blue-200">
+            <div v-if="editableInvestor.approval1_comment || commentText"
+              class="bg-blue-50 p-3 rounded-md border border-blue-200">
               <div class="flex items-center justify-between mb-1">
                 <span class="text-xs font-medium text-blue-800">Comentario de Primera Validación</span>
                 <span class="text-[11px] text-gray-500">{{ formatDate(editableInvestor.approval1_at) }}</span>
               </div>
-              <p class="text-gray-800 text-sm">{{ editableInvestor.approval1_comment }}</p>
+              <p class="text-gray-800 text-sm">{{ editableInvestor.approval1_comment || commentText }}</p>
             </div>
 
-            <div v-if="editableInvestor.approval2_comment" class="bg-green-50 p-3 rounded-md border border-green-200">
+            <div v-if="editableInvestor.approval2_comment || comment2Text"
+              class="bg-green-50 p-3 rounded-md border border-green-200">
               <div class="flex items-center justify-between mb-1">
                 <span class="text-xs font-medium text-green-800">Comentario de Segunda Validación</span>
                 <span class="text-[11px] text-gray-500">{{ formatDate(editableInvestor.approval2_at) }}</span>
               </div>
-              <p class="text-gray-800 text-sm">{{ editableInvestor.approval2_comment }}</p>
+              <p class="text-gray-800 text-sm">{{ editableInvestor.approval2_comment || comment2Text }}</p>
             </div>
 
             <div v-if="isValidated && !editableInvestor.approval1_comment && !editableInvestor.approval2_comment"
@@ -382,12 +388,14 @@
             <div class="bg-gray-50 p-3 rounded-md border">
               <label class="block text-xs font-medium mb-2 text-gray-900">Comentario de Primera Validación</label>
               <Textarea v-model="commentText" rows="3" class="w-full mb-2" placeholder="Ingrese su comentario..."
-                :disabled="loading" />
+                :disabled="loading || isAnyRejected" />
+
               <div class="flex gap-2">
                 <Button label="Guardar Comentario" icon="pi pi-save" size="small" severity="info" @click="saveComment"
-                  :loading="loading" :disabled="!commentText.trim()" />
+                  :loading="loading" :disabled="isAnyRejected || !commentText.trim()" />
                 <Button label="Observar" icon="pi pi-exclamation-triangle" size="small" severity="warn"
-                  @click="showObserveDialog()" :disabled="loading" />
+                  @click="showObserveDialog()" :disabled="loading || isAnyRejected" />
+
               </div>
             </div>
           </div>
@@ -396,9 +404,12 @@
             <div class="bg-gray-50 p-3 rounded-md border">
               <label class="block text-xs font-medium mb-2 text-gray-900">Comentario de Segunda Validación</label>
               <Textarea v-model="comment2Text" rows="3" class="w-full mb-2"
-                placeholder="Ingrese su comentario para la segunda validación..." :disabled="loading" />
+                placeholder="Ingrese su comentario para la segunda validación..."
+                :disabled="loading || isAnyRejected" />
+
               <Button label="Guardar Comentario 2da" icon="pi pi-save" size="small" severity="info"
-                @click="saveComment2" :loading="loading" :disabled="!comment2Text.trim()" />
+                @click="saveComment2" :loading="loading" :disabled="isAnyRejected || !comment2Text.trim()" />
+
             </div>
           </div>
         </div>
@@ -410,16 +421,22 @@
         <template v-if="!isValidated">
           <template v-if="!hasFirstValidationComplete || editableInvestor.approval1_status === 'observed'">
             <Button label="Aprobar" icon="pi pi-check" size="small" severity="success"
-              @click="showConfirmDialog('approve')" :disabled="loading" />
+              @click="showConfirmDialog('approve')" :disabled="loading || isAnyRejected || !hasFirstSavedComment" />
             <Button label="Rechazar" icon="pi pi-times" size="small" severity="danger"
-              @click="showConfirmDialog('reject')" :disabled="loading" />
+              @click="showConfirmDialog('reject')" :disabled="loading || isAnyRejected || !hasFirstSavedComment" />
+
+
+
           </template>
 
           <template v-if="canShowSecondValidation">
             <Button label="Aprobar Final" icon="pi pi-check" size="small" severity="success"
-              @click="showConfirmDialog('approve2')" :disabled="loading" />
+              @click="showConfirmDialog('approve2')" :disabled="loading || isAnyRejected || !hasSecondSavedComment" />
             <Button label="Rechazar Final" icon="pi pi-times" size="small" severity="danger"
-              @click="showConfirmDialog('reject2')" :disabled="loading" />
+              @click="showConfirmDialog('reject2')" :disabled="loading || isAnyRejected || !hasSecondSavedComment" />
+
+
+
           </template>
 
           <div v-if="editableInvestor.approval1_status === 'approved' && spectroEvidences.length === 0"
@@ -724,6 +741,20 @@ const canShowSecondValidation = computed(() => {
   return editableInvestor.value.approval1_status === 'approved';
 });
 
+const hasFirstSavedComment = computed(() =>
+  !!editableInvestor.value.approval1_comment?.trim()
+);
+
+const hasSecondSavedComment = computed(() =>
+  !!editableInvestor.value.approval2_comment?.trim()
+);
+const isAnyRejected = computed(() =>
+  editableInvestor.value.approval1_status === 'rejected' ||
+  editableInvestor.value.approval2_status === 'rejected'
+);
+
+
+
 // Confirm dialog derived state
 const confirmationTitle = computed(() => {
   switch (actionType.value) {
@@ -861,13 +892,20 @@ const onFileSelect = (event: any) => {
 
 // Actions
 const executeAction = async () => {
+  if (isAnyRejected.value) {
+    toast.add({ severity: 'warn', summary: 'Bloqueado', detail: 'Acciones deshabilitadas porque existe un rechazo.', life: 3000 });
+    return;
+  }
   loading.value = true;
   try {
     let response;
 
     switch (actionType.value) {
       case 'approve':
-        response = await axios.put(`/investor/${editableInvestor.value.id}/aprobar-primera`);
+        response = await axios.put(
+          `/investor/${editableInvestor.value.id}/aprobar-primera`,
+          { approval1_comment: (commentText.value || editableInvestor.value.approval1_comment || '') }
+        );
         break;
       case 'reject':
         response = await axios.put(`/investor/${editableInvestor.value.id}/rechazar-primera`, {
@@ -875,7 +913,10 @@ const executeAction = async () => {
         });
         break;
       case 'approve2':
-        response = await axios.put(`/investor/${editableInvestor.value.id}/aprobar-segunda`);
+        response = await axios.put(
+          `/investor/${editableInvestor.value.id}/aprobar-segunda`,
+          { approval2_comment: (comment2Text.value || editableInvestor.value.approval2_comment || '') }
+        );
         break;
       case 'reject2':
         response = await axios.put(`/investor/${editableInvestor.value.id}/rechazar-segunda`, {
@@ -887,6 +928,20 @@ const executeAction = async () => {
     if (response) {
       toast.add({ severity: 'success', summary: 'Éxito', detail: response.data.message, life: 3000 });
       editableInvestor.value = { ...response.data.data };
+
+      if (actionType.value === 'approve' && commentText.value?.trim()) {
+        editableInvestor.value.approval1_comment = commentText.value.trim();
+      }
+      if (actionType.value === 'reject' && rejectionReason.value?.trim()) {
+        editableInvestor.value.approval1_comment = rejectionReason.value.trim();
+      }
+      if (actionType.value === 'approve2' && comment2Text.value?.trim()) {
+        editableInvestor.value.approval2_comment = comment2Text.value.trim();
+      }
+      if (actionType.value === 'reject2' && rejectionReason.value?.trim()) {
+        editableInvestor.value.approval2_comment = rejectionReason.value.trim();
+      }
+
       showConfirmationDialog.value = false;
       actionType.value = '';
       rejectionReason.value = '';
@@ -903,7 +958,12 @@ const executeAction = async () => {
   }
 };
 
+
 const executeObservation = async () => {
+  if (isAnyRejected.value) {
+    toast.add({ severity: 'warn', summary: 'Bloqueado', detail: 'Acciones deshabilitadas porque existe un rechazo.', life: 3000 });
+    return;
+  }
   loading.value = true;
   try {
     const base = `/investor/${editableInvestor.value.id}`;
@@ -944,6 +1004,7 @@ const executeObservation = async () => {
     loading.value = false;
   }
 };
+
 
 // ====== Evidence lists (load/refresh/delete) ======
 // ====== Evidence lists (load/refresh/delete) ======
@@ -1097,6 +1158,10 @@ const closeObserveDialog = () => {
 
 // Comments
 const saveComment = async () => {
+  if (isAnyRejected.value) {
+    toast.add({ severity: 'warn', summary: 'Bloqueado', detail: 'Acciones deshabilitadas porque existe un rechazo.', life: 3000 });
+    return;
+  }
   loading.value = true;
   try {
     const response = await axios.put(`/investor/${editableInvestor.value.id}/comentar-primera`, {
@@ -1104,6 +1169,7 @@ const saveComment = async () => {
     });
     toast.add({ severity: 'success', summary: 'Éxito', detail: response.data.message, life: 3000 });
     editableInvestor.value = { ...response.data.data };
+    editableInvestor.value.approval1_comment = editableInvestor.value.approval1_comment || commentText.value.trim();
   } catch (error: any) {
     toast.add({
       severity: 'error',
@@ -1116,7 +1182,12 @@ const saveComment = async () => {
   }
 };
 
+
 const saveComment2 = async () => {
+  if (isAnyRejected.value) {
+    toast.add({ severity: 'warn', summary: 'Bloqueado', detail: 'Acciones deshabilitadas porque existe un rechazo.', life: 3000 });
+    return;
+  }
   loading.value = true;
   try {
     const response = await axios.put(`/investor/${editableInvestor.value.id}/comentar-segunda`, {
@@ -1124,6 +1195,7 @@ const saveComment2 = async () => {
     });
     toast.add({ severity: 'success', summary: 'Éxito', detail: response.data.message, life: 3000 });
     editableInvestor.value = { ...response.data.data };
+    editableInvestor.value.approval2_comment = editableInvestor.value.approval2_comment || comment2Text.value.trim();
   } catch (error: any) {
     toast.add({
       severity: 'error',
@@ -1135,6 +1207,7 @@ const saveComment2 = async () => {
     loading.value = false;
   }
 };
+
 
 const viewDocument = (url: string) => window.open(url, '_blank');
 </script>

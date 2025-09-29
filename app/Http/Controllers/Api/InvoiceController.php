@@ -84,7 +84,7 @@ class InvoiceController extends Controller{
                 ]);
             }
 
-            $invoices = $query->orderBy('companies.name', $orderDirection)
+            $invoices = $query->orderBy('invoices.created_at', 'desc')
                 ->paginate($perPage, ['*'], 'page', $page);
 
             return response()->json([

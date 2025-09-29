@@ -111,7 +111,7 @@ class SectorController extends Controller
     public function searchSector(Request $request)
     {
         try {
-            Gate::authorize('search', Company::class);
+            Gate::authorize('viewAny', Company::class);
             $perPage = $request->input('per_page', 15);
             $search  = $request->input('search');
             $query = Sector::query()

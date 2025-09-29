@@ -13,7 +13,7 @@ class SubsectorPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('ver sub sector');
+        return $user->can('ver sub sectores');
     }
 
     /**
@@ -21,7 +21,7 @@ class SubsectorPolicy
      */
     public function view(User $user, Subsector $subsector): bool
     {
-        return $user->can('ver sub sector');
+        return $user->can('ver sub sectores');
     }
 
     /**
@@ -29,7 +29,7 @@ class SubsectorPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('crear sub sector');
+        return $user->can('crear sub sectores');
     }
 
     /**
@@ -37,7 +37,7 @@ class SubsectorPolicy
      */
     public function update(User $user, Subsector $subsector): bool
     {
-        return $user->can('editar sub sector');
+        return $user->can('editar sub sectores');
     }
 
     /**
@@ -45,7 +45,7 @@ class SubsectorPolicy
      */
     public function delete(User $user, Subsector $subsector): bool
     {
-        return $user->can('eliminar sub sector');
+        return $user->can('eliminar sub sectores');
     }
 
     /**

@@ -97,7 +97,7 @@ class SubSectorController extends Controller{
     }
     public function searchSubSector($sectorId){
         try {
-            Gate::authorize('search', Company::class);
+            Gate::authorize('viewAny', Company::class);
             $subsectors = Subsector::where('sector_id', $sectorId)->get();
             return response()->json([
                 'data' => SearchSubSectorResource::collection($subsectors),

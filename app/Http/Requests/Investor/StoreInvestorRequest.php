@@ -35,7 +35,7 @@ class StoreInvestorRequest extends FormRequest
                 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/'
             ],
             'telephone' => 'required|string|min:6|max:15',
-            'tipo_documento_id' => 'required|exists:tipo_documento,id_tipo_documento',
+            // 'tipo_documento_id' => 'required|exists:tipo_documento,id_tipo_documento',
         ];
     }
 
@@ -73,8 +73,8 @@ class StoreInvestorRequest extends FormRequest
             'document.digits_between' => 'El Carnet de extranjería debe tener entre :min y :max dígitos.',
             'document.unique' => 'Este documento ya se encuentra registrado.',
 
-            'tipo_documento_id.required' => 'Debe seleccionar un tipo de documento.',
-            'tipo_documento_id.exists' => 'El tipo de documento seleccionado no es válido.',
+            // 'tipo_documento_id.required' => 'Debe seleccionar un tipo de documento.',
+            // 'tipo_documento_id.exists' => 'El tipo de documento seleccionado no es válido.',
 
             'email.required' => 'Correo electrónico es obligatorio.',
             'email.email' => 'Correo electrónico debe ser válido.',

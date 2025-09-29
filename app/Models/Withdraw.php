@@ -37,6 +37,8 @@ class Withdraw extends Model
         'movement_id',
         'investor_id',
         'bank_account_id',
+        'resource_path',
+        'payment_comment',
     ];
 
     public function investor(): BelongsTo
@@ -105,5 +107,12 @@ class Withdraw extends Model
             )->getAmount();
         }
     }
+
+    protected $casts = [
+    'approval1_at'     => 'datetime',
+    'approval2_at'     => 'datetime',
+    'deposit_pay_date' => 'date',
+];
+
     
 }

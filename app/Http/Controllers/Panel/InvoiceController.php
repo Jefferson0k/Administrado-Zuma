@@ -230,6 +230,7 @@ class InvoiceController extends Controller{
         try {
             $invoice = Invoice::findOrFail($id);
             $userId = Auth::id();
+            Gate::authorize('update', $invoice);
 
             // --- VALIDACIÓN NIVEL 1 ---
             if (is_null($invoice->approval1_status)) {
@@ -400,6 +401,10 @@ class InvoiceController extends Controller{
             ], 500);
         }
     }
+
+    //SOLO PRIMER VALIDADOR
+
+    //FALTA SEGUNDO APROBADOR
 
     public function delete($id)
     {

@@ -2,26 +2,26 @@
 
 namespace App\Policies;
 
-use App\Models\Company;
+use App\Models\Post;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
-class CompanyPolicy
+class PostPolicy
 {
     /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('ver empresas');
+        return $user->can('ver posts');
     }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, Company $company): bool
+    public function view(User $user, Post $post): bool
     {
-        return $user->can('ver empresas');
+        return $user->can('ver posts');
     }
 
     /**
@@ -29,38 +29,29 @@ class CompanyPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('crear empresas');
+        return $user->can('crear posts');
     }
 
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, Company $company): bool
+    public function update(User $user, Post $post): bool
     {
-        return $user->can('editar empresas');
+        return $user->can('editar posts');
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, Company $company): bool
+    public function delete(User $user, Post $post): bool
     {
-        return $user->can('eliminar empresas');
+        return $user->can('eliminar posts');
     }
-
-    public function search(User $user): bool{
-        return $user->can('ver empresas');
-    }
-
-    public function export(User $user): bool{
-        return $user->can('exportar empresas');
-    }
-
 
     /**
      * Determine whether the user can restore the model.
      */
-    public function restore(User $user, Company $company): bool
+    public function restore(User $user, Post $post): bool
     {
         return false;
     }
@@ -68,7 +59,7 @@ class CompanyPolicy
     /**
      * Determine whether the user can permanently delete the model.
      */
-    public function forceDelete(User $user, Company $company): bool
+    public function forceDelete(User $user, Post $post): bool
     {
         return false;
     }

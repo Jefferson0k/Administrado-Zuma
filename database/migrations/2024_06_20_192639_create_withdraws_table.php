@@ -41,6 +41,8 @@ return new class extends Migration
             $table->text('approval2_comment')->nullable();
             $table->timestamp('approval2_at')->nullable();
 
+            
+            $table->text('payment_comment')->nullable();
             $table->string('created_by')->nullable();
             $table->string('updated_by')->nullable();
             $table->timestamps();

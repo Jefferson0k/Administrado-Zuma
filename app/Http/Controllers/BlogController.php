@@ -24,14 +24,20 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Models\ComentarioPost;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
+use Throwable;
 
 class BlogController extends Controller
 {
     public function index()
     {
+
+        Gate::authorize('viewAny', Post::class);
+
         return Inertia::render('panel/Blog/Index', [
             'user' => Auth::user()  // 👈 aquí pasas el usuario
         ]);
@@ -40,21 +46,25 @@ class BlogController extends Controller
 
     public function create()
     {
+        // Gate::authorize('create', Post::class);
         return Inertia::render('panel/Blog/CreatePost');
     }
 
     public function seguimiento()
     {
+        Gate::authorize('viewAny', Post::class);
         return Inertia::render('panel/Blog/Seguimiento');
     }
 
     public function categorias()
     {
+        Gate::authorize('viewAny', Post::class);
         return Inertia::render('panel/Blog/Categorias');
     }
 
     public function lista(Request $request)
     {
+        Gate::authorize('viewAny', Post::class);
         $rows      = (int) $request->input('rows', 10);     // page size
         $page      = (int) $request->input('page', 1);      // 1-based
         $sortField = $request->input('sortField', 'created_at');
@@ -143,6 +153,7 @@ class BlogController extends Controller
 
     public function guardar(Request $request)
     {
+        Gate::authorize('create', Post::class);
         // Validación base (múltiples imágenes)
         $validated = $request->validate([
             'user_id'           => 'required|exists:users,id',
@@ -245,7 +256,6 @@ class BlogController extends Controller
     }
 
 
-
     public function saveComentario(Request $request)
     {
         // Validación de datos
@@ -279,36 +289,43 @@ class BlogController extends Controller
     }
 
 
-
     public function guardar_categoria(Request $request)
     {
-        $validated = $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'categorias' => 'required|array|min:1',
-            'categorias.*' => 'string|max:255',
-        ]);
+        try {
+            Gate::authorize('create',   Category::class);
 
-        $categoriasCreadas = [];
-
-        foreach ($validated['categorias'] as $nombreCategoria) {
-            $category = Category::create([
-                'nombre' => $nombreCategoria,
-                'product_id' => $request->product_id,
-
+            $validated = $request->validate([
+                'product_id' => 'required|exists:products,id',
+                'categorias' => 'required|array|min:1',
+                'categorias.*' => 'string|max:255',
             ]);
+            $categoriasCreadas = [];
 
-            CategoryProduct::create([
-                'category_id' => $category->id,
-                'product_id' => $validated['product_id'],
+            foreach ($validated['categorias'] as $nombreCategoria) {
+                $category = Category::create([
+                    'nombre' => $nombreCategoria,
+                    'product_id' => $request->product_id,
+
+                ]);
+
+                CategoryProduct::create([
+                    'category_id' => $category->id,
+                    'product_id' => $validated['product_id'],
+                ]);
+
+                $categoriasCreadas[] = $category;
+            }
+        } catch (AuthorizationException $e) {
+            return response()->json(['message' => 'No tienes permiso para crear un aceptante.'], 403);
+        } catch (Throwable $e) {
+            Log::error('Error al crear el aceptante: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
             ]);
-
-            $categoriasCreadas[] = $category;
+            return response()->json([
+                'message' => 'Error al crear el aceptante y sus registros relacionados.',
+                'error'   => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json([
-            'message' => 'Categorías creadas correctamente.',
-            'categorias' => $categoriasCreadas,
-        ], 201);
     }
 
     /*public function actualizar_categoria(ProductStoreRequest $request, $id){
@@ -320,7 +337,9 @@ class BlogController extends Controller
 
     public function eliminar_categoria($id)
     {
+       
         $category = Category::findOrFail($id);
+         Gate::authorize('delete', $category);
         $category->delete();
         return response()->json(['message' => 'Categoría eliminada correctamente']);
     }
@@ -353,33 +372,49 @@ class BlogController extends Controller
 
     public function eliminar($id)
     {
-        $post = Post::with('images')->findOrFail($id);
+        try {
 
-        return DB::transaction(function () use ($post) {
-            // Eliminar imagen principal
-            if ($post->imagen && Storage::disk('s3')->exists("images/{$post->imagen}")) {
-                Storage::disk('s3')->delete("images/{$post->imagen}");
-            }
-            foreach ($post->images as $img) {
-                if (Storage::disk('s3')->exists("images/{$img->image_path}")) {
-                    Storage::disk('s3')->delete("images/{$img->image_path}");
+
+            $post = Post::with('images')->findOrFail($id);
+            Gate::authorize('delete', $post);
+            return DB::transaction(function () use ($post) {
+                // Eliminar imagen principal
+                if ($post->imagen && Storage::disk('s3')->exists("images/{$post->imagen}")) {
+                    Storage::disk('s3')->delete("images/{$post->imagen}");
                 }
-                $img->delete();
-            }
+                foreach ($post->images as $img) {
+                    if (Storage::disk('s3')->exists("images/{$img->image_path}")) {
+                        Storage::disk('s3')->delete("images/{$img->image_path}");
+                    }
+                    $img->delete();
+                }
 
 
-            // Eliminar categorías
-            PostCategory::where('post_id', $post->id)->delete();
+                // Eliminar categorías
+                PostCategory::where('post_id', $post->id)->delete();
 
-            // Eliminar post
-            $post->delete();
+                // Eliminar post
+                $post->delete();
 
-            return response()->json([
-                'message' => 'Publicación eliminada exitosamente.'
+                return response()->json([
+                    'message' => 'Publicación eliminada exitosamente.'
+                ]);
+            });
+        } catch (AuthorizationException $e) {
+            return response()->json(
+                ['message' => 'No tienes permiso para eliminar este post.'],
+                403
+            );
+        } catch (Throwable $e) {
+            Log::error('Error al eliminar el post: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
             ]);
-        });
+            return response()->json([
+                'message' => 'Error al eliminar el post.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
     }
-
 
     /*public function actualizar(BlogStoreRequest $request, $id){
         $validated = $request->validated();
@@ -402,6 +437,7 @@ class BlogController extends Controller
 
     public function actualizar(Request $request, $id)
     {
+       
         $validated = $request->validate([
             'user_id'           => 'required|exists:users,id',
             'updated_user_id'   => 'nullable|integer',
@@ -427,6 +463,7 @@ class BlogController extends Controller
         ]);
 
         $post = Post::with('images')->findOrFail($id);
+         Gate::authorize('update', $post);
 
         // Actualiza campos base
         $post->update([
@@ -519,7 +556,9 @@ class BlogController extends Controller
 
     public function publicar($user_id, $post_id, $state_id)
     {
+        
         $post = Post::findOrFail($post_id);
+        Gate::authorize('update', $post);
         $post->updated_user_id = $user_id;
         $post->state_id = $state_id;
         $post->fecha_publicacion = now();
@@ -592,7 +631,9 @@ class BlogController extends Controller
         }
 
         // 👇 Incrementa visitas totales (una por carga del detalle)
-        $post->increment('views_total');
+        if (Auth::guard('web')->guest()) {
+            $post->increment('views_total');
+        }
 
         // Relacionados (igual que ya tenías)
         $categoryIds = $post->categories->pluck('id')->toArray();
@@ -625,8 +666,6 @@ class BlogController extends Controller
 
         return response()->json($post);
     }
-
-
 
     private function getRealIp(Request $request): string
     {

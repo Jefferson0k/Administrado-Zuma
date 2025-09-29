@@ -50,9 +50,16 @@
     <!-- Estado principal -->
     <Column field="estado" header="2º Aprobador" sortable style="min-width: 10rem">
       <template #body="{ data }">
-        <Tag :value="data.estado" :severity="getStatusSeverity(data.estado)" />
+        <template v-if="data.estado0 === 'Rechazado'">
+          <!-- plain text, same look as the right column -->
+          <span>—</span>
+        </template>
+        <template v-else>
+          <Tag :value="data.estado" :severity="getStatusSeverity(data.estado)" />
+        </template>
       </template>
     </Column>
+
 
     <Column field="updated_by_name" header="2º user Apr." sortable style="min-width: 8rem" />
     <Column header="Tº 2ª Aprobación" sortable style="min-width: 15rem">
@@ -113,11 +120,11 @@
       </div>
       <div class="flex items-center gap-4">
         <div>
-          <p class="text-xs text-gray-500">Estado 0</p>
+          <p class="text-xs text-gray-500">Primer Aprobador</p>
           <Tag :value="selectedAccount.estado0" :severity="getStatus0Severity(selectedAccount.estado0)" />
         </div>
         <div>
-          <p class="text-xs text-gray-500">Estado</p>
+          <p class="text-xs text-gray-500">Segundo Aprobador</p>
           <Tag :value="selectedAccount.estado" :severity="getStatusSeverity(selectedAccount.estado)" />
         </div>
       </div>
@@ -135,7 +142,8 @@
       <div class="sm:col-span-2 mt-2">
         <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Adjuntos</p>
 
-        <div v-if="!isFirstApproved">
+        <div v-if="!isFirstApproved && !isAnyRejected">
+
           <FileUpload name="files[]" :customUpload="true" multiple :auto="true" accept=".pdf,image/*"
             :maxFileSize="10485760" chooseLabel="Seleccionar" :showUploadButton="false" :showCancelButton="false"
             @uploader="onAutoUpload" />
@@ -146,8 +154,14 @@
               <ul class="text-sm space-y-1">
                 <li v-for="(f, i) in uploadedFiles" :key="f.id ?? i" class="flex items-center justify-between gap-3">
                   <span class="truncate">{{ f.original_name ?? f.name }}</span>
-                  <Button icon="pi pi-download" label="Descargar" size="small" text @click="downloadAttachment(f)" />
+                  <div class="flex items-center gap-2">
+                    <Button icon="pi pi-download" label="Descargar" size="small" text @click="downloadAttachment(f)" />
+                    <!-- NUEVO: eliminar -->
+                    <Button icon="pi pi-trash" label="" size="small" text severity="danger"
+  :disabled="isAnyRejected" @click="confirmDeleteAttachment(f)" />
+                  </div>
                 </li>
+
                 <li v-if="uploadedFiles.length === 0" class="text-gray-500">—</li>
               </ul>
             </div>
@@ -205,7 +219,8 @@
             Comentario (Primera Validación)
           </p>
           <Textarea v-model="comment0" autoResize rows="3" class="w-full" placeholder="Escribe un comentario..."
-            :readonly="isFirstApproved" />
+  :readonly="isFirstApproved || isAnyRejected" />
+
           <small class="text-gray-500">
             Se guarda al confirmar la Primera Validación
             <template v-if="selectedAccount.comment0"> • Último guardado: {{ selectedAccount.comment0 }}</template>
@@ -218,9 +233,10 @@
           </p>
 
           <Textarea v-model="comment" autoResize rows="3" class="w-full" placeholder="Escribe un comentario..."
-            :readonly="!isFirstApproved || isFullyApproved" :title="!isFirstApproved
-              ? 'Solo editable tras aprobar la Primera Validación'
-              : (isFullyApproved ? 'Solo lectura: validación completada' : '')" />
+  :readonly="!isFirstApproved || isFullyApproved || isAnyRejected" :title="!isFirstApproved
+    ? 'Solo editable tras aprobar la Primera Validación'
+    : (isFullyApproved ? 'Solo lectura: validación completada' : (isAnyRejected ? 'Bloqueado por rechazo' : ''))" />
+
 
           <small class="text-gray-500">
             Se guarda al confirmar la Segunda Validación
@@ -281,17 +297,25 @@
 
         <div class="flex flex-wrap items-center gap-2">
           <Button label="Cerrar" icon="pi pi-times" @click="showDialog = false" />
+
           <Button label="Aprobar" icon="pi pi-check" severity="success" :loading="loading && actionBusy === 'approve'"
-            :disabled="!hasAnyAttachment" :title="!hasAnyAttachment ? 'Sube al menos un archivo antes de aprobar' : ''"
-            @click="approveWithFiles()" />
+  :disabled="isAnyRejected || !hasFirstComment || !hasAnyAttachment"
+  :title="isAnyRejected ? 'Bloqueado por rechazo' : (!hasFirstComment ? 'Escribe un comentario interno antes de aprobar' : (!hasAnyAttachment ? 'Sube al menos un archivo antes de aprobar' : ''))"
+  @click="approveWithFiles()" />
+
 
           <!-- OBSERVAR abre popup con input -->
           <Button label="Observar" icon="pi pi-eye" severity="info" :loading="loading && actionBusy === 'observe'"
-            @click="openObserveFirstDialog" />
+  :disabled="isAnyRejected || !hasFirstComment"
+  :title="isAnyRejected ? 'Bloqueado por rechazo' : (!hasFirstComment ? 'Escribe un comentario interno antes de observar' : '')"
+  @click="openObserveFirstDialog" />
 
           <Button label="Rechazar" icon="pi pi-times" severity="danger" :loading="loading && actionBusy === 'reject'"
-            @click="changeStatus0('rejected', { closeAfter: true })" />
+  :disabled="isAnyRejected || !hasFirstComment"
+  :title="isAnyRejected ? 'Bloqueado por rechazo' : (!hasFirstComment ? 'Escribe un comentario interno antes de rechazar' : '')"
+  @click="changeStatus0('rejected', { closeAfter: true })" />
         </div>
+
       </div>
 
       <!-- SEGUNDA VALIDACIÓN -->
@@ -302,16 +326,25 @@
 
         <div class="flex flex-wrap items-center gap-2">
           <Button label="Cerrar" icon="pi pi-times" @click="showDialog = false" />
+
           <Button label="Aprobar" icon="pi pi-check" severity="success" :loading="loading && actionBusy === 'approve2'"
-            :disabled="isFullyApproved" @click="confirmSecond('approved', 'aprobar')" />
+  :disabled="isAnyRejected || isFullyApproved || !hasSecondComment"
+  :title="isAnyRejected ? 'Bloqueado por rechazo' : (isFullyApproved ? 'Solo lectura: validación completada' : (!hasSecondComment ? 'Escribe un comentario interno antes de aprobar' : ''))"
+  @click="confirmSecond('approved', 'aprobar')" />
 
           <!-- OBSERVAR abre popup con input -->
           <Button label="Observar" icon="pi pi-eye" severity="info" :loading="loading && actionBusy === 'observe2'"
-            :disabled="isFullyApproved" @click="openObserveSecondDialog" />
+  :disabled="isAnyRejected || isFullyApproved || !hasSecondComment"
+  :title="isAnyRejected ? 'Bloqueado por rechazo' : (isFullyApproved ? 'Solo lectura: validación completada' : (!hasSecondComment ? 'Escribe un comentario interno antes de observar' : ''))"
+  @click="openObserveSecondDialog" />
 
           <Button label="Rechazar" icon="pi pi-times" severity="danger" :loading="loading && actionBusy === 'reject2'"
-            :disabled="isFullyApproved" @click="confirmSecond('rejected', 'rechazar')" />
+  :disabled="isAnyRejected || isFullyApproved || !hasSecondComment"
+  :title="isAnyRejected ? 'Bloqueado por rechazo' : (isFullyApproved ? 'Solo lectura: validación completada' : (!hasSecondComment ? 'Escribe un comentario interno antes de rechazar' : ''))"
+  @click="confirmSecond('rejected', 'rechazar')" />
+
         </div>
+
       </div>
     </template>
   </Dialog>
@@ -433,6 +466,14 @@ const showDialog = ref(false);
 const comment0 = ref<string>(''); // primera
 const comment = ref<string>(''); // segunda
 
+
+
+// Bloquea acciones de 1ª validación si no hay comentario interno
+const hasFirstComment = computed(() => (comment0.value ?? '').trim().length > 0);
+
+const hasSecondComment = computed(() => (comment.value ?? '').trim().length > 0);
+
+
 // Archivos
 const uploadedFiles = ref<UploadedFile[]>([]);
 
@@ -477,6 +518,15 @@ const isFullyApproved = computed(() => {
     ?? (selectedAccount.value?.estado === 'Aprobado' ? 'approved' : null);
   return s0 === 'approved' && s === 'approved';
 });
+
+const isAnyRejected = computed(() => {
+  const s0 = selectedAccount.value?.status0
+    ?? (selectedAccount.value?.estado0 === 'Rechazado' ? 'rejected' : null);
+  const s  = selectedAccount.value?.status
+    ?? (selectedAccount.value?.estado === 'Rechazado' ? 'rejected' : null);
+  return s0 === 'rejected' || s === 'rejected';
+});
+
 
 const loadAccounts = async (event: any = {}) => {
   loading.value = true;
@@ -623,7 +673,20 @@ const changeStatusSecond = async (
     return;
   }
 
+  if (isAnyRejected.value) {
+  toast.add({ severity: 'warn', summary: 'Bloqueado', detail: 'Acciones deshabilitadas: existe un rechazo en alguna validación.', life: 4000 });
+  return;
+}
+
+  
   actionBusy.value = newStatus === 'approved' ? 'approve2' : newStatus === 'observed' ? 'observe2' : 'reject2';
+
+  // Guardia: exige comentario interno para cualquier acción de 2ª validación
+  if (!(comment.value ?? '').trim().length) {
+    toast.add({ severity: 'warn', summary: 'Comentario requerido', detail: 'Escribe un comentario interno antes de continuar.', life: 3500 });
+    actionBusy.value = null;
+    return;
+  }
 
   loading.value = true;
   try {
@@ -716,6 +779,46 @@ const downloadAttachment = (file: UploadedFile) => {
   window.open(url, '_blank', 'noopener');
 };
 
+
+const confirmDeleteAttachment = (file: UploadedFile) => {
+  if (!file?.id) {
+    toast.add({ severity: 'warn', summary: 'Aviso', detail: 'No se puede eliminar: archivo sin identificador.', life: 3500 });
+    return;
+  }
+  if (!selectedAccount.value?.id) {
+    toast.add({ severity: 'warn', summary: 'Aviso', detail: 'No hay cuenta seleccionada.', life: 3500 });
+    return;
+  }
+
+  confirm.require({
+    message: `¿Eliminar el archivo "${file.original_name ?? file.name}"? Esta acción no se puede deshacer.`,
+    header: 'Confirmar eliminación',
+    icon: 'pi pi-exclamation-triangle',
+    rejectClass: 'p-button-secondary p-button-outlined',
+    rejectLabel: 'Cancelar',
+    acceptLabel: 'Eliminar',
+    accept: () => deleteAttachment(file),
+    reject: () => { /* nada */ }
+  });
+};
+
+const deleteAttachment = async (file: UploadedFile) => {
+  try {
+    const accountId = String(selectedAccount.value.id);
+    const attId = String(file.id);
+    await axios.delete(`/ban/${accountId}/attachments/${attId}`);
+
+    // Saca el archivo de la lista local
+    uploadedFiles.value = uploadedFiles.value.filter((f) => String(f.id) !== attId);
+
+    toast.add({ severity: 'success', summary: 'Eliminado', detail: 'Archivo eliminado correctamente.', life: 3000 });
+  } catch (error: any) {
+    const msg = error.response?.data?.message || error.message || 'No se pudo eliminar el archivo.';
+    toast.add({ severity: 'error', summary: 'Error', detail: msg, life: 5000 });
+  }
+};
+
+
 // Primera Validación (status0)
 const approveWithFiles = async () => {
   actionBusy.value = 'approve';
@@ -737,7 +840,18 @@ const changeStatus0 = async (
     toast.add({ severity: 'warn', summary: 'Advertencia', detail: 'No hay cuenta seleccionada', life: 3000 });
     return;
   }
+  if (isAnyRejected.value) {
+  toast.add({ severity: 'warn', summary: 'Bloqueado', detail: 'Acciones deshabilitadas: existe un rechazo en alguna validación.', life: 4000 });
+  return;
+}
   actionBusy.value = newStatus0 === 'approved' ? 'approve' : newStatus0 === 'observed' ? 'observe' : 'reject';
+
+  // Guardia: exige comentario interno para cualquier acción de 1ª validación
+  if (!(comment0.value ?? '').trim().length) {
+    toast.add({ severity: 'warn', summary: 'Comentario requerido', detail: 'Escribe un comentario interno antes de continuar.', life: 3500 });
+    actionBusy.value = null;
+    return;
+  }
 
   loading.value = true;
   try {
@@ -757,7 +871,7 @@ const changeStatus0 = async (
     selectedAccount.value.status = 'pending';
     selectedAccount.value.estado = 'Pendiente';
 
-    toast.add({ severity: 'success', summary: 'Actualizado', detail: `Estado 0 cambiado a "${msgMap[newStatus0]}"`, life: 3500 });
+    toast.add({ severity: 'success', summary: 'Actualizado', detail: `Primer aprobador cambiado a "${msgMap[newStatus0]}"`, life: 3500 });
 
     if (opts.closeAfter === false) {
       await loadAttachments();
@@ -767,7 +881,7 @@ const changeStatus0 = async (
     }
     await loadAccounts();
   } catch (error: any) {
-    const msg = error.response?.data?.message || error.message || 'No se pudo cambiar el Estado 0';
+    const msg = error.response?.data?.message || error.message || 'No se pudo cambiar el Primer aprobador';
     toast.add({ severity: 'error', summary: 'Error', detail: msg, life: 5000 });
   } finally {
     loading.value = false;
@@ -813,15 +927,24 @@ const cancelObserveSecond = () => { showObserveSecond.value = false; };
 // confirmar (recorta/limpia a 500)
 const confirmObserveFirst = async () => {
   const message = observeMessage.value.slice(0, OBSERVE_MAX).trim();
-  comment0.value = message; // opcional: registrar
   showObserveFirst.value = false;
   await changeStatus0('observed', { closeAfter: false, notifyMessage: message });
 };
+
 
 const confirmObserveSecond = async () => {
   const message = observeMessage.value.slice(0, OBSERVE_MAX).trim();
   showObserveSecond.value = false;
   await changeStatusSecond('observed', { notifyMessage: message });
+};
+
+
+// helpers (place with other utils)
+const secondEstadoForRow = (row: any) => {
+  // If first validation is Rechazado, show a hyphen for the second
+  if (row?.estado0 === 'Rechazado') return '-';
+  // otherwise show the real value or an em dash as fallback
+  return row?.estado ?? '—';
 };
 /** ----------------------------------- **/
 

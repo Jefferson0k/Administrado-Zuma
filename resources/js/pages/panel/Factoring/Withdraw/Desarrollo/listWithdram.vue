@@ -88,56 +88,51 @@
                 </template>
             </template>
         </Column>
-        <Column header="" style="min-width: 20rem">
+        <Column header="" style="min-width: 22rem">
             <template #body="slotProps">
-                <div class="flex gap-2">
-                    <!-- Botón para primera validación -->
-                    <Button 
-                        v-if="!slotProps.data.approval1_status"
-                        label="1ª Valid." 
-                        icon="pi pi-check-circle" 
-                        size="small" 
-                        severity="warning"
-                        @click="openFirstApprovalDialog(slotProps.data)" 
-                    />
-                    
-                    <!-- Botón para segunda validación -->
-                    <Button 
-                        v-else-if="slotProps.data.approval1_status === 'approved' && !slotProps.data.approval2_status"
-                        label="2ª Valid." 
-                        icon="pi pi-shield" 
-                        size="small" 
-                        severity="success"
-                        @click="openSecondApprovalDialog(slotProps.data)" 
-                    />
-                    
-                    <!-- Botón Pagar - siempre deshabilitado -->
-                    <Button 
-                        label="Pagar" 
-                        icon="pi pi-credit-card" 
-                        size="small" 
-                        severity="secondary"
-                        disabled
-                        class="opacity-60"
-                    />
+                <div class="flex gap-2 flex-wrap">
+                    <!-- 1ª Validación -->
+                    <Button v-if="!slotProps.data.approval1_status" label="1ª Valid." icon="pi pi-check-circle"
+                        size="small" severity="warning" @click="openFirstApprovalDialog(slotProps.data)" />
 
-                     <Button 
-                        label="Detalles" 
-                        icon="pi pi-eye" 
-                        size="small" 
-                        severity="info"
-                        outlined
-                        @click="openDetailsDialog(slotProps.data)" 
-                    />
+                    <!-- 2ª Validación -->
+                    <Button
+                        v-else-if="slotProps.data.approval1_status === 'approved' && !slotProps.data.approval2_status"
+                        label="2ª Valid." icon="pi pi-shield" size="small" severity="success"
+                        @click="openSecondApprovalDialog(slotProps.data)" />
+
+                    <!-- Cuando ya no hay botones de validación, mostrar 'Validaciones' -->
+                    <Button v-else label="Validaciones" icon="pi pi-list-check" size="small" severity="help" outlined
+                        @click="openValidationDetails(slotProps.data)" />
+
+                    <!-- Mostrar Pagar SOLO si NO hay comprobante ni comentario -->
+                    <Button v-if="!slotProps.data.resource_path && !slotProps.data.payment_comment" label="Pagar"
+                        icon="pi pi-credit-card" size="small" severity="secondary" outlined
+                        @click="openPayDialog(slotProps.data)" />
+
+                    <!-- Si ya existe pago, mostrar detalle -->
+                    <Button v-else label="Pago" icon="pi pi-paperclip" size="small" severity="secondary" outlined
+                        @click="openPaymentDetails(slotProps.data)" />
+
+
+
+
+                    <!-- Detalles del retiro / inversionista que ya tienes -->
+                    <Button label="Detalles" icon="pi pi-eye" size="small" severity="info" outlined
+                        @click="openDetailsDialog(slotProps.data)" />
                 </div>
             </template>
         </Column>
+
     </DataTable>
 
 
 
     <!-- Dialog para primera validación -->
-    <Dialog v-model:visible="firstApprovalDialog" :style="{ width: '600px' }" header="Primera Validación" :modal="true">
+    <Dialog v-model:visible="firstApprovalDialog" :style="{ width: '600px' }" :header="selectedWithdraw
+        ? `Primera Validación — ${formatCurrency(selectedWithdraw.amount, selectedWithdraw.currency)}`
+        : 'Primera Validación'" :modal="true">
+
         <div class="flex flex-col gap-6">
             <!-- Información del retiro -->
             <div class="flex items-center gap-4 p-4 bg-orange-50 rounded-lg border border-orange-200">
@@ -156,58 +151,6 @@
                 </div>
             </div>
 
-            <!-- Sección de Voucher -->
-            <div class="border rounded-lg p-4 bg-blue-50/30 border-blue-200">
-                <h4 class="font-medium text-gray-800 mb-3 flex items-center gap-2">
-                    <i class="pi pi-upload text-blue-500" />
-                    Voucher de Transferencia
-                </h4>
-                
-                <div v-if="!voucherForm.file" class="space-y-3">
-                    <p class="text-sm text-gray-600 mb-3">
-                        Sube el voucher que confirma la transferencia realizada al inversionista
-                    </p>
-                    
-                    <FileUpload 
-                        ref="voucherFileUpload" 
-                        mode="basic" 
-                        name="file" 
-                        accept="image/*,application/pdf" 
-                        :maxFileSize="2000000"
-                        :auto="false" 
-                        chooseLabel="Seleccionar voucher" 
-                        class="p-button-outlined"
-                        @select="onVoucherFileSelect" 
-                    />
-                    <p class="text-xs text-gray-500">
-                        Formatos: JPG, PNG, PDF (máx. 2MB)
-                    </p>
-                </div>
-                
-                <div v-else class="space-y-3">
-                    <div class="flex items-center gap-3 p-3 bg-green-100 rounded-lg">
-                        <i class="pi pi-check-circle text-green-600" />
-                        <div class="flex-1">
-                            <p class="font-medium text-green-800">{{ voucherForm.file.name }}</p>
-                            <p class="text-sm text-green-600">
-                                {{ formatFileSize(voucherForm.file.size) }}
-                            </p>
-                        </div>
-                        <Button 
-                            icon="pi pi-times" 
-                            size="small"
-                            severity="danger"
-                            text
-                            @click="clearSelectedFile" 
-                        />
-                    </div>
-                </div>
-                
-                <small v-if="firstApprovalSubmitted && !voucherForm.file" class="p-error block mt-2">
-                    <i class="pi pi-exclamation-triangle mr-1" />
-                    El voucher es requerido para continuar
-                </small>
-            </div>
 
             <!-- Formulario de validación -->
             <form @submit.prevent="confirmFirstApproval" class="grid grid-cols-1 gap-4">
@@ -215,13 +158,9 @@
                     <label for="nro_operation" class="font-medium">
                         Número de Operación <span class="text-red-500">*</span>
                     </label>
-                    <InputText 
-                        id="nro_operation" 
-                        v-model="firstApprovalForm.nro_operation" 
-                        placeholder="Ej: OP123456789"
-                        maxlength="50"
-                        :class="{ 'p-invalid': firstApprovalSubmitted && !firstApprovalForm.nro_operation }" 
-                    />
+                    <InputText id="nro_operation" v-model="firstApprovalForm.nro_operation"
+                        placeholder="Ej: OP123456789" maxlength="50"
+                        :class="{ 'p-invalid': firstApprovalSubmitted && !firstApprovalForm.nro_operation }" />
                     <small v-if="firstApprovalSubmitted && !firstApprovalForm.nro_operation" class="p-error">
                         El número de operación es requerido
                     </small>
@@ -231,14 +170,9 @@
                     <label for="deposit_pay_date" class="font-medium">
                         Fecha de Pago <span class="text-red-500">*</span>
                     </label>
-                    <DatePicker 
-                        id="deposit_pay_date" 
-                        v-model="firstApprovalForm.deposit_pay_date" 
-                        dateFormat="dd/mm/yy"
-                        showIcon 
-                        placeholder="Seleccionar fecha"
-                        :class="{ 'p-invalid': firstApprovalSubmitted && !firstApprovalForm.deposit_pay_date }" 
-                    />
+                    <DatePicker id="deposit_pay_date" v-model="firstApprovalForm.deposit_pay_date" dateFormat="dd/mm/yy"
+                        showIcon placeholder="Seleccionar fecha"
+                        :class="{ 'p-invalid': firstApprovalSubmitted && !firstApprovalForm.deposit_pay_date }" />
                     <small v-if="firstApprovalSubmitted && !firstApprovalForm.deposit_pay_date" class="p-error">
                         La fecha de pago es requerida
                     </small>
@@ -246,94 +180,345 @@
 
                 <div class="flex flex-col gap-1">
                     <label for="description" class="font-medium">Descripción</label>
-                    <Textarea 
-                        id="description" 
-                        v-model="firstApprovalForm.description" 
-                        rows="3"
-                        placeholder="Descripción del pago..." 
-                    />
+                    <Textarea id="description" v-model="firstApprovalForm.description" rows="3"
+                        placeholder="Descripción del pago..." />
                 </div>
 
                 <div class="flex flex-col gap-1">
                     <label for="approval1_comment" class="font-medium">Comentario de Validación (Opcional)</label>
-                    <Textarea 
-                        id="approval1_comment" 
-                        v-model="firstApprovalForm.approval1_comment" 
-                        rows="2"
-                        placeholder="Comentarios sobre la validación..." 
-                    />
+                    <Textarea id="approval1_comment" v-model="firstApprovalForm.approval1_comment" rows="2"
+                        placeholder="Comentarios sobre la validación..." />
                 </div>
             </form>
         </div>
 
         <template #footer>
-            <div class="flex justify-end gap-2">
-                <Button 
-                    label="Cancelar" 
-                    icon="pi pi-times" 
-                    severity="secondary" 
-                    outlined
-                    :disabled="firstApprovalProcessing" 
-                    @click="closeFirstApprovalDialog" 
-                />
-                <Button 
-                    label="Aprobar Primera Validación" 
-                    icon="pi pi-check" 
-                    severity="warning" 
-                    :loading="firstApprovalProcessing" 
-                    @click="confirmFirstApproval" 
-                />
+            <div class="flex flex-wrap justify-between w-full gap-2">
+                <div class="flex gap-2">
+                    <Button label="Observar" icon="pi pi-eye-slash" severity="help" outlined
+                        :disabled="firstApprovalProcessing" @click="observeStepOne" />
+                    <Button label="Rechazar" icon="pi pi-times-circle" severity="danger" outlined
+                        :disabled="firstApprovalProcessing" @click="rejectStepOne" />
+                </div>
+
+                <div class="flex gap-2">
+                    <Button label="Cancelar" icon="pi pi-times" severity="secondary" outlined
+                        :disabled="firstApprovalProcessing" @click="closeFirstApprovalDialog" />
+                    <Button label="Aprobar Primera Validación" icon="pi pi-check" severity="warning"
+                        :loading="firstApprovalProcessing" @click="confirmFirstApproval" />
+                </div>
             </div>
         </template>
+
     </Dialog>
 
     <!-- Dialog para segunda validación -->
-    <Dialog v-model:visible="secondApprovalDialog" :style="{ width: '450px' }" header="Segunda Validación" :modal="true">
-        <div class="flex flex-col gap-4">
-            <div class="flex items-center gap-4 p-4 bg-green-50 rounded">
-                <i class="pi pi-shield text-2xl text-green-500" />
-                <div>
-                    <p class="font-semibold">{{ selectedWithdraw?.invesrionista }}</p>
-                    <p class="text-sm text-gray-600">
-                        Monto: {{ formatCurrency(selectedWithdraw?.amount, selectedWithdraw?.currency) }}
-                    </p>
-                    <p class="text-sm text-gray-600">
-                        Nº Op: {{ selectedWithdraw?.nro_operation }}
-                    </p>
+    <Dialog v-model:visible="secondApprovalDialog" :style="{ width: '520px' }" :header="selectedWithdraw
+        ? `Segunda Validación — ${formatCurrency(selectedWithdraw.amount, selectedWithdraw.currency)}`
+        : 'Segunda Validación'" :modal="true">
+
+        <div v-if="secondApprovalLoading" class="flex items-center gap-3 p-4">
+            <i class="pi pi-spin pi-spinner text-xl"></i>
+            <span>Cargando datos de la 1ª validación…</span>
+        </div>
+
+        <div v-else class="flex flex-col gap-4">
+            <!-- Bloque de resumen -->
+            <div class="p-4 rounded border border-green-200 bg-green-50">
+                <div class="flex items-start gap-3">
+                    <i class="pi pi-shield text-2xl text-green-500"></i>
+                    <div class="flex-1">
+                        <p class="font-semibold text-base">{{ selectedWithdraw?.invesrionista }}</p>
+                        <p class="text-sm text-gray-700">
+                            Monto: {{ formatCurrency(selectedWithdraw?.amount, selectedWithdraw?.currency) }}
+                        </p>
+                        <p class="text-xs text-gray-500 mt-1">
+                            ID Retiro: {{ selectedWithdraw?.id }} · Creado: {{ selectedWithdraw?.created_at }}
+                        </p>
+                    </div>
                 </div>
             </div>
 
+            <!-- Datos provenientes de la 1ª validación -->
+            <div class="p-4 rounded border border-orange-200 bg-orange-50">
+                <p class="text-xs font-semibold uppercase text-orange-700 tracking-wide">Datos de la 1ª validación</p>
+
+                <div class="mt-3 grid grid-cols-1 gap-2 text-sm">
+                    <div class="flex justify-between gap-3">
+                        <span class="text-gray-600">N° Operación:</span>
+                        <span class="font-medium">{{ selectedWithdraw?.nro_operation || '—' }}</span>
+                    </div>
+
+                    <div class="flex justify-between gap-3">
+                        <span class="text-gray-600">Fecha de pago:</span>
+                        <span class="font-medium">
+                            {{ selectedWithdraw?.deposit_pay_date ? formatDateTime(selectedWithdraw?.deposit_pay_date) :
+                                '—'
+                            }}
+                        </span>
+                    </div>
+
+                    <div class="flex justify-between gap-3">
+                        <span class="text-gray-600">Descripción:</span>
+                        <span class="font-medium text-right whitespace-pre-line">
+                            {{ selectedWithdraw?.description || '—' }}
+                        </span>
+                    </div>
+
+                    <div class="flex justify-between gap-3">
+                        <span class="text-gray-600">Comentario 1ª valid.:</span>
+                        <span class="font-medium text-right whitespace-pre-line">
+                            {{ selectedWithdraw?.approval1_comment || '—' }}
+                        </span>
+                    </div>
+
+                    <div class="flex justify-between gap-3">
+                        <span class="text-gray-600">1º Usuario:</span>
+                        <span class="font-medium">
+                            {{ selectedWithdraw?.approval1_by || '—' }}
+                        </span>
+                    </div>
+
+                    <div class="flex justify-between gap-3">
+                        <span class="text-gray-600">T. 1ª Aprobación:</span>
+                        <span class="font-medium">
+                            {{ selectedWithdraw?.approval1_at ? selectedWithdraw.approval1_at : '—' }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comentario de segunda validación -->
             <div class="flex flex-col gap-1">
                 <label for="approval2_comment" class="font-medium">Comentario de Segunda Validación</label>
-                <Textarea 
-                    id="approval2_comment" 
-                    v-model="secondApprovalForm.approval2_comment" 
-                    rows="3"
-                    placeholder="Comentarios finales de validación..." 
-                />
+                <Textarea id="approval2_comment" v-model="secondApprovalForm.approval2_comment" rows="3"
+                    placeholder="Comentarios finales de validación..." />
             </div>
 
             <div class="p-4 bg-yellow-50 border-l-4 border-yellow-400">
                 <p class="text-sm">
-                    <strong>⚠️ Importante:</strong> Esta acción aprobará definitivamente el retiro y 
-                    marcará el movimiento como válido. Se enviará notificación al inversionista.
+                    <strong>⚠️ Importante:</strong> Esta acción aprobará definitivamente el retiro y marcará el
+                    movimiento
+                    como válido. Se enviará notificación al inversionista.
                 </p>
             </div>
         </div>
 
         <template #footer>
-            <Button label="Cancelar" icon="pi pi-times" text severity="secondary" 
-                :disabled="secondApprovalProcessing" @click="closeSecondApprovalDialog" />
-            <Button label="Aprobar Definitivamente" icon="pi pi-check" severity="success" 
-                :loading="secondApprovalProcessing" @click="confirmSecondApproval" />
+            <!-- tu footer actual sin cambios -->
+            <div class="flex flex-wrap justify-between w-full gap-2">
+                <div class="flex gap-2">
+                    <Button label="Observar" icon="pi pi-eye-slash" severity="help" outlined
+                        :disabled="secondApprovalProcessing || secondApprovalLoading" @click="observeStepTwo" />
+                    <Button label="Rechazar" icon="pi pi-times-circle" severity="danger" outlined
+                        :disabled="secondApprovalProcessing || secondApprovalLoading" @click="rejectStepTwo" />
+                </div>
+
+                <div class="flex gap-2">
+                    <Button label="Cancelar" icon="pi pi-times" text severity="secondary"
+                        :disabled="secondApprovalProcessing || secondApprovalLoading"
+                        @click="closeSecondApprovalDialog" />
+                    <Button label="Aprobar Definitivamente" icon="pi pi-check" severity="success"
+                        :loading="secondApprovalProcessing" :disabled="secondApprovalLoading"
+                        @click="confirmSecondApproval" />
+                </div>
+            </div>
         </template>
     </Dialog>
+
+    <!-- Dialog: Detalle de Validaciones -->
+    <Dialog v-model:visible="validationDetailsDialog" :style="{ width: '560px' }" header="Detalle de Validaciones"
+        :modal="true">
+        <div class="space-y-4">
+            <div class="p-4 rounded border bg-slate-50">
+                <p class="font-semibold text-sm text-slate-700">Resumen del Retiro</p>
+
+                <div v-if="selectedWithdraw && !canPay(selectedWithdraw)"
+                    class="p-3 rounded border-l-4 bg-amber-50 border-amber-400 text-sm text-amber-800">
+                    Este retiro aún no está listo para pago. Requiere 2ª validación aprobada y estado final "Aprobado".
+                </div>
+
+                <div class="mt-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-slate-600">Inversionista:</span>
+                        <span class="font-medium">{{ selectedValidationWithdraw?.invesrionista || '—' }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-600">Monto:</span>
+                        <span class="font-medium">
+                            {{ formatCurrency(selectedValidationWithdraw?.amount, selectedValidationWithdraw?.currency)
+                            }}
+                        </span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-600">Creado:</span>
+                        <span class="font-medium">{{ selectedValidationWithdraw?.created_at || '—' }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- 1ª Validación -->
+                <div class="p-4 rounded border border-orange-200 bg-orange-50">
+                    <p class="font-semibold text-orange-700 mb-2">1ª Validación</p>
+                    <div class="text-sm space-y-1">
+                        <div class="flex justify-between"><span>Estado:</span><span class="font-medium">{{
+                            getStatusLabel(selectedValidationWithdraw?.approval1_status) || '—' }}</span></div>
+                        <div class="flex justify-between"><span>Usuario:</span><span class="font-medium">{{
+                            selectedValidationWithdraw?.approval1_by || '—' }}</span></div>
+                        <div class="flex justify-between"><span>Fecha/Hora:</span><span class="font-medium">{{
+                            selectedValidationWithdraw?.approval1_at || '—' }}</span></div>
+                        <div><span class="block">Comentario:</span>
+                            <p class="font-medium whitespace-pre-line">{{ selectedValidationWithdraw?.approval1_comment
+                                ||
+                                '—' }}</p>
+                        </div>
+                        <hr class="my-2" />
+                        <div class="flex justify-between"><span>N° Operación:</span><span class="font-medium">{{
+                            selectedValidationWithdraw?.nro_operation || '—' }}</span></div>
+                        <div class="flex justify-between"><span>Fecha de pago:</span><span class="font-medium">
+                                {{ selectedValidationWithdraw?.deposit_pay_date ?
+                                    formatDateTime(selectedValidationWithdraw?.deposit_pay_date) : '—' }}
+                            </span></div>
+                        <div><span class="block">Descripción:</span>
+                            <p class="font-medium whitespace-pre-line">{{ selectedValidationWithdraw?.description || '—'
+                                }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2ª Validación -->
+                <div class="p-4 rounded border border-green-200 bg-green-50">
+                    <p class="font-semibold text-green-700 mb-2">2ª Validación</p>
+                    <div class="text-sm space-y-1">
+                        <div class="flex justify-between"><span>Estado:</span><span class="font-medium">{{
+                            getStatusLabel(selectedValidationWithdraw?.approval2_status) || '—' }}</span></div>
+                        <div class="flex justify-between"><span>Usuario:</span><span class="font-medium">{{
+                            selectedValidationWithdraw?.approval2_by || '—' }}</span></div>
+                        <div class="flex justify-between"><span>Fecha/Hora:</span><span class="font-medium">{{
+                            selectedValidationWithdraw?.approval2_at || '—' }}</span></div>
+                        <div><span class="block">Comentario:</span>
+                            <p class="font-medium whitespace-pre-line">{{ selectedValidationWithdraw?.approval2_comment
+                                ||
+                                '—' }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <template #footer>
+            <Button label="Cerrar" icon="pi pi-times" severity="secondary" text @click="closeValidationDetails" />
+        </template>
+    </Dialog>
+
+    <!-- Dialog: Pagar / Subir comprobante -->
+    <Dialog v-model:visible="payDialog" :style="{ width: '560px' }"
+        :header="selectedWithdraw ? `Pagar — ${formatCurrency(selectedWithdraw.amount, selectedWithdraw.currency)}` : 'Pagar'"
+        :modal="true">
+        <div class="space-y-4">
+            <div class="p-4 rounded border bg-slate-50">
+                <p class="font-semibold text-sm text-slate-700">Resumen del Retiro</p>
+                <div class="mt-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-slate-600">Inversionista:</span>
+                        <span class="font-medium">{{ selectedWithdraw?.invesrionista || '—' }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-600">Monto:</span>
+                        <span class="font-medium">
+                            {{ formatCurrency(selectedWithdraw?.amount, selectedWithdraw?.currency) }}
+                        </span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-600">N° Operación (1ª valid.):</span>
+                        <span class="font-medium">{{ selectedWithdraw?.nro_operation || '—' }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label class="font-medium">Comprobante (PDF o imagen) <span class="text-red-500">*</span></label>
+                <input type="file" accept="application/pdf,image/*" @change="onPayFileChange"
+                    class="p-inputtext p-component w-full" />
+                <small v-if="paySubmitted && !payForm.file" class="p-error">El comprobante es requerido</small>
+                <div v-if="payForm.file" class="text-xs text-gray-600 mt-1">
+                    Archivo seleccionado: <span class="font-medium">{{ payForm.file.name }}</span>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label class="font-medium" for="pay_comment">Comentario</label>
+                <Textarea id="pay_comment" v-model="payForm.comment" rows="3"
+                    placeholder="Comentario para el pago..." />
+            </div>
+        </div>
+
+        <template #footer>
+            <div class="flex justify-end gap-2">
+                <Button label="Cancelar" icon="pi pi-times" severity="secondary" outlined :disabled="payProcessing"
+                    @click="closePayDialog" />
+                <Button label="Enviar Pago" icon="pi pi-upload" severity="success" :loading="payProcessing"
+                    :disabled="!selectedWithdraw || !canPay(selectedWithdraw)" @click="confirmPay" />
+
+            </div>
+        </template>
+    </Dialog>
+
+
+    <Dialog
+  v-model:visible="paymentDetailsDialog"
+  :style="{ width: '520px' }"
+  header="Detalle de Pago"
+  :modal="true"
+>
+  <div class="space-y-3 text-sm">
+    <div class="flex justify-between">
+      <span class="text-slate-600">Inversionista:</span>
+      <span class="font-medium">{{ selectedPayment?.invesrionista || '—' }}</span>
+    </div>
+    <div class="flex justify-between">
+      <span class="text-slate-600">Monto:</span>
+      <span class="font-medium">{{ formatCurrency(selectedPayment?.amount, selectedPayment?.currency) }}</span>
+    </div>
+
+    <div class="mt-2 p-3 rounded bg-slate-50">
+      <p class="font-semibold mb-1">Comprobante</p>
+      <div v-if="selectedPayment?.resource_path || selectedPayment?.resource_url">
+        <a
+          :href="selectedPayment?.resource_path || ('/' + selectedPayment?.resource_path)"
+          target="_blank"
+          class="text-primary underline"
+        >
+          Ver archivo
+        </a>
+      </div>
+      <div v-else>—</div>
+
+      <p class="font-semibold mt-3 mb-1">Comentario</p>
+      <p class="whitespace-pre-line">{{ selectedPayment?.payment_comment || '—' }}</p>
+    </div>
+  </div>
+
+  <template #footer>
+    <Button label="Cerrar" icon="pi pi-times" severity="secondary" text @click="closePaymentDetails" />
+  </template>
+</Dialog>
+
+
+
+
     <!-- Dialog para Ver Detalles del Inversionista -->
-<AddWithdraw 
-    v-model:visible="detailsDialog" 
-    :investor-id="selectedInvestorId"
-    @close="closeDetailsDialog" 
-/>
+
+
+
+
+
+
+    <AddWithdraw v-model:visible="detailsDialog" :investor-id="selectedInvestorId"
+        :current-withdraw="selectedWithdrawForDetails" @close="closeDetailsDialog" />
+
 </template>
 
 <script setup>
@@ -347,13 +532,189 @@ import Column from 'primevue/column';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import InputText from 'primevue/inputtext';
-import FileUpload from 'primevue/fileupload';
 import Textarea from 'primevue/textarea';
 import DatePicker from 'primevue/datepicker';
 import Tag from 'primevue/tag';
 import axios from 'axios';
-import AddWithdraw from './AddWithdraw.vue'; 
+import AddWithdraw from './AddWithdraw.vue';
 // Configuración de Axios
+
+
+const paymentDetailsDialog = ref(false);
+const selectedPayment = ref(null);
+
+const openPaymentDetails = async (row) => {
+  try {
+    const { data } = await axios.get(`/withdraws/${row.id}`);
+    selectedPayment.value = data?.data || row;
+  } catch (_) {
+    selectedPayment.value = row;
+  } finally {
+    paymentDetailsDialog.value = true;
+  }
+};
+
+const closePaymentDetails = () => {
+  paymentDetailsDialog.value = false;
+  selectedPayment.value = null;
+};
+
+
+
+
+const canPay = (row) => {
+    if (!row) return false;
+    // Requiere 2ª validación aprobada + estado final "approved" + que aún NO tenga comprobante
+    const approved = row.approval2_status === 'approved' && row.status === 'approved';
+    const alreadyPaid = !!row.resource_path; // 👈 usa resource_path (tu backend lo setea)
+    return approved && !alreadyPaid;
+};
+
+
+
+// --- Pagar / Subir comprobante ---
+const payDialog = ref(false);
+const payProcessing = ref(false);
+const paySubmitted = ref(false);
+const payForm = ref({
+    file: null,
+    comment: ''
+});
+
+const onPayFileChange = (e) => {
+    const f = e?.target?.files?.[0] ?? null;
+    payForm.value.file = f || null;
+};
+
+const openPayDialog = async (withdraw) => {
+    selectedWithdraw.value = withdraw;
+    payForm.value = { file: null, comment: '' };
+    paySubmitted.value = false;
+    payProcessing.value = false;
+
+    try {
+        const { data } = await axios.get(`/withdraws/${withdraw.id}`);
+        if (data?.data) selectedWithdraw.value = data.data;
+    } catch (e) {
+        // keep the row data if fetch fails
+    }
+
+    payDialog.value = true;
+};
+
+
+const closePayDialog = () => {
+    payDialog.value = false;
+    payForm.value = { file: null, comment: '' };
+    paySubmitted.value = false;
+    payProcessing.value = false;
+    // NO limpiamos selectedWithdraw aquí para permitir volver a abrir rápido
+};
+
+const confirmPay = async () => {
+    paySubmitted.value = true;
+    if (!selectedWithdraw.value) return;
+
+    if (!payForm.value.file) {
+        toast.add({ severity: 'warn', summary: 'Validación', detail: 'Adjunta el comprobante (PDF o imagen).', life: 3000 });
+        return;
+    }
+
+    if (!canPay(selectedWithdraw.value)) {
+        toast.add({ severity: 'warn', summary: 'No permitido', detail: 'El retiro debe estar aprobado en 2ª validación y en estado Aprobado.', life: 4000 });
+        return;
+    }
+
+    payProcessing.value = true;
+    try {
+        const formData = new FormData();
+        formData.append('file', payForm.value.file);           // 👈 nombre que valida el backend
+        if (payForm.value.comment?.trim()) {
+            formData.append('comment', payForm.value.comment.trim()); // 👈 el backend lo espera como 'comment'
+        }
+
+        const { data } = await axios.post(
+            `/withdraws/${selectedWithdraw.value.id}/upload-voucher`, // 👈 ruta de tu controlador
+            formData,
+            { headers: { 'Content-Type': 'multipart/form-data' } }
+        );
+
+        const idx = withdraws.value.findIndex(w => w.id === selectedWithdraw.value.id);
+        if (idx !== -1 && data?.data) {
+            withdraws.value[idx] = data.data; // si devuelves Resource
+        } else {
+            await loadWithdraws();
+        }
+
+        toast.add({ severity: 'success', summary: 'Pago registrado', detail: data?.message || 'Archivo subido correctamente', life: 4000 });
+        closePayDialog();
+    } catch (err) {
+        console.error('Error al registrar pago:', err?.response ?? err);
+        toast.add({ severity: 'error', summary: 'Error al pagar', detail: extractErrorMessage(err, 'No se pudo registrar el pago'), life: 7000 });
+    } finally {
+        payProcessing.value = false;
+    }
+};
+
+
+
+
+
+
+
+
+// Detalle de validaciones
+const validationDetailsDialog = ref(false);
+const selectedValidationWithdraw = ref(null);
+
+const openValidationDetails = async (row) => {
+    try {
+        // traer data fresca por si hay cambios recientes
+        const { data } = await axios.get(`/withdraws/${row.id}`);
+        selectedValidationWithdraw.value = data?.data || row;
+    } catch (_) {
+        // si falla, mostrar lo que ya tenemos
+        selectedValidationWithdraw.value = row;
+    } finally {
+        validationDetailsDialog.value = true;
+    }
+};
+
+const closeValidationDetails = () => {
+    validationDetailsDialog.value = false;
+    selectedValidationWithdraw.value = null;
+};
+
+
+
+
+
+
+const extractErrorMessage = (err, fallback = 'Ocurrió un error') => {
+    try {
+        // 1) Backend sent { message: "...", error: "...", errors: {...} }
+        const data = err?.response?.data;
+        if (typeof data === 'string') return data;
+        if (data?.message) {
+            // Collect validation errors if they exist
+            const bag = data?.errors && typeof data.errors === 'object'
+                ? Object.entries(data.errors)
+                    .flatMap(([, msgs]) => (Array.isArray(msgs) ? msgs : [String(msgs)]))
+                : [];
+            const tail = bag.length ? `  • ${bag.join('\n  • ')}` : (data?.error ? `  • ${data.error}` : '');
+            return tail ? `${data.message}\n${tail}` : data.message;
+        }
+        // 2) Fallback to HTTP text / status text
+        const status = err?.response?.status ? ` (HTTP ${err.response.status})` : '';
+        if (err?.response?.statusText) return `${err.response.statusText}${status}`;
+        // 3) Network or generic
+        if (err?.message) return err.message;
+    } catch (_) { }
+    return fallback;
+};
+
+
+
 axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 axios.defaults.headers.common['Accept'] = 'application/json';
 
@@ -369,32 +730,26 @@ const toast = useToast();
 const dt = ref();
 const withdraws = ref([]);
 const detailsDialog = ref(false);
-const selectedInvestorId = ref(''); 
+const selectedInvestorId = ref('');
 // Estados de diálogos
-const voucherDialog = ref(false);
 const firstApprovalDialog = ref(false);
 const secondApprovalDialog = ref(false);
 
 // Estados de procesamiento
-const voucherProcessing = ref(false);
 const firstApprovalProcessing = ref(false);
 const secondApprovalProcessing = ref(false);
 
 // Estados de validación
-const voucherSubmitted = ref(false);
 const firstApprovalSubmitted = ref(false);
 
 const selectedWithdraw = ref(null);
-const voucherFileUpload = ref();
 
 const filters = ref({
     'global': { value: null, matchMode: FilterMatchMode.CONTAINS },
 });
 
-// Formularios
-const voucherForm = ref({
-    file: null
-});
+
+
 
 const firstApprovalForm = ref({
     nro_operation: '',
@@ -407,21 +762,35 @@ const secondApprovalForm = ref({
     approval2_comment: ''
 });
 
+const selectedWithdrawForDetails = ref(null);
+
+
+
+const secondApprovalLoading = ref(false);
+
+const formatDateTime = (val) => {
+    if (!val) return '';
+    const d = new Date(val);
+    // es-PE with America/Lima style
+    return d.toLocaleString('es-PE', { hour12: false });
+};
+
+
 const openDetailsDialog = (withdraw) => {
-    selectedInvestorId.value = withdraw.investor_id || 
-                          withdraw.user_id || 
-                          withdraw.documento || 
-                          extractInvestorId(withdraw.invesrionista);
-    
-    console.log('Abriendo detalles para inversionista ID:', selectedInvestorId.value);
+    selectedInvestorId.value = withdraw.investor_id ||
+        withdraw.user_id ||
+        withdraw.documento ||
+        extractInvestorId(withdraw.invesrionista);
+
+    selectedWithdrawForDetails.value = withdraw;   // 👈 save the current withdraw
     detailsDialog.value = true;
 };
+
 const closeDetailsDialog = () => {
     detailsDialog.value = false;
     selectedInvestorId.value = '';
-    console.log('Cerrando diálogo de detalles');
+    selectedWithdrawForDetails.value = null;       // 👈 clear it
 };
-
 const extractInvestorId = (investorText) => {
     if (!investorText) return '';
     const match = investorText.match(/\(ID:\s*(\d+)\)/);
@@ -436,114 +805,26 @@ const loadWithdraws = async () => {
         const response = await axios.get('/withdraws');
         withdraws.value = response.data.data || response.data;
     } catch (error) {
-        console.error('Error al cargar retiros:', error);
+        console.error('Error al cargar retiros:', error?.response ?? error);
         toast.add({
             severity: 'error',
             summary: 'Error',
-            detail: 'Error al cargar los retiros',
-            life: 5000
+            detail: extractErrorMessage(error, 'Error al cargar los retiros'),
+            life: 7000
         });
     }
+
 };
 
-// Funciones para voucher
-const openVoucherDialog = (withdraw) => {
-    selectedWithdraw.value = withdraw;
-    resetVoucherForm();
-    voucherDialog.value = true;
-};
 
-const closeVoucherDialog = () => {
-    voucherDialog.value = false;
-    resetVoucherForm();
-    selectedWithdraw.value = null;
-};
 
-const resetVoucherForm = () => {
-    voucherForm.value = { file: null };
-    voucherSubmitted.value = false;
-    voucherProcessing.value = false;
-    
-    // Limpiar el FileUpload component
-    if (voucherFileUpload.value) {
-        voucherFileUpload.value.clear();
-    }
-};
 
-const onVoucherFileSelect = (event) => {
-    voucherForm.value.file = event.files[0];
-};
 
-const clearSelectedFile = () => {
-    voucherForm.value.file = null;
-    if (voucherFileUpload.value) {
-        voucherFileUpload.value.clear();
-    }
-};
 
-const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-};
 
-const confirmVoucherUpload = async () => {
-    voucherSubmitted.value = true;
 
-    if (!voucherForm.value.file) {
-        toast.add({
-            severity: 'warn',
-            summary: 'Validación',
-            detail: 'Seleccione un archivo',
-            life: 3000
-        });
-        return;
-    }
 
-    voucherProcessing.value = true;
 
-    try {
-        const formData = new FormData();
-        formData.append('file', voucherForm.value.file);
-
-        const response = await axios.post(`/withdraws/${selectedWithdraw.value.id}/upload-voucher`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data'
-            }
-        });
-
-        // Actualizar el retiro en la lista
-        const withdrawIndex = withdraws.value.findIndex(w => w.id === selectedWithdraw.value.id);
-        if (withdrawIndex !== -1) {
-            withdraws.value[withdrawIndex] = {
-                ...withdraws.value[withdrawIndex],
-                resource_path: response.data.file_path
-            };
-        }
-
-        toast.add({
-            severity: 'success',
-            summary: 'Éxito',
-            detail: response.data.message || 'Voucher subido correctamente',
-            life: 3000
-        });
-
-        closeVoucherDialog();
-
-    } catch (error) {
-        console.error('Error al subir voucher:', error);
-        toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: error.response?.data?.message || 'Error al subir el voucher',
-            life: 5000
-        });
-    } finally {
-        voucherProcessing.value = false;
-    }
-};
 
 // Funciones para primera validación
 const openFirstApprovalDialog = (withdraw) => {
@@ -565,24 +846,18 @@ const resetFirstApprovalForm = () => {
         description: '',
         approval1_comment: ''
     };
-    voucherForm.value = { file: null };
     firstApprovalSubmitted.value = false;
     firstApprovalProcessing.value = false;
-    
-    // Limpiar el FileUpload component
-    if (voucherFileUpload.value) {
-        voucherFileUpload.value.clear();
-    }
 };
 
 const confirmFirstApproval = async () => {
     firstApprovalSubmitted.value = true;
 
-    if (!firstApprovalForm.value.nro_operation || !firstApprovalForm.value.deposit_pay_date || !voucherForm.value.file) {
+    if (!firstApprovalForm.value.nro_operation || !firstApprovalForm.value.deposit_pay_date) {
         toast.add({
             severity: 'warn',
             summary: 'Validación',
-            detail: 'Complete todos los campos requeridos y suba el voucher',
+            detail: 'Complete todos los campos requeridos',
             life: 3000
         });
         return;
@@ -591,17 +866,6 @@ const confirmFirstApproval = async () => {
     firstApprovalProcessing.value = true;
 
     try {
-        // Primero subir el voucher
-        const formData = new FormData();
-        formData.append('file', voucherForm.value.file);
-
-        const voucherResponse = await axios.post(`/withdraws/${selectedWithdraw.value.id}/upload-voucher`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data'
-            }
-        });
-
-        // Luego procesar la primera aprobación
         const payload = {
             nro_operation: firstApprovalForm.value.nro_operation,
             deposit_pay_date: formatDateForBackend(firstApprovalForm.value.deposit_pay_date),
@@ -611,43 +875,153 @@ const confirmFirstApproval = async () => {
 
         const response = await axios.post(`/withdraws/${selectedWithdraw.value.id}/approve-step-one`, payload);
 
-        // Actualizar el retiro en la lista
         const withdrawIndex = withdraws.value.findIndex(w => w.id === selectedWithdraw.value.id);
         if (withdrawIndex !== -1) {
             withdraws.value[withdrawIndex] = {
-                ...response.data.data,
-                resource_path: voucherResponse.data.file_path
+                ...response.data.data
             };
         }
 
         toast.add({
             severity: 'success',
             summary: 'Éxito',
-            detail: 'Primera validación completada y voucher subido',
+            detail: 'Primera validación completada',
             life: 3000
         });
 
         closeFirstApprovalDialog();
 
     } catch (error) {
-        console.error('Error en primera validación:', error);
+        console.error('Error en primera validación:', error?.response ?? error);
         toast.add({
             severity: 'error',
-            summary: 'Error',
-            detail: error.response?.data?.message || 'Error en la primera validación',
-            life: 5000
+            summary: 'Error en 1ª validación',
+            detail: extractErrorMessage(error, 'No se pudo completar la 1ª validación'),
+            life: 7000
         });
+    }
+
+    finally {
+        firstApprovalProcessing.value = false;
+    }
+};
+
+
+// Funciones para segunda validación
+const openSecondApprovalDialog = async (withdraw) => {
+    secondApprovalLoading.value = true;
+    selectedWithdraw.value = withdraw; // show something immediately
+    resetSecondApprovalForm();
+    secondApprovalDialog.value = true;
+
+    try {
+        // Pull the freshest data so we have step-one fields
+        const { data } = await axios.get(`/withdraws/${withdraw.id}`);
+        // Expecting { data: { ...fullWithdraw } }
+        if (data?.data) {
+            selectedWithdraw.value = data.data;
+        }
+    } catch (e) {
+        console.warn('No se pudo cargar detalle completo:', e?.response ?? e);
+
+    }
+
+    finally {
+        secondApprovalLoading.value = false;
+    }
+};
+
+
+// 1ª VALIDACIÓN: Observar / Rechazar
+const observeStepOne = async () => {
+    if (!selectedWithdraw.value) return;
+    if (!firstApprovalForm.value.approval1_comment?.trim()) {
+        toast.add({ severity: 'warn', summary: 'Validación', detail: 'Agrega un comentario para observar', life: 3000 });
+        return;
+    }
+    firstApprovalProcessing.value = true;
+    try {
+        const { data } = await axios.post(`/withdraws/${selectedWithdraw.value.id}/observe-step-one`, {
+            comment: firstApprovalForm.value.approval1_comment
+        });
+        const idx = withdraws.value.findIndex(w => w.id === selectedWithdraw.value.id);
+        if (idx !== -1) withdraws.value[idx] = data.data;
+        toast.add({ severity: 'warn', summary: 'Observado', detail: data.message || 'Observado en 1ª validación', life: 3000 });
+        closeFirstApprovalDialog();
+    } catch (e) {
+        toast.add({ severity: 'error', summary: 'Error', detail: e.response?.data?.message || 'No se pudo observar', life: 5000 });
     } finally {
         firstApprovalProcessing.value = false;
     }
 };
 
-// Funciones para segunda validación
-const openSecondApprovalDialog = (withdraw) => {
-    selectedWithdraw.value = withdraw;
-    resetSecondApprovalForm();
-    secondApprovalDialog.value = true;
+const rejectStepOne = async () => {
+    if (!selectedWithdraw.value) return;
+    if (!firstApprovalForm.value.approval1_comment?.trim()) {
+        toast.add({ severity: 'warn', summary: 'Validación', detail: 'Agrega un comentario para rechazar', life: 3000 });
+        return;
+    }
+    firstApprovalProcessing.value = true;
+    try {
+        const { data } = await axios.post(`/withdraws/${selectedWithdraw.value.id}/reject-step-one`, {
+            comment: firstApprovalForm.value.approval1_comment
+        });
+        const idx = withdraws.value.findIndex(w => w.id === selectedWithdraw.value.id);
+        if (idx !== -1) withdraws.value[idx] = data.data;
+        toast.add({ severity: 'error', summary: 'Rechazado', detail: data.message || 'Rechazado en 1ª validación', life: 3000 });
+        closeFirstApprovalDialog();
+    } catch (e) {
+        toast.add({ severity: 'error', summary: 'Error', detail: e.response?.data?.message || 'No se pudo rechazar', life: 5000 });
+    } finally {
+        firstApprovalProcessing.value = false;
+    }
 };
+
+// 2ª VALIDACIÓN: Observar / Rechazar
+const observeStepTwo = async () => {
+    if (!selectedWithdraw.value) return;
+    if (!secondApprovalForm.value.approval2_comment?.trim()) {
+        toast.add({ severity: 'warn', summary: 'Validación', detail: 'Agrega un comentario para observar', life: 3000 });
+        return;
+    }
+    secondApprovalProcessing.value = true;
+    try {
+        const { data } = await axios.post(`/withdraws/${selectedWithdraw.value.id}/observe-step-two`, {
+            comment: secondApprovalForm.value.approval2_comment
+        });
+        const idx = withdraws.value.findIndex(w => w.id === selectedWithdraw.value.id);
+        if (idx !== -1) withdraws.value[idx] = data.data;
+        toast.add({ severity: 'warn', summary: 'Observado', detail: data.message || 'Observado en 2ª validación', life: 3000 });
+        closeSecondApprovalDialog();
+    } catch (e) {
+        toast.add({ severity: 'error', summary: 'Error', detail: e.response?.data?.message || 'No se pudo observar', life: 5000 });
+    } finally {
+        secondApprovalProcessing.value = false;
+    }
+};
+
+const rejectStepTwo = async () => {
+    if (!selectedWithdraw.value) return;
+    if (!secondApprovalForm.value.approval2_comment?.trim()) {
+        toast.add({ severity: 'warn', summary: 'Validación', detail: 'Agrega un comentario para rechazar', life: 3000 });
+        return;
+    }
+    secondApprovalProcessing.value = true;
+    try {
+        const { data } = await axios.post(`/withdraws/${selectedWithdraw.value.id}/reject-step-two`, {
+            comment: secondApprovalForm.value.approval2_comment
+        });
+        const idx = withdraws.value.findIndex(w => w.id === selectedWithdraw.value.id);
+        if (idx !== -1) withdraws.value[idx] = data.data;
+        toast.add({ severity: 'error', summary: 'Rechazado', detail: data.message || 'Rechazado en 2ª validación', life: 3000 });
+        closeSecondApprovalDialog();
+    } catch (e) {
+        toast.add({ severity: 'error', summary: 'Error', detail: e.response?.data?.message || 'No se pudo rechazar', life: 5000 });
+    } finally {
+        secondApprovalProcessing.value = false;
+    }
+};
+
 
 const closeSecondApprovalDialog = () => {
     secondApprovalDialog.value = false;
@@ -745,4 +1119,8 @@ const formatDateForBackend = (date) => {
     if (!date) return '';
     return new Date(date).toISOString().split('T')[0];
 };
+
+
+
+
 </script>

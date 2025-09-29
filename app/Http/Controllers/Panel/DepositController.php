@@ -116,14 +116,17 @@ class DepositController extends Controller
 
     public function updateStatus0(string $id, Request $request)
     {
+
+
         $validated = $request->validate([
             'status0'  => 'required|in:approved,observed,rejected,pending',
-            'comment0' => 'nullable|string|max:1000',
+            'comment0' => 'required|string|max:1000',
             'notify_message' => 'nullable|string|max:1000',
         ]);
 
         $deposit = Deposit::findOrFail($id);
-        Gate::authorize('update', $deposit);
+        Gate::authorize('approve1', $deposit);
+        
 
         // Exigir voucher si quieren aprobar en la 1ª validación
         if ($validated['status0'] === 'approved' && !$deposit->attachments()->exists()) {
@@ -192,13 +195,13 @@ class DepositController extends Controller
             // UI status for 2ª validación
             'status'     => 'required|in:approved,observed,rejected,pending',
             // Comentarios aceptando cualquiera de los dos nombres
-            'comment'    => 'nullable|string|max:1000',
+            'comment'    => 'required|string|max:1000',
             'conclusion' => 'nullable|string|max:1000',
             'notify_message' => 'nullable|string|max:1000',
         ]);
 
         $deposit = Deposit::with('movement')->findOrFail($id);
-        Gate::authorize('update', $deposit);
+        Gate::authorize('approve2', $deposit);
 
         $movement = $deposit->movement;
         if (!$movement) {
@@ -321,109 +324,109 @@ class DepositController extends Controller
             ], 500);
         }
     }
-    public function validateDeposit($movementId)
-    {
-        $movement = Movement::findOrFail($movementId);
+    // public function validateDeposit($movementId)
+    // {
+    //     $movement = Movement::findOrFail($movementId);
 
-        $movement->status = MovementStatus::VALID;
-        $movement->confirm_status = MovementStatus::PENDING;
-        $movement->registrarAprobacion1(Auth::id());
-        $movement->save();
-        $deposit = Deposit::where('movement_id', $movementId)->first();
-        if ($deposit) {
-            $deposit->update([
-                'aprobacion_1' => now(),
-                'aprobado_por_1' => Auth::id(),
-                'estado' => 'valid'
-            ]);
-        }
-        return response()->json(['message' => 'Depósito validado correctamente']);
-    }
-    public function rejectDeposit(Request $request, $depositId, $movementId)
-    {
-        $movement = Movement::findOrFail($movementId);
+    //     $movement->status = MovementStatus::VALID;
+    //     $movement->confirm_status = MovementStatus::PENDING;
+    //     $movement->registrarAprobacion1(Auth::id());
+    //     $movement->save();
+    //     $deposit = Deposit::where('movement_id', $movementId)->first();
+    //     if ($deposit) {
+    //         $deposit->update([
+    //             'aprobacion_1' => now(),
+    //             'aprobado_por_1' => Auth::id(),
+    //             'estado' => 'valid'
+    //         ]);
+    //     }
+    //     return response()->json(['message' => 'Depósito validado correctamente']);
+    // }
+    // public function rejectDeposit(Request $request, $depositId, $movementId)
+    // {
+    //     $movement = Movement::findOrFail($movementId);
 
-        if ($movement->status !== 'pending') {
-            return response()->json(['message' => 'El movimiento ya fue procesado'], 400);
-        }
+    //     if ($movement->status !== 'pending') {
+    //         return response()->json(['message' => 'El movimiento ya fue procesado'], 400);
+    //     }
 
-        $movement->status = 'rejected';
-        $movement->confirm_status = 'rejected';
-        $movement->save();
+    //     $movement->status = 'rejected';
+    //     $movement->confirm_status = 'rejected';
+    //     $movement->save();
 
-        $deposit = Deposit::findOrFail($depositId);
-        $deposit->update([
-            'estado' => 'rejected',
-            'estadoConfig' => 'rejected',
-            'conclusion' => $request->input('conclusion') // 👈 opcional (puede ser null)
-        ]);
+    //     $deposit = Deposit::findOrFail($depositId);
+    //     $deposit->update([
+    //         'estado' => 'rejected',
+    //         'estadoConfig' => 'rejected',
+    //         'conclusion' => $request->input('conclusion') // 👈 opcional (puede ser null)
+    //     ]);
 
-        return response()->json(['message' => 'Depósito rechazado correctamente']);
-    }
-    public function approveDeposit(Request $request, $depositId, $movementId)
-    {
-        try {
-            DB::beginTransaction();
-            $movement = Movement::findOrFail($movementId);
-            if ($movement->status !== MovementStatus::VALID || $movement->confirm_status === MovementStatus::VALID) {
-                return response()->json(['message' => 'El movimiento no es válido para aprobar'], 400);
-            }
-            $movement->confirm_status = MovementStatus::VALID;
-            $movement->registrarAprobacion2(Auth::id());
-            $investor = Investor::findOrFail($movement->investor_id);
-            $balance = $investor->getBalance($movement->currency);
-            $balanceAmountMoney = MoneyConverter::fromDecimal($balance->amount, $balance->currency);
-            $movementAmountMoney = MoneyConverter::fromDecimal($movement->amount, $movement->currency);
-            $balance->amount = $balanceAmountMoney->add($movementAmountMoney);
-            $balance->save();
-            $deposit = Deposit::findOrFail($depositId);
-            $deposit->update([
-                'aprobacion_2' => now(),
-                'approval2_by' => Auth::id(),
-                'estadoConfig' => 'confirmed',
-                'conclusion' => $request->input('conclusion')
-            ]);
-            $investor->sendDepositApprovalEmailNotification($deposit);
-            $movement->save();
-            DB::commit();
-            return response()->json(['message' => 'Depósito aprobado y saldo actualizado']);
-        } catch (Throwable $th) {
-            DB::rollBack();
-            return response()->json([
-                'message' => 'Error al aprobar el depósito',
-                'error' => $th->getMessage(),
-                'file' => $th->getFile(),
-                'line' => $th->getLine(),
-            ], 500);
-        }
-    }
-    public function rejectConfirmDeposit(Request $request, $depositId, $movementId)
-    {
-        $movement = Movement::findOrFail($movementId);
+    //     return response()->json(['message' => 'Depósito rechazado correctamente']);
+    // }
+    // public function approveDeposit(Request $request, $depositId, $movementId)
+    // {
+    //     try {
+    //         DB::beginTransaction();
+    //         $movement = Movement::findOrFail($movementId);
+    //         if ($movement->status !== MovementStatus::VALID || $movement->confirm_status === MovementStatus::VALID) {
+    //             return response()->json(['message' => 'El movimiento no es válido para aprobar'], 400);
+    //         }
+    //         $movement->confirm_status = MovementStatus::VALID;
+    //         $movement->registrarAprobacion2(Auth::id());
+    //         $investor = Investor::findOrFail($movement->investor_id);
+    //         $balance = $investor->getBalance($movement->currency);
+    //         $balanceAmountMoney = MoneyConverter::fromDecimal($balance->amount, $balance->currency);
+    //         $movementAmountMoney = MoneyConverter::fromDecimal($movement->amount, $movement->currency);
+    //         $balance->amount = $balanceAmountMoney->add($movementAmountMoney);
+    //         $balance->save();
+    //         $deposit = Deposit::findOrFail($depositId);
+    //         $deposit->update([
+    //             'aprobacion_2' => now(),
+    //             'approval2_by' => Auth::id(),
+    //             'estadoConfig' => 'confirmed',
+    //             'conclusion' => $request->input('conclusion')
+    //         ]);
+    //         $investor->sendDepositApprovalEmailNotification($deposit);
+    //         $movement->save();
+    //         DB::commit();
+    //         return response()->json(['message' => 'Depósito aprobado y saldo actualizado']);
+    //     } catch (Throwable $th) {
+    //         DB::rollBack();
+    //         return response()->json([
+    //             'message' => 'Error al aprobar el depósito',
+    //             'error' => $th->getMessage(),
+    //             'file' => $th->getFile(),
+    //             'line' => $th->getLine(),
+    //         ], 500);
+    //     }
+    // }
+    // public function rejectConfirmDeposit(Request $request, $depositId, $movementId)
+    // {
+    //     $movement = Movement::findOrFail($movementId);
 
-        if (
-            $movement->status !== MovementStatus::VALID ||
-            $movement->confirm_status !== MovementStatus::PENDING
-        ) {
-            return response()->json(['message' => 'El movimiento no es válido para rechazar'], 400);
-        }
+    //     if (
+    //         $movement->status !== MovementStatus::VALID ||
+    //         $movement->confirm_status !== MovementStatus::PENDING
+    //     ) {
+    //         return response()->json(['message' => 'El movimiento no es válido para rechazar'], 400);
+    //     }
 
-        $movement->confirm_status = MovementStatus::REJECTED;
-        $movement->save();
+    //     $movement->confirm_status = MovementStatus::REJECTED;
+    //     $movement->save();
 
-        $deposit = Deposit::findOrFail($depositId);
-        $deposit->update([
-            'estadoConfig' => 'rejected',
-            'conclusion' => $request->input('conclusion') // 👈 opcional
-        ]);
+    //     $deposit = Deposit::findOrFail($depositId);
+    //     $deposit->update([
+    //         'estadoConfig' => 'rejected',
+    //         'conclusion' => $request->input('conclusion') // 👈 opcional
+    //     ]);
 
-        return response()->json(['message' => 'Depósito rechazado en confirmación']);
-    }
+    //     return response()->json(['message' => 'Depósito rechazado en confirmación']);
+    // }
     public function exportExcel(Request $request)
     {
         try {
             // Autorización (descomentala si la necesitas)
-            // Gate::authorize('export', Deposit::class);
+            Gate::authorize('export', Deposit::class);
             $search = $request->input('search', '');
             $status = $request->input('status', null);
             $query = Deposit::query()->with([
@@ -470,46 +473,63 @@ class DepositController extends Controller
 
     public function uploadAttachments(string $id, Request $request)
     {
-        $deposit = Deposit::findOrFail($id);
-        Gate::authorize('update', $deposit);
+        try {
+            $deposit = Deposit::findOrFail($id);
+            Gate::authorize('uploadFiles', $deposit);
 
-        $request->validate([
-            'files'   => 'required|array',
-            'files.*' => 'file|max:20480', // 20MB por archivo
-        ]);
-
-        $stored = [];
-
-        foreach ($request->file('files', []) as $file) {
-            // ⬅️ Guarda en MinIO usando el disk 's3'
-            $path = $file->store("deposits/{$deposit->id}", 's3');
-
-            $attachment = $deposit->attachments()->create([
-                'path'        => $path,
-                'name'        => $file->getClientOriginalName(),
-                'mime'        => $file->getClientMimeType(),
-                'size'        => $file->getSize(),
-                'uploaded_by' => Auth::id(),
+            $request->validate([
+                'files'   => 'required|array',
+                'files.*' => 'file|max:20480', // 20MB por archivo
             ]);
 
-            $stored[] = $attachment->fresh();
-        }
+            $stored = [];
 
-        return response()->json([
-            'message'     => 'Archivos adjuntados correctamente.',
-            'attachments' => collect($stored)->sortBy('created_at')->values()->map(fn($a) => [
-                'id'         => $a->id,
-                'name'       => $a->name,
-                'mime'       => $a->mime,
-                'size'       => $a->size,
-                // ⬅️ Proxy URL estable (sin temporary URL)
-                'url'        => url('/s3/' . $a->path),
-                'download_url' => url('/s3/' . $a->path),
-                'is_image'   => $a->is_image,
-                'ext'        => $a->ext,
-                'created_at' => optional($a->created_at)->toISOString(),
-            ]),
-        ], 201);
+            foreach ($request->file('files', []) as $file) {
+                // ⬅️ Guarda en MinIO usando el disk 's3'
+                $path = $file->store("deposits/{$deposit->id}", 's3');
+
+                $attachment = $deposit->attachments()->create([
+                    'path'        => $path,
+                    'name'        => $file->getClientOriginalName(),
+                    'mime'        => $file->getClientMimeType(),
+                    'size'        => $file->getSize(),
+                    'uploaded_by' => Auth::id(),
+                ]);
+
+                $stored[] = $attachment->fresh();
+            }
+
+            return response()->json([
+                'message'     => 'Archivos adjuntados correctamente.',
+                'attachments' => collect($stored)->sortBy('created_at')->values()->map(fn($a) => [
+                    'id'         => $a->id,
+                    'name'       => $a->name,
+                    'mime'       => $a->mime,
+                    'size'       => $a->size,
+                    // ⬅️ Proxy URL estable (sin temporary URL)
+                    'url'        => url('/s3/' . $a->path),
+                    'download_url' => url('/s3/' . $a->path),
+                    'is_image'   => $a->is_image,
+                    'ext'        => $a->ext,
+                    'created_at' => optional($a->created_at)->toISOString(),
+                ]),
+            ], 201);
+        } catch (AuthorizationException $e) {
+            return response()->json([
+                'message' => 'No tienes permiso para subir archivos a este depósito.'
+            ], 403);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Depósito no encontrado.'
+            ], 404);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'Error al subir los archivos.',
+                'error'   => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
+            ], 500);
+        }
     }
 
 
@@ -543,18 +563,35 @@ class DepositController extends Controller
 
     public function deleteAttachment(string $id, string $attachmentId)
     {
-        $deposit = Deposit::findOrFail($id);
-        Gate::authorize('update', $deposit);
+        try {
+            $deposit = Deposit::findOrFail($id);
+            Gate::authorize('deletefiles', $deposit);
 
-        $attachment = DepositAttachment::where('deposit_id', $id)->findOrFail($attachmentId);
+            $attachment = DepositAttachment::where('deposit_id', $id)->findOrFail($attachmentId);
 
-        // ⬅️ Elimina desde MinIO (disk 's3'); ignora fallo si no existe
-        if ($attachment->path && Storage::disk('s3')->exists($attachment->path)) {
-            Storage::disk('s3')->delete($attachment->path);
+            // ⬅️ Elimina desde MinIO (disk 's3'); ignora fallo si no existe
+            if ($attachment->path && Storage::disk('s3')->exists($attachment->path)) {
+                Storage::disk('s3')->delete($attachment->path);
+            }
+
+            $attachment->delete();
+
+            return response()->json(['message' => 'Adjunto eliminado correctamente.']);
+        } catch (AuthorizationException $e) {
+            return response()->json([
+                'message' => 'No tienes permiso para eliminar este archivo.'
+            ], 403);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Depósito o archivo no encontrado.'
+            ], 404);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'Error al eliminar el archivo.',
+                'error'   => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
+            ], 500);
         }
-
-        $attachment->delete();
-
-        return response()->json(['message' => 'Adjunto eliminado correctamente.']);
     }
 }

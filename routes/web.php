@@ -78,18 +78,11 @@ Route::get('/investors/{id}', [InvestorController::class, 'show']);
 
 Route::middleware(['auth', 'verified'])->group(function () {
 
-
-
-
-
     Route::get('/ban/{id}/attachments', [BankAccountsController::class, 'indexAttachments'])
         ->name('bank-accounts.attachments.index');
 
     Route::post('/ban/{id}/validate', [BankAccountsController::class, 'validateStatus'])
         ->name('bank-accounts.validate');
-
-
-
 
     Route::post('/ban/{id}/attachments', [BankAccountsController::class, 'storeAttachments']);
     Route::patch('/ban/{id}/status0', [BankAccountsController::class, 'updateStatus0'])
@@ -97,6 +90,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::patch('/ban/{bankAccount}/status', [BankAccountsController::class, 'updateStatus'])
         ->name('bank-accounts.update-status');
+
+    Route::delete('/ban/{id}/attachments/{attachment}', [BankAccountsController::class, 'destroyAttachment'])
+    ->name('bank-accounts.attachments.destroy');
 
     #PARA QUE CUANDO SE CREA UN USUARIO O MODIFICA SU PASSWORD LO REDIRECCIONE PARA QUE PUEDA ACTUALIZAR
     Route::get('/dashboard', function () {
@@ -117,7 +113,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/blog/categorias', [BlogController::class, 'categorias']);
     Route::get('/blog/posts', [BlogController::class, 'index']);
 
+    Route::post('/blog/guardar-categoria', [BlogController::class, 'guardar_categoria']);
+    Route::get('/blog/eliminar-categoria/{id}', [BlogController::class, 'eliminar_categoria']);
+    Route::delete('/blog/eliminar/{id}', [BlogController::class, 'eliminar']);
 
+    Route::post('/blog/guardar', [BlogController::class, 'guardar']);
+    Route::post('/blog/actualizar/{id}', [BlogController::class, 'actualizar']);
+
+    Route::get('/blog/publicar/{user_id}/{post_id}/{state_id}', [BlogController::class, 'publicar']);
+
+    Route::get('/blog/lista', [BlogController::class, 'lista']);
 
 
     #RUTAS DE API
@@ -196,7 +201,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{id}/upload-voucher', [WithdrawController::class, 'uploadVoucher'])->name('withdraws.uploadVoucher');
         Route::post('/{id}/approve-step-one', [WithdrawController::class, 'approveStepOne'])->name('withdraws.approveStepOne');
         Route::post('/{id}/approve-step-two', [WithdrawController::class, 'approveStepTwo'])->name('withdraws.approveStepTwo');
+
+        
+    // NUEVAS: observar / rechazar por etapa
+    Route::post('/{id}/observe-step-one', [WithdrawController::class, 'observeStepOne'])->name('withdraws.observeStepOne');
+    Route::post('/{id}/reject-step-one',  [WithdrawController::class, 'rejectStepOne'])->name('withdraws.rejectStepOne');
+    Route::post('/{id}/observe-step-two', [WithdrawController::class, 'observeStepTwo'])->name('withdraws.observeStepTwo');
+    Route::post('/{id}/reject-step-two',  [WithdrawController::class, 'rejectStepTwo'])->name('withdraws.rejectStepTwo');
+
     });
+
+    // routes/web.php (o routes/api.php si llamas /api/...)
+Route::post('/withdraws/{withdraw}/pay', [WithdrawController::class, 'pay'])->name('withdraws.pay');
+
 
 
     Route::prefix('investment')->group(function () {

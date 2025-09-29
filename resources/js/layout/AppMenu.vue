@@ -141,28 +141,28 @@ const model = computed(() => {
                     icon: 'pi pi-fw pi-user',
                     to: '/subasta-hipotecas/inversionista'
                 },
-                // Always visible items (as in your snippet)
-                {
+               
+                hasPermission('ver reservas') && {
                     label: 'Reservas',
                     icon: 'pi pi-fw pi-calendar-plus',
                     to: '/subasta-hipotecas/reserva'
                 },
-                {
+                hasPermission('ver pujas') && {
                     label: 'Histórico de Pujas',
                     icon: 'pi pi-fw pi-chart-line',
                     to: '/subasta-hipotecas/historicos'
                 },
-                {
+                hasPermission('ver pujas') && {
                     label: 'Depósitos',
                     icon: 'pi pi-fw pi-arrow-down',
                     to: '/subasta-hipotecas/pagos'
                 },
-                {
+                hasPermission('ver pagos de entrada') && {
                     label: 'Pago de Entrada',
                     icon: 'pi pi-fw pi-arrow-circle-down',
                     to: '/subasta-hipotecas/cliente/pagos'
                 },
-                {
+                hasPermission('ver pagos de salida') && {
                     label: 'Pago de Salida',
                     icon: 'pi pi-fw pi-arrow-circle-up',
                     to: '/subasta-hipotecas/inversionista/pagos'
@@ -171,7 +171,7 @@ const model = computed(() => {
         },
 
         // ===== Blog (added back, no permissions in your snippet) =====
-        {
+         hasPermission('ver posts') && {
             label: 'Blog',
             icon: 'pi pi-fw pi-sparkles',
             items: [

@@ -40,13 +40,28 @@ class WithdrawPolicy
         return $user->can('editar retiros');
     }
 
+        public function approve1(User $user, Withdraw $withdraw): bool
+    {
+        return $user->can('aprobar primera validacion retiros');
+    }
+
+        public function approve2(User $user, Withdraw $withdraw): bool
+    {
+        return $user->can('aprobar segunda validacion retiros');
+    }
+
+        public function uploadFiles(User $user, Withdraw $withdraw): bool
+    {
+        return $user->can('subir archivos retiros');
+    }
+
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, Withdraw $withdraw): bool
-    {
-        return $user->can('eliminar retiros');
-    }
+    // public function delete(User $user, Withdraw $withdraw): bool
+    // {
+    //     return $user->can('eliminar retiros');
+    // }
 
     /**
      * Determine whether the user can restore the model.
@@ -63,4 +78,12 @@ class WithdrawPolicy
     {
         return false;
     }
+
+
+    public function pay(User $user, Withdraw $withdraw): bool
+    {
+        // Ajusta a tu esquema de permisos/roles
+        return $user->can('pagar retiros');
+    }
+
 }

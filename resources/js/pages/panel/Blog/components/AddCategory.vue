@@ -122,7 +122,7 @@ function resetEmpresa() {
 function guardarCategoria() {
     submitted.value = true
 
-    axios.post('/api/blog/guardar-categoria', {
+    axios.post('/blog/guardar-categoria', {
         product_id: selectedProduct.value,   // id del producto
         categorias: categorias.value        // array con las categorías agregadas
     })

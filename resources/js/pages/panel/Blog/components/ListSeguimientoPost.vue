@@ -328,7 +328,7 @@ function eliminar(item) {
     accept: async () => {
       try {
         loading.value = true
-        await axios.delete(`/api/blog/eliminar/${item.id}`)
+        await axios.delete(`/blog/eliminar/${item.id}`)
         toast.add({ severity: 'success', summary: 'Éxito', detail: 'Publicación eliminada correctamente', life: 3000 })
         obtenerPost()
       } catch (error) {
@@ -357,7 +357,7 @@ async function publicar(item) {
   try {
     loading.value = true
     const userId = props?.user?.id ?? 1
-    await axios.get(`/api/blog/publicar/${userId}/${item.id}/2`)
+    await axios.get(`/blog/publicar/${userId}/${item.id}/2`)
     toast.add({ severity: 'success', summary: 'Éxito', detail: 'Publicación realizada correctamente', life: 3000 })
     editDialog.value = false
     obtenerPost()
@@ -400,7 +400,7 @@ async function actualizarPost() {
       formData.append('imagen', archivoImg.value)
     }
 
-    await axios.post(`/api/blog/actualizar/${editForm.value.id}`, formData, {
+    await axios.post(`/blog/actualizar/${editForm.value.id}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
 
@@ -420,7 +420,7 @@ async function obtenerPost() {
     loading.value = true;
     const page = Math.floor(first.value / rows.value) + 1;
 
-    const res = await axios.get('/api/blog/lista', {
+    const res = await axios.get('/blog/lista', {
       params: {
         rows: rows.value,
         page,

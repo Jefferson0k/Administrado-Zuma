@@ -1,15 +1,19 @@
 <?php
 
 namespace App\Http\Controllers\Api;
+
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Illuminate\Auth\Access\AuthorizationException;
 
-class RolesController extends Controller{
-    public function index(){
+class RolesController extends Controller
+{
+    public function index()
+    {
         Gate::authorize('viewAny', Role::class);
         Carbon::setLocale('es');
         $roles = Role::all()->map(function ($rol) {
@@ -25,40 +29,57 @@ class RolesController extends Controller{
             'data' => $roles
         ]);
     }
-    public function indexPermisos(){
+    public function indexPermisos()
+    {
         Gate::authorize('viewAny', Permission::class);
         $permissions = Permission::all();
         return response()->json([
             'permissions' => $permissions
         ]);
     }
-    public function store(Request $request){
-        Gate::authorize('create', Role::class);
-        $request->validate([
-            'name' => 'required|string|unique:roles,name',
-            'permissions' => 'array'
-        ]);
-        $role = Role::create(['name' => $request->name]);
-        $role->syncPermissions($request->permissions);
-        return response()->json($role->load('permissions'));
+    public function store(Request $request)
+    {
+        try {
+            Gate::authorize('create', Role::class);
+            $request->validate([
+                'name' => 'required|string|unique:roles,name',
+                'permissions' => 'array'
+            ]);
+            $role = Role::create(['name' => $request->name]);
+            $role->syncPermissions($request->permissions);
+            return response()->json($role->load('permissions'));
+        } catch (AuthorizationException $e) {
+            return response()->json(['message' => 'No tienes permiso para crear roles.'], 403);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Error al crear el rol.'], 500);
+        }
     }
-    public function show($id, Role $role){
+    public function show($id, Role $role)
+    {
         Gate::authorize('view', $role);
         $role = Role::with('permissions')->findOrFail($id);
         return response()->json($role);
     }
-    public function update(Request $request, $id, Role $role){
-        Gate::authorize('update', $role);
-        $request->validate([
-            'name' => 'required|string|unique:roles,name,' . $id,
-            'permissions' => 'array'
-        ]);
-        $role = Role::findOrFail($id);
-        $role->update(['name' => $request->name]);
-        $role->syncPermissions($request->permissions);
-        return response()->json($role->load('permissions'));
+    public function update(Request $request, $id, Role $role)
+    {
+        try {
+            Gate::authorize('update', $role);
+            $request->validate([
+                'name' => 'required|string|unique:roles,name,' . $id,
+                'permissions' => 'array'
+            ]);
+            $role = Role::findOrFail($id);
+            $role->update(['name' => $request->name]);
+            $role->syncPermissions($request->permissions);
+            return response()->json($role->load('permissions'));
+        } catch (AuthorizationException $e) {
+            return response()->json(['message' => 'No tienes permiso para editar roles.'], 403);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Error al actualizar el rol.'], 500);
+        }
     }
-    public function destroy($id){
+    public function destroy($id)
+    {
         $role = Role::findOrFail($id);
         Gate::authorize('delete', $role);
         $role = Role::findOrFail($id);
