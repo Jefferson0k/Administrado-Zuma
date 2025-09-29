@@ -33,25 +33,26 @@ class CreateInvestmentResquest extends FormRequest
                 'numeric',
                 'gte:100',
                 function ($attribute, $value, $fail) {
-
                     /** @var \App\Models\User $investor */
                     $investor = Auth::user();
 
                     $balance = $investor->getBalance($this->currency);
-                    $investorBalanceAmountMoney = MoneyConverter::fromDecimal($balance->amount, $this->currency);
-
-                    $amount = MoneyConverter::fromDecimal($value, $this->currency);
 
                     if (!$balance) {
                         return $fail('El monedero seleccionado no existe.');
                     }
 
+                    $investorBalanceAmountMoney = MoneyConverter::fromDecimal($balance->amount, $this->currency);
+                    $amount = MoneyConverter::fromDecimal($value, $this->currency);
+
                     if ($investorBalanceAmountMoney->lessThan($amount)) {
                         return $fail('El monto no puede ser mayor a la cantidad disponible.');
                     }
 
-                    // Validación: monto + financed_amount no debe superar amount de la factura
-                    $invoice = Invoice::where('invoice_code', $this->invoice_code)->where('status', 'active')->first();
+                    // Obtener la factura
+                    $invoice = Invoice::where('invoice_code', $this->invoice_code)
+                        ->where('status', 'active')
+                        ->first();
 
                     if (!$invoice) {
                         return $fail('La factura seleccionada no se ha encontrado.');
@@ -61,24 +62,35 @@ class CreateInvestmentResquest extends FormRequest
                         return $fail('La factura seleccionada ya no está disponible para invertir.');
                     }
 
-                    if ($invoice) {
-                        $invoiceAmount = MoneyConverter::fromDecimal((float)$invoice->amount, $this->currency);
-                        $invoiceFinanced = MoneyConverter::fromDecimal((float)$invoice->financed_amount, $this->currency);
-                        $newFinanced = $invoiceFinanced->add($amount);
+                    // Convertir montos relevantes a Money (usar 0 si no existen)
+                    $invoiceAmount = MoneyConverter::fromDecimal((float)$invoice->amount, $this->currency);
+                    $financedByGarantia = MoneyConverter::fromDecimal((float)($invoice->financed_amount_by_garantia ?? 0), $this->currency);
+                    $financedField = MoneyConverter::fromDecimal((float)($invoice->financed_amount ?? 0), $this->currency);
 
-                        $availableAmount = MoneyFormatter::format($invoiceAmount->subtract($invoiceFinanced));
+                    /**
+                     * Detectar semántica de campos:
+                     * - Si (invoiceAmount - financedByGarantia) == financedField entonces
+                     *   `financed_amount` está representando el disponible (ej. 15000 - 100 = 14900)
+                     *   En ese caso tomamos $available = financedField
+                     * - En caso contrario asumimos la semántica "clásica":
+                     *   financed_amount es lo ya financiado y el disponible = invoiceAmount - financed_amount
+                     */
+                    if ($invoiceAmount->subtract($financedByGarantia)->equals($financedField)) {
+                        // Aquí financed_amount actúa como "disponible"
+                        $available = $financedField;
+                    } else {
+                        // Aquí financed_amount actúa como "ya financiado", entonces disponible = amount - financed_amount
+                        $available = $invoiceAmount->subtract($financedField);
+                    }
 
-                        /** Si el monto disponible es igual a 0
-                         * Entonces devolvemos un mensaje:
-                         * "Ups! La factura ya no está disponible para invertir."
-                         */
-                        if ($invoiceAmount->equals($invoiceFinanced)) {
-                            return $fail('Ups! La factura ya no está disponible para invertir.');
-                        }
+                    // Si no hay disponible
+                    if ($available->isZero()) {
+                        return $fail('Ups! La factura ya no está disponible para invertir.');
+                    }
 
-                        if ($newFinanced->greaterThan($invoiceAmount)) {
-                            return $fail('Monto disponible para invertir es: ' . $availableAmount);
-                        }
+                    // Validar solicitud contra el disponible calculado
+                    if ($amount->greaterThan($available)) {
+                        return $fail('Monto disponible para invertir es: ' . MoneyFormatter::format($available));
                     }
                 }
             ],
@@ -96,7 +108,9 @@ class CreateInvestmentResquest extends FormRequest
                 'string',
                 'exists:invoices,invoice_code',
                 function ($attribute, $value, $fail) {
-                    $invoiceExists = Invoice::where('invoice_code', $value)->where('status', 'active')->first();
+                    $invoiceExists = Invoice::where('invoice_code', $value)
+                        ->where('status', 'active')
+                        ->first();
                     if (!$invoiceExists) {
                         return $fail('La factura seleccionada no existe.');
                     }

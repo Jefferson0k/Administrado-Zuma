@@ -518,7 +518,7 @@ onMounted(() => {
         </template>
       </Column>
       <Column field="ruc" header="Ruc" sortable style="min-width: 7rem" />
-      <Column field="codigo" header="Código" sortable style="min-width: 12rem" />
+      <Column field="codigo" header="Código" sortable style="min-width: 15rem" />
       <Column field="moneda" header="Moneda" sortable style="min-width: 5rem" />
       <Column field="montoFactura" header="M. Factura" sortable style="min-width: 8rem">
         <template #body="slotProps">
@@ -537,6 +537,24 @@ onMounted(() => {
       </Column>
       <Column field="tasa" header="Tasa (%)" sortable style="min-width: 7rem" />
       <Column field="fechaPago" header="Fecha de Pago" sortable style="min-width: 10rem" />
+      <Column field="semaforo" header="Semáforo" sortable style="min-width: 8rem">
+        <template #body="slotProps">
+          <div class="flex justify-center">
+            <div 
+              :class="[
+                'w-6 h-6 rounded-full',
+                ['active', 'inactive'].includes(slotProps.data.estado) ? 'bg-green-500' : 
+                ['observed', 'rejected', 'annulled'].includes(slotProps.data.estado) ? 'bg-red-500' : 
+                'bg-gray-300'
+              ]"
+              :title="['active', 'inactive'].includes(slotProps.data.estado) ? 
+                     getStatusLabel(slotProps.data.estado) : 
+                     ['observed', 'rejected', 'annulled'].includes(slotProps.data.estado) ? 
+                     getStatusLabel(slotProps.data.estado) : 'Sin estado'"
+            ></div>
+          </div>
+        </template>
+      </Column>
       <Column field="PrimerStado" header="1ª Aprobador" sortable style="min-width: 9rem">
         <template #body="slotProps">
           <template v-if="slotProps.data.PrimerStado">
@@ -612,6 +630,7 @@ onMounted(() => {
           </template>
         </template>
       </Column>
+
       <Column field="tipo" header="Tipo" sortable style="min-width: 5rem">
       <template #body="slotProps">
         <span class="italic text-gray-500" v-if="!slotProps.data.tipo">-</span>

@@ -11,12 +11,14 @@ use App\Http\Resources\Factoring\Deposit\DepositResources;
 use App\Http\Resources\Factoring\Investment\InvestmentResource;
 use App\Jobs\SendInvestmentFullyPaidEmail;
 use App\Jobs\SendInvestmentPartialEmail;
+use App\Models\Balance;
 use App\Models\Company;
 use App\Models\Deposit;
 use App\Models\Investment;
 use App\Models\Invoice;
 use App\Models\Movement;
 use App\Models\Payment;
+use App\Notifications\InvoiceAnnulledRefundNotification;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -584,19 +586,61 @@ class PaymentsController extends Controller{
         $request->validate([
             'comment' => 'nullable|string|max:500',
         ]);
+
         $invoice = Invoice::findOrFail($id);
         $ok = $invoice->anularFactura(Auth::id(), $request->comment);
-        if (! $ok) {
+        
+        if (!$ok) {
             return response()->json([
                 'error' => 'La factura no puede ser anulada (ya pagada o ya anulada).'
             ], 422);
         }
+
         $invoice->status = 'rejected';
         $invoice->approval1_status = 'rejected';
         $invoice->approval2_status = 'rejected';
         $invoice->save();
+
+        $investments = Investment::where('invoice_id', $invoice->id)->get();
+        
+        foreach ($investments as $investment) {
+            $investor = $investment->investor;
+            
+            $balance = Balance::where('investor_id', $investor->id)
+                ->where('currency', $investment->currency)
+                ->first();
+            
+            if ($balance) {
+                $balance->subtractInvestedAmount(MoneyConverter::fromDecimal($investment->amount, $investment->currency));
+                $balance->subtractExpectedAmount(MoneyConverter::fromDecimal($investment->return, $investment->currency));
+                $balance->addAmount(MoneyConverter::fromDecimal($investment->amount, $investment->currency));
+                $balance->save();
+            }
+
+            $movement = new Movement();
+            $movement->currency = $investment->currency;
+            $movement->amount = $investment->amount;
+            $movement->type = 'refund';
+            $movement->status = MovementStatus::VALID;
+            $movement->confirm_status = MovementStatus::VALID;
+            $movement->description = 'Reembolso por anulación de factura #' . $invoice->id;
+            $movement->investor_id = $investment->investor_id;
+            $movement->save();
+
+            $investment->status = 'reembolso'; // Corregí el typo 'reembloso'
+            $investment->movement_reembloso = $movement->id;
+            $investment->save();
+
+            // 🔔 ENVIAR NOTIFICACIÓN AL INVERSIONISTA
+            $investor->notify(new InvoiceAnnulledRefundNotification(
+                invoice: $invoice,
+                investment: $investment,
+                comment: $request->comment
+            ));
+        }
+
         return response()->json([
-            'message' => 'Factura anulada correctamente',
+            'message' => 'Factura e inversiones anuladas correctamente. Notificaciones enviadas a ' . $investments->count() . ' inversionista(s).',
             'invoice' => $invoice
         ]);
     }
