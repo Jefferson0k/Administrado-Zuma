@@ -491,8 +491,8 @@ const canSaveCliente = computed(() => {
 })
 
 const cronogramaOpciones = [
-    { label: 'Francés', value: 'frances' },
-    { label: 'Americano', value: 'americano' }
+    { label: 'Cuota Fija', value: 'frances' },
+    { label: 'Libre Amortización', value: 'americano' }
 ]
 
 const openDialog = () => {

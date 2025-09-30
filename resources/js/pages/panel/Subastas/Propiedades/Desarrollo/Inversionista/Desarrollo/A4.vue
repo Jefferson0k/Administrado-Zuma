@@ -241,19 +241,45 @@ const generatePDF = async () => {
         }
 
         // ENCABEZADO CON 5 COLUMNAS
-        const headerStartX = 75;
-        const colWidth = 28; // Ajustado para 5 columnas
+        const headerStartX = 65;
+        const colWidth = 24; // Ajustado para 5 columnas
         const headerYOffset = 20;
+
+        // Centros de las 5 columnas
+        const colCenters = [
+            headerStartX + colWidth / 2, // Importe
+            headerStartX + colWidth * 1.5, // Rentabilidad
+            headerStartX + colWidth * 2.5, // Tipo de Cronograma
+            headerStartX + colWidth * 3.5, // Plazo
+            headerStartX + colWidth * 4.5, // Ratio LTV
+            headerStartX + colWidth * 5.5, // Riesgo
+        ];
 
         // Títulos en azul (5 columnas)
         pdf.setFontSize(8);
-        pdf.setFont("helvetica", "bold");
+        pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(103, 144, 255);
-        pdf.text("Importe", headerStartX, headerYOffset);
-        pdf.text("Rentabilidad Anual", headerStartX + colWidth, headerYOffset);
-        pdf.text("Plazo", headerStartX + (colWidth * 2), headerYOffset);
-        pdf.text("Ratio LTV", headerStartX + (colWidth * 3), headerYOffset);
-        pdf.text("Riesgo", headerStartX + (colWidth * 4), headerYOffset);
+
+        // Columna 1
+        pdf.text('Importe a', colCenters[0], headerYOffset - 3, { align: 'center' });
+        pdf.text('Financiar', colCenters[0], headerYOffset, { align: 'center' });
+
+        // Columna 2 (dos líneas: título + TEA)
+        pdf.text('Rentabilidad', colCenters[1], headerYOffset - 3, { align: 'center' });
+        pdf.text('Anual (TEA)', colCenters[1], headerYOffset, { align: 'center' });
+
+        //columna 3
+        pdf.text('Tipo de', colCenters[2], headerYOffset - 3, { align: 'center' });
+        pdf.text('Cronograma', colCenters[2], headerYOffset, { align: 'center' });
+
+        // Columna 4
+        pdf.text('Plazo', colCenters[3], headerYOffset - 2, { align: 'center' });
+
+        // Columna 5
+        pdf.text('Ratio LTV', colCenters[4], headerYOffset - 2, { align: 'center' });
+
+        // Columna 6
+        pdf.text('Riesgo', colCenters[5], headerYOffset - 2, { align: 'center' });
 
         // Valores en negro - USANDO TEA ORIGINAL (SIN REDUCIR)
         pdf.setFontSize(9);
@@ -265,47 +291,50 @@ const generatePDF = async () => {
         const teaOriginal = parseFloat(data.tea) || 0;
         const rentabilidadAnual = `${teaOriginal.toFixed(1)}%`; // TEA original sin reducir
         const plazo = data.Plazo || 'N/A';
-        const ratioLTV = data.Valor_Estimado && data.Monto_raw 
-            ? `${((data.Monto_raw / parseFloat(data.Valor_Estimado.replace(/[^\d.-]/g, ''))) * 100).toFixed(1)}%` 
-            : '0%';
+        const esquema = data.Esquema;
+        const ratioLTV =
+            data.Valor_Estimado && data.Monto_raw
+                ? `${((data.Monto_raw / parseFloat(data.Valor_Estimado.replace(/[^\d.-]/g, ''))) * 100).toFixed(1)}%`
+                : '0%';
 
         // Para el riesgo, mostrar la imagen si está disponible, sino el texto
         const riesgo = data.riesgo || 'N/A';
         const riskImagePath = getRiskImage(riesgo);
 
-        // Posicionar valores directamente debajo de cada encabezado (5 columnas)
+         // Posicionar valores directamente debajo de cada encabezado (5 columnas)
         const valuesYOffset = headerYOffset + 7;
-        pdf.text(pdf.splitTextToSize(importe, colWidth - 2), headerStartX, valuesYOffset);
-        pdf.text(pdf.splitTextToSize(rentabilidadAnual, colWidth - 2), headerStartX + colWidth, valuesYOffset);
-        pdf.text(pdf.splitTextToSize(plazo, colWidth - 2), headerStartX + (colWidth * 2), valuesYOffset);
-        pdf.text(pdf.splitTextToSize(ratioLTV, colWidth - 2), headerStartX + (colWidth * 3), valuesYOffset);
+        pdf.text(importe.toString(), colCenters[0], valuesYOffset, { align: 'center' });
+        pdf.text(rentabilidadAnual, colCenters[1], valuesYOffset, { align: 'center' });
+        pdf.text(esquema.toString(), colCenters[2], valuesYOffset, { align: 'center' });
+        pdf.text(plazo.toString(), colCenters[3], valuesYOffset, { align: 'center' });
+        pdf.text(ratioLTV.toString(), colCenters[4], valuesYOffset, { align: 'center' });
 
         // Para el riesgo, agregar imagen más pequeña o texto
         if (riskImagePath) {
             try {
                 const base64Risk = await loadImageAsBase64(riskImagePath);
-                const riskImgSize = 6; 
+                const riskImgSize = 6;
 
-                // --- Ajustes finos ---
-                const offsetX = -9;   // mueve a la izquierda (-) o derecha (+)
-                const offsetY = 1;    // mueve arriba (-) o abajo (+)
+                // Ajustes finos
+                const offsetX = 0; // mover horizontalmente (+ derecha, - izquierda)
+                const offsetY = 2; // mover verticalmente (+ abajo, - arriba)
 
-                const riskX = headerStartX + (colWidth * 4) + (colWidth - riskImgSize) / 2 + offsetX;
-                const riskY = valuesYOffset - (riskImgSize * 0.75) + offsetY;
+                // Usamos el centro de la columna 5 (index 4 en el array)
+                const riskX = colCenters[5] - riskImgSize / 2 + offsetX;
+                const riskY = valuesYOffset - riskImgSize / 2 + offsetY;
 
                 pdf.addImage(base64Risk, 'PNG', riskX, riskY, riskImgSize, riskImgSize);
             } catch (error) {
                 console.error('Error al cargar imagen de riesgo:', error);
-                pdf.text(pdf.splitTextToSize(riesgo, colWidth - 2), headerStartX + (colWidth * 4), valuesYOffset);
+                pdf.text(riesgo.toString(), colCenters[5], valuesYOffset, { align: 'center' });
             }
         } else {
-            pdf.text(pdf.splitTextToSize(riesgo, colWidth - 2), headerStartX + (colWidth * 4), valuesYOffset);
+            pdf.text(riesgo.toString(), colCenters[5], valuesYOffset, { align: 'center' });
         }
-
 
         // LÍNEA SEPARADORA DEBAJO DE LOS VALORES
         const lineY = headerYOffset + 2;
-        const totalHeaderWidth = colWidth * 5; // Ajustado para 5 columnas
+        const totalHeaderWidth = colWidth * 6; // Ajustado para 6 columnas
         const lineStartX = headerStartX;
         const lineEndX = headerStartX + totalHeaderWidth;
 
@@ -316,40 +345,67 @@ const generatePDF = async () => {
         y = 60;
 
         const col1X = margin;
-        const col2X = centerX + 5;
-        const sectionWidth = (contentWidth / 2) - 5;
+        const sectionWidth = (contentWidth / 2) - 5; // ahora 3 columnas
+        const col2X = col1X + sectionWidth + 5;
 
         const addSection = (title, content, x, startY, width) => {
-            pdf.setFontSize(11);
-            pdf.setFont("helvetica", "bold");
-            pdf.setTextColor(255, 102, 51);
-            pdf.text(title, x, startY);
-            
-            pdf.setFontSize(8);
-            pdf.setFont("helvetica", "normal");
-            pdf.setTextColor(0, 0, 0);
-            const lines = pdf.splitTextToSize(content || 'N/A', width);
-            let currentY = startY + 6;
-            lines.forEach(line => {
+        // --- Título ---
+        pdf.setFontSize(11);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(255, 102, 51);
+
+        // dibujar título
+        pdf.text(title, x, startY);
+
+        // calcular ancho del título
+        const titleWidth = pdf.getTextWidth(title);
+
+        // dibujar línea debajo (subrayado)
+        const lineY = startY + 1; // 1 punto debajo del texto
+        pdf.setDrawColor(255, 102, 51); // mismo color que el texto
+        pdf.setLineWidth(0.3);
+        pdf.line(x, lineY, x + titleWidth, lineY);
+
+        // --- Contenido ---
+        pdf.setFontSize(8);
+        pdf.setTextColor(0, 0, 0);
+        const lines = pdf.splitTextToSize(content || 'N/A', width);
+        let currentY = startY + 6;
+
+        lines.forEach(line => {
+            const [label, value] = line.split(":");
+            if (label && value !== undefined) {
+                // Subtítulo en negrita
+                pdf.setFont("helvetica", "bold");
+                pdf.text(label + ":", x, currentY);
+
+                // Texto normal después del subtítulo
+                const labelWidth = pdf.getTextWidth(label + ": ");
+                pdf.setFont("helvetica", "normal");
+                pdf.text(value.trim(), x + labelWidth, currentY);
+            } else {
+                // Línea normal
+                pdf.setFont("helvetica", "normal");
                 pdf.text(line, x, currentY);
-                currentY += 4;
-            });
-            
-            return currentY + 4;
-        };
+            }
+            currentY += 4;
+        });
+
+        return currentY + 4;
+    };
 
         const initialY = y;
 
         // CONTENIDO CON DATOS REALES
-        const solicitanteContent = `Profesión u ocupación: ${data.ocupacion_profesion || 'N/A'}\n\nIngresos mensuales promedio: ${data.inversionista?.documento || 'N/A'}\n\nRiesgo: ${data.riesgo || 'N/A'}`;
+        const solicitanteContent = `Profesión u ocupación: ${data.ocupacion_profesion || 'N/A'}\n\nFuente de Ingreso: ${data.inversionista?.documento || 'N/A'}\n\nIngresos promedio: ${data.ingreso_promedio || 'N/A'}\n\nRiesgo: ${data.riesgo || 'N/A'}`;
         const solicitanteEndY = addSection("Sobre el solicitante:", solicitanteContent, col1X, initialY, sectionWidth);
 
         // SECCIÓN DE GARANTÍA SIN "GARANTÍA TOTAL"
-        const garantiaContent = `Tipo de inmueble: ${data.solicitud_prestamo_para || 'N/A'}\n\nValor estimado: ${data.Valor_Estimado || 'N/A'}`;
+        const garantiaContent = `Tipo de inmueble: ${data.solicitud_prestamo_para || 'N/A'}\n\nLa Propiedad Pertenece: ${data.pertenece || 'N/A'}\n\nValor de tasación: ${data.Valor_Estimado || 'N/A'}\n\nDetalle: ${data.descripcion_financiamiento || 'N/A'}`;
         const garantiaEndY = addSection("Sobre la garantía:", garantiaContent, col1X, solicitanteEndY + 1, sectionWidth);
 
         // USAR TEA ORIGINAL (SIN REDUCIR) EN LA SECCIÓN DE FINANCIAMIENTO
-        const financiamientoContent = `Importe del financiamiento: ${data.Monto || 'N/A'}\n\nMoneda del financiamiento: ${moneda}\n\nPlazo: ${data.Plazo || 'N/A'}\n\nSistema de amortización: ${data.Esquema || 'N/A'}\n\nTasa efectiva anual: ${teaOriginal.toFixed(1)}%\n\nTotal de intereses proyectados (Bruto): ${moneda} ${formatNumberWithCommas(totalInteresesBruto)}`;
+        const financiamientoContent = `Destino del financiamiento: ${data.Monto || 'N/A'}\n\nDetalle: ${data.detalle}`;
         const financiamientoEndY = addSection("Sobre el financiamiento:", financiamientoContent, col2X, initialY, sectionWidth);
 
         y = Math.max(garantiaEndY, financiamientoEndY);
@@ -357,9 +413,9 @@ const generatePDF = async () => {
         
         // ===== SECCIÓN DE FOTOS CON DESCRIPCIONES =====
         pdf.setFontSize(12);
-        pdf.setFont("helvetica", "bold");
+        pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(255, 102, 51);
-        pdf.text("Fotos de la propiedad", col1X, y);
+        pdf.text('Fotos de la propiedad', col1X, y);
         y += 10;
 
         // Configuración para las fotos con espacio para descripciones
@@ -371,9 +427,9 @@ const generatePDF = async () => {
         const sectionPadding = 8;
 
         // Calcular dimensiones de la sección completa incluyendo descripciones
-        const totalRowWidth1 = (photoSize * photosPerRow1) + (spacing * (photosPerRow1 - 1));
-        const photoSectionWidth = totalRowWidth1 + (sectionPadding * 2);
-        const sectionHeight = (photoSize * 2) + descriptionHeight * 2 + spacing + (sectionPadding * 2);
+        const totalRowWidth1 = photoSize * photosPerRow1 + spacing * (photosPerRow1 - 1);
+        const photoSectionWidth = totalRowWidth1 + sectionPadding * 2;
+        const sectionHeight = photoSize * 2 + descriptionHeight * 2 + spacing + sectionPadding * 2;
         const sectionX = margin + (contentWidth - photoSectionWidth) / 2;
 
         // Dibujar fondo beige de toda la sección
@@ -385,57 +441,56 @@ const generatePDF = async () => {
 
         // Obtener las imágenes y filtrar las válidas
         const imagenes = data.imagenes || [];
-        const imagenesValidas = imagenes.filter(img => img && img !== 'no-image.png');
+        const imagenesValidas = imagenes.filter((img) => img && img !== 'no-image.png');
 
         // PRIMERA FILA - 3 fotos con descripciones
         for (let i = 0; i < 3; i++) {
-            const photoX = photoStartX1 + (i * (photoSize + spacing));
+            const photoX = photoStartX1 + i * (photoSize + spacing);
             const photoY = y + sectionPadding;
-            
+
             const frameSize = photoSize * 0.85;
             const frameX = photoX + (photoSize - frameSize) / 2;
             const frameY = photoY + (photoSize - frameSize) / 2;
-            
+
             pdf.setFillColor(255, 255, 255);
             pdf.rect(frameX, frameY, frameSize, frameSize, 'F');
-            
+
             pdf.setDrawColor(0, 0, 0);
             pdf.setLineWidth(0.3);
             pdf.rect(frameX, frameY, frameSize, frameSize);
-            
+
             if (i < imagenesValidas.length) {
                 try {
                     const base64Image = await loadImageAsBase64(imagenesValidas[i].url);
-                    
+
                     const imageSize = frameSize * 0.8;
                     const imageCenterX = frameX + (frameSize - imageSize) / 2;
                     const imageCenterY = frameY + (frameSize - imageSize) / 2;
-                    
+
                     const format = imagenesValidas[i].url.toLowerCase().includes('.svg') ? 'PNG' : 'JPEG';
                     pdf.addImage(base64Image, format, imageCenterX, imageCenterY, imageSize, imageSize);
-                    
                 } catch (error) {
                     console.error(`Error al cargar imagen ${i + 1}:`, error);
                     pdf.setFontSize(6);
                     pdf.setTextColor(150, 150, 150);
-                    pdf.text("Sin imagen", frameX + frameSize/2, frameY + frameSize/2, { align: "center" });
+                    pdf.text('Sin imagen', frameX + frameSize / 2, frameY + frameSize / 2, { align: 'center' });
                 }
-                
+
                 // Agregar descripción debajo de la imagen
                 pdf.setFontSize(6);
                 pdf.setTextColor(0, 0, 0);
-                pdf.setFont("helvetica", "normal");
+                pdf.setFont('helvetica', 'normal');
                 const descripcion = imagenesValidas[i].descripcion || 'Sin descripción';
                 const descripcionLines = pdf.splitTextToSize(descripcion, photoSize);
                 let descY = photoY + photoSize + 2;
-                descripcionLines.forEach(line => {
-                    pdf.text(line, photoX + photoSize/2, descY, { align: "center" });
+                descripcionLines.forEach((line) => {
+                    pdf.text(line, photoX + photoSize / 2, descY, { align: 'center' });
                     descY += 3;
                 });
             } else {
                 pdf.setFontSize(6);
                 pdf.setTextColor(150, 150, 150);
-                pdf.text("Sin imagen", frameX + frameSize/2, frameY + frameSize/2, { align: "center" });
+                pdf.text('Sin imagen', frameX + frameSize / 2, frameY + frameSize / 2, { align: 'center' });
             }
         }
 
@@ -444,59 +499,58 @@ const generatePDF = async () => {
 
         for (let i = 3; i < 5; i++) {
             const photoIndex = i - 3;
-            const photoX = photoStartX2 + (photoIndex * (photoSize + spacing));
+            const photoX = photoStartX2 + photoIndex * (photoSize + spacing);
             const photoY = secondRowY;
-            
+
             const frameSize = photoSize * 0.85;
             const frameX = photoX + (photoSize - frameSize) / 2;
             const frameY = photoY + (photoSize - frameSize) / 2;
-            
+
             pdf.setFillColor(255, 255, 255);
             pdf.rect(frameX, frameY, frameSize, frameSize, 'F');
-            
+
             pdf.setDrawColor(0, 0, 0);
             pdf.setLineWidth(0.3);
             pdf.rect(frameX, frameY, frameSize, frameSize);
-            
+
             if (i < imagenesValidas.length) {
                 try {
                     const base64Image = await loadImageAsBase64(imagenesValidas[i].url);
-                    
+
                     const imageSize = frameSize * 0.8;
                     const imageCenterX = frameX + (frameSize - imageSize) / 2;
                     const imageCenterY = frameY + (frameSize - imageSize) / 2;
-                    
+
                     const format = imagenesValidas[i].url.toLowerCase().includes('.svg') ? 'PNG' : 'JPEG';
                     pdf.addImage(base64Image, format, imageCenterX, imageCenterY, imageSize, imageSize);
-                    
                 } catch (error) {
                     console.error(`Error al cargar imagen ${i + 1}:`, error);
                     pdf.setFontSize(6);
                     pdf.setTextColor(150, 150, 150);
-                    pdf.text("Sin imagen", frameX + frameSize/2, frameY + frameSize/2, { align: "center" });
+                    pdf.text('Sin imagen', frameX + frameSize / 2, frameY + frameSize / 2, { align: 'center' });
                 }
-                
+
                 // Agregar descripción debajo de la imagen
                 pdf.setFontSize(6);
                 pdf.setTextColor(0, 0, 0);
-                pdf.setFont("helvetica", "normal");
+                pdf.setFont('helvetica', 'normal');
                 const descripcion = imagenesValidas[i].descripcion || 'Sin descripción';
                 const descripcionLines = pdf.splitTextToSize(descripcion, photoSize);
                 let descY = photoY + photoSize + 2;
-                descripcionLines.forEach(line => {
-                    pdf.text(line, photoX + photoSize/2, descY, { align: "center" });
+                descripcionLines.forEach((line) => {
+                    pdf.text(line, photoX + photoSize / 2, descY, { align: 'center' });
                     descY += 3;
                 });
             } else {
                 pdf.setFontSize(6);
                 pdf.setTextColor(150, 150, 150);
-                pdf.text("Sin imagen", frameX + frameSize/2, frameY + frameSize/2, { align: "center" });
+                pdf.text('Sin imagen', frameX + frameSize / 2, frameY + frameSize / 2, { align: 'center' });
             }
         }
 
         // IMAGEN PRINCIPAL EN LA ESQUINA INFERIOR DERECHA
         const logoSize = photoSize * 0.85;
-        const logoX = photoStartX1 + (2 * (photoSize + spacing));
+        const logoX = photoStartX1 + 2 * (photoSize + spacing);
         const logoY = secondRowY;
 
         if (data.principal) {
@@ -504,28 +558,28 @@ const generatePDF = async () => {
                 const base64Principal = await loadImageAsBase64(data.principal);
                 const frameX = logoX + (photoSize - logoSize) / 3;
                 const frameY = logoY + (photoSize - logoSize) / 2;
-                const imageCenterX = frameX + (logoSize * 0.1);
-                const imageCenterY = frameY + (logoSize * 0.1);
-                
+                const imageCenterX = frameX + logoSize * 0.1;
+                const imageCenterY = frameY + logoSize * 0.1;
+
                 // Hacer la imagen un poco más ancha
                 const finalImageWidth = logoSize * 1.0;
                 const finalImageHeight = logoSize * 0.7;
-                
+
                 pdf.addImage(base64Principal, 'PNG', imageCenterX, imageCenterY, finalImageWidth, finalImageHeight);
             } catch (error) {
                 console.error('Error al cargar imagen principal:', error);
                 pdf.setFontSize(8);
-                pdf.setFont("helvetica", "bold");
+                pdf.setFont('helvetica', 'bold');
                 pdf.setTextColor(0, 0, 0);
-                pdf.text("LOGO", logoX + photoSize/2, logoY + photoSize/2, { align: "center" });
+                pdf.text('LOGO', logoX + photoSize / 2, logoY + photoSize / 2, { align: 'center' });
             }
         } else {
             pdf.setFontSize(8);
-            pdf.setFont("helvetica", "bold");
+            pdf.setFont('helvetica', 'bold');
             pdf.setTextColor(0, 0, 0);
-            pdf.text("LOGO", logoX + photoSize/2, logoY + photoSize/2, { align: "center" });
+            pdf.text('LOGO', logoX + photoSize / 2, logoY + photoSize / 2, { align: 'center' });
         }
-        
+
         y = y + sectionHeight + 10;
         pdf.setTextColor(0, 0, 0);
 
@@ -571,9 +625,9 @@ const generatePDF = async () => {
         
         // --- FILA 1: Total de interés (Bruto) | Monto Otorgado ---
 
-// Columna 1: Total de interés (Bruto)
-let text1 = `Total de interés (Bruto): `;
-let text2 = `${moneda} ${formatNumberWithCommas(totalInteresesBruto)}`;
+// Columna 1: Monto a Financiar
+let text1 = `Monto a Financiar: `;
+let text2 = `${montoOtorgado}`;
 let startX1 = margin + 20;
 
 pdf.setFont("helvetica", "bold");
@@ -582,9 +636,9 @@ let x1 = startX1 + pdf.getTextWidth(text1);
 pdf.setFont("helvetica", "normal");
 pdf.text(text2, x1, row1Y);
 
-// Columna 2: Monto Otorgado
-text1 = `Monto Otorgado: `;
-text2 = `${montoOtorgado}`;
+// Columna 2: Ganancia Bruta
+text1 = `GANANCIA BRUTA: `;
+text2 = `${moneda} ${formatNumberWithCommas(totalInteresesBruto)}`;
 let startX2 = startX1 + colSpacing;
 
 pdf.setFont("helvetica", "bold");
@@ -597,9 +651,9 @@ pdf.text(text2, x2, row1Y);
 // --- FILA 2: Total de interés (Neto) | Tasa efectiva Anual ---
 const row2Y = row1Y + lineSpacing;
 
-// Columna 1: Total de interés (Neto)
-text1 = `Total de interés (Neto): `;
-text2 = `${moneda} ${formatNumberWithCommas(totalInteresesNeto)}`;
+// Columna 1: Tasa efectiva Anual
+text1 = `Tasa efectiva Anual: `;
+text2 = `${tea}%`;
 
 pdf.setFont("helvetica", "bold");
 pdf.text(text1, startX1, row2Y);
@@ -607,9 +661,9 @@ x1 = startX1 + pdf.getTextWidth(text1);
 pdf.setFont("helvetica", "normal");
 pdf.text(text2, x1, row2Y);
 
-// Columna 2: Tasa efectiva Anual
-text1 = `Tasa efectiva Anual: `;
-text2 = `${tea}%`;
+// Columna 2: Ganancia Neta
+text1 = `GANANCIA NETA: `;
+text2 = `${moneda} ${formatNumberWithCommas(totalInteresesNeto)}`;
 
 pdf.setFont("helvetica", "bold");
 pdf.text(text1, startX2, row2Y);
@@ -617,13 +671,25 @@ x2 = startX2 + pdf.getTextWidth(text1);
 pdf.setFont("helvetica", "normal");
 pdf.text(text2, x2, row2Y);
 
+// --- FILA 3: (Solo en la columna derecha) Impuesto de 2da Categoría ---
+const row3Y = row2Y + lineSpacing;
 
-        y = row2Y + lineSpacing + 5;
+text1 = `Impuesto de 2da Categoría (5%): `;
+text2 = `${moneda} ${formatNumberWithCommas(totalInteresesNeto * 0.05)}`;
+
+pdf.setFont('helvetica', 'bold');
+pdf.text(text1, startX2, row3Y);
+x2 = startX2 + pdf.getTextWidth(text1);
+pdf.setFont('helvetica', 'normal');
+pdf.text(text2, x2, row3Y);
+
+        // Actualizamos Y para continuar
+        y = row3Y + lineSpacing + 5;
 
         // FUNCIÓN PARA CREAR HEADER DE TABLA
         const drawTableHeader = (startY) => {
-            const headers = ["Cuota", "Vencimiento", "Saldo inicial", "Intereses", "Capital", "Cuota Neta", "Saldo final"];
-            const colWidths = [20, 25, 28, 26, 26, 28, 30];
+            const headers = ["Cuota", "Saldo inicial", "Intereses", "Amortización", "Cuota"];
+            const colWidths = [30, 35, 35, 35, 35];
             const totalTableWidth = colWidths.reduce((sum, width) => sum + width, 0);
             const tableStartX = margin + (contentWidth - totalTableWidth) / 2;
             const headerHeight = 12;
@@ -669,12 +735,12 @@ pdf.text(text2, x2, row2Y);
         cuotas.forEach((item, index) => {
             const rowData = [
                 item.cuota?.toString() || (index + 1).toString(),
-                item.vencimiento || 'N/A',
+                // item.vencimiento || 'N/A',
                 item.saldo_inicial_formatted || item.saldo_inicial || '0',
                 item.intereses_formatted || item.intereses || '0',
                 item.capital_formatted || item.capital || '0',
                 item.total_cuota_formatted || item.total_cuota || '0',
-                item.saldo_final || '0'
+                // item.saldo_final || '0'
             ];
 
             const rowHeight = 5;

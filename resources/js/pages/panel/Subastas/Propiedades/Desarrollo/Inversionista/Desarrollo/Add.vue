@@ -198,7 +198,7 @@
                             <div class="w-full">
                                 <div class="grid">
                                     <!-- Ocupación/Profesión -->
-                                    <div class="col-12 md:col-6 field">
+                                    <!-- <div class="col-12 md:col-6 field">
                                         <label class="font-semibold text-900 mb-3 block text-lg">
                                             Ocupación/Profesión <span class="text-red-500">*</span>
                                         </label>
@@ -207,7 +207,7 @@
                                             placeholder="Ej: Ingeniero Civil, Comerciante, Profesional independiente..." />
                                         <small class="text-500 float-right mt-2">{{ form.ocupacion_profesion.length }}/200
                                             caracteres</small>
-                                    </div>
+                                    </div> -->
                                     <!-- Motivo del Préstamo -->
                                     <div class="col-12 md:col-6 field">
                                         <label class="font-semibold text-900 mb-3 block text-lg">
@@ -312,7 +312,7 @@
 
                                 <!-- Detalles del Préstamo -->
                                 <div class="grid">
-                                    <div class="col-12 md:col-6 mb-4">
+                                    <!-- <div class="col-12 md:col-6 mb-4">
                                         <div class="p-4 bg-gradient-to-r from-orange-50 to-yellow-50 border-round-lg border-2 border-orange-200">
                                             <h6 class="font-bold text-900 mb-3 flex align-items-center gap-2">
                                                 <i class="pi pi-briefcase text-orange-600"></i>
@@ -320,7 +320,7 @@
                                             </h6>
                                             <div class="text-900">{{ form.ocupacion_profesion }}</div>
                                         </div>
-                                    </div>
+                                    </div> -->
 
                                     <div class="col-12 md:col-6 mb-4">
                                         <div class="p-4 bg-gradient-to-r from-teal-50 to-cyan-50 border-round-lg border-2 border-teal-200">
@@ -424,7 +424,7 @@ const propiedades = ref([])
 const clienteVinculado = ref(null)
 
 const form = ref({
-    ocupacion_profesion: '',
+    // ocupacion_profesion: '',
     empresa_tasadora: '',
     monto_tasacion: null,
     porcentaje_prestamo: null,
@@ -473,7 +473,7 @@ const puedeAvanzar = computed(() => {
                    form.value.monto_invertir &&
                    form.value.monto_prestamo
         case 2: 
-            return form.value.ocupacion_profesion.trim() &&
+            // return form.value.ocupacion_profesion.trim() &&
                    form.value.motivo_prestamo.trim() &&
                    form.value.descripcion_financiamiento.trim() &&
                    form.value.solicitud_prestamo_para.trim()
@@ -484,7 +484,7 @@ const puedeAvanzar = computed(() => {
 
 const formularioCompleto = computed(() => {
     return propiedadSeleccionada.value &&
-        form.value.ocupacion_profesion.trim() &&
+        // form.value.ocupacion_profesion.trim() &&
         form.value.empresa_tasadora.trim() &&
         form.value.monto_tasacion &&
         form.value.porcentaje_prestamo &&
@@ -677,7 +677,7 @@ const guardarFormulario = async () => {
 
 const resetForm = () => {
     form.value = {
-        ocupacion_profesion: '',
+        // ocupacion_profesion: '',
         empresa_tasadora: '',
         monto_tasacion: null,
         porcentaje_prestamo: null,

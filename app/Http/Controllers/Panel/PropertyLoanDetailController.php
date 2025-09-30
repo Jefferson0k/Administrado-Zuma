@@ -59,6 +59,7 @@ class PropertyLoanDetailController extends Controller{
         $loanDetail = PropertyLoanDetail::with([
             'investor',
             'property.images',
+            'property.ultimaConfiguracion.detalleInversionistaHipoteca',
         ])->findOrFail($id);
         $propertyInvestor = $loanDetail->property
             ->propertyInvestors()

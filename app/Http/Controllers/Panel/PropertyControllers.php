@@ -14,10 +14,12 @@ use App\Http\Resources\Subastas\Property\PropertyUpdateResource;
 use App\Mail\MasiveEmail;
 use App\Models\Auction;
 use App\Models\Currency;
+use App\Models\Investor;
 use App\Models\PaymentSchedule;
 use App\Models\Property;
 use App\Models\PropertyConfiguracion;
 use App\Models\PropertyInvestor;
+use App\Models\Solicitud;
 use App\Pipelines\FilterByCurrency;
 use App\Pipelines\FilterByEstado;
 use Illuminate\Http\Request;
@@ -45,41 +47,67 @@ class PropertyControllers extends Controller
 public function store(StorePropertyRequest $request)
 {
     Gate::authorize('create', Property::class);
-    
+
+    DB::transaction(function () use ($request) {
     $data = $request->validated();
-    
-    // Asignar moneda por defecto si no se proporciona
-    if (!isset($data['currency_id']) || !$data['currency_id']) {
-        $data['currency_id'] = Currency::where('codigo', 'PEN')->first()?->id;
+
+    // 1️⃣ Obtener el investor existente
+    $investor = Investor::findOrFail($data['investor_id']);
+
+    // 2️⃣ Determinar el nuevo type según el lugar de registro
+    // Aquí, si viene del modal de registro de cliente → 'cliente'
+    $nuevoType = 'cliente';
+
+    // 3️⃣ Actualizar type a mixto si es necesario
+    if ($investor->type !== $nuevoType) {
+        $investor->type = 'mixto';
+        $investor->save();
     }
-    
-    $data['created_by'] = Auth::id();
-    
-    // Crear la propiedad
-    $property = Property::create($data);
-    
-    // Procesar imágenes
-    if ($request->hasFile('imagenes')) {
-        $this->processPropertyImages($request, $property);
+
+    // 4️⃣ Crear la solicitud con el type actualizado
+    $solicitud = Solicitud::create([
+        'numero_solicitud' => $data['numero_solicitud'],
+        'id_investors' => $investor->id,
+        'fecha_solicitud' => now(),
+        'type' => $investor->type,
+    ]);
+
+     $properties = [];
+    // 5️⃣ Asignar id_solicitud a los datos de la propiedad
+    foreach ($data['properties'] as $propData) {
+    $propData['id_solicitud'] = $solicitud->id_solicitud;
+    $propData['investor_id'] = $investor->id;
+    $propData['created_by'] = Auth::id();
+
+    // 6️⃣ Crear la propiedad
+    $property = Property::create($propData);
+
+    // 7️⃣ Procesar imágenes si existen
+    if (!empty($propData['imagenes']))  {
+        $this->processPropertyImagesArray($propData['imagenes'], $property, $propData['descriptions'] ?? []);
     }
-    
-    // Cargar la propiedad con relaciones
-    $property = Property::with(['images', 'currency'])->find($property->id);
-    
+
+    // 8️⃣ Cargar la propiedad con relaciones
+    $properties[] = $property->load(['images', 'currency']);
+    }
+
     return response()->json([
-        'success' => true,
-        'message' => 'Propiedad registrada exitosamente.',
-        'property' => $property,
-    ], 201);
+            'success'  => true,
+            'message'  => 'Solicitud registrada exitosamente.',
+            'solicitud'=> $solicitud,
+            'properties' => $properties,
+        ], 201);
+});
+ //dd($request->all());
 }
 
-private function processPropertyImages($request, $property)
+private function processPropertyImagesArray(array $imagenes, Property $property, array $descripciones = [])
 {
     Log::info('=== PROCESANDO IMÁGENES ===');
     
     $disk = Storage::disk('s3');
-    $descripciones = $request->input('descriptions', []);
-    $imagenes = $request->file('imagenes');
+    // $descripciones = $request->input('descriptions', []);
+    // $imagenes = $request->file('imagenes');
     
     // DEBUG: Información detallada
     Log::info('Datos de imágenes recibidas', [

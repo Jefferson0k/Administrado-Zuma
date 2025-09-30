@@ -77,4 +77,10 @@ class PropertyConfiguracion extends Model implements AuditableContract
             ? null
             : (int) round(floatval($value) * 100);
     }
+
+    public function detalleInversionistaHipoteca()
+    {
+        return $this->hasOne(DetalleInversionistaHipoteca::class, 'configuracion_id');
+    }
+
 }

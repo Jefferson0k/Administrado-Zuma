@@ -2,6 +2,17 @@
     <Dialog v-model:visible="visible" modal header="Cronograma de Pagos" :style="{ width: '95vw', maxWidth: '1200px' }"
         :closable="true" :dismissableMask="true">
 
+        <!-- Exportar Cronograma -->
+        <div class="flex justify-between items-center w-full mb-4">
+            <div v-if="cronograma" class="text-sm text-gray-500">
+                Cronograma generado: {{ new Date().toLocaleDateString('es-ES') }}
+            </div>
+            <div class="flex gap-3">
+                <Button v-if="cronograma" label="Exportar Excel" icon="pi pi-file-excel"
+                        severity="success" @click="exportarExcel" />
+            </div>
+        </div>
+
         <!-- Header Info Card -->
         <div v-if="propiedadData" class="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -192,6 +203,72 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import { useToast } from 'primevue/usetoast'
 import axios from 'axios'
+// IMPORT CRONOGRAMA
+import * as XLSX from 'xlsx'
+import { saveAs } from 'file-saver'
+
+// EXPORTAR CRONOGRAMA
+const exportarExcel = () => {
+    if (!cronograma.value?.cronograma_final?.pagos) return
+
+    // Extraer datos
+    const pagos = cronograma.value.cronograma_final.pagos.map((pago) => ({
+        'N°': pago.cuota,
+        'Fecha Vcmto.': pago.vcmto,
+        'Saldo Inicial': Number(pago.saldo_inicial),
+        'Cuota Total': Number(pago.cuota_neta),
+        'Interés': Number(pago.interes),
+        'Capital': Number(pago.capital),
+        'Saldo Final': Number(pago.saldo_final),
+    }))
+
+    // Crear hoja
+    const worksheet = XLSX.utils.json_to_sheet(pagos)
+
+    // Ajustar anchos de columna
+    worksheet['!cols'] = [
+        { wch: 6 },   // Nº
+        { wch: 14 },  // Fecha
+        { wch: 18 },  // Saldo Inicial
+        { wch: 18 },  // Cuota Total
+        { wch: 14 },  // Interés
+        { wch: 14 },  // Capital
+        { wch: 18 },  // Saldo Final
+    ]
+
+    // Encabezados en negrita y con fondo
+    const headerRange = XLSX.utils.decode_range(worksheet['!ref']!)
+    for (let C = headerRange.s.c; C <= headerRange.e.c; ++C) {
+        const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C })
+        if (!worksheet[cellAddress]) continue
+
+        worksheet[cellAddress].s = {
+            font: { bold: true, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "4F81BD" } }, // azul corporativo
+            alignment: { horizontal: "center", vertical: "center" },
+        }
+    }
+
+    // Estilo para números: 2 decimales y separador de miles
+    pagos.forEach((_, rowIndex) => {
+        for (let colIndex = 2; colIndex <= 6; colIndex++) {
+            const cellAddress = XLSX.utils.encode_cell({ r: rowIndex + 1, c: colIndex })
+            if (worksheet[cellAddress]) {
+                worksheet[cellAddress].t = "n" // tipo numérico
+                worksheet[cellAddress].z = "#,##0.00" // formato
+            }
+        }
+    })
+
+    // Crear libro
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Cronograma')
+
+    // Exportar
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array', cellStyles: true })
+    const blob = new Blob([excelBuffer], { type: 'application/octet-stream' })
+    saveAs(blob, `cronograma_pagos_${new Date().toISOString().slice(0,10)}.xlsx`)
+}
 
 interface Props {
     visible: boolean

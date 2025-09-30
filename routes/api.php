@@ -33,9 +33,10 @@ use App\Http\Controllers\Panel\PaymentScheduleController;
 use App\Http\Controllers\Panel\PropertyInvestorController;
 use App\Http\Controllers\Panel\VisitaProductoController;
 use App\Http\Controllers\BlogController;
+use App\Http\Controllers\Panel\DetalleInversionistaHipotecaController;
 use App\Http\Controllers\Panel\TwilioWebhookController;
 use App\Http\Controllers\TipoDocumentoController;
-
+use App\Http\Controllers\Web\SubastaHipotecas\TipoInmuebleController;
 
 /*
 |--------------------------------------------------------------------------
@@ -273,3 +274,6 @@ Route::post('/blog/actualizar/{id}', [BlogController::class, 'actualizar']);
 Route::get('/blog/publicar/{user_id}/{post_id}/{state_id}', [BlogController::class, 'publicar']);
 Route::get('/blog/showpost/{id}', [BlogController::class, 'showPost']);
 Route::get('/blog/getcomentarios/{id}', [BlogController::class, 'getComentarios']);
+Route::post('/detalle-inversionista', [DetalleInversionistaHipotecaController::class, 'store']);
+Route::get('/tipo-inmueble', [TipoInmuebleController::class, 'index']);
+

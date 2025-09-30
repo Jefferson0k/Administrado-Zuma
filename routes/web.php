@@ -68,6 +68,8 @@ use App\Http\Controllers\Web\UsuarioWebController;
 use App\Models\TipoDocumento;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\BlogController;
+use App\Http\Controllers\Panel\DetalleInversionistaHipotecaController;
+use App\Http\Controllers\Web\SubastaHipotecas\TipoInmuebleController;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 
@@ -557,3 +559,7 @@ Route::get('/s3/{path}', function ($path) {
 Route::get('/tipo-documentos', [TipoDocumento::class, 'index']);
 require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';
+Route::post('/detalle-inversionista', [DetalleInversionistaHipotecaController::class, 'store']);
+Route::get('/tipo-inmueble', [TipoInmuebleController::class, 'index']);
+
+

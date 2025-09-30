@@ -397,4 +397,24 @@ class Investor extends Authenticatable implements MustVerifyEmail, AuditableCont
             return 'not_sent';
         }
     }
+
+    public static function crearOActualizarPorDni(array $data, string $nuevoType)
+{
+    $investor = self::where('document', $data['document'])->first();
+
+    if ($investor) {
+        // Si el tipo existente es diferente al nuevo, actualizar a mixto
+        if ($investor->type !== $nuevoType) {
+            $investor->type = 'mixto';
+            $investor->update();
+        }
+    } else {
+        // Crear nuevo investor con el tipo indicado
+        $data['type'] = $nuevoType;
+        $investor = self::create($data);
+    }
+
+    return $investor;
+}
+
 }

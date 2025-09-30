@@ -32,7 +32,7 @@ class PropertyLoanDetailResource extends JsonResource
                 'telefono' => $this->investor->telephone ?? null,
             ],
             'property_id' => $this->property_id,
-            'ocupacion_profesion' => $this->ocupacion_profesion,
+            // 'ocupacion_profesion' => $this->ocupacion_profesion,
             'motivo_prestamo' => $this->motivo_prestamo,
             'descripcion_financiamiento' => $this->descripcion_financiamiento,
             'solicitud_prestamo_para' => $this->solicitud_prestamo_para,
@@ -100,8 +100,8 @@ class PropertyLoanDetailResource extends JsonResource
     }
     private function getEsquemaDetalle($tipoChronograma): string{
         return match($tipoChronograma) {
-            'americano' => 'Sistema Americano (Solo Intereses)',
-            'frances' => 'Sistema Francés (Cuotas Fijas)',
+            'americano' => 'Sistema Americano',
+            'frances' => 'Sistema Francés',
             default => 'Cuota fija'
         };
     }

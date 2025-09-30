@@ -21,6 +21,13 @@ class PropertyConfiguracionResource extends JsonResource
             'tem' => $this->tem !== null ? number_format($this->tem / 100, 3, '.', '') : null, // 125 -> "1.250"
             'tipo_cronograma' => $this->tipo_cronograma,
             'riesgo' => $this->riesgo,
+            // Añadimos los campos de detalle_inversionista_hipoteca
+            'detalle_inversionista' => $this->detalleInversionistaHipoteca ? [
+                'profesion_ocupacion' => $this->detalleInversionistaHipoteca->profesion_ocupacion,
+                'fuente_ingreso'      => $this->detalleInversionistaHipoteca->fuente_ingreso,
+                'ingreso_promedio'    => $this->detalleInversionistaHipoteca->ingreso_promedio,
+            ] : null,
+
             'estado' => $this->estado,
             'estado_nombre' => $this->estado === 1 ? 'Inversionista' : ($this->estado === 2 ? 'Cliente' : 'Desconocido'),
             'nombre' => $this->property->nombre ?? '',

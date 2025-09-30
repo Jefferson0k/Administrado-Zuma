@@ -20,7 +20,7 @@ class PropertyLoanDetailListResource extends JsonResource{
             'id' => $this->id,
             'property_id' => $this->property_id,
             'investor_id' => $this->investor_id,
-            'ocupacion_profesion' => $this->ocupacion_profesion,
+            // 'ocupacion_profesion' => $this->ocupacion_profesion,
             'motivo_prestamo' => $this->motivo_prestamo,
             'descripcion_financiamiento' => $this->descripcion_financiamiento,
             'solicitud_prestamo_para' => $this->solicitud_prestamo_para,

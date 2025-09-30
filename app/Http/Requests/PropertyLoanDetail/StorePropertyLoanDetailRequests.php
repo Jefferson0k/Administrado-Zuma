@@ -17,7 +17,7 @@ class StorePropertyLoanDetailRequests extends FormRequest
             'property_id' => ['required', 'exists:properties,id'],
             'config_id' => ['required', 'exists:property_configuracions,id'],
             'investor_id' => ['required', 'exists:investors,id'],
-            'ocupacion_profesion' => ['nullable', 'string', 'max:200'],
+            // 'ocupacion_profesion' => ['nullable', 'string', 'max:200'],
             'empresa_tasadora' => ['nullable', 'string', 'max:150'],
             'motivo_prestamo' => ['nullable', 'string', 'max:300'],
             'descripcion_financiamiento' => ['nullable', 'string', 'max:500'],

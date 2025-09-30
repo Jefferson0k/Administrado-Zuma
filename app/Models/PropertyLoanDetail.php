@@ -18,7 +18,7 @@ class PropertyLoanDetail extends Model implements AuditableContract
         'property_id',
         'config_id',
         'investor_id',
-        'ocupacion_profesion',
+        // 'ocupacion_profesion',
         'empresa_tasadora',
         'motivo_prestamo',
         'descripcion_financiamiento',

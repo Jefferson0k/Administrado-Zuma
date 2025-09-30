@@ -46,7 +46,7 @@
         <Column field="plazo" header="Plazo" />
         
         <!-- Columnas opcionales -->
-        <Column v-if="isColumnSelected('ocupacion_profesion')" field="ocupacion_profesion" header="Ocupación/Profesión" style="min-width: 15rem">
+        <!-- <Column v-if="isColumnSelected('ocupacion_profesion')" field="ocupacion_profesion" header="Ocupación/Profesión" style="min-width: 15rem">
             <template #body="{ data }">
                 <div v-if="data.ocupacion_profesion">
                     <span v-if="data.ocupacion_profesion.length <= 50">{{ data.ocupacion_profesion }}</span>
@@ -63,7 +63,7 @@
                 </div>
                 <span v-else>-</span>
             </template>
-        </Column>
+        </Column> -->
 
         <Column v-if="isColumnSelected('motivo_prestamo')" field="motivo_prestamo" header="Motivo del Préstamo" style="min-width: 15rem">
             <template #body="{ data }">
@@ -362,7 +362,7 @@ const filters = ref({
 
 // Columnas opcionales que pueden ser seleccionadas
 const optionalColumns = ref([
-    { field: 'ocupacion_profesion', header: 'Ocupación/Profesión' },
+    // { field: 'ocupacion_profesion', header: 'Ocupación/Profesión' },
     { field: 'motivo_prestamo', header: 'Motivo del Préstamo' },
     { field: 'descripcion_financiamiento', header: 'Descripción Financiamiento' },
     { field: 'solicitud_prestamo_para', header: 'Solicitud Para' },

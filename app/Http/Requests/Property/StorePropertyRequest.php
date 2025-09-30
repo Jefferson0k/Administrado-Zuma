@@ -14,22 +14,26 @@ class StorePropertyRequest extends FormRequest
     public function rules(): array
     {
         $rules = [
-            'nombre'          => 'required|string|max:255',
-            'departamento'    => 'required|string|max:255',
-            'provincia'       => 'required|string|max:255',
-            'distrito'        => 'required|string|max:255',
-            'direccion'       => 'required|string|max:255',
-            'descripcion'     => 'nullable|string',
-            
-            'valor_estimado'  => 'required|numeric|min:0',
-            'valor_subasta'   => 'nullable|numeric|min:0',
-            'valor_requerido' => 'required|numeric|min:0',
-            'currency_id'     => 'required|exists:currencies,id',
+            'numero_solicitud' => 'required|string|unique:solicitud,numero_solicitud',
             'investor_id'     => 'required|exists:investors,id',
-            'estado'          => 'nullable|string|in:activa,inactiva,vendida',
+
+            // 'properties'                   => 'required|array|min:1',
+            'properties.*.nombre'          => 'required|string|max:255',
+            'properties.*.departamento'    => 'required|string|max:255',
+            'properties.*.provincia'       => 'required|string|max:255',
+            'properties.*.distrito'        => 'required|string|max:255',
+            'properties.*.direccion'       => 'required|string|max:255',
+            'properties.*.descripcion'     => 'nullable|string',
             
-            'imagenes'        => 'required|array|min:5',
-            'imagenes.*'      => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'properties.*.valor_estimado'  => 'required|numeric|min:0',
+            'properties.*.valor_subasta'   => 'nullable|numeric|min:0',
+            'properties.*.valor_requerido' => 'required|numeric|min:0',
+            'properties.*.currency_id'     => 'required|exists:currencies,id',
+            'properties.*.pertenece'       => 'nullable|string|max:255',
+            'properties.*.id_tipo_inmueble'=> 'required|exists:tipo_inmueble,id_tipo_inmueble',
+            'properties.*.estado'          => 'nullable|string|in:activa,inactiva,vendida',                        
+            'properties.*.imagenes'        => 'required|array|min:3',
+            'properties.*.imagenes.*'      => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ];
         
         // Si es UPDATE (tiene parámetro de ruta), agregar reglas para eliminación
@@ -48,6 +52,7 @@ class StorePropertyRequest extends FormRequest
     public function messages(): array
     {
         return [
+            // 'properties.required' => 'La propiedad es requerida',
             'nombre.required' => 'El nombre de la propiedad es obligatorio.',
             'departamento.required' => 'El departamento es obligatorio.',
             'provincia.required' => 'La provincia es obligatoria.',
@@ -73,7 +78,7 @@ class StorePropertyRequest extends FormRequest
             
             'imagenes.required' => 'Las imágenes son obligatorias.',
             'imagenes.array' => 'Las imágenes deben ser un array.',
-            'imagenes.min' => 'Debes subir al menos 5 imágenes.',
+            'imagenes.min' => 'Debes subir al menos 3 imágenes.',
             'imagenes.*.required' => 'Cada imagen es obligatoria.',
             'imagenes.*.image' => 'Cada archivo debe ser una imagen válida.',
             'imagenes.*.mimes' => 'Las imágenes deben ser de tipo: jpeg, png, jpg, gif o webp.',
@@ -88,6 +93,7 @@ class StorePropertyRequest extends FormRequest
     public function attributes(): array
     {
         return [
+            'id_tipo:inmueble' => 'nombre de la propiedad',
             'nombre' => 'nombre de la propiedad',
             'departamento' => 'departamento',
             'provincia' => 'provincia',
@@ -115,11 +121,17 @@ class StorePropertyRequest extends FormRequest
         // Los mutators se encargan de la conversión para CREATE
         // El frontend se encarga de la conversión para UPDATE
         
-        foreach (['valor_estimado', 'valor_subasta', 'valor_requerido'] as $field) {
-            if ($this->has($field) && is_string($this->input($field))) {
-                $cleanValue = str_replace([',', ' '], '', $this->input($field));
-                $this->merge([$field => (float) $cleanValue]);
+        if ($this->has('properties')) {
+        $properties = $this->input('properties');
+        foreach ($properties as $key => $prop) {
+            foreach (['valor_estimado', 'valor_subasta', 'valor_requerido'] as $field) {
+                if (isset($prop[$field])) {
+                    $cleanValue = str_replace([',', ' '], '', $prop[$field]);
+                    $properties[$key][$field] = (float) $cleanValue;
+                }
             }
         }
+        $this->merge(['properties' => $properties]);
+    }
     }
 }

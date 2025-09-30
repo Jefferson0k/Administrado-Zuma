@@ -25,7 +25,7 @@ class Property extends Model implements AuditableContract
     protected $fillable = [
         'investor_id', 'nombre', 'departamento', 'provincia', 'distrito',
         'direccion', 'descripcion', 'valor_estimado', 'valor_subasta',
-        'valor_requerido', 'currency_id', 'estado', 'created_by', 
+        'valor_requerido', 'currency_id', 'estado', 'id_tipo_inmueble', 'id_solicitud', 'pertenece','created_by', 
         'updated_by', 'deleted_by'
     ];
 
@@ -260,4 +260,15 @@ class Property extends Model implements AuditableContract
     {
         return $this->hasMany(InvestorPropertyStatus::class);
     }
+
+    public function tipoInmueble()
+    {
+    return $this->belongsTo(TipoInmueble::class, 'id_tipo_inmueble', 'id_tipo_inmueble');
+    }
+
+    public function solicitud()
+    {
+        return $this->belongsTo(Solicitud::class, 'id_solicitud', 'id_solicitud');
+    }
+
 }
