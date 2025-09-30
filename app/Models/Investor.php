@@ -270,10 +270,11 @@ class Investor extends Authenticatable implements MustVerifyEmail, AuditableCont
     {
         $this->notify(new InvestorAccountApprovedNotification());
     }
-    public function sendAccountObservedEmailNotification(string $comment)
+    public function sendAccountObservedEmailNotification()
     {
-        $this->notify(new InvestorAccountObservedNotification($comment));
+        $this->notify(new InvestorAccountObservedNotification());
     }
+
 
 
 

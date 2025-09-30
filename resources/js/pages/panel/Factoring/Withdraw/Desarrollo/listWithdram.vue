@@ -382,7 +382,7 @@
                             </span></div>
                         <div><span class="block">Descripción:</span>
                             <p class="font-medium whitespace-pre-line">{{ selectedValidationWithdraw?.description || '—'
-                                }}
+                            }}
                             </p>
                         </div>
                     </div>
@@ -414,97 +414,163 @@
     </Dialog>
 
     <!-- Dialog: Pagar / Subir comprobante -->
-    <Dialog v-model:visible="payDialog" :style="{ width: '560px' }"
+    <Dialog v-model:visible="payDialog" :style="{ width: '640px' }"
         :header="selectedWithdraw ? `Pagar — ${formatCurrency(selectedWithdraw.amount, selectedWithdraw.currency)}` : 'Pagar'"
         :modal="true">
-        <div class="space-y-4">
-            <div class="p-4 rounded border bg-slate-50">
-                <p class="font-semibold text-sm text-slate-700">Resumen del Retiro</p>
-                <div class="mt-2 text-sm">
-                    <div class="flex justify-between">
-                        <span class="text-slate-600">Inversionista:</span>
-                        <span class="font-medium">{{ selectedWithdraw?.invesrionista || '—' }}</span>
+        <div class="space-y-5">
+            <!-- Estado / Checklist -->
+            <div class="p-4 rounded-lg border"
+                :class="canPay(selectedWithdraw) ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'">
+                <div class="flex items-center gap-2 mb-2">
+                    <i
+                        :class="canPay(selectedWithdraw) ? 'pi pi-check-circle text-green-600' : 'pi pi-info-circle text-amber-600'"></i>
+                    <p class="font-semibold" :class="canPay(selectedWithdraw) ? 'text-green-800' : 'text-amber-800'">
+                        {{ canPay(selectedWithdraw)
+                            ? 'Listo para registrar el pago'
+                            : 'Aún no se puede pagar' }}
+                    </p>
+                </div>
+
+                <ul class="text-sm leading-6">
+                    <li class="flex items-start gap-2">
+                        <i
+                            :class="selectedWithdraw?.approval2_status === 'approved' ? 'pi pi-check text-green-600' : 'pi pi-minus text-amber-600'"></i>
+                        2ª validación aprobada
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i
+                            :class="selectedWithdraw?.status === 'approved' ? 'pi pi-check text-green-600' : 'pi pi-minus text-amber-600'"></i>
+                        Estado final del retiro: <b>Aprobado</b>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i
+                            :class="!selectedWithdraw?.resource_path ? 'pi pi-check text-green-600' : 'pi pi-times text-red-600'"></i>
+                        Sin comprobante registrado previamente
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Resumen compacto -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                <div class="p-3 rounded border bg-slate-50">
+                    <p class="text-slate-600">Inversionista</p>
+                    <p class="font-medium truncate" :title="selectedWithdraw?.invesrionista">{{
+                        selectedWithdraw?.invesrionista || '—' }}</p>
+                </div>
+                <div class="p-3 rounded border bg-slate-50">
+                    <p class="text-slate-600">Monto</p>
+                    <p class="font-medium">
+                        {{ formatCurrency(selectedWithdraw?.amount, selectedWithdraw?.currency) }}
+                    </p>
+                </div>
+                <div class="p-3 rounded border bg-slate-50">
+                    <p class="text-slate-600">N° Operación (1ª valid.)</p>
+                    <p class="font-medium">{{ selectedWithdraw?.nro_operation || '—' }}</p>
+                </div>
+            </div>
+
+            <!-- Dropzone de archivo -->
+            <div>
+                <label class="font-medium block mb-2">
+                    Comprobante (PDF o imagen) <span class="text-red-500">*</span>
+                </label>
+
+                <div class="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all" :class="[
+                    isDragging ? 'border-primary surface-50' : 'border-slate-300 hover:border-primary',
+                    paySubmitted && !payForm.file ? 'border-red-400' : ''
+                ]" @dragover.prevent="onDragOver" @dragleave.prevent="onDragLeave" @drop.prevent="onDrop"
+                    @click="fileInput?.click()">
+                    <input ref="fileInput" type="file" accept="application/pdf,image/*" class="hidden"
+                        @change="onPayFileChange" />
+
+                    <div v-if="!payForm.file" class="space-y-2">
+                        <i class="pi pi-upload text-3xl"></i>
+                        <p class="text-sm">Arrastra y suelta el archivo aquí, o <span class="underline">haz clic para
+                                seleccionar</span>.</p>
+                        <p class="text-xs text-slate-500">Tamaño máximo: 4&nbsp;MB · Tipos: PDF, JPG, JPEG, PNG</p>
+                        <small v-if="paySubmitted && !payForm.file" class="p-error block mt-1">El comprobante es
+                            requerido</small>
                     </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-600">Monto:</span>
-                        <span class="font-medium">
-                            {{ formatCurrency(selectedWithdraw?.amount, selectedWithdraw?.currency) }}
-                        </span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-600">N° Operación (1ª valid.):</span>
-                        <span class="font-medium">{{ selectedWithdraw?.nro_operation || '—' }}</span>
+
+                    <div v-else class="flex items-center justify-between gap-4 text-left">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-12 h-12 rounded bg-slate-100 flex items-center justify-center overflow-hidden">
+                                <img v-if="isImage(payForm.file)" :src="previewUrl" alt="Vista previa"
+                                    class="w-12 h-12 object-cover" />
+                                <i v-else class="pi pi-file-pdf text-xl"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="font-medium truncate" :title="payForm.file.name">{{ payForm.file.name }}</p>
+                                <p class="text-xs text-slate-500">{{ formatBytes(payForm.file.size) }}</p>
+                            </div>
+                        </div>
+                        <Button icon="pi pi-times" rounded severity="secondary" aria-label="Quitar"
+                            @click.stop="removeFile" />
                     </div>
                 </div>
             </div>
 
-            <div class="space-y-2">
-                <label class="font-medium">Comprobante (PDF o imagen) <span class="text-red-500">*</span></label>
-                <input type="file" accept="application/pdf,image/*" @change="onPayFileChange"
-                    class="p-inputtext p-component w-full" />
-                <small v-if="paySubmitted && !payForm.file" class="p-error">El comprobante es requerido</small>
-                <div v-if="payForm.file" class="text-xs text-gray-600 mt-1">
-                    Archivo seleccionado: <span class="font-medium">{{ payForm.file.name }}</span>
+            <!-- Comentario -->
+            <div>
+                <label class="font-medium" for="pay_comment">Comentario (opcional)</label>
+                <Textarea id="pay_comment" v-model="payForm.comment" rows="3" placeholder="Comentario para el pago..."
+                    class="w-full mt-2" />
+                <div class="flex justify-between mt-1 text-xs text-slate-500">
+                    <span>Sugerencia: menciona banco, fecha u observaciones útiles.</span>
+                    <span>{{ (payForm.comment || '').length }}/2000</span>
                 </div>
-            </div>
-
-            <div class="space-y-2">
-                <label class="font-medium" for="pay_comment">Comentario</label>
-                <Textarea id="pay_comment" v-model="payForm.comment" rows="3"
-                    placeholder="Comentario para el pago..." />
             </div>
         </div>
 
         <template #footer>
-            <div class="flex justify-end gap-2">
-                <Button label="Cancelar" icon="pi pi-times" severity="secondary" outlined :disabled="payProcessing"
-                    @click="closePayDialog" />
-                <Button label="Enviar Pago" icon="pi pi-upload" severity="success" :loading="payProcessing"
-                    :disabled="!selectedWithdraw || !canPay(selectedWithdraw)" @click="confirmPay" />
-
+            <div class="flex items-center justify-between w-full">
+                <div class="text-xs text-slate-500">
+                    Al enviar, se adjuntará el comprobante al retiro seleccionado.
+                </div>
+                <div class="flex gap-2">
+                    <Button label="Cancelar" icon="pi pi-times" severity="secondary" outlined :disabled="payProcessing"
+                        @click="closePayDialog" />
+                    <Button label="Enviar Pago" icon="pi pi-upload" severity="success" :loading="payProcessing"
+                        :disabled="!selectedWithdraw || !canPay(selectedWithdraw)" @click="confirmPay" />
+                </div>
             </div>
         </template>
     </Dialog>
 
 
-    <Dialog
-  v-model:visible="paymentDetailsDialog"
-  :style="{ width: '520px' }"
-  header="Detalle de Pago"
-  :modal="true"
->
-  <div class="space-y-3 text-sm">
-    <div class="flex justify-between">
-      <span class="text-slate-600">Inversionista:</span>
-      <span class="font-medium">{{ selectedPayment?.invesrionista || '—' }}</span>
-    </div>
-    <div class="flex justify-between">
-      <span class="text-slate-600">Monto:</span>
-      <span class="font-medium">{{ formatCurrency(selectedPayment?.amount, selectedPayment?.currency) }}</span>
-    </div>
 
-    <div class="mt-2 p-3 rounded bg-slate-50">
-      <p class="font-semibold mb-1">Comprobante</p>
-      <div v-if="selectedPayment?.resource_path || selectedPayment?.resource_url">
-        <a
-          :href="selectedPayment?.resource_path || ('/' + selectedPayment?.resource_path)"
-          target="_blank"
-          class="text-primary underline"
-        >
-          Ver archivo
-        </a>
-      </div>
-      <div v-else>—</div>
+    <Dialog v-model:visible="paymentDetailsDialog" :style="{ width: '520px' }" header="Detalle de Pago" :modal="true">
+        <div class="space-y-3 text-sm">
+            <div class="flex justify-between">
+                <span class="text-slate-600">Inversionista:</span>
+                <span class="font-medium">{{ selectedPayment?.invesrionista || '—' }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-slate-600">Monto:</span>
+                <span class="font-medium">{{ formatCurrency(selectedPayment?.amount, selectedPayment?.currency)
+                    }}</span>
+            </div>
 
-      <p class="font-semibold mt-3 mb-1">Comentario</p>
-      <p class="whitespace-pre-line">{{ selectedPayment?.payment_comment || '—' }}</p>
-    </div>
-  </div>
+            <div class="mt-2 p-3 rounded bg-slate-50">
+                <p class="font-semibold mb-1">Comprobante</p>
+                <div v-if="selectedPayment?.resource_path || selectedPayment?.resource_url">
+                    <a :href="selectedPayment?.resource_path || ('/' + selectedPayment?.resource_path)" target="_blank"
+                        class="text-primary underline">
+                        Ver archivo
+                    </a>
+                </div>
+                <div v-else>—</div>
 
-  <template #footer>
-    <Button label="Cerrar" icon="pi pi-times" severity="secondary" text @click="closePaymentDetails" />
-  </template>
-</Dialog>
+                <p class="font-semibold mt-3 mb-1">Comentario</p>
+                <p class="whitespace-pre-line">{{ selectedPayment?.payment_comment || '—' }}</p>
+            </div>
+        </div>
+
+        <template #footer>
+            <Button label="Cerrar" icon="pi pi-times" severity="secondary" text @click="closePaymentDetails" />
+        </template>
+    </Dialog>
 
 
 
@@ -540,23 +606,82 @@ import AddWithdraw from './AddWithdraw.vue';
 // Configuración de Axios
 
 
+// --- Drag & drop / preview helpers for Pay modal ---
+import { onBeforeUnmount } from 'vue';
+
+const fileInput = ref(null);
+const isDragging = ref(false);
+const previewUrl = ref('');
+
+const onDragOver = () => { isDragging.value = true; };
+const onDragLeave = () => { isDragging.value = false; };
+
+const isImage = (file) => !!file && /^image\//i.test(file.type);
+const formatBytes = (bytes) => {
+  if (!bytes && bytes !== 0) return '';
+  const units = ['B','KB','MB','GB'];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const val = bytes / Math.pow(1024, i);
+  return `${val.toFixed(val >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+};
+
+const cleanupPreview = () => {
+  if (previewUrl.value && previewUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(previewUrl.value);
+  }
+  previewUrl.value = '';
+};
+
+const assignFile = (file) => {
+  // client-side cap 4MB just to hint early (backend also validates)
+  const MAX = 4 * 1024 * 1024;
+  if (file && file.size > MAX) {
+    toast.add({ severity: 'warn', summary: 'Archivo demasiado grande', detail: 'Máximo 4 MB.', life: 3000 });
+    return;
+  }
+  payForm.value.file = file || null;
+  cleanupPreview();
+  if (file && isImage(file)) {
+    previewUrl.value = URL.createObjectURL(file);
+  }
+};
+
+const onDrop = (e) => {
+  isDragging.value = false;
+  const file = e.dataTransfer?.files?.[0];
+  if (file) assignFile(file);
+};
+
+const onPayFileChange = (e) => {
+  const f = e?.target?.files?.[0] ?? null;
+  assignFile(f);
+};
+
+const removeFile = () => {
+  assignFile(null);
+  if (fileInput.value) fileInput.value.value = '';
+};
+
+onBeforeUnmount(cleanupPreview);
+
+
 const paymentDetailsDialog = ref(false);
 const selectedPayment = ref(null);
 
 const openPaymentDetails = async (row) => {
-  try {
-    const { data } = await axios.get(`/withdraws/${row.id}`);
-    selectedPayment.value = data?.data || row;
-  } catch (_) {
-    selectedPayment.value = row;
-  } finally {
-    paymentDetailsDialog.value = true;
-  }
+    try {
+        const { data } = await axios.get(`/withdraws/${row.id}`);
+        selectedPayment.value = data?.data || row;
+    } catch (_) {
+        selectedPayment.value = row;
+    } finally {
+        paymentDetailsDialog.value = true;
+    }
 };
 
 const closePaymentDetails = () => {
-  paymentDetailsDialog.value = false;
-  selectedPayment.value = null;
+    paymentDetailsDialog.value = false;
+    selectedPayment.value = null;
 };
 
 
@@ -581,10 +706,7 @@ const payForm = ref({
     comment: ''
 });
 
-const onPayFileChange = (e) => {
-    const f = e?.target?.files?.[0] ?? null;
-    payForm.value.file = f || null;
-};
+
 
 const openPayDialog = async (withdraw) => {
     selectedWithdraw.value = withdraw;

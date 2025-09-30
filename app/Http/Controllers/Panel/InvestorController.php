@@ -1305,7 +1305,7 @@ class InvestorController extends Controller
             });
 
             // 3) Notificar
-            $investor->sendAccountObservedEmailNotification($prefixedComment);
+            $investor->sendAccountObservedEmailNotification();
 
             return response()->json([
                 'message' => 'Observación registrada para DNI frontal; archivo eliminado y notificación enviada.',
@@ -1350,7 +1350,7 @@ class InvestorController extends Controller
             });
 
             // 3) Notificar
-            $investor->sendAccountObservedEmailNotification($prefixedComment);
+            $investor->sendAccountObservedEmailNotification();
 
             return response()->json([
                 'message' => 'Observación registrada para DNI posterior; archivo eliminado y notificación enviada.',
