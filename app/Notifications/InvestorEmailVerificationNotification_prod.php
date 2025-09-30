@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\URL;
 
-class InvestorEmailVerificationNotification extends VerifyEmail
+class InvestorEmailVerificationNotification_prod extends VerifyEmail
 {
     use Queueable;
 
@@ -81,11 +81,14 @@ class InvestorEmailVerificationNotification extends VerifyEmail
             $frontendUrl .= '?' . $query;
         }
 
-        return (new MailMessage)
-            ->subject('Gracias por tu interés en ZUMA 🙌 | Estamos casi listos para ti 🌐')
-            ->view('emails.investor-verify', [
-                'url' => $frontendUrl,   // sigue disponible si más adelante quieres añadir CTA
-                'investor' => $notifiable,
-            ]);
+        return (new \Illuminate\Notifications\Messages\MailMessage)
+            ->subject('Confirma tu correo en ZUMA')
+            ->view(
+                'emails.investor-verify',
+                [
+                    'url' => $frontendUrl,
+                    'investor' => $notifiable,
+                ]
+            );
     }
 }

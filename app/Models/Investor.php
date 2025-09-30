@@ -7,6 +7,7 @@ use App\Enums\MovementType;
 use App\Notifications\InvestorAccountActivateNotification;
 use App\Notifications\InvestorAccountApprovedNotification;
 use App\Notifications\InvestorAccountObservedNotification;
+use App\Notifications\InvestorAccountObservedFotoNotification;
 use App\Notifications\InvestorAccountRejectedNotification;
 use App\Notifications\InvestorDepositApprovalNotification;
 use App\Notifications\InvestorDepositPendingNotification;
@@ -274,6 +275,13 @@ class Investor extends Authenticatable implements MustVerifyEmail, AuditableCont
     {
         $this->notify(new InvestorAccountObservedNotification());
     }
+
+
+       public function sendAccountObservedFotoNotification()
+    {
+        $this->notify(new InvestorAccountObservedFotoNotification());
+    }
+
 
 
 

@@ -847,7 +847,7 @@ class InvestorController extends Controller
     public function observarPrimeraValidacion(Request $request, $id)
     {
         $request->validate([
-            'approval1_comment' => 'required|string',
+            'approval1_comment' => 'nullable|string',
         ]);
 
 
@@ -865,7 +865,7 @@ class InvestorController extends Controller
                 $investor->update([
                     'approval1_status'      => 'observed',
                     'approval1_by'          => Auth::id(),
-                    'approval1_comment'     => $request->approval1_comment,
+               
                     'approval1_at'          => now(),
                     'status'                => 'proceso',
                     'updated_by'            => Auth::id(),
@@ -876,7 +876,7 @@ class InvestorController extends Controller
             });
 
             // 3) Notify AFTER commit
-            $investor->sendAccountObservedEmailNotification($request->approval1_comment);
+            $investor->sendAccountObservedEmailNotification();
 
             return response()->json([
                 'message' => 'Inversionista marcado como observado (en proceso). Archivos eliminados y notificación enviada.',
@@ -1027,6 +1027,8 @@ class InvestorController extends Controller
                 'updated_by'        => Auth::id(),
             ]);
 
+            $investor->sendAccountApprovedEmailNotification();
+
             return response()->json([
                 'message' => 'Segunda validación aprobada correctamente.',
                 'data'    => $investor,
@@ -1107,7 +1109,7 @@ class InvestorController extends Controller
                 'document_back'     => null,
                 'updated_by'        => Auth::id(),
             ]);
-            // $investor->sendAccountRejectedEmailNotification();
+             $investor->sendAccountRejectedEmailNotification();
 
             return response()->json([
                 'message' => 'Segunda validación rechazada correctamente.',
@@ -1395,7 +1397,7 @@ class InvestorController extends Controller
             });
 
             // 3) Notificar
-            $investor->sendAccountObservedEmailNotification($prefixedComment);
+            $investor->sendAccountObservedFotoNotification();
 
             return response()->json([
                 'message' => 'Observación registrada para la foto del inversionista; archivo eliminado y notificación enviada.',
