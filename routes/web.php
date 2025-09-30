@@ -531,6 +531,8 @@ Route::post('/withdraws/{withdraw}/pay', [WithdrawController::class, 'pay'])->na
             ->name('payments.comparacion');
         Route::post('/{invoiceId}', [PaymentsController::class, 'store'])
             ->name('payments.store');
+        Route::put('/{payment}/approve-level-2', [PaymentsController::class, 'approveLevel2'])
+            ->name('payments.approveLevel2');
         Route::post('/{invoiceId}/reembloso', [PaymentsController::class, 'storeReembloso'])
             ->name('payments.storeReembloso');
         Route::post('/reembolso', [PaymentsController::class, 'storeReembolso']);
@@ -541,6 +543,9 @@ Route::post('/withdraws/{withdraw}/pay', [WithdrawController::class, 'pay'])->na
         Route::get('/deposits/investor/{id}', [PaymentsController::class, 'show']);
     });
 
+    Route::get('/comparacion/status', [PaymentsController::class, 'checkProcessingStatus']);
+    Route::get('/comparacion/result/{filename}', [PaymentsController::class, 'getResult']);
+    Route::get('/comparacion/results', [PaymentsController::class, 'listResults']);
     Route::post('/invoices/{invoiceId}/anular', [PaymentsController::class, 'anular'])
         ->name('invoices.anular');
 });

@@ -69,31 +69,32 @@
                 </div>
 
                 <!-- Monto a pagar -->
-                <div class="mb-4">
-                    <label class="block text-sm font-medium mb-2">
-                        Monto a Pagar <span class="text-red-500">*</span>
-                    </label>
-                    <InputNumber 
-                        v-model="form.amount_to_be_paid" 
-                        :currency="paymentData.currency" 
-                        :locale="'es-PE'"
-                        :minFractionDigits="2"
-                        :maxFractionDigits="2"
-                        :max="parseFloat(paymentData.saldo)"
-                        :min="0.01"
-                        :disabled="form.pay_type === 'total'"
-                        class="w-full"
-                        placeholder="Ingrese el monto a pagar"
-                        :class="{ 'p-invalid': errors.amount_to_be_paid }"
-                    />
-                    <small v-if="errors.amount_to_be_paid" class="text-red-500 block mt-1">
-                        {{ errors.amount_to_be_paid }}
-                    </small>
-                    <small class="text-gray-600 block mt-1">
-                        Disponible: {{ formatCurrency(paymentData.saldo, paymentData.currency) }}
-                    </small>
-                </div>
-
+<!-- Monto a pagar -->
+<div class="mb-4">
+    <label class="block text-sm font-medium mb-2">
+        Monto a Pagar <span class="text-red-500">*</span>
+    </label>
+    <InputNumber 
+        v-model="form.amount_to_be_paid" 
+        mode="currency" 
+        :currency="getValidCurrency(paymentData.currency)" 
+        :locale="'es-PE'"
+        :minFractionDigits="2"
+        :maxFractionDigits="2"
+        :max="parseFloat(paymentData.saldo)"
+        :min="0.01"
+        :disabled="form.pay_type === 'total'"
+        class="w-full"
+        placeholder="Ingrese el monto a pagar"
+        :class="{ 'p-invalid': errors.amount_to_be_paid }"
+    />
+    <small v-if="errors.amount_to_be_paid" class="text-red-500 block mt-1">
+        {{ errors.amount_to_be_paid }}
+    </small>
+    <small class="text-gray-600 block mt-1">
+        Disponible: {{ formatCurrency(paymentData.saldo, paymentData.currency) }}
+    </small>
+</div>
                 <!-- Fecha de pago -->
                 <div class="mb-4">
                     <label class="block text-sm font-medium mb-2">
@@ -574,7 +575,23 @@ function formatTotalFileSize() {
     const totalBytes = form.value.attachments.reduce((sum, file) => sum + file.size, 0);
     return `Total: ${formatFileSize(totalBytes)}`;
 }
+// Función para obtener código de moneda válido
+function getValidCurrency(currency) {
+    const currencyMap = {
+        'S/': 'PEN',
+        'PEN': 'PEN',
+        'USD': 'USD',
+        '$': 'USD'
+    };
+    return currencyMap[currency] || 'PEN';
+}
 
+// También actualiza la función formatCurrency:
+function formatCurrency(amount = 0, currency = 'PEN') {
+    const numAmount = Number(amount) || 0;
+    const symbol = currency === 'PEN' || currency === 'S/' ? 'S/' : '$';
+    return `${symbol} ${numAmount.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`;
+}
 function validateForm() {
     errors.value = {};
     
@@ -619,11 +636,6 @@ function validateForm() {
     return Object.keys(errors.value).length === 0;
 }
 
-function formatCurrency(amount = 0, currency = 'PEN') {
-    const numAmount = Number(amount) || 0;
-    const symbol = currency === 'PEN' ? 'S/' : '$';
-    return `${symbol} ${numAmount.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`;
-}
 
 function formatDate(date) {
     if (!date) return '-';
@@ -747,7 +759,17 @@ async function onConfirmPayment() {
         processing.value = false;
     }
 }
-
+watch(() => props.visible, (newVisible) => {
+  console.log('🔄 addPaymensts - visible cambió:', newVisible);
+  console.log('📦 addPaymensts - paymentData recibido:', props.paymentData);
+  
+  if (newVisible) {
+    console.log('✅ Diálogo se está abriendo, resetear formulario');
+    resetForm();
+  } else {
+    console.log('❌ Diálogo se está cerrando');
+  }
+});
 // Función para cancelar
 function onCancel() {
     emit('cancelled');

@@ -117,6 +117,57 @@ class InvoiceResource extends JsonResource{
             'fechaCreacion'              => $this->created_at
                                              ? $this->created_at->format('d-m-Y H:i:s A')
                                              : null,
+            // 👇 Pagos con evidencias parseadas
+            'pagos' => $this->payments->map(function ($payment) {
+                return [
+                    'id'                      => $payment->id,
+                    'invoice_id'              => $payment->invoice_id,
+                    'status'                  => $payment->status,
+                    'pay_type'                => $payment->pay_type,
+                    'amount_to_be_paid'       => $payment->amount_to_be_paid,
+                    'amount_to_be_paid_money' => $payment->getAmountToBePaidMoney(),
+
+                    'pay_date'                => $payment->pay_date
+                                                    ? Carbon::parse($payment->pay_date)->format('d-m-Y')
+                                                    : null,
+                    'reprogramation_date'     => $payment->reprogramation_date
+                                                    ? Carbon::parse($payment->reprogramation_date)->format('d-m-Y')
+                                                    : null,
+                    'reprogramation_rate'     => $payment->reprogramation_rate,
+
+                    // 👇 Aquí parseamos JSON a array real
+                    'evidencia'               => $payment->evidencia
+                                                    ? json_decode($payment->evidencia, true)
+                                                    : [],
+                    'evidencia_data' => $payment->evidencia_data_parsed,
+                    'evidencia_count'         => $payment->evidencia_count,
+                    'evidencia_path'          => $payment->evidencia_path,
+                    'evidencia_original_name' => $payment->evidencia_original_name,
+                    'evidencia_size'          => $payment->evidencia_size,
+                    'evidencia_mime_type'     => $payment->evidencia_mime_type,
+
+                    'approval1_status'        => $payment->approval1_status,
+                    'approval1_by'            => $payment->approval1_by,
+                    'approval1_comment'       => $payment->approval1_comment,
+                    'approval1_at'            => $payment->approval1_at
+                                                    ? Carbon::parse($payment->approval1_at)->format('d-m-Y H:i:s')
+                                                    : null,
+
+                    'approval2_status'        => $payment->approval2_status,
+                    'approval2_by'            => $payment->approval2_by,
+                    'approval2_comment'       => $payment->approval2_comment,
+                    'approval2_at'            => $payment->approval2_at
+                                                    ? Carbon::parse($payment->approval2_at)->format('d-m-Y H:i:s')
+                                                    : null,
+
+                    'created_at'              => $payment->created_at
+                                                    ? $payment->created_at->format('d-m-Y H:i:s')
+                                                    : null,
+                    'updated_at'              => $payment->updated_at
+                                                    ? $payment->updated_at->format('d-m-Y H:i:s')
+                                                    : null,
+                ];
+            }),
         ];
 
         if ($this->relationLoaded('investments')) {

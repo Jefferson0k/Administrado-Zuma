@@ -22,40 +22,117 @@
             </div>
         </template>
         <Column selectionMode="multiple" style="width: 1rem" :exportable="false" />
-        <Column field="codigo" header="Código" sortable style="min-width: 12rem" />
-        <Column field="razonSocial" header="Razón Social" sortable style="min-width: 20rem" />
-        <Column field="montoFactura" header="Monto Factura" sortable style="min-width: 12rem">
+        <Column field="codigo" header="Código" sortable style="min-width: 8rem" />
+        <Column 
+                field="razonSocial" 
+                header="Razón Social" 
+                sortable
+            >
+            <template #body="slotProps">
+                <span v-tooltip.top="slotProps.data.razonSocial" 
+                    style="display:inline-block; max-width:15rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                {{ slotProps.data.razonSocial }}
+                </span>
+            </template>
+        </Column>
+
+        <Column field="montoFactura" header="Monto Factura" sortable style="min-width: 10rem">
             <template #body="slotProps">
                 {{ slotProps.data.moneda }} {{ slotProps.data.montoFactura }}
             </template>
         </Column>
-        <Column field="montoAsumidoZuma" header="Monto Asumido Zuma" sortable style="min-width: 14rem">
+        <Column field="montoAsumidoZuma" header="Monto Asumido Zuma" sortable style="min-width: 13rem">
             <template #body="slotProps">
                 {{ slotProps.data.moneda }} {{ slotProps.data.montoAsumidoZuma }}
             </template>
         </Column>
-        <Column field="montoDisponible" header="Monto Disponible" sortable style="min-width: 12rem">
+        <Column field="montoDisponible" header="Monto Disponible" sortable style="min-width: 11rem">
             <template #body="slotProps">
                 {{ slotProps.data.moneda }} {{ slotProps.data.montoDisponible }}
             </template>
         </Column>
-        <Column field="tasa" header="Tasa" sortable style="min-width: 8rem">
+        <Column field="tasa" header="Tasa" sortable style="min-width: 5rem">
             <template #body="slotProps">
                 {{ slotProps.data.tasa }}%
             </template>
         </Column>
-        <Column field="moneda" header="Moneda" sortable style="min-width: 8rem" />
-        <Column field="fechaPago" header="Fecha Pago" sortable style="min-width: 12rem" />
+        <Column field="moneda" header="Moneda" sortable style="min-width: 5rem" />
+        <Column field="fechaPago" header="Fecha Pago" sortable style="min-width: 8rem" />
+        <Column field="approval1_status" header="1ª Aprobador" sortable style="min-width: 9rem">
+            <template #body="slotProps">
+                <Tag 
+                    v-if="slotProps.data.approval1_status" 
+                    :value="getApprovalLabel(slotProps.data.approval1_status)" 
+                    :severity="getApprovalSeverity(slotProps.data.approval1_status)" 
+                />
+                <span v-else>-</span>
+            </template>
+        </Column>
+
+        <Column field="approval1_by" header="1ª Usuario" sortable style="min-width: 16rem">
+            <template #body="slotProps">
+                {{ slotProps.data.approval1_by || '-' }}
+            </template>
+        </Column>
+
+        <Column field="approval1_at" header="T. 1ª Aprobación" sortable style="min-width: 11rem">
+            <template #body="slotProps">
+                {{ slotProps.data.approval1_at || '-' }}
+            </template>
+        </Column>
+
+        <Column field="approval2_status" header="2ª Aprobador" sortable style="min-width: 9rem">
+            <template #body="slotProps">
+                <Tag 
+                    v-if="slotProps.data.approval2_status" 
+                    :value="getApprovalLabel(slotProps.data.approval2_status)" 
+                    :severity="getApprovalSeverity(slotProps.data.approval2_status)" 
+                />
+                <span v-else>-</span>
+            </template>
+        </Column>
+
+        <Column field="approval2_by" header="2do Usuario" sortable style="min-width: 15rem">
+            <template #body="slotProps">
+                {{ slotProps.data.approval2_by || '-' }}
+            </template>
+        </Column>
+
+        <Column field="approval2_at" header="T. 2ª Aprobación" sortable style="min-width: 11rem">
+            <template #body="slotProps">
+                {{ slotProps.data.approval2_at || '-' }}
+            </template>
+        </Column>
         
-        <!-- Estado con Tag -->
-        <Column field="estado" header="Estado" sortable style="min-width: 12rem">
+        <Column field="estado" header="Estado Conclusion" sortable style="min-width: 12rem">
             <template #body="slotProps">
                 <Tag :value="getStatusLabel(slotProps.data.estado)" :severity="getStatusSeverity(slotProps.data.estado)" />
             </template>
         </Column>
 
         <Column field="fechaCreacion" header="Fecha Creación" sortable style="min-width: 15rem" />
+        
+        <Column header="Acciones" :exportable="false" style="min-width: 8rem">
+            <template #body="slotProps">
+                <Button 
+                    icon="pi pi-eye" 
+                    outlined 
+                    rounded 
+                    severity="info" 
+                    @click="abrirDialog(slotProps.data.id)" 
+                    aria-label="Ver detalles" 
+                />
+            </template>
+        </Column>
     </DataTable>
+
+    <!-- Dialog -->
+    <Dialog v-model:visible="dialogVisible" modal header="Detalles de Factura" :style="{ width: '90vw' }" :maximizable="true">
+        <ShowPayment v-if="selectedInvoiceId" :invoice-id="selectedInvoiceId" @pago-confirmado="onPagoConfirmado" />
+        <template #footer>
+            <Button label="Cerrar" icon="pi pi-times" text @click="dialogVisible = false" />
+        </template>
+    </Dialog>
 </template>
 
 <script setup lang="ts">
@@ -68,7 +145,9 @@ import Tag from 'primevue/tag';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import InputText from 'primevue/inputtext';
+import Dialog from 'primevue/dialog';
 import { debounce } from 'lodash';
+import ShowPayment from './ShowPayment.vue';
 
 const invoices = ref<any[]>([]);
 const loading = ref(false);
@@ -79,11 +158,26 @@ const globalFilterValue = ref('');
 const rowsPerPage = ref(10);
 const currentPage = ref(1);
 
+const dialogVisible = ref(false);
+const selectedInvoiceId = ref<string | null>(null);
+
 const loadInvoices = async () => {
     loading.value = true;
     try {
         const response = await axios.get('/invoices/filtrado');
-        invoices.value = response.data.data;
+        // Mapear los datos de pagos al nivel de la factura
+        invoices.value = response.data.data.map((invoice: any) => {
+            const primerPago = invoice.pagos && invoice.pagos.length > 0 ? invoice.pagos[0] : null;
+            return {
+                ...invoice,
+                approval1_status: primerPago?.approval1_status || null,
+                approval1_by: primerPago?.approval1_by || null,
+                approval1_at: primerPago?.approval1_at || null,
+                approval2_status: primerPago?.approval2_status || null,
+                approval2_by: primerPago?.approval2_by || null,
+                approval2_at: primerPago?.approval2_at || null
+            };
+        });
         contadorInvoices.value = response.data.total;
         currentPage.value = 1;
     } catch (error) {
@@ -91,6 +185,16 @@ const loadInvoices = async () => {
     } finally {
         loading.value = false;
     }
+};
+
+const abrirDialog = (invoiceId: string) => {
+    selectedInvoiceId.value = invoiceId;
+    dialogVisible.value = true;
+};
+
+const onPagoConfirmado = () => {
+    dialogVisible.value = false;
+    loadInvoices();
 };
 
 const filteredInvoices = computed(() => {
@@ -119,47 +223,47 @@ const onPage = (event: any) => {
 
 const getStatusLabel = (status: string) => {
     switch (status) {
-        case 'inactive':
-            return 'Inactivo';
-        case 'active':
-            return 'Activo';
-        case 'expired':
-            return 'Expirado';
-        case 'judicialized':
-            return 'Judicializado';
-        case 'reprogramed':
-            return 'Reprogramado';
-        case 'paid':
-            return 'Pagado';
-        case 'canceled':
-            return 'Cancelado';
-        case 'daStandby':
-            return 'En Espera';
-        default:
-            return status;
+        case 'inactive': return 'Inactivo';
+        case 'active': return 'Activo';
+        case 'expired': return 'Expirado';
+        case 'judicialized': return 'Judicializado';
+        case 'reprogramed': return 'Reprogramado';
+        case 'paid': return 'Pagado';
+        case 'canceled': return 'Cancelado';
+        case 'daStandby': return 'En Espera';
+        default: return status;
     }
 };
 
 const getStatusSeverity = (status: string) => {
     switch (status) {
-        case 'active':
-            return 'success';
-        case 'paid':
-            return 'success';
-        case 'inactive':
-            return 'secondary';
-        case 'daStandby':
-            return 'warn';
-        case 'reprogramed':
-            return 'warn';
-        case 'expired':
-            return 'danger';
-        case 'judicialized':
-            return 'danger';
-        case 'canceled':
-            return 'danger';
-        default:
-            return 'info';
+        case 'active': return 'success';
+        case 'paid': return 'success';
+        case 'inactive': return 'secondary';
+        case 'daStandby': return 'warn';
+        case 'reprogramed': return 'warn';
+        case 'expired': return 'danger';
+        case 'judicialized': return 'danger';
+        case 'canceled': return 'danger';
+        default: return 'info';
+    }
+};
+
+const getApprovalLabel = (status: string) => {
+    switch (status) {
+        case 'pending': return 'Pendiente';
+        case 'approved': return 'Aprobado';
+        case 'rejected': return 'Rechazado';
+        default: return status;
+    }
+};
+
+const getApprovalSeverity = (status: string) => {
+    switch (status) {
+        case 'approved': return 'success';
+        case 'pending': return 'warn';
+        case 'rejected': return 'danger';
+        default: return 'info';
     }
 };
 

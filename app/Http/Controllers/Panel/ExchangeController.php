@@ -77,7 +77,7 @@ class ExchangeController extends Controller{
         ]);
     }
     public function indexList(Request $request){
-        $movements = Movement::with(['investor:id,name,email'])
+        $movements = Movement::with(['investor:id,name,email,document'])
             ->whereIn('type', ['exchange', 'exchange_up', 'exchange_down']) // solo los de tipo cambio
             ->orderBy('created_at', 'desc')
             ->paginate(10) // puedes ajustar el número de items por página
