@@ -81,14 +81,11 @@ class InvestorEmailVerificationNotification extends VerifyEmail
             $frontendUrl .= '?' . $query;
         }
 
-        return (new \Illuminate\Notifications\Messages\MailMessage)
-            ->subject('Confirma tu correo en ZUMA')
-            ->view(
-                'emails.investor-verify',
-                [
-                    'url' => $frontendUrl,
-                    'investor' => $notifiable,
-                ]
-            );
+        return (new MailMessage)
+            ->subject('Gracias por tu interés en ZUMA 🙌 | Estamos casi listos para ti 🌐')
+            ->view('emails.investor-verify', [
+                'url' => $frontendUrl,   // sigue disponible si más adelante quieres añadir CTA
+                'investor' => $notifiable,
+            ]);
     }
 }

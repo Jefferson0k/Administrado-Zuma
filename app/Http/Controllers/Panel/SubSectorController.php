@@ -13,16 +13,21 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 class SubSectorController extends Controller{
     public function index($sector_id){
         try {
             Gate::authorize('viewAny', Subsector::class);
-            $subsectors = Subsector::where('sector_id', $sector_id)->get();
+            $subsectors = Subsector::where('sector_id', $sector_id)
+                ->withCount(['companies as vinculado' => function ($q) {
+                    $q->select(DB::raw('CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END'));
+                }])
+                ->get();
             return response()->json([
                 'total' => $subsectors->count(),
-                'data' => SubSectorResource::collection($subsectors),
+                'data'  => SubSectorResource::collection($subsectors),
             ]);
         } catch (AuthorizationException $e) {
             return response()->json(['message' => 'No tienes permiso para ver los subsectores.'], 403);
@@ -30,6 +35,7 @@ class SubSectorController extends Controller{
             return response()->json(['message' => 'Error al listar los subsectores.'], 500);
         }
     }
+
     public function store(StoreSubSectorRequest $request){
         try {
             Gate::authorize('create', Subsector::class);
@@ -97,7 +103,7 @@ class SubSectorController extends Controller{
     }
     public function searchSubSector($sectorId){
         try {
-            Gate::authorize('search', Company::class);
+            Gate::authorize('viewAny', Company::class);
             $subsectors = Subsector::where('sector_id', $sectorId)->get();
             return response()->json([
                 'data' => SearchSubSectorResource::collection($subsectors),

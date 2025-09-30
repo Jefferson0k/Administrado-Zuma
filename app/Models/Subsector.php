@@ -20,4 +20,9 @@ class Subsector extends Model implements AuditableContract{
     {
         return $this->belongsTo(Sector::class);
     }
+    public function companies()
+    {
+        return $this->hasMany(Company::class, 'subsector_id', 'id');
+    }
+
 }

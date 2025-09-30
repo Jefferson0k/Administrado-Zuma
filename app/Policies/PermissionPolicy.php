@@ -16,9 +16,9 @@ class PermissionPolicy{
     public function update(User $user, Permission $permission): bool{
         return $user->can('editar permisos');
     }
-    public function delete(User $user, Permission $permission): bool{
-        return $user->can('eliminar permisos');
-    }
+    // public function delete(User $user, Permission $permission): bool{
+    //     return $user->can('eliminar permisos');
+    // }
     public function restore(User $user, Permission $permission): bool{
         return false;
     }

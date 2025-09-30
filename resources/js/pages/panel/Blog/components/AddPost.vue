@@ -205,7 +205,7 @@ function guardarPost() {
             formData.append('imagenes[]', file)
         })
 
-    axios.post('/api/blog/guardar', formData, {
+    axios.post('/blog/guardar', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
     }).then(() => {
 

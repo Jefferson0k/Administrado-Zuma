@@ -1,7 +1,7 @@
 <template>
-    <Dialog v-model:visible="dialogVisible" :style="{ width: '40vw' }" 
-        :header="`Movimientos del Inversionista: ${investorInfo?.name || investorId}`" :modal="true" maximizable>
-        
+    <Dialog v-model:visible="dialogVisible" :style="{ width: '40vw' }" :header="headerTitle" :modal="true" maximizable>
+
+
         <div class="flex flex-col h-full">
             <!-- Información del inversionista -->
             <div class="p-4 bg-blue-50 rounded-lg mb-4" v-if="investorInfo">
@@ -37,12 +37,8 @@
                                 <InputText v-model="filters.income" placeholder="Buscar ingresos..." />
                             </IconField>
                         </div>
-                        
-                        <DataTable :value="filteredIncome" 
-                            dataKey="id" 
-                            :paginator="true" 
-                            :rows="10"
-                            scrollable
+
+                        <DataTable :value="filteredIncome" dataKey="id" :paginator="true" :rows="10" scrollable
                             scrollHeight="flex"
                             paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
                             :rowsPerPageOptions="[5, 10, 25]"
@@ -51,15 +47,15 @@
 
                             <Column field="type" header="Tipo" sortable style="min-width: 5rem">
                                 <template #body="slotProps">
-                                    <Tag :value="getTypeLabel(slotProps.data.type)" 
-                                        severity="success" />
+                                    <Tag :value="incomeTypeLabel(slotProps.data)" severity="success" />
                                 </template>
                             </Column>
 
                             <Column field="amount" header="Monto" sortable style="min-width: 12rem">
                                 <template #body="slotProps">
                                     <span class="font-semibold text-lg text-green-600">
-                                        + {{ formatCurrency(slotProps.data.amount, slotProps.data.currency) }}
+                                        + {{ formatCurrency(incomeDisplayAmount(slotProps.data),
+                                            slotProps.data.currency) }}
                                     </span>
                                 </template>
                             </Column>
@@ -68,7 +64,8 @@
                                 <template #body="slotProps">
                                     <div class="flex flex-col">
                                         <span>{{ formatDate(slotProps.data.date) }}</span>
-                                        <span class="text-xs text-gray-500">{{ formatTime(slotProps.data.related?.created_at) }}</span>
+                                        <span class="text-xs text-gray-500">{{
+                                            formatTime(slotProps.data.related?.created_at) }}</span>
                                     </div>
                                 </template>
                             </Column>
@@ -85,13 +82,10 @@
                             <Column header="">
                                 <template #body="slotProps">
                                     <!-- Solo mostrar botón para depósitos que tengan voucher -->
-                                    <Button v-if="slotProps.data.type === 'deposit' && slotProps.data.related?.resource_path"
-                                        icon="pi pi-eye" 
-                                        size="small" 
-                                        severity="info" 
-                                        outlined
-                                        @click="viewVoucher(slotProps.data)" 
-                                        v-tooltip.top="'Ver voucher'" />
+                                    <Button
+                                        v-if="slotProps.data.type === 'deposit' && slotProps.data.related?.resource_path"
+                                        icon="pi pi-eye" size="small" severity="info" outlined
+                                        @click="viewVoucher(slotProps.data)" v-tooltip.top="'Ver voucher'" />
                                     <span v-else class="text-gray-400 text-xs">N/A</span>
                                 </template>
                             </Column>
@@ -111,12 +105,8 @@
                                 <InputText v-model="filters.expenses" placeholder="Buscar egresos..." />
                             </IconField>
                         </div>
-                        
-                        <DataTable :value="filteredExpenses" 
-                            dataKey="id" 
-                            :paginator="true" 
-                            :rows="10"
-                            scrollable
+
+                        <DataTable :value="filteredExpenses" dataKey="id" :paginator="true" :rows="10" scrollable
                             scrollHeight="flex"
                             paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
                             :rowsPerPageOptions="[5, 10, 25]"
@@ -125,8 +115,7 @@
 
                             <Column field="type" header="Tipo" sortable style="min-width: 10rem">
                                 <template #body="slotProps">
-                                    <Tag :value="getTypeLabel(slotProps.data.type)" 
-                                        severity="danger" />
+                                    <Tag :value="getTypeLabel(slotProps.data.type)" severity="danger" />
                                 </template>
                             </Column>
 
@@ -142,7 +131,8 @@
                                 <template #body="slotProps">
                                     <div class="flex flex-col">
                                         <span>{{ formatDate(slotProps.data.date) }}</span>
-                                        <span class="text-xs text-gray-500">{{ formatTime(slotProps.data.related?.created_at) }}</span>
+                                        <span class="text-xs text-gray-500">{{
+                                            formatTime(slotProps.data.related?.created_at) }}</span>
                                     </div>
                                 </template>
                             </Column>
@@ -204,7 +194,7 @@
                                     <i class="pi pi-chart-line text-2xl text-blue-600"></i>
                                     <div>
                                         <p class="text-sm font-medium text-blue-800">Balance Neto</p>
-                                        <p class="text-2xl font-bold" 
+                                        <p class="text-2xl font-bold"
                                             :class="netBalance >= 0 ? 'text-green-600' : 'text-red-600'">
                                             {{ formatCurrency(netBalance, 'PEN') }}
                                         </p>
@@ -223,8 +213,7 @@
                                         <span class="text-green-600">Ingresos</span>
                                         <span>{{ incomeMovements.length }} ({{ incomePercentage }}%)</span>
                                     </div>
-                                    <ProgressBar :value="incomePercentage" 
-                                        class="h-2" 
+                                    <ProgressBar :value="incomePercentage" class="h-2"
                                         style="background-color: #e2e8f0">
                                         <template #value>
                                             <div class="h-full bg-green-500 rounded"></div>
@@ -236,8 +225,7 @@
                                         <span class="text-red-600">Egresos</span>
                                         <span>{{ expenseMovements.length }} ({{ expensePercentage }}%)</span>
                                     </div>
-                                    <ProgressBar :value="expensePercentage" 
-                                        class="h-2" 
+                                    <ProgressBar :value="expensePercentage" class="h-2"
                                         style="background-color: #e2e8f0">
                                         <template #value>
                                             <div class="h-full bg-red-500 rounded"></div>
@@ -258,7 +246,7 @@
         </div>
 
         <template #footer>
-            <Button label="Cerrar" severity="secondary" text  icon="pi pi-times" @click="closeDialog" />
+            <Button label="Cerrar" severity="secondary" text icon="pi pi-times" @click="closeDialog" />
         </template>
     </Dialog>
 </template>
@@ -279,16 +267,23 @@ import TabPanel from 'primevue/tabpanel';
 import ProgressBar from 'primevue/progressbar';
 import axios from 'axios';
 
+
 // Props
 const props = defineProps({
-    visible: {
-        type: Boolean,
-        default: false
-    },
-    investorId: {
-        type: String,
-        default: ''
-    }
+    visible: { type: Boolean, default: false },
+    investorId: { type: String, default: '' },
+    currentWithdraw: { type: Object, default: null }   // 👈 NEW
+});
+
+// header computed
+const headerTitle = computed(() => {
+    const name = investorInfo?.value?.name || props.investorId;
+    const amt = props.currentWithdraw
+        ? formatCurrency(props.currentWithdraw.amount, props.currentWithdraw.currency)
+        : null;
+    return amt
+        ? `Movimientos del Inversionista: ${name} — Retiro actual: ${amt}`
+        : `Movimientos del Inversionista: ${name}`;
 });
 
 // Emits
@@ -317,24 +312,44 @@ const filters = ref({
 });
 
 // Computed properties para separar y calcular movimientos
+// Computed properties para separar y calcular movimientos
 const incomeMovements = computed(() => {
-    return movements.value.filter(movement => 
-        movement.type === 'deposit' || movement.type === 'investment'
-    );
+    return movements.value.filter(m => {
+        if (m.type === 'deposit') {
+            const sc = String(m.related?.status_conclusion ?? '').toLowerCase();
+            return sc === 'approved' || sc === 'aprobado';
+        }
+        if (m.type === 'investment') {
+            const st = String((m.related?.status ?? m.status) || '').toLowerCase();
+            return st === 'paid' || st === 'pagado';
+        }
+        return false;
+    });
 });
 
 const expenseMovements = computed(() => {
-    return movements.value.filter(movement => 
-        movement.type === 'withdraw'
-    );
+    return movements.value.filter(m => {
+        if (m.type === 'withdraw') {
+            const st = String((m.related?.status ?? m.status) || '').toLowerCase();
+            return st === 'approved' || st === 'aprobado' || st === 'aprobado';
+        }
+        if (m.type === 'investment') {
+            const st = String((m.related?.status ?? m.status) || '').toLowerCase();
+            // cualquier inversión que NO esté pagada se considera egreso
+            return !(st === 'paid' || st === 'pagado');
+        }
+        return false;
+    });
 });
+
+
 
 // Filtrado manual para evitar el problema de DataTable filters
 const filteredIncome = computed(() => {
     if (!filters.value.income) return incomeMovements.value;
-    
+
     const searchTerm = filters.value.income.toLowerCase();
-    return incomeMovements.value.filter(movement => 
+    return incomeMovements.value.filter(movement =>
         getTypeLabel(movement.type).toLowerCase().includes(searchTerm) ||
         movement.amount.toString().includes(searchTerm) ||
         movement.date.toLowerCase().includes(searchTerm) ||
@@ -344,9 +359,9 @@ const filteredIncome = computed(() => {
 
 const filteredExpenses = computed(() => {
     if (!filters.value.expenses) return expenseMovements.value;
-    
+
     const searchTerm = filters.value.expenses.toLowerCase();
-    return expenseMovements.value.filter(movement => 
+    return expenseMovements.value.filter(movement =>
         getTypeLabel(movement.type).toLowerCase().includes(searchTerm) ||
         movement.amount.toString().includes(searchTerm) ||
         movement.date.toLowerCase().includes(searchTerm) ||
@@ -355,11 +370,34 @@ const filteredExpenses = computed(() => {
     );
 });
 
+
+
+const isPaidInvestment = (m) => {
+    const st = String((m.related?.status ?? m.status) || '').toLowerCase();
+    return m.type === 'investment' && (st === 'paid' || st === 'pagado');
+};
+
+const incomeTypeLabel = (m) => {
+    return isPaidInvestment(m) ? 'Retorno' : getTypeLabel(m.type);
+};
+
+
+const incomeDisplayAmount = (m) => {
+    // when investment is PAID, show its return; otherwise show amount
+    if (isPaidInvestment(m)) {
+        // use related.return if present; fallback to m.return or 0
+        return parseFloat(m.related?.return ?? m.return ?? 0);
+    }
+    return parseFloat(m.amount ?? 0);
+};
+
+
 const totalIncome = computed(() => {
-    return incomeMovements.value.reduce((total, movement) => {
-        return total + parseFloat(movement.amount);
+    return incomeMovements.value.reduce((total, m) => {
+        return total + incomeDisplayAmount(m);
     }, 0);
 });
+
 
 const totalExpenses = computed(() => {
     return expenseMovements.value.reduce((total, movement) => {
@@ -397,40 +435,40 @@ watch(() => props.investorId, (newValue) => {
 // Methods
 const loadInvestorMovements = async () => {
     if (!props.investorId) return;
-    
+
     loading.value = true;
-    
+
     try {
         console.log('Cargando movimientos para investor_id:', props.investorId);
-        
+
         const response = await axios.get(`/withdraws/${props.investorId}`);
         const data = response.data;
-        
+
         movements.value = data.data || [];
         investorInfo.value = data.investor || null;
-        
+
         console.log('Movimientos cargados:', movements.value.length);
         console.log('Ingresos:', incomeMovements.value.length);
         console.log('Egresos:', expenseMovements.value.length);
-        
+
     } catch (error) {
         console.error('Error al cargar movimientos del inversionista:', error);
-        
+
         let errorMessage = 'Error al cargar los movimientos del inversionista';
-        
+
         if (error.response) {
             errorMessage = error.response.data?.message || `Error ${error.response.status}`;
         } else if (error.request) {
             errorMessage = 'Error de conexión con el servidor';
         }
-        
+
         toast.add({
             severity: 'error',
             summary: 'Error',
             detail: errorMessage,
             life: 5000
         });
-        
+
         movements.value = [];
         investorInfo.value = null;
     } finally {

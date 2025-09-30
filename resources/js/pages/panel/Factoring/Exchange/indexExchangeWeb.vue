@@ -30,17 +30,29 @@
 
                         <Column field="investor.name" header="Inversor" sortable style="min-width: 15rem">
                             <template #body="slotProps">
-                                <div>
-                                    <div class="font-semibold">{{ slotProps.data.investor.name }}</div>
-                                    <div class="text-sm text-gray-500">{{ slotProps.data.investor.email }}</div>
-                                </div>
+                                <div class="font-semibold">{{ slotProps.data.investor.name }}</div>
+                            </template>
+                        </Column>
+                        <Column field="investor.document" header="Dni" sortable style="min-width: 15rem">
+                            <template #body="slotProps">
+                                <div class="font-semibold">{{ slotProps.data.investor.document }}</div>
                             </template>
                         </Column>
 
-                        <Column field="type" header="Tipo" style="min-width: 10rem">
+                        <Column field="currency" header="Moneda" style="min-width: 8rem">
                             <template #body="slotProps">
-                                <Tag :value="getTypeLabel(slotProps.data.type)"
-                                    :severity="getTypeSeverity(slotProps.data.type)" />
+                                <Tag :value="slotProps.data.currency" severity="info" />
+                            </template>
+                        </Column>
+                        <Column field="type" header="Tipo" style="min-width: 8rem">
+                            <template #body="slotProps">
+                                <div class="flex items-center gap-2">
+                                    <i :class="getTypeIcon(slotProps.data.type)" 
+                                       :style="{ color: getTypeColor(slotProps.data.type), fontSize: '1.5rem' }"></i>
+                                    <span class="font-semibold" :style="{ color: getTypeColor(slotProps.data.type) }">
+                                        {{ getTypeLabel(slotProps.data.type) }}
+                                    </span>
+                                </div>
                             </template>
                         </Column>
 
@@ -51,26 +63,6 @@
                                 </span>
                             </template>
                         </Column>
-
-                        <Column field="currency" header="Moneda" style="min-width: 8rem">
-                            <template #body="slotProps">
-                                <Tag :value="slotProps.data.currency" severity="info" />
-                            </template>
-                        </Column>
-
-                        <Column field="status" header="Estado" style="min-width: 10rem">
-                            <template #body="slotProps">
-                                <Tag :value="getStatusLabel(slotProps.data.status)"
-                                    :severity="getStatusSeverity(slotProps.data.status)" />
-                            </template>
-                        </Column>
-
-                        <Column field="origin" header="Origen" style="min-width: 8rem">
-                            <template #body="slotProps">
-                                <Tag :value="slotProps.data.origin" severity="secondary" />
-                            </template>
-                        </Column>
-
                         <Column field="created_at" header="Fecha Creación" sortable style="min-width: 12rem">
                             <template #body="slotProps">
                                 <div class="text-sm">
@@ -175,23 +167,35 @@ const formatDate = (dateString: string) => {
 const getTypeLabel = (type: string) => {
     switch (type) {
         case 'exchange_up':
-            return 'Intercambio Subida';
+            return 'Compra';
         case 'exchange_down':
-            return 'Intercambio Bajada';
+            return 'Venta';
         default:
             return type;
     }
 };
 
-// Obtener severidad de tipo para Tag
-const getTypeSeverity = (type: string) => {
+// Obtener icono de tipo
+const getTypeIcon = (type: string) => {
     switch (type) {
         case 'exchange_up':
-            return 'success';
+            return 'pi pi-arrow-up';
         case 'exchange_down':
-            return 'danger';
+            return 'pi pi-arrow-down';
         default:
-            return 'info';
+            return 'pi pi-circle';
+    }
+};
+
+// Obtener color de tipo
+const getTypeColor = (type: string) => {
+    switch (type) {
+        case 'exchange_up':
+            return '#10b981'; // green-500
+        case 'exchange_down':
+            return '#ef4444'; // red-500
+        default:
+            return '#6b7280'; // gray-500
     }
 };
 
@@ -204,34 +208,6 @@ const getAmountClass = (type: string) => {
             return 'text-red-600';
         default:
             return 'text-gray-600';
-    }
-};
-
-// Obtener etiqueta de estado
-const getStatusLabel = (status: string) => {
-    switch (status) {
-        case 'valid':
-            return 'Válido';
-        case 'invalid':
-            return 'Inválido';
-        case 'pending':
-            return 'Pendiente';
-        default:
-            return status;
-    }
-};
-
-// Obtener severidad de estado para Tag
-const getStatusSeverity = (status: string) => {
-    switch (status) {
-        case 'valid':
-            return 'success';
-        case 'invalid':
-            return 'danger';
-        case 'pending':
-            return 'warning';
-        default:
-            return 'info';
     }
 };
 

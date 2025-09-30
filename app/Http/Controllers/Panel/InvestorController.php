@@ -330,6 +330,11 @@ class InvestorController extends Controller
                 return '/hipotecas';
         }
     }
+
+
+
+
+
     public function logout(Request $request)
     {
         $token = PersonalAccessToken::findToken($request->bearerToken());
@@ -358,6 +363,11 @@ class InvestorController extends Controller
             ], 500);
         }
     }
+
+
+
+
+
     public function updateAvatar(UpdateInvestorAvatarRequest $request)
     {
         $validatedData = $request->validated();
@@ -572,6 +582,10 @@ class InvestorController extends Controller
         }
     }
 
+
+
+
+
     public function emailVerification(UpdateInvestorEmailVerificationRequest $request, $id, $hash)
     {
         try {
@@ -677,6 +691,10 @@ class InvestorController extends Controller
     }
 
 
+
+
+
+
     public function lastInvoiceInvested()
     {
         /** @var \App\Models\Investor $investor */
@@ -712,6 +730,10 @@ class InvestorController extends Controller
             ], 500);
         }
     }
+
+
+
+
     public function showcliente($id)
     {
         $investor = Investor::select([
@@ -732,6 +754,8 @@ class InvestorController extends Controller
             'data' => $investor
         ]);
     }
+
+
     public function updatecliente(Request $request, $id)
     {
         $investor = Investor::find($id);
@@ -773,6 +797,8 @@ class InvestorController extends Controller
             ]),
         ]);
     }
+
+
     public function rechazar(Request $request, $id)
     {
         try {
@@ -814,15 +840,21 @@ class InvestorController extends Controller
         }
     }
 
+
+
+
+
     public function observarPrimeraValidacion(Request $request, $id)
     {
         $request->validate([
-            'approval1_comment' => 'required|string',
+            'approval1_comment' => 'nullable|string',
         ]);
+
+
 
         try {
             $investor = Investor::findOrFail($id);
-
+            Gate::authorize('approve1', $investor);
             DB::transaction(function () use ($investor, $request) {
                 // 1) Delete files from MinIO if present
                 $this->deleteFromMinioSafe($investor->document_front);
@@ -833,7 +865,7 @@ class InvestorController extends Controller
                 $investor->update([
                     'approval1_status'      => 'observed',
                     'approval1_by'          => Auth::id(),
-                    'approval1_comment'     => $request->approval1_comment,
+               
                     'approval1_at'          => now(),
                     'status'                => 'proceso',
                     'updated_by'            => Auth::id(),
@@ -844,7 +876,7 @@ class InvestorController extends Controller
             });
 
             // 3) Notify AFTER commit
-            $investor->sendAccountObservedEmailNotification($request->approval1_comment);
+            $investor->sendAccountObservedEmailNotification();
 
             return response()->json([
                 'message' => 'Inversionista marcado como observado (en proceso). Archivos eliminados y notificación enviada.',
@@ -879,13 +911,19 @@ class InvestorController extends Controller
             // \Log::warning('MinIO delete failed', ['key' => $key, 'error' => $e->getMessage()]);
         }
     }
+
+
+
     public function aprobarPrimeraValidacion(Request $request, $id)
     {
+
+
         try {
             $request->validate([
                 'approval1_comment' => 'nullable|string',
             ]);
             $investor = Investor::findOrFail($id);
+            Gate::authorize('approve1', $investor);
             $investor->update([
                 'approval1_status' => 'approved',
                 'approval1_by'     => Auth::id(),
@@ -911,6 +949,7 @@ class InvestorController extends Controller
                 'approval1_comment' => 'required|string',
             ]);
             $investor = Investor::findOrFail($id);
+            Gate::authorize('approve1', $investor);
             $investor->update([
                 'approval1_status' => 'rejected',
                 'approval1_by'     => Auth::id(),
@@ -945,6 +984,7 @@ class InvestorController extends Controller
                 'approval1_comment' => 'required|string',
             ]);
             $investor = Investor::findOrFail($id);
+            Gate::authorize('approve1', $investor);
             $investor->update([
                 'approval1_comment' => $request->approval1_comment,
                 'approval1_by'      => Auth::id(),
@@ -967,6 +1007,41 @@ class InvestorController extends Controller
     // ===============================
 
 
+    public function aprobarSegundaValidacion(Request $request, $id)
+    {
+        try {
+            $validated = $request->validate([
+                'approval2_comment' => 'nullable|string',
+            ]);
+
+            $investor = Investor::findOrFail($id);
+            Gate::authorize('approve2', $investor);
+
+
+            $investor->update([
+                'approval2_status'  => 'approved',
+                'approval2_by'      => Auth::id(),
+                'approval2_comment' => $validated['approval2_comment'] ?? null,
+                'approval2_at'      => now(),
+                'status'            => 'validated',
+                'updated_by'        => Auth::id(),
+            ]);
+
+            $investor->sendAccountApprovedEmailNotification();
+
+            return response()->json([
+                'message' => 'Segunda validación aprobada correctamente.',
+                'data'    => $investor,
+            ], 200);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'message' => 'Error al aprobar en segunda validación.',
+                'error'   => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
+    }
 
     public function observarSegundaValidacion(Request $request, $id)
     {
@@ -976,7 +1051,7 @@ class InvestorController extends Controller
 
         try {
             $investor = Investor::findOrFail($id);
-
+            Gate::authorize('approve2', $investor);
             DB::transaction(function () use ($investor, $request) {
                 // 1) Delete files from MinIO if present
                 $this->deleteFromMinioSafe($investor->document_front);
@@ -1018,6 +1093,7 @@ class InvestorController extends Controller
                 'approval2_comment' => 'required|string',
             ]);
             $investor = Investor::findOrFail($id);
+            Gate::authorize('approve2', $investor);
             $investor->update([
                 'approval2_status'  => 'rejected',
                 'approval2_by'      => Auth::id(),
@@ -1033,7 +1109,7 @@ class InvestorController extends Controller
                 'document_back'     => null,
                 'updated_by'        => Auth::id(),
             ]);
-            // $investor->sendAccountRejectedEmailNotification();
+             $investor->sendAccountRejectedEmailNotification();
 
             return response()->json([
                 'message' => 'Segunda validación rechazada correctamente.',
@@ -1054,6 +1130,8 @@ class InvestorController extends Controller
                 'approval2_comment' => 'required|string',
             ]);
             $investor = Investor::findOrFail($id);
+
+            Gate::authorize('approve2', $investor);
             $investor->update([
                 'approval2_comment' => $request->approval2_comment,
                 'approval2_by'      => Auth::id(),
@@ -1088,7 +1166,7 @@ class InvestorController extends Controller
 
             $investor->update([
                 'document_front' => Storage::path($document_front_path),
-                
+
             ]);
 
             return response()->json([
@@ -1174,7 +1252,7 @@ class InvestorController extends Controller
 
             $investor->update([
                 'investor_photo_path' => Storage::path($investor_photo_path),
-                
+
             ]);
 
             return response()->json([
@@ -1208,6 +1286,8 @@ class InvestorController extends Controller
 
         try {
             $investor = Investor::findOrFail($id);
+            Gate::authorize('observednifront', $investor);
+
             $prefixedComment = '[DNI - Parte Frontal] ' . $request->approval1_comment;
 
             DB::transaction(function () use ($investor, $prefixedComment) {
@@ -1227,7 +1307,7 @@ class InvestorController extends Controller
             });
 
             // 3) Notificar
-            $investor->sendAccountObservedEmailNotification($prefixedComment);
+            $investor->sendAccountObservedEmailNotification();
 
             return response()->json([
                 'message' => 'Observación registrada para DNI frontal; archivo eliminado y notificación enviada.',
@@ -1252,6 +1332,7 @@ class InvestorController extends Controller
 
         try {
             $investor = Investor::findOrFail($id);
+            Gate::authorize('observedniback', $investor);
             $prefixedComment = '[DNI - Parte Posterior] ' . $request->approval1_comment;
 
             DB::transaction(function () use ($investor, $prefixedComment) {
@@ -1271,7 +1352,7 @@ class InvestorController extends Controller
             });
 
             // 3) Notificar
-            $investor->sendAccountObservedEmailNotification($prefixedComment);
+            $investor->sendAccountObservedEmailNotification();
 
             return response()->json([
                 'message' => 'Observación registrada para DNI posterior; archivo eliminado y notificación enviada.',
@@ -1296,6 +1377,7 @@ class InvestorController extends Controller
 
         try {
             $investor = Investor::findOrFail($id);
+            Gate::authorize('observefoto', $investor);
             $prefixedComment = '[Foto del Inversionista] ' . $request->approval1_comment;
 
             DB::transaction(function () use ($investor, $prefixedComment) {
@@ -1315,7 +1397,7 @@ class InvestorController extends Controller
             });
 
             // 3) Notificar
-            $investor->sendAccountObservedEmailNotification($prefixedComment);
+            $investor->sendAccountObservedFotoNotification();
 
             return response()->json([
                 'message' => 'Observación registrada para la foto del inversionista; archivo eliminado y notificación enviada.',
@@ -1385,6 +1467,8 @@ class InvestorController extends Controller
 
             $investor = Investor::findOrFail($id);
 
+            Gate::authorize('uploadSpectro', $investor);
+
             $file = $request->file('file');
             $disk = 's3';
 
@@ -1437,7 +1521,7 @@ class InvestorController extends Controller
     {
         try {
             $investor = Investor::findOrFail($id);
-
+            Gate::authorize('viewAny', Investor::class);
             $items = InvestorSpectroEvidence::where('investor_id', $investor->id)
                 ->orderByDesc('id')
                 ->get()
@@ -1471,6 +1555,7 @@ class InvestorController extends Controller
     {
         try {
             $investor = Investor::findOrFail($id);
+            Gate::authorize('deleteSpectro', $investor);
 
             $evidence = InvestorSpectroEvidence::where('investor_id', $investor->id)
                 ->where('id', $evidenceId)
@@ -1510,6 +1595,7 @@ class InvestorController extends Controller
             ]);
 
             $investor = Investor::findOrFail($id);
+            Gate::authorize('uploadPep', $investor);
 
             $file = $request->file('file');
             $disk = 's3';
@@ -1567,6 +1653,7 @@ class InvestorController extends Controller
     {
         try {
             $investor = Investor::findOrFail($id);
+            Gate::authorize('viewAny', Investor::class);
 
             $items = InvestorPepEvidence::where('investor_id', $investor->id)
                 ->orderByDesc('id')
@@ -1601,6 +1688,7 @@ class InvestorController extends Controller
     {
         try {
             $investor = Investor::findOrFail($id);
+            Gate::authorize('deletePep', $investor);
 
             $evidence = InvestorPepEvidence::where('investor_id', $investor->id)
                 ->where('id', $evidenceId)
@@ -1626,37 +1714,6 @@ class InvestorController extends Controller
                 'success' => false,
                 'message' => 'Error al eliminar evidencia PEP.',
                 'error'   => $e->getMessage(),
-            ], 500);
-        }
-    }
-    public function aprobarSegundaValidacion(Request $request, $id)
-    {
-        try {
-            $validated = $request->validate([
-                'approval2_comment' => 'nullable|string',
-            ]);
-
-            $investor = Investor::findOrFail($id);
-
-            $investor->update([
-                'approval2_status'  => 'approved',
-                'approval2_by'      => Auth::id(),
-                'approval2_comment' => $validated['approval2_comment'] ?? null,
-                'approval2_at'      => now(),
-                'status'            => 'validated',
-                'updated_by'        => Auth::id(),
-            ]);
-
-            return response()->json([
-                'message' => 'Segunda validación aprobada correctamente.',
-                'data'    => $investor,
-            ], 200);
-        } catch (\Throwable $e) {
-            report($e);
-
-            return response()->json([
-                'message' => 'Error al aprobar en segunda validación.',
-                'error'   => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
     }

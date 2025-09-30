@@ -49,7 +49,7 @@ class CompanyPolicy
     }
 
     public function search(User $user): bool{
-        return $user->can('buscar sector');
+        return $user->can('ver empresas');
     }
 
     public function export(User $user): bool{

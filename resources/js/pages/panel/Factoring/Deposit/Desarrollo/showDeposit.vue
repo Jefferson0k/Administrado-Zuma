@@ -1,13 +1,7 @@
 <template>
   <!-- Dialog principal -->
-  <Dialog
-    v-model:visible="dialogVisible"
-    modal
-    header="Detalle del Depósito"
-    :style="{ width: '63rem' }"
-    :breakpoints="{ '1199px': '75vw', '575px': '90vw' }"
-    @hide="handleClose"
-  >
+  <Dialog v-model:visible="dialogVisible" modal header="Detalle del Depósito" :style="{ width: '63rem' }"
+    :breakpoints="{ '1199px': '75vw', '575px': '90vw' }" @hide="handleClose">
     <div class="p-6">
       <!-- Header -->
       <div class="flex justify-between items-start mb-8">
@@ -50,7 +44,8 @@
               </p>
               <div class="inline-flex items-center gap-2">
                 <span class="text-sm text-amber-600">Estado:</span>
-                <Tag :value="getBankAccountStatusText(deposit.estado_bank_account)" :severity="getBankAccountSeverity(deposit.estado_bank_account)" />
+                <Tag :value="getBankAccountStatusText(deposit.estado_bank_account)"
+                  :severity="getBankAccountSeverity(deposit.estado_bank_account)" />
               </div>
             </div>
           </div>
@@ -67,34 +62,25 @@
                 <i class="pi pi-image text-blue-600"></i>
                 Vista principal
               </h3>
-              <Button
-                v-if="heroImageUrl"
-                icon="pi pi-external-link"
-                severity="secondary"
-                text
-                size="small"
-                @click="openImagePreview"
-                label="Ver en tamaño completo"
-              />
+              <Button v-if="heroImageUrl" icon="pi pi-external-link" severity="secondary" text size="small"
+                @click="openImagePreview" label="Ver en tamaño completo" />
             </div>
 
             <div class="bg-gray-50 rounded-xl p-6 border border-gray-200">
               <div v-if="heroImageUrl" class="flex justify-center">
                 <div class="relative group cursor-pointer" @click="openImagePreview">
-                  <Image
-                    :src="heroImageUrl"
-                    alt="Voucher / primera imagen"
-                    preview
+                  <Image :src="heroImageUrl" alt="Voucher / primera imagen" preview
                     class="rounded-lg shadow-lg max-w-full h-auto object-contain"
-                    style="max-height: 500px; min-height: 300px;"
-                  />
-                  <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-200 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
+                    style="max-height: 500px; min-height: 300px;" />
+                  <div
+                    class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-200 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
                     <i class="pi pi-search-plus text-white text-2xl"></i>
                   </div>
                 </div>
               </div>
 
-              <div v-else class="flex flex-col items-center justify-center py-16 text-gray-400 border-2 border-dashed border-gray-200 rounded-lg">
+              <div v-else
+                class="flex flex-col items-center justify-center py-16 text-gray-400 border-2 border-dashed border-gray-200 rounded-lg">
                 <i class="pi pi-image text-6xl mb-4"></i>
                 <p class="text-lg font-medium">No hay imagen principal</p>
                 <p class="text-sm">Sube archivos en la sección de adjuntos (debajo).</p>
@@ -112,24 +98,14 @@
             <!-- Uploader múltiple (sube automáticamente al seleccionar) -->
             <div class="rounded-lg bg-gray-50 border border-gray-200 p-4 mb-4">
               <div class="flex flex-col md:flex-row md:items-center gap-3">
-                <input
-                  ref="filesInput"
-                  type="file"
-                  multiple
+                <input ref="filesInput" type="file" multiple
                   class="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                  @change="onFilesPickedAndUpload"
-                />
+                  @change="onFilesPickedAndUpload" />
                 <div class="flex items-center gap-2">
                   <ProgressSpinner v-if="uploading" style="width: 20px; height: 20px" strokeWidth="4" />
                   <span v-if="uploading" class="text-sm text-gray-600">Subiendo...</span>
-                  <Button
-                    v-else-if="filesToUpload.length"
-                    icon="pi pi-times"
-                    severity="secondary"
-                    outlined
-                    label="Limpiar selección"
-                    @click="clearPickedFiles"
-                  />
+                  <Button v-else-if="filesToUpload.length" icon="pi pi-times" severity="secondary" outlined
+                    label="Limpiar selección" @click="clearPickedFiles" />
                 </div>
               </div>
               <div v-if="filesToUpload.length" class="mt-3 text-xs text-gray-700 space-y-1">
@@ -149,24 +125,15 @@
                 <div class="flex items-center gap-3 min-w-0">
                   <i class="pi" :class="att.is_image ? 'pi-image' : 'pi-file'"></i>
                   <div class="min-w-0">
-                    <a :href="att.url" target="_blank" class="text-blue-600 hover:underline break-all">{{ att.name || 'archivo' }}</a>
+                    <a :href="att.url" target="_blank" class="text-blue-600 hover:underline break-all">{{ att.name ||
+                      'archivo' }}</a>
                     <div class="text-xs text-gray-500 truncate">{{ att.mime || '—' }} • {{ prettySize(att.size) }}</div>
                   </div>
                 </div>
                 <div class="flex items-center gap-2">
-                  <Button
-                    v-if="att.is_image"
-                    icon="pi pi-eye"
-                    text
-                    @click="preview(att.url)"
-                    v-tooltip="'Vista rápida'"
-                  />
-                  <Button
-                    icon="pi pi-trash"
-                    severity="danger"
-                    text
-                    @click="deleteAttachment(att.id)"
-                  />
+                  <Button v-if="att.is_image" icon="pi pi-eye" text @click="preview(att.url)"
+                    v-tooltip="'Vista rápida'" />
+                  <Button icon="pi pi-trash" severity="danger" text @click="deleteAttachment(att.id)" />
                 </div>
               </div>
             </div>
@@ -200,7 +167,8 @@
               </div>
               <div class="flex justify-between items-center pt-2 border-t">
                 <span class="text-sm text-gray-600">Estado cuenta</span>
-                <Tag :value="getBankAccountStatusText(deposit.estado_bank_account)" :severity="getBankAccountSeverity(deposit.estado_bank_account)" />
+                <Tag :value="getBankAccountStatusText(deposit.estado_bank_account)"
+                  :severity="getBankAccountSeverity(deposit.estado_bank_account)" />
               </div>
             </div>
           </div>
@@ -214,23 +182,25 @@
             <div class="space-y-4">
               <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div class="flex items-center gap-3">
-                  <div
-                    class="w-2 h-2 rounded-full"
-                    :class="deposit.status0 === 'approved' ? 'bg-green-500' : deposit.status0 === 'pending' ? 'bg-yellow-500' : deposit.status0 === 'observed' ? 'bg-blue-500' : 'bg-red-500'"
-                  />
+                  <div class="w-2 h-2 rounded-full"
+                    :class="deposit.status0 === 'approved' ? 'bg-green-500' : deposit.status0 === 'pending' ? 'bg-yellow-500' : deposit.status0 === 'observed' ? 'bg-blue-500' : 'bg-red-500'" />
                   <span class="text-sm font-medium">Primera Validación</span>
                 </div>
-                <Tag :value="translateEstado(deposit.status0)" :severity="getSeverity(deposit.status0)" :icon="getIcon(deposit.status0)" />
+                <Tag :value="translateEstado(deposit.status0)" :severity="getSeverity(deposit.status0)"
+                  :icon="getIcon(deposit.status0)" />
               </div>
               <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div class="flex items-center gap-3">
-                  <div
-                    class="w-2 h-2 rounded-full"
-                    :class="deposit.status === 'approved' ? 'bg-green-500' : deposit.status === 'pending' ? 'bg-yellow-500' : deposit.status === 'observed' ? 'bg-blue-500' : 'bg-red-500'"
-                  />
+                  <div class="w-2 h-2 rounded-full"
+                    :class="deposit.status === 'approved' ? 'bg-green-500' : deposit.status === 'pending' ? 'bg-yellow-500' : deposit.status === 'observed' ? 'bg-blue-500' : 'bg-red-500'" />
                   <span class="text-sm font-medium">Aprobación Final</span>
                 </div>
-                <Tag :value="translateEstado(deposit.status)" :severity="getSeverity(deposit.status)" :icon="getIcon(deposit.status)" />
+                <template v-if="deposit.status0 === 'rejected'"><span>—</span></template>
+                <template v-else>
+                  <Tag :value="translateEstado(deposit.status)" :severity="getSeverity(deposit.status)"
+                    :icon="getIcon(deposit.status)" />
+                </template>
+
               </div>
             </div>
           </div>
@@ -251,7 +221,8 @@
 
         <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <!-- Primera Validación -->
-          <div class="bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-50 border border-yellow-200 rounded-xl p-6">
+          <div
+            class="bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-50 border border-yellow-200 rounded-xl p-6">
             <div class="flex items-center justify-between mb-6">
               <div>
                 <h4 class="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
@@ -260,7 +231,8 @@
                 </h4>
                 <p class="text-sm text-gray-600">Validación inicial del movimiento</p>
               </div>
-              <Tag :value="translateEstado(deposit.status0)" :severity="getSeverity(deposit.status0)" :icon="getIcon(deposit.status0)" class="text-sm" />
+              <Tag :value="translateEstado(deposit.status0)" :severity="getSeverity(deposit.status0)"
+                :icon="getIcon(deposit.status0)" class="text-sm" />
             </div>
 
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
@@ -275,52 +247,36 @@
 
             <div class="mt-4">
               <label class="block text-sm font-medium text-gray-700 mb-2">Comentarios</label>
-              <textarea
-                v-model="comment0"
-                :disabled="!canFirstValidation"
+              <textarea v-model="comment0" :disabled="!canFirstValidation"
                 class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none disabled:bg-gray-100 disabled:text-gray-500"
-                rows="3"
-                placeholder="Escriba Comentarios para la primera validación..."
-              />
+                rows="3" placeholder="Escriba Comentarios para la primera validación..." />
               <div class="text-xs text-gray-500 mt-1" v-if="!canFirstValidation">
                 Los comentarios están bloqueados porque esta etapa no está en <strong>pendiente u observada</strong>.
               </div>
               <div class="text-xs text-gray-500 mt-1" v-else-if="comment0">
                 {{ comment0.length }} caracteres
               </div>
-              <div v-if="canFirstValidation && !hasUpload" class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-2 mt-2">
+              <div v-if="canFirstValidation && !hasUpload"
+                class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-2 mt-2">
                 Para habilitar <strong>Aprobar</strong>, primero sube al menos un archivo en <em>Archivos adjuntos</em>.
               </div>
             </div>
 
             <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
-              <Button
-                @click="updateMovement('approved')"
-                :loading="updatingStatus0"
-                :disabled="!canApproveFirst || updatingStatus0"
-                icon="pi pi-check"
-                label="Aprobar"
-                severity="success"
-                class="p-button-sm"
-              />
-              <Button
-                @click="openObserveFirstDialog"
-                :disabled="!canFirstValidation || updatingStatus0"
-                icon="pi pi-eye"
-                label="Observar"
-                severity="info"
-                outlined
-                class="p-button-sm"
-              />
-              <Button
-                @click="openRejectMovementDialog"
-                :disabled="!canFirstValidation || updatingStatus0"
-                icon="pi pi-times"
-                label="Rechazar"
-                severity="danger"
-                outlined
-                class="p-button-sm"
-              />
+              <Button @click="updateMovement('approved')" :loading="updatingStatus0"
+                :disabled="!canApproveFirst || !hasFirstComment || updatingStatus0"
+                :title="!hasFirstComment ? 'Escribe un comentario antes de aprobar' : (!hasUpload ? 'Debes subir al menos un archivo' : '')"
+                icon="pi pi-check" label="Aprobar" severity="success" class="p-button-sm" />
+              <Button @click="openObserveFirstDialog"
+                :disabled="!canFirstValidation || !hasFirstComment || updatingStatus0"
+                :title="!hasFirstComment ? 'Escribe un comentario antes de observar' : ''" icon="pi pi-eye"
+                label="Observar" severity="info" outlined class="p-button-sm" />
+              <Button @click="openRejectMovementDialog"
+                :disabled="!canFirstValidation || !hasFirstComment || updatingStatus0"
+                :title="!hasFirstComment ? 'Escribe un comentario antes de rechazar' : ''" icon="pi pi-times"
+                label="Rechazar" severity="danger" outlined class="p-button-sm" />
+
+
             </div>
           </div>
 
@@ -334,7 +290,11 @@
                 </h4>
                 <p class="text-sm text-gray-600">Confirmación final del depósito</p>
               </div>
-              <Tag :value="translateEstado(deposit.status)" :severity="getSeverity(deposit.status)" :icon="getIcon(deposit.status)" class="text-sm" />
+              <template v-if="deposit.status0 === 'rejected'"><span>—</span></template>
+              <template v-else>
+                <Tag :value="translateEstado(deposit.status)" :severity="getSeverity(deposit.status)"
+                  :icon="getIcon(deposit.status)" class="text-sm" />
+              </template>
             </div>
 
             <div v-if="deposit.status0 !== 'approved'" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
@@ -359,7 +319,8 @@
               </div>
             </div>
 
-            <div v-else-if="deposit.estadoConfig === 'valid'" class="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div v-else-if="deposit.estadoConfig === 'valid'"
+              class="bg-green-50 border border-green-200 rounded-lg p-4">
               <div class="flex items-center text-green-700">
                 <i class="pi pi-check-circle text-xl mr-3"></i>
                 <div>
@@ -385,13 +346,9 @@
             <!-- Comentarios (Aprobación Final) -->
             <div class="mt-4">
               <label class="block text-sm font-medium text-gray-700 mb-2">Comentarios</label>
-              <textarea
-                v-model="comment1"
-                :disabled="!canSecondValidation"
+              <textarea v-model="comment1" :disabled="!canSecondValidation"
                 class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none disabled:bg-gray-100 disabled:text-gray-500"
-                rows="3"
-                placeholder="Escriba Comentarios para la aprobación final..."
-              />
+                rows="3" placeholder="Escriba Comentarios para la aprobación final..." />
               <div class="text-xs text-gray-500 mt-1" v-if="!canSecondValidation">
                 Los comentarios están bloqueados porque esta etapa no está en <strong>pendiente</strong>.
               </div>
@@ -401,9 +358,19 @@
             </div>
 
             <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
-              <Button @click="updateConfirm('approved')" :loading="updatingStatus1" :disabled="!canSecondValidation || updatingStatus1" icon="pi pi-check" label="Aprobar" severity="success" class="p-button-sm" />
-              <Button @click="openObserveSecondDialog" :loading="updatingStatus1" :disabled="!canSecondValidation || updatingStatus1" icon="pi pi-eye" label="Observar" severity="info" outlined class="p-button-sm" />
-              <Button @click="openRejectConfirmDialog" :disabled="!canSecondValidation || updatingStatus1" icon="pi pi-times" label="Rechazar" severity="danger" outlined class="p-button-sm" />
+              <Button @click="updateConfirm('approved')" :loading="updatingStatus1"
+                :disabled="!canSecondValidation || !hasSecondComment || updatingStatus1"
+                :title="!hasSecondComment ? 'Escribe un comentario antes de aprobar' : ''" icon="pi pi-check"
+                label="Aprobar" severity="success" class="p-button-sm" />
+              <Button @click="openObserveSecondDialog" :loading="updatingStatus1"
+                :disabled="!canSecondValidation || !hasSecondComment || updatingStatus1"
+                :title="!hasSecondComment ? 'Escribe un comentario antes de observar' : ''" icon="pi pi-eye"
+                label="Observar" severity="info" outlined class="p-button-sm" />
+              <Button @click="openRejectConfirmDialog"
+                :disabled="!canSecondValidation || !hasSecondComment || updatingStatus1"
+                :title="!hasSecondComment ? 'Escribe un comentario antes de rechazar' : ''" icon="pi pi-times"
+                label="Rechazar" severity="danger" outlined class="p-button-sm" />
+
             </div>
           </div>
         </div>
@@ -438,12 +405,14 @@
     <template #footer>
       <div class="flex justify-end gap-2">
         <Button label="Cancelar" text icon="pi pi-times" severity="secondary" @click="cancelRejectMovement" />
-        <Button label="Rechazar" severity="danger" icon="pi pi-times" @click="updateMovement('rejected')" :disabled="!canFirstValidation || updatingStatus0" :loading="updatingStatus0" />
+        <Button label="Rechazar" severity="danger" icon="pi pi-times" @click="updateMovement('rejected')"
+          :disabled="!canFirstValidation || updatingStatus0" :loading="updatingStatus0" />
       </div>
     </template>
   </Dialog>
 
-  <Dialog v-model:visible="showRejectConfirmDialog" modal header="Rechazar Aprobación del Depósito" :style="{ width: '500px' }">
+  <Dialog v-model:visible="showRejectConfirmDialog" modal header="Rechazar Aprobación del Depósito"
+    :style="{ width: '500px' }">
     <div class="space-y-4">
       <div class="bg-red-50 border border-red-200 rounded-lg p-4">
         <div class="flex items-start gap-3">
@@ -462,7 +431,8 @@
     <template #footer>
       <div class="flex justify-end gap-2">
         <Button label="Cancelar" text icon="pi pi-times" severity="secondary" @click="cancelRejectConfirm" />
-        <Button label="Rechazar" severity="danger" icon="pi pi-times" @click="updateConfirm('rejected')" :disabled="!canSecondValidation || updatingStatus1" :loading="updatingStatus1" />
+        <Button label="Rechazar" severity="danger" icon="pi pi-times" @click="updateConfirm('rejected')"
+          :disabled="!canSecondValidation || updatingStatus1" :loading="updatingStatus1" />
       </div>
     </template>
   </Dialog>
@@ -472,13 +442,9 @@
     <div class="space-y-3">
       <p class="text-sm text-gray-600">Mensaje para el cliente:</p>
       <div class="w-full">
-        <textarea
-          v-model="observeMessage"
-          :maxlength="OBSERVE_MAX"
-          rows="6"
+        <textarea v-model="observeMessage" :maxlength="OBSERVE_MAX" rows="6"
           class="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Escribe el mensaje que se enviará por correo (máx. 500 caracteres)"
-        />
+          placeholder="Escribe el mensaje que se enviará por correo (máx. 500 caracteres)" />
         <div class="mt-1 flex items-center justify-between text-xs">
           <span class="text-gray-500">Este mensaje se enviará por correo al cliente.</span>
           <span :class="observeCount >= OBSERVE_MAX - 20 ? 'text-red-600' : 'text-gray-500'">
@@ -497,13 +463,9 @@
     <div class="space-y-3">
       <p class="text-sm text-gray-600">Mensaje para el cliente:</p>
       <div class="w-full">
-        <textarea
-          v-model="observeMessage"
-          :maxlength="OBSERVE_MAX"
-          rows="6"
+        <textarea v-model="observeMessage" :maxlength="OBSERVE_MAX" rows="6"
           class="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Escribe el mensaje que se enviará por correo (máx. 500 caracteres)"
-        />
+          placeholder="Escribe el mensaje que se enviará por correo (máx. 500 caracteres)" />
         <div class="mt-1 flex items-center justify-between text-xs">
           <span class="text-gray-500">Este mensaje se enviará por correo al cliente.</span>
           <span :class="observeCount >= OBSERVE_MAX - 20 ? 'text-red-600' : 'text-gray-500'">
@@ -519,9 +481,11 @@
   </Dialog>
 
   <!-- Dialog imagen completa -->
-  <Dialog v-model:visible="showImageDialog" modal header="Vista completa" :style="{ width: '95vw', height: '90vh' }" :maximizable="true">
+  <Dialog v-model:visible="showImageDialog" modal header="Vista completa" :style="{ width: '95vw', height: '90vh' }"
+    :maximizable="true">
     <div class="flex justify-center items-center h-full p-4">
-      <img :src="currentPreview" alt="Vista completa" class="max-w-full max-h-full object-contain rounded-lg shadow-lg" />
+      <img :src="currentPreview" alt="Vista completa"
+        class="max-w-full max-h-full object-contain rounded-lg shadow-lg" />
     </div>
   </Dialog>
 </template>
@@ -574,11 +538,15 @@ const observeCount = computed(() => observeMessage.value.length);
 const comment0 = ref('');
 const comment1 = ref('');
 
+// Reglas: exigir comentario en cada validación
+const hasFirstComment = computed(() => (comment0.value ?? '').trim().length > 0);
+const hasSecondComment = computed(() => (comment1.value ?? '').trim().length > 0);
+
 // Attachments local state
 const attachments = ref<Attachment[]>([]);
 
 // Uploader
-const filesInput = ref<HTMLInputElement|null>(null);
+const filesInput = ref<HTMLInputElement | null>(null);
 const filesToUpload = ref<File[]>([]);
 const uploading = ref(false);
 
@@ -622,7 +590,7 @@ const initializeComponent = async () => {
 
   // Comments initial
   if (props.deposit.comment0) comment0.value = props.deposit.comment0;
-  if (props.deposit.comment)  comment1.value = props.deposit.comment;
+  if (props.deposit.comment) comment1.value = props.deposit.comment;
 
   // Seed attachments from prop if present, otherwise load
   if (Array.isArray(props.deposit.attachments)) {
@@ -639,7 +607,7 @@ const fetchAttachments = async () => {
   try {
     const { data } = await axios.get(`/deposit/${props.deposit.id}/attachments`);
     attachments.value = sortByCreatedAsc(data.attachments || []);
-  } catch (e:any) {
+  } catch (e: any) {
     // silent, non-critical
   }
 };
@@ -674,7 +642,7 @@ const uploadFiles = async () => {
     toast.add({ severity: 'success', summary: 'Listo', detail: 'Archivos subidos.' });
     clearPickedFiles();
     emit('refresh');
-  } catch (e:any) {
+  } catch (e: any) {
     toast.add({ severity: 'error', summary: 'Error', detail: e.response?.data?.message || 'No se pudo subir' });
   } finally {
     uploading.value = false;
@@ -689,7 +657,7 @@ const deleteAttachment = async (attachmentId: string) => {
     props.deposit.attachments = attachments.value;
     toast.add({ severity: 'success', summary: 'Eliminado', detail: 'Adjunto eliminado.' });
     emit('refresh');
-  } catch (e:any) {
+  } catch (e: any) {
     toast.add({ severity: 'error', summary: 'Error', detail: e.response?.data?.message || 'No se pudo eliminar' });
   }
 };
@@ -793,6 +761,10 @@ const updateMovement = async (
     toast.add({ severity: 'error', summary: 'Error', detail: 'No se encontró el ID del depósito' });
     return;
   }
+  if (!(comment0.value ?? '').trim().length) {
+    toast.add({ severity: 'warn', summary: 'Comentario requerido', detail: 'Escribe un comentario antes de continuar.' });
+    return;
+  }
   updatingStatus0.value = true;
   try {
     const payload: any = {
@@ -831,8 +803,13 @@ const updateConfirm = async (
     toast.add({ severity: 'error', summary: 'Error', detail: 'No se encontró el ID del depósito' });
     return;
   }
+  if (!(comment1.value ?? '').trim().length) {
+    toast.add({ severity: 'warn', summary: 'Comentario requerido', detail: 'Escribe un comentario antes de continuar.' });
+    return;
+  }
   updatingStatus1.value = true;
   try {
+
     const payload: any = {
       status: newStatus,
       comment: comment1.value.trim() || null,

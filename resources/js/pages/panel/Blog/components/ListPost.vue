@@ -452,7 +452,7 @@ async function actualizarPost() {
       formData.append('cover_image_id', String(coverImageId.value))
     }
 
-    await axios.post(`/api/blog/actualizar/${editForm.value.id}`, formData, {
+    await axios.post(`/blog/actualizar/${editForm.value.id}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
 
@@ -478,7 +478,7 @@ async function obtenerPost() {
       sortOrder: sortOrder.value,
       global: filters.value.global?.value || ''
     }
-    const { data } = await axios.get('/api/blog/lista', { params })
+    const { data } = await axios.get('/blog/lista', { params })
     posts.value = Array.isArray(data?.data) ? data.data : []
     totalRecords.value = Number(data?.total || posts.value.length)
   } catch {
@@ -555,7 +555,7 @@ function eliminar(item) {
     accept: async () => {
       try {
         loading.value = true
-        await axios.delete(`/api/blog/eliminar/${item.id}`)
+        await axios.delete(`/blog/eliminar/${item.id}`)
         toast.add({ severity: 'success', summary: 'Éxito', detail: 'Publicación eliminada correctamente', life: 3000 })
         await obtenerPost()
       } catch {
@@ -600,7 +600,7 @@ function onFilter() {
 async function publicar(item) {
   try {
     loading.value = true
-    await axios.get(`/api/blog/publicar/${props.user.id}/${item.id}/2`)
+    await axios.get(`/blog/publicar/${props.user.id}/${item.id}/2`)
     toast.add({ severity: 'success', summary: 'Éxito', detail: 'Publicación realizada correctamente', life: 3000 })
     editDialog.value = false
     await obtenerPost()

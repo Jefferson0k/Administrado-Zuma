@@ -10,30 +10,46 @@ class InvestorAccountObservedNotification extends Notification
 {
     use Queueable;
 
-    protected $comment;
-
-    public function __construct(string $comment)
-    {
-        $this->comment = $comment;
-    }
+    public function __construct(
+        public ?string $title = 'Necesitamos validar tu documento de identidad',
+        public array $reasons = [
+            'La imagen está borrosa o poco legible.',
+            'Los datos del documento no coinciden con el número de DNI/CE ingresado.',
+        ],
+        public ?string $whatsappUrl = null,
+        public ?string $supportPhone = null,
+    ) {}
 
     public function via($notifiable)
     {
-        return ['mail']; // si quieres también puedes añadir 'database'
+        return ['mail'];
     }
 
     public function toMail($notifiable)
     {
-        $dashboardUrl = env('CLIENT_APP_URL', 'http://localhost:5173') . '/dashboard';
+        $appName      = config('app.name', 'ZUMA');
+        $brandPrimary = '#F0372D'; // barra/logo bg (rojo)
+        $brandButton  = '#22c55e'; // botón WhatsApp (verde)
+        $logoUrl      = rtrim(env('APP_URL', ''), '/') . '/images/zuma-logo-dark.png'; // usa URL absoluta
+        $whatsUrl     = $this->whatsappUrl ?: 'https://wa.me/51999999999';
+        $supportPhone = $this->supportPhone ?: '+51 999 999 999';
 
+        // Se envía una vista Blade en lugar de texto plano.
         return (new MailMessage)
-            ->subject('Observación en tu registro de usuario')
-            ->greeting('Hola ' . $notifiable->name)
-            ->line('Tu usuario ha sido observado en el proceso de validación.')
-            ->line('Comentario del validador:')
-            ->line($this->comment)
-            ->line('Por favor ingresa a la plataforma y actualiza la información requerida.')
-            ->action('Acceder a la plataforma', url('/login'))
-            ->line('Gracias por tu atención.');
+            ->subject($this->title)
+            ->view('emails.investor.observed', [
+                'appName'      => $appName,
+                'brandPrimary' => $brandPrimary,
+                'brandButton'  => $brandButton,
+                'logoUrl'      => $logoUrl,
+                'title'        => $this->title,
+                'userName'     => $notifiable->name ?? 'Usuario',
+                'reasons'      => $this->reasons,
+                'whatsappUrl'  => $whatsUrl,
+                'supportPhone' => $supportPhone,
+                'companyAddr'  => 'Av. Faustino Sánchez Carrión 417, Magdalena del Mar, Lima – Perú',
+                'prefsUrl'     => rtrim(env('CLIENT_APP_URL', 'https://zuma.com.pe'), '/') . '/preferencias', // “Gestionar preferencias”
+                'footerYear'   => date('Y'),
+            ]);
     }
 }

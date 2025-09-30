@@ -162,7 +162,7 @@ function eliminar(item) {
     accept: async () => {
       try {
         loading.value = true
-        await axios.get(`/api/blog/eliminar-categoria/${item.id}`)
+        await axios.get(`/blog/eliminar-categoria/${item.id}`)
         toast.add({
           severity: 'success',
           summary: 'Éxito',
@@ -194,7 +194,7 @@ async function actualizarCategoria() {
 
     console.log(editForm.value.id)
 
-    await axios.post(`/api/blog/actualizar-categoria/${editForm.value.id}`, formData, {
+    await axios.post(`/blog/actualizar-categoria/${editForm.value.id}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }

@@ -43,9 +43,30 @@ class BankAccountPolicy
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, BankAccount $bankAccount): bool
+    // public function delete(User $user, BankAccount $bankAccount): bool
+    // {
+    //     return $user->can('eliminar cuenta bancaria');
+    // }
+
+    public function approve1(User $user, BankAccount $bankAccount): bool
     {
-        return $user->can('eliminar cuenta bancaria');
+        return $user->can('aprobar primera validacion cuenta bancaria');
+    }
+
+    public function approve2(User $user, BankAccount $bankAccount): bool
+    {
+        return $user->can('aprobar segunda validacion cuenta bancaria');
+    }
+
+
+    public function uploadFiles(User $user, BankAccount $bankAccount): bool
+    {
+        return $user->can('subir archivos cuenta bancaria');
+    }
+
+    public function deleteFiles(User $user, BankAccount $bankAccount): bool
+    {
+        return $user->can('eliminar archivos cuenta bancaria');
     }
 
     /**

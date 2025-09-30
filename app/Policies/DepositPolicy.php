@@ -40,12 +40,26 @@ class DepositPolicy
         return $user->can('editar depositos');
     }
 
-    /**
-     * Determine whether the user can delete the model.
-     */
-    public function delete(User $user, Deposit $deposit): bool
+
+
+     public function approve1(User $user, Deposit $deposit): bool
     {
-        return $user->can('eliminar depositos');
+        return $user->can('aprobar primera validacion depositos');
+    }
+
+    public function approve2(User $user, Deposit $deposit): bool
+    {
+        return $user->can('aprobar segunda validacion depositos');
+    }
+
+    public function uploadFiles(User $user, Deposit $deposit): bool
+    {
+        return $user->can('subir archivos depositos');
+    }
+    
+    public function deletefiles(User $user, Deposit $deposit): bool
+    {
+        return $user->can('eliminar archivos depositos');
     }
 
     /**
@@ -62,5 +76,10 @@ class DepositPolicy
     public function forceDelete(User $user, Deposit $deposit): bool
     {
         return false;
+    }
+
+    public function export(User $user): bool
+    {
+        return $user->can('exportar depositos');
     }
 }

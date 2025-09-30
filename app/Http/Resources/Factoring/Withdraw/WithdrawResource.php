@@ -48,6 +48,9 @@ class WithdrawResource extends JsonResource
             'approval2_comment' => $this->approval2_comment,
             'approval2_at'      => $this->approval2_at ? Carbon::parse($this->approval2_at)->format('d-m-Y H:i:s A') : null,
 
+
+
+            'payment_comment'  => $this->payment_comment,
             'created_at'        => Carbon::parse($this->created_at)->format('d-m-Y H:i:s A'),
             'updated_at'        => $this->updated_at,
         ];

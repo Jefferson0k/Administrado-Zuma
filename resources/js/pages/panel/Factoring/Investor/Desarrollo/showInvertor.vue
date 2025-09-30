@@ -1,7 +1,8 @@
 <template>
   <Dialog v-model:visible="visible" :style="{ width: '88vw', maxWidth: '1100px' }" header="Validación de Inversionista"
     :modal="true" :closable="true" @hide="closeDialog">
-    <div>
+    <div ref="exportArea" class="bg-white">
+
       <h3 class="text-base font-semibold mb-2 text-gray-900">Información Básica</h3>
       <Message severity="info" :closable="false">
         <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -17,9 +18,7 @@
           <div><span class="text-xs font-medium text-blue-800">Email:</span>
             <p class="text-sm">{{ investor.email }}</p>
           </div>
-          <div><span class="text-xs font-medium text-blue-800">Validado por IA:</span>
-            <p class="text-sm">No</p>
-          </div>
+
           <div class="flex items-center gap-2">
             <span class="text-xs font-medium text-blue-800">Estado:</span>
             <Tag :severity="getStatusSeverity(investor.status)" :value="getStatusLabel(investor.status)" />
@@ -50,9 +49,10 @@
               <div v-if="editableInvestor.document_front">
                 <template v-if="isImageLike(toViewUrl(editableInvestor.document_front))">
                   <img :key="toViewUrl(editableInvestor.document_front)"
-                    :src="toViewUrl(editableInvestor.document_front)" alt="DNI Frontal"
+                    :src="toViewUrl(editableInvestor.document_front)" :crossorigin="'anonymous'" alt="DNI Frontal"
                     class="w-full h-32 object-contain cursor-pointer hover:opacity-90 transition-opacity border rounded"
                     @error="safeImgOnError" @click="viewDocument(toViewUrl(editableInvestor.document_front))" />
+
                 </template>
                 <template v-else>
                   <div class="flex items-center justify-between gap-2 bg-gray-50 border rounded p-2">
@@ -65,9 +65,10 @@
                 </template>
 
                 <Button label="Ver completo" icon="pi pi-eye" size="small" outlined class="w-full mt-2"
-                  @click="viewDocument(toViewUrl(editableInvestor.document_front))" />
+                  data-export="ignore" @click="viewDocument(toViewUrl(editableInvestor.document_front))" />
                 <Button v-if="!isValidated" label="Observar" icon="pi pi-exclamation-triangle" size="small"
-                  severity="warn" class="w-full mt-2" @click="showObserveDialog('dni_front')" />
+                  data-export="ignore" severity="warn" class="w-full mt-2" @click="showObserveDialog('dni_front')"
+                  :disabled="isAnyRejected" />
               </div>
 
               <div v-else class="text-center py-6 bg-gray-50 border-2 border-dashed border-gray-300 rounded">
@@ -86,9 +87,10 @@
               <div v-if="editableInvestor.document_back">
                 <template v-if="isImageLike(toViewUrl(editableInvestor.document_back))">
                   <img :key="toViewUrl(editableInvestor.document_back)" :src="toViewUrl(editableInvestor.document_back)"
-                    alt="DNI Posterior"
+                    :crossorigin="'anonymous'" alt="DNI Posterior"
                     class="w-full h-32 object-contain cursor-pointer hover:opacity-90 transition-opacity border rounded"
                     @error="safeImgOnError" @click="viewDocument(toViewUrl(editableInvestor.document_back))" />
+
                 </template>
                 <template v-else>
                   <div class="flex items-center justify-between gap-2 bg-gray-50 border rounded p-2">
@@ -101,9 +103,10 @@
                 </template>
 
                 <Button label="Ver completo" icon="pi pi-eye" size="small" outlined class="w-full mt-2"
-                  @click="viewDocument(toViewUrl(editableInvestor.document_back))" />
+                  data-export="ignore" @click="viewDocument(toViewUrl(editableInvestor.document_back))" />
                 <Button v-if="!isValidated" label="Observar" icon="pi pi-exclamation-triangle" size="small"
-                  severity="warn" class="w-full mt-2" @click="showObserveDialog('dni_back')" />
+                  data-export="ignore" severity="warn" class="w-full mt-2" @click="showObserveDialog('dni_back')"
+                  :disabled="isAnyRejected" />
               </div>
 
               <div v-else class="text-center py-6 bg-gray-50 border-2 border-dashed border-gray-300 rounded">
@@ -122,9 +125,11 @@
               <div v-if="editableInvestor.investor_photo_path">
                 <template v-if="isImageLike(toViewUrl(editableInvestor.investor_photo_path))">
                   <img :key="toViewUrl(editableInvestor.investor_photo_path)"
-                    :src="toViewUrl(editableInvestor.investor_photo_path)" alt="Foto del Inversionista"
+                    :src="toViewUrl(editableInvestor.investor_photo_path)" :crossorigin="'anonymous'"
+                    alt="Foto del Inversionista"
                     class="w-full h-32 object-contain cursor-pointer hover:opacity-90 transition-opacity border rounded"
                     @error="safeImgOnError" @click="viewDocument(toViewUrl(editableInvestor.investor_photo_path))" />
+
                 </template>
                 <template v-else>
                   <div class="flex items-center justify-between gap-2 bg-gray-50 border rounded p-2">
@@ -137,9 +142,10 @@
                 </template>
 
                 <Button label="Ver completo" icon="pi pi-eye" size="small" outlined class="w-full mt-2"
-                  @click="viewDocument(toViewUrl(editableInvestor.investor_photo_path))" />
+                  data-export="ignore" @click="viewDocument(toViewUrl(editableInvestor.investor_photo_path))" />
                 <Button v-if="!isValidated" label="Observar" icon="pi pi-exclamation-triangle" size="small"
-                  severity="warn" class="w-full mt-2" @click="showObserveDialog('investor_photo')" />
+                  data-export="ignore" severity="warn" class="w-full mt-2" @click="showObserveDialog('investor_photo')"
+                  :disabled="isAnyRejected" />
               </div>
 
               <div v-else class="text-center py-6 bg-gray-50 border-2 border-dashed border-gray-300 rounded">
@@ -167,13 +173,13 @@
             <p class="text-sm">{{ getAvatarDisplay(investor.perfil) }}</p>
           </div>
           <div><span class="text-xs font-medium text-blue-800">Departamento:</span>
-            <p class="text-sm">{{ departmentName  }}</p>
+            <p class="text-sm">{{ departmentName }}</p>
           </div>
           <div><span class="text-xs font-medium text-blue-800">Provincia:</span>
-            <p class="text-sm">{{ provinceName  }}</p>
+            <p class="text-sm">{{ provinceName }}</p>
           </div>
           <div><span class="text-xs font-medium text-blue-800">Distrito:</span>
-            <p class="text-sm">{{ districtName  }}</p>
+            <p class="text-sm">{{ districtName }}</p>
           </div>
           <div><span class="text-xs font-medium text-blue-800">Dirección:</span>
             <p class="text-sm">{{ investor.address }}</p>
@@ -191,7 +197,7 @@
       </Message>
 
       <!-- Evidencias -->
-      <div class="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-4" data-export="ignore">
         <!-- Evidencia Espectro -->
         <div>
           <h3 class="text-base font-semibold mb-2 text-gray-900 flex items-center gap-2">
@@ -215,7 +221,9 @@
                   <Button label="Ver" icon="pi pi-external-link" size="small" outlined
                     @click="viewDocument(toViewUrl(item.url))" />
                   <Button icon="pi pi-trash" size="small" outlined severity="danger"
-                    @click="deleteSpectroEvidence(item.id)" />
+                    @click="deleteSpectroEvidence(item.id)" :disabled="isAnyRejected" />
+
+
                 </div>
               </div>
             </template>
@@ -230,7 +238,8 @@
           <div class="bg-gray-50 p-3 rounded-md border">
             <FileUpload ref="fileUploader" mode="advanced" name="file" accept=".jpg,.jpeg,.png,.pdf"
               :maxFileSize="5120000" :multiple="true" :auto="true" :customUpload="true" @uploader="uploadEvidenceFile"
-              @select="onFileSelect" :showUploadButton="false" :showCancelButton="false">
+              @select="onFileSelect" :showUploadButton="false" :showCancelButton="false" :disabled="isAnyRejected">
+
               <template #header="{ chooseCallback, clearCallback, files }">
                 <div class="flex justify-between items-center w-full gap-2">
                   <div class="flex gap-2">
@@ -268,8 +277,9 @@
           </div>
         </div>
 
-        <!-- Evidencia PEP -->
-        <div>
+        <!-- Evidencia PEP (visible solo si hay relación con PEP) -->
+        <div v-if="!!editableInvestor.relacionPolitica || !!editableInvestor.personaexpuesta">
+
           <h3 class="text-base font-semibold mb-2 text-gray-900 flex items-center gap-2">
             <i class="pi pi-upload text-purple-600"></i>
             Evidencia PEP
@@ -290,8 +300,8 @@
                 <div class="flex gap-2 shrink-0">
                   <Button label="Ver" icon="pi pi-external-link" size="small" outlined
                     @click="viewDocument(toViewUrl(item.url))" />
-                  <Button icon="pi pi-trash" size="small" outlined severity="danger"
-                    @click="deletePepEvidence(item.id)" />
+                  <Button icon="pi pi-trash" size="small" outlined severity="danger" @click="deletePepEvidence(item.id)"
+                    :disabled="isAnyRejected" />
                 </div>
               </div>
             </template>
@@ -307,7 +317,8 @@
             <FileUpload ref="pepFileUploader" mode="advanced" name="file" accept=".jpg,.jpeg,.png,.pdf"
               :maxFileSize="5120000" :multiple="true" :auto="true" :customUpload="true"
               @uploader="uploadPepEvidenceFile" @select="onFileSelect" :showUploadButton="false"
-              :showCancelButton="false">
+              :showCancelButton="false" :disabled="isAnyRejected">
+
               <template #header="{ chooseCallback, clearCallback, files }">
                 <div class="flex justify-between items-center w-full gap-2">
                   <div class="flex gap-2">
@@ -355,20 +366,22 @@
           </h3>
 
           <div class="space-y-3 mb-3">
-            <div v-if="editableInvestor.approval1_comment" class="bg-blue-50 p-3 rounded-md border border-blue-200">
+            <div v-if="editableInvestor.approval1_comment || commentText"
+              class="bg-blue-50 p-3 rounded-md border border-blue-200">
               <div class="flex items-center justify-between mb-1">
                 <span class="text-xs font-medium text-blue-800">Comentario de Primera Validación</span>
                 <span class="text-[11px] text-gray-500">{{ formatDate(editableInvestor.approval1_at) }}</span>
               </div>
-              <p class="text-gray-800 text-sm">{{ editableInvestor.approval1_comment }}</p>
+              <p class="text-gray-800 text-sm">{{ editableInvestor.approval1_comment || commentText }}</p>
             </div>
 
-            <div v-if="editableInvestor.approval2_comment" class="bg-green-50 p-3 rounded-md border border-green-200">
+            <div v-if="editableInvestor.approval2_comment || comment2Text"
+              class="bg-green-50 p-3 rounded-md border border-green-200">
               <div class="flex items-center justify-between mb-1">
                 <span class="text-xs font-medium text-green-800">Comentario de Segunda Validación</span>
                 <span class="text-[11px] text-gray-500">{{ formatDate(editableInvestor.approval2_at) }}</span>
               </div>
-              <p class="text-gray-800 text-sm">{{ editableInvestor.approval2_comment }}</p>
+              <p class="text-gray-800 text-sm">{{ editableInvestor.approval2_comment || comment2Text }}</p>
             </div>
 
             <div v-if="isValidated && !editableInvestor.approval1_comment && !editableInvestor.approval2_comment"
@@ -378,27 +391,32 @@
             </div>
           </div>
 
-          <div class="mb-3" v-if="!isValidated && !hasFirstValidationComplete">
+          <div class="mb-3" v-if="!isValidated && !hasFirstValidationComplete" data-export="ignore">
             <div class="bg-gray-50 p-3 rounded-md border">
               <label class="block text-xs font-medium mb-2 text-gray-900">Comentario de Primera Validación</label>
               <Textarea v-model="commentText" rows="3" class="w-full mb-2" placeholder="Ingrese su comentario..."
-                :disabled="loading" />
+                :disabled="loading || isAnyRejected" />
+
               <div class="flex gap-2">
                 <Button label="Guardar Comentario" icon="pi pi-save" size="small" severity="info" @click="saveComment"
-                  :loading="loading" :disabled="!commentText.trim()" />
+                  :loading="loading" :disabled="isAnyRejected || !commentText.trim()" />
                 <Button label="Observar" icon="pi pi-exclamation-triangle" size="small" severity="warn"
-                  @click="showObserveDialog()" :disabled="loading" />
+                  @click="showObserveDialog()" :disabled="loading || isAnyRejected" />
+
               </div>
             </div>
           </div>
 
-          <div class="mb-3" v-if="!isValidated && canShowSecondValidation">
+          <div class="mb-3" v-if="!isValidated && canShowSecondValidation" data-export="ignore">
             <div class="bg-gray-50 p-3 rounded-md border">
               <label class="block text-xs font-medium mb-2 text-gray-900">Comentario de Segunda Validación</label>
               <Textarea v-model="comment2Text" rows="3" class="w-full mb-2"
-                placeholder="Ingrese su comentario para la segunda validación..." :disabled="loading" />
+                placeholder="Ingrese su comentario para la segunda validación..."
+                :disabled="loading || isAnyRejected" />
+
               <Button label="Guardar Comentario 2da" icon="pi pi-save" size="small" severity="info"
-                @click="saveComment2" :loading="loading" :disabled="!comment2Text.trim()" />
+                @click="saveComment2" :loading="loading" :disabled="isAnyRejected || !comment2Text.trim()" />
+
             </div>
           </div>
         </div>
@@ -410,19 +428,26 @@
         <template v-if="!isValidated">
           <template v-if="!hasFirstValidationComplete || editableInvestor.approval1_status === 'observed'">
             <Button label="Aprobar" icon="pi pi-check" size="small" severity="success"
-              @click="showConfirmDialog('approve')" :disabled="loading" />
+              @click="showConfirmDialog('approve')" :disabled="loading || isAnyRejected || !hasFirstSavedComment" />
             <Button label="Rechazar" icon="pi pi-times" size="small" severity="danger"
-              @click="showConfirmDialog('reject')" :disabled="loading" />
+              @click="showConfirmDialog('reject')" :disabled="loading || isAnyRejected || !hasFirstSavedComment" />
+
+
+
           </template>
 
           <template v-if="canShowSecondValidation">
             <Button label="Aprobar Final" icon="pi pi-check" size="small" severity="success"
-              @click="showConfirmDialog('approve2')" :disabled="loading" />
+              @click="showConfirmDialog('approve2')" :disabled="loading || isAnyRejected || !hasSecondSavedComment" />
             <Button label="Rechazar Final" icon="pi pi-times" size="small" severity="danger"
-              @click="showConfirmDialog('reject2')" :disabled="loading" />
+              @click="showConfirmDialog('reject2')" :disabled="loading || isAnyRejected || !hasSecondSavedComment" />
+
+
+
           </template>
 
           <div v-if="editableInvestor.approval1_status === 'approved' && spectroEvidences.length === 0"
+            data-export="ignore"
             class="flex items-center gap-2 mr-2 px-2 py-1 bg-yellow-50 rounded border border-yellow-300">
             <i class="pi pi-exclamation-triangle text-yellow-600 text-sm"></i>
             <span class="text-yellow-800 text-xs font-medium">Falta evidencia Espectro para validación final</span>
@@ -434,7 +459,10 @@
           <span class="text-green-700 text-sm font-medium">Inversionista Validado</span>
         </div>
 
+        <Button label="Exportar PDF" icon="pi pi-download" size="small" severity="secondary" outlined
+          :loading="exporting" :disabled="loading || exporting" @click="exportPdf" />
         <Button label="Cerrar" size="small" severity="secondary" text @click="closeDialog" :disabled="loading" />
+
       </div>
     </template>
   </Dialog>
@@ -462,25 +490,26 @@
     </template>
   </Dialog>
 
-  <!-- Dialog de Observación -->
+  <!-- Dialog de Observación (sin textarea para todos los casos) -->
   <Dialog v-model:visible="showObservationDialog" :style="{ width: '440px' }" :header="observeTitle" :modal="true">
     <div class="mb-2">
       <p class="text-gray-700 text-sm mb-3">
-        Al observar, se enviará una notificación por email con el comentario para que el inversionista pueda actualizar
-        sus datos.
+        Al observar, se enviará una notificación por email para que el inversionista actualice sus datos.
       </p>
-      <label class="block text-xs font-medium mb-2">Comentario de Observación *</label>
-      <Textarea v-model="observationComment" rows="3" class="w-full"
-        placeholder="Describa qué necesita ser corregido o actualizado..." required />
-      <small class="text-orange-600">Este comentario será enviado al inversionista por email.</small>
+
+      <Message severity="warn" :closable="false">
+        Se notificará al inversionista que el elemento seleccionado requiere corrección o actualización.
+        No es necesario escribir un comentario.
+      </Message>
     </div>
 
     <template #footer>
       <Button label="Cancelar" size="small" severity="secondary" text @click="closeObserveDialog" :disabled="loading" />
       <Button label="Observar y Notificar" size="small" severity="warn" icon="pi pi-send" @click="executeObservation"
-        :loading="loading" :disabled="!observationComment.trim()" />
+        :loading="loading" :disabled="loading" />
     </template>
   </Dialog>
+
 
   <Toast />
 </template>
@@ -660,6 +689,11 @@ const safeImgOnError = (e: Event) => {
 const fileUploader = ref();
 const pepFileUploader = ref();
 
+// === Exportar a PDF ===
+const exportArea = ref<HTMLElement | null>(null)
+const exporting = ref(false)
+
+
 // Lists
 const spectroEvidences = ref<Evidence[]>([]);
 const pepEvidences = ref<Evidence[]>([]);
@@ -723,6 +757,20 @@ const hasFirstValidationComplete = computed(() => {
 const canShowSecondValidation = computed(() => {
   return editableInvestor.value.approval1_status === 'approved';
 });
+
+const hasFirstSavedComment = computed(() =>
+  !!editableInvestor.value.approval1_comment?.trim()
+);
+
+const hasSecondSavedComment = computed(() =>
+  !!editableInvestor.value.approval2_comment?.trim()
+);
+const isAnyRejected = computed(() =>
+  editableInvestor.value.approval1_status === 'rejected' ||
+  editableInvestor.value.approval2_status === 'rejected'
+);
+
+
 
 // Confirm dialog derived state
 const confirmationTitle = computed(() => {
@@ -861,13 +909,20 @@ const onFileSelect = (event: any) => {
 
 // Actions
 const executeAction = async () => {
+  if (isAnyRejected.value) {
+    toast.add({ severity: 'warn', summary: 'Bloqueado', detail: 'Acciones deshabilitadas porque existe un rechazo.', life: 3000 });
+    return;
+  }
   loading.value = true;
   try {
     let response;
 
     switch (actionType.value) {
       case 'approve':
-        response = await axios.put(`/investor/${editableInvestor.value.id}/aprobar-primera`);
+        response = await axios.put(
+          `/investor/${editableInvestor.value.id}/aprobar-primera`,
+          { approval1_comment: (commentText.value || editableInvestor.value.approval1_comment || '') }
+        );
         break;
       case 'reject':
         response = await axios.put(`/investor/${editableInvestor.value.id}/rechazar-primera`, {
@@ -875,7 +930,10 @@ const executeAction = async () => {
         });
         break;
       case 'approve2':
-        response = await axios.put(`/investor/${editableInvestor.value.id}/aprobar-segunda`);
+        response = await axios.put(
+          `/investor/${editableInvestor.value.id}/aprobar-segunda`,
+          { approval2_comment: (comment2Text.value || editableInvestor.value.approval2_comment || '') }
+        );
         break;
       case 'reject2':
         response = await axios.put(`/investor/${editableInvestor.value.id}/rechazar-segunda`, {
@@ -887,6 +945,20 @@ const executeAction = async () => {
     if (response) {
       toast.add({ severity: 'success', summary: 'Éxito', detail: response.data.message, life: 3000 });
       editableInvestor.value = { ...response.data.data };
+
+      if (actionType.value === 'approve' && commentText.value?.trim()) {
+        editableInvestor.value.approval1_comment = commentText.value.trim();
+      }
+      if (actionType.value === 'reject' && rejectionReason.value?.trim()) {
+        editableInvestor.value.approval1_comment = rejectionReason.value.trim();
+      }
+      if (actionType.value === 'approve2' && comment2Text.value?.trim()) {
+        editableInvestor.value.approval2_comment = comment2Text.value.trim();
+      }
+      if (actionType.value === 'reject2' && rejectionReason.value?.trim()) {
+        editableInvestor.value.approval2_comment = rejectionReason.value.trim();
+      }
+
       showConfirmationDialog.value = false;
       actionType.value = '';
       rejectionReason.value = '';
@@ -903,7 +975,12 @@ const executeAction = async () => {
   }
 };
 
+
 const executeObservation = async () => {
+  if (isAnyRejected.value) {
+    toast.add({ severity: 'warn', summary: 'Bloqueado', detail: 'Acciones deshabilitadas porque existe un rechazo.', life: 3000 });
+    return;
+  }
   loading.value = true;
   try {
     const base = `/investor/${editableInvestor.value.id}`;
@@ -944,6 +1021,7 @@ const executeObservation = async () => {
     loading.value = false;
   }
 };
+
 
 // ====== Evidence lists (load/refresh/delete) ======
 // ====== Evidence lists (load/refresh/delete) ======
@@ -1070,6 +1148,167 @@ const deletePepEvidence = async (evidenceId: number) => {
   }
 };
 
+
+
+/**
+ * Corta un canvas alto en páginas (por altura en px) y devuelve dataURLs (JPEG) por página.
+ */
+function splitCanvasToPages(canvas: HTMLCanvasElement, pageHeightPx: number): string[] {
+  const pages: string[] = []
+  let y = 0
+  const totalHeight = canvas.height
+  const totalWidth = canvas.width
+
+  while (y < totalHeight) {
+    const sliceHeight = Math.min(pageHeightPx, totalHeight - y)
+    const pageCanvas = document.createElement('canvas')
+    pageCanvas.width = totalWidth
+    pageCanvas.height = sliceHeight
+
+    const ctx = pageCanvas.getContext('2d')!
+    ctx.drawImage(canvas, 0, y, totalWidth, sliceHeight, 0, 0, totalWidth, sliceHeight)
+
+    pages.push(pageCanvas.toDataURL('image/jpeg', 0.92))
+    y += sliceHeight
+  }
+  return pages
+}
+
+
+function prepareImagesForCORS(root: HTMLElement) {
+  const imgs = root.querySelectorAll('img')
+  imgs.forEach((img) => {
+    try {
+      if (!img.getAttribute('crossorigin')) {
+        img.setAttribute('crossorigin', 'anonymous')
+      }
+    } catch { }
+  })
+}
+
+
+const exportPdf = async () => {
+  if (!exportArea.value) return
+  exporting.value = true
+  try {
+    const [{ jsPDF }, htmlToImage] = await Promise.all([
+      import('jspdf'),
+      import('html-to-image')
+    ])
+
+    const node = exportArea.value
+
+    // Forzar crossorigin en imágenes del bloque exportado (sigue siendo útil)
+    prepareImagesForCORS?.(node as HTMLElement)
+
+    // Evita recortes por overflow durante el render
+    const prevOverflow = (node as HTMLElement).style.overflow
+      ; (node as HTMLElement).style.overflow = 'visible'
+
+    // Ignorar elementos problemáticos/irrelevantes en la exportación
+    // Ignorar elementos problemáticos/irrelevantes en la exportación
+    const ignoreEl = (el: Element) => {
+      const cls = (el as HTMLElement).classList
+      return !!(
+        cls?.contains('p-fileupload') ||
+        cls?.contains('p-dialog-header-icons') ||
+        (el as HTMLElement).tagName === 'VIDEO' ||
+        (el as HTMLElement).tagName === 'IFRAME'
+      )
+    }
+
+    // Render DOM -> PNG
+    // Render DOM -> PNG
+    const dataUrl = await htmlToImage.toPng(node as HTMLElement, {
+      cacheBust: true,
+      backgroundColor: '#ffffff',
+      pixelRatio: Math.max(2, Math.floor(window.devicePixelRatio || 2)),
+      skipFonts: true,
+      filter: (el) => {
+        if (ignoreEl(el)) return false
+        // Omitir cualquier cosa marcada con data-export="ignore" (o dentro)
+        if ((el as HTMLElement).closest?.('[data-export="ignore"]')) return false
+        // Omitir TODOS los botones (nativos, role=button, PrimeVue .p-button)
+        const he = el as HTMLElement
+        if (
+          he.tagName === 'BUTTON' ||
+          he.closest?.('button') ||
+          he.getAttribute?.('role') === 'button' ||
+          he.classList?.contains('p-button') ||
+          he.closest?.('.p-button')
+        ) {
+          return false
+        }
+        // También ignorar <link rel="stylesheet"> externos
+        if (el.tagName === 'LINK' && (el as HTMLLinkElement).rel === 'stylesheet') return false
+        return true
+      },
+    })
+
+
+
+
+
+      // Restaura overflow
+      ; (node as HTMLElement).style.overflow = prevOverflow
+
+    // DataURL -> <img> -> canvas base
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image()
+      i.crossOrigin = 'anonymous'
+      i.onload = () => resolve(i)
+      i.onerror = reject
+      i.src = dataUrl
+    })
+
+    const baseCanvas = document.createElement('canvas')
+    baseCanvas.width = img.naturalWidth
+    baseCanvas.height = img.naturalHeight
+    const ctx = baseCanvas.getContext('2d')!
+    ctx.drawImage(img, 0, 0)
+
+    // Crear PDF A4 y paginar
+    // Crear PDF A4 y paginar con márgenes
+    const { jsPDF: _ignore } = await import('jspdf')
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'p' })
+
+    const pageWidthMm = pdf.internal.pageSize.getWidth()
+    const pageHeightMm = pdf.internal.pageSize.getHeight()
+    const marginMm = 10 // padding/margen interno del PDF
+
+    // Área utilizable (sin márgenes)
+    const contentWidthMm = pageWidthMm - marginMm * 2
+    const contentHeightMm = pageHeightMm - marginMm * 2
+
+    // Relación px/mm según el ancho utilizable
+    const pxPerMm = baseCanvas.width / contentWidthMm
+    const pageHeightPx = Math.floor(contentHeightMm * pxPerMm)
+
+    // Cortar en páginas y agregar con márgenes
+    const pages = splitCanvasToPages(baseCanvas, pageHeightPx)
+
+    pages.forEach((url, idx) => {
+      if (idx > 0) pdf.addPage()
+      const imgHeightMm = (pageHeightPx * contentWidthMm) / baseCanvas.width
+      pdf.addImage(url, 'JPEG', marginMm, marginMm, contentWidthMm, imgHeightMm)
+    })
+
+
+    const safeName = String(editableInvestor.value?.name || 'detalle').replace(/[^\w\-]+/g, '_')
+    pdf.save(`Validacion_Inversionista_${safeName}.pdf`)
+  } catch (err) {
+    console.error('[exportPdf] Error:', err)
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo exportar el PDF', life: 3000 })
+  } finally {
+    exporting.value = false
+  }
+}
+
+
+
+
+
+
 // Close helpers
 const closeDialog = () => {
   showConfirmationDialog.value = false;
@@ -1097,6 +1336,10 @@ const closeObserveDialog = () => {
 
 // Comments
 const saveComment = async () => {
+  if (isAnyRejected.value) {
+    toast.add({ severity: 'warn', summary: 'Bloqueado', detail: 'Acciones deshabilitadas porque existe un rechazo.', life: 3000 });
+    return;
+  }
   loading.value = true;
   try {
     const response = await axios.put(`/investor/${editableInvestor.value.id}/comentar-primera`, {
@@ -1104,6 +1347,7 @@ const saveComment = async () => {
     });
     toast.add({ severity: 'success', summary: 'Éxito', detail: response.data.message, life: 3000 });
     editableInvestor.value = { ...response.data.data };
+    editableInvestor.value.approval1_comment = editableInvestor.value.approval1_comment || commentText.value.trim();
   } catch (error: any) {
     toast.add({
       severity: 'error',
@@ -1116,7 +1360,12 @@ const saveComment = async () => {
   }
 };
 
+
 const saveComment2 = async () => {
+  if (isAnyRejected.value) {
+    toast.add({ severity: 'warn', summary: 'Bloqueado', detail: 'Acciones deshabilitadas porque existe un rechazo.', life: 3000 });
+    return;
+  }
   loading.value = true;
   try {
     const response = await axios.put(`/investor/${editableInvestor.value.id}/comentar-segunda`, {
@@ -1124,6 +1373,7 @@ const saveComment2 = async () => {
     });
     toast.add({ severity: 'success', summary: 'Éxito', detail: response.data.message, life: 3000 });
     editableInvestor.value = { ...response.data.data };
+    editableInvestor.value.approval2_comment = editableInvestor.value.approval2_comment || comment2Text.value.trim();
   } catch (error: any) {
     toast.add({
       severity: 'error',
@@ -1135,6 +1385,7 @@ const saveComment2 = async () => {
     loading.value = false;
   }
 };
+
 
 const viewDocument = (url: string) => window.open(url, '_blank');
 </script>

@@ -46,13 +46,6 @@
                 <DataTable :value="refundsData" class="p-datatable-sm" :paginator="refundsData.length > 10" :rows="10"
                     :rowsPerPageOptions="[5, 10, 20, 50]" scrollable scrollHeight="500px" sortMode="multiple">
 
-                    <Column field="deposit_reembloso.nro_operation" header="Nº Operación" sortable
-                        style="min-width: 10rem">
-                        <template #body="slotProps">
-                            {{ slotProps.data.deposit_reembloso?.nro_operation || 'N/A' }}
-                        </template>
-                    </Column>
-
                     <Column field="currency" header="Moneda" sortable style="min-width: 6rem">
                         <template #body="slotProps">
                             <Tag :value="slotProps.data.currency"
@@ -79,44 +72,6 @@
                             {{ formatDate(slotProps.data.due_date) }}
                         </template>
                     </Column>
-
-                    <Column header="Comprobante" style="min-width: 10rem">
-                        <template #body="slotProps">
-                            <Button v-if="slotProps.data.deposit_reembloso?.resource_path" icon="pi pi-eye"
-                                severity="info" size="small" text v-tooltip.top="'Ver comprobante'"
-                                @click="viewReceipt(slotProps.data.deposit_reembloso.resource_path)" />
-                            <span v-else class="text-gray-400 text-sm">Sin comprobante</span>
-                        </template>
-                    </Column>
-
-                    <Column header="Cuenta Bancaria" style="min-width: 15rem">
-                        <template #body="slotProps">
-                            <div v-if="slotProps.data.deposit_reembloso?.bank_account" class="text-sm">
-                                <div class="font-medium text-gray-700">
-                                    {{ slotProps.data.deposit_reembloso.bank_account.bank_name }}
-                                </div>
-                                <div class="text-gray-600">
-                                    {{ maskAccountNumber(slotProps.data.deposit_reembloso.bank_account.cc) }}
-                                    ({{ slotProps.data.deposit_reembloso.bank_account.alias }})
-                                </div>
-                                <div class="text-xs text-gray-500">
-                                    {{ slotProps.data.deposit_reembloso.bank_account.type.toUpperCase() }}
-                                </div>
-                            </div>
-                            <span v-else class="text-gray-400 text-sm">Sin cuenta</span>
-                        </template>
-                    </Column>
-
-                    <Column header="">
-                        <template #body="slotProps">
-                            <div class="flex gap-1">
-                                <Button icon="pi pi-check" severity="success" size="small" text
-                                    v-tooltip.top="'Confirmar reembolso'" @click="confirmRefund(slotProps.data)" />
-                                <Button icon="pi pi-times" severity="danger" size="small" text
-                                    v-tooltip.top="'Rechazar reembolso'" @click="rejectRefund(slotProps.data)" />
-                            </div>
-                        </template>
-                    </Column>
                 </DataTable>
             </div>
         </div>
@@ -138,64 +93,6 @@
             </div>
         </template>
     </Dialog>
-
-    <!-- Dialog de Confirmación de Reembolso -->
-    <Dialog v-model:visible="confirmRefundDialog" modal :closable="false" style="width: 600px;" class="mx-4">
-        <template #header>
-            <div class="flex items-center justify-between w-full">
-                <span class="text-lg font-semibold">Confirmar Reembolso</span>
-                <Button icon="pi pi-times" severity="secondary" text rounded size="small"
-                    @click="confirmRefundDialog = false" v-tooltip.left="'Cerrar'" />
-            </div>
-        </template>
-
-        <div v-if="selectedRefund" class="space-y-4">
-            <div class="flex items-start gap-3">
-                <i class="pi pi-check-circle text-green-500 text-2xl"></i>
-                <div class="flex-1">
-                    <p class="mb-3">
-                        ¿Está seguro que desea confirmar el reembolso por
-                        <strong>{{ formatCurrency(selectedRefund.amount, selectedRefund.currency) }}</strong>?
-                    </p>
-                    <div class="bg-gray-50 p-4 rounded">
-                        <div class="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                                <span class="text-gray-600">Nº Operación:</span>
-                                <div class="font-medium">{{ selectedRefund.deposit_reembloso?.nro_operation || 'N/A' }}
-                                </div>
-                            </div>
-                            <div>
-                                <span class="text-gray-600">Factura:</span>
-                                <div class="font-medium">{{ selectedRefund.invoice?.codigo || 'N/A' }}</div>
-                            </div>
-                            <div>
-                                <span class="text-gray-600">Fecha Vencimiento:</span>
-                                <div class="font-medium">{{ formatDate(selectedRefund.due_date) }}</div>
-                            </div>
-                            <div>
-                                <span class="text-gray-600">Banco:</span>
-                                <div class="font-medium">{{ selectedRefund.deposit_reembloso?.bank_account?.bank_name ||
-                                    'N/A' }}</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <Message severity="info" :closable="false">
-                <span class="text-sm">
-                    Esta acción no enviará ninguna petición por ahora, es solo para demostración.
-                </span>
-            </Message>
-        </div>
-
-        <template #footer>
-            <div class="flex justify-end gap-2">
-                <Button label="Cancelar" severity="secondary" text @click="confirmRefundDialog = false" />
-                <Button label="Confirmar Reembolso" severity="success" @click="processRefundConfirmation" />
-            </div>
-        </template>
-    </Dialog>
 </template>
 
 <script setup>
@@ -206,7 +103,6 @@ import Button from 'primevue/button';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Tag from 'primevue/tag';
-import Message from 'primevue/message';
 import { useToast } from 'primevue/usetoast';
 
 const props = defineProps({
@@ -226,8 +122,6 @@ const toast = useToast();
 const loading = ref(false);
 const refundsData = ref([]);
 const investorData = ref(null);
-const confirmRefundDialog = ref(false);
-const selectedRefund = ref(null);
 
 const dialogVisible = computed({
     get: () => props.modelValue,
@@ -251,45 +145,6 @@ const formatDate = (dateString) => {
         month: '2-digit',
         day: '2-digit'
     });
-};
-
-const maskAccountNumber = (accountNumber) => {
-    if (!accountNumber) return '';
-    const str = accountNumber.toString();
-    if (str.length <= 4) return str;
-    return str.slice(0, 4) + '*'.repeat(Math.max(0, str.length - 8)) + str.slice(-4);
-};
-
-const confirmRefund = (refund) => {
-    selectedRefund.value = refund;
-    confirmRefundDialog.value = true;
-};
-
-const rejectRefund = (refund) => {
-    toast.add({
-        severity: 'warn',
-        summary: 'Acción Simulada',
-        detail: `Reembolso rechazado para ${formatCurrency(refund.amount, refund.currency)}`,
-        life: 4000
-    });
-};
-
-const processRefundConfirmation = () => {
-    toast.add({
-        severity: 'success',
-        summary: 'Confirmación Simulada',
-        detail: `Reembolso confirmado por ${formatCurrency(selectedRefund.value.amount, selectedRefund.value.currency)}`,
-        life: 4000
-    });
-
-    confirmRefundDialog.value = false;
-    selectedRefund.value = null;
-};
-
-const viewReceipt = (resourcePath) => {
-    if (resourcePath) {
-        window.open(resourcePath, '_blank');
-    }
 };
 
 const loadRefundsData = async () => {

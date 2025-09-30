@@ -190,7 +190,7 @@ function guardarPost() {
     formData.append('imagenes[]', img)
   })
 
-  axios.post('/api/blog/guardar', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+  axios.post('/blog/guardar', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
     .then(() => {
       toast.add({ severity: 'success', summary: 'Publicación registrada', detail: 'Datos guardados correctamente', life: 3000 })
       cancelar()

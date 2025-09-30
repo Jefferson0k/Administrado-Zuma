@@ -20,6 +20,7 @@ return new class extends Migration
                 'withdraw',
                 'investment',
                 'tax',
+                'refund',
                 'exchange_up',
                 'exchange_down',
                 'fixed_rate_disbursement',
