@@ -55,385 +55,350 @@
             </div>
           </div>
           <DataTable :value="extractedData" :paginator="true" :rows="10" :rowsPerPageOptions="[5, 10, 20, 50]"
-  paginatorTemplate="RowsPerPageDropdown FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink"
-  currentPageReportTemplate="{first} a {last} de {totalRecords} registros" tableStyle="min-width: 90rem"
-  class="p-datatable-sm" stripedRows>
+            paginatorTemplate="RowsPerPageDropdown FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink"
+            currentPageReportTemplate="{first} a {last} de {totalRecords} registros" tableStyle="min-width: 90rem"
+            class="p-datatable-sm" stripedRows>
   
-  <template #header>
-    <div class="flex flex-wrap gap-2 items-center justify-between">
-      <h4 class="m-0">
-        Validación de Pagos
-        <Tag severity="contrast" :value="extractedData.length" />
-      </h4>
-      <div class="flex flex-wrap gap-2">
-        <IconField>
-          <InputIcon>
-            <i class="pi pi-search" />
-          </InputIcon>
-          <InputText v-model="globalFilterValue" @input="onGlobalSearch" placeholder="Buscar..." />
-        </IconField>
-      </div>
-    </div>
-  </template>
+            <template #header>
+              <div class="flex flex-wrap gap-2 items-center justify-between">
+                <h4 class="m-0">
+                  Validación de Pagos
+                  <Tag severity="contrast" :value="extractedData.length" />
+                </h4>
+                <div class="flex flex-wrap gap-2">
+                  <IconField>
+                    <InputIcon>
+                      <i class="pi pi-search" />
+                    </InputIcon>
+                    <InputText v-model="globalFilterValue" @input="onGlobalSearch" placeholder="Buscar..." />
+                  </IconField>
+                </div>
+              </div>
+            </template>
 
-  <!-- Columna Nro. Préstamo -->
-  <Column field="loan_number" header="Nro. Prestamo" sortable style="min-width: 12rem">
-    <template #body="slotProps">
-      <div class="flex items-center gap-3">
-        <!-- Icono grande de validación -->
-        <div class="flex-shrink-0">
-          <div v-if="getFieldValidation(slotProps.data, 'loan_number') === 'success'"
-               class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center"
-               title="✓ Préstamo coincide">
-            <i class="pi pi-check text-green-600 text-lg font-bold"></i>
-          </div>
-          <div v-else-if="getFieldValidation(slotProps.data, 'loan_number') === 'error'"
-               class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center"
-               title="✗ Préstamo no coincide">
-            <i class="pi pi-times text-red-600 text-lg font-bold"></i>
-          </div>
-          <div v-else-if="getFieldValidation(slotProps.data, 'loan_number') === 'warning'"
-               class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center"
-               title="⚠ Préstamo no encontrado">
-            <i class="pi pi-exclamation-triangle text-yellow-600 text-lg"></i>
-          </div>
-          <div v-else
-               class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"
-               title="? Estado desconocido">
-            <i class="pi pi-question text-gray-500 text-lg"></i>
-          </div>
-        </div>
-        <span class="font-mono">{{ slotProps.data.loan_number }}</span>
-      </div>
-    </template>
-  </Column>
+            <!-- Columna Nro. Préstamo -->
+            <Column field="NRO PRESTAMO" header="Nro. Préstamo" sortable style="min-width: 12rem">
+              <template #body="slotProps">
+                <div class="flex items-center gap-3">
+                  <div class="flex-shrink-0">
+                    <div v-if="getFieldValidation(slotProps.data, 'loan_number') === 'success'"
+                         class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center"
+                         title="✓ Préstamo coincide">
+                      <i class="pi pi-check text-green-600 text-lg font-bold"></i>
+                    </div>
+                    <div v-else-if="getFieldValidation(slotProps.data, 'loan_number') === 'error'"
+                         class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center"
+                         title="✗ Préstamo no coincide">
+                      <i class="pi pi-times text-red-600 text-lg font-bold"></i>
+                    </div>
+                    <div v-else-if="getFieldValidation(slotProps.data, 'loan_number') === 'warning'"
+                         class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center"
+                         title="⚠ Préstamo no encontrado">
+                      <i class="pi pi-exclamation-triangle text-yellow-600 text-lg"></i>
+                    </div>
+                    <div v-else
+                         class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"
+                         title="? Estado desconocido">
+                      <i class="pi pi-question text-gray-500 text-lg"></i>
+                    </div>
+                  </div>
+                  <span class="font-mono">{{ slotProps.data['NRO PRESTAMO'] }}</span>
+                </div>
+              </template>
+            </Column>
 
-  <!-- Columna RUC Proveedor -->
-  <Column field="document" header="RUC Proveedor" sortable style="min-width: 12rem">
-    <template #body="slotProps">
-      <div class="flex items-center gap-3">
-        <div class="flex-shrink-0">
-          <div v-if="getFieldValidation(slotProps.data, 'document') === 'success'"
-               class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center"
-               title="✓ RUC Proveedor coincide">
-            <i class="pi pi-check text-green-600 text-lg font-bold"></i>
-          </div>
-          <div v-else-if="getFieldValidation(slotProps.data, 'document') === 'error'"
-               class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center"
-               title="✗ RUC Proveedor no coincide">
-            <i class="pi pi-times text-red-600 text-lg font-bold"></i>
-          </div>
-          <div v-else-if="getFieldValidation(slotProps.data, 'document') === 'warning'"
-               class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center"
-               title="⚠ Empresa no registrada">
-            <i class="pi pi-exclamation-triangle text-yellow-600 text-lg"></i>
-          </div>
-          <div v-else
-               class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"
-               title="? Estado desconocido">
-            <i class="pi pi-question text-gray-500 text-lg"></i>
-          </div>
-        </div>
-        <span class="font-mono">{{ slotProps.data.document }}</span>
-      </div>
-    </template>
-  </Column>
+            <!-- Columna RUC Proveedor -->
+            <Column field="RUC PROVEEDOR" header="RUC Proveedor" sortable style="min-width: 12rem">
+              <template #body="slotProps">
+                <div class="flex items-center gap-3">
+                  <div class="flex-shrink-0">
+                    <div v-if="getFieldValidation(slotProps.data, 'RUC_proveedor') === 'success'"
+                         class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center"
+                         title="✓ RUC Proveedor coincide">
+                      <i class="pi pi-check text-green-600 text-lg font-bold"></i>
+                    </div>
+                    <div v-else-if="getFieldValidation(slotProps.data, 'RUC_proveedor') === 'error'"
+                         class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center"
+                         title="✗ RUC Proveedor no coincide">
+                      <i class="pi pi-times text-red-600 text-lg font-bold"></i>
+                    </div>
+                    <div v-else-if="getFieldValidation(slotProps.data, 'RUC_proveedor') === 'warning'"
+                         class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center"
+                         title="⚠ Proveedor no encontrado">
+                      <i class="pi pi-exclamation-triangle text-yellow-600 text-lg"></i>
+                    </div>
+                    <div v-else
+                         class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"
+                         title="? Estado desconocido">
+                      <i class="pi pi-question text-gray-500 text-lg"></i>
+                    </div>
+                  </div>
+                  <span class="font-mono">{{ slotProps.data['RUC PROVEEDOR'] }}</span>
+                </div>
+              </template>
+            </Column>
 
-  <!-- Columna Nro. Factura -->
-  <Column field="invoice_number" header="Nro. Factura" sortable style="min-width: 12rem">
-    <template #body="slotProps">
-      <div class="flex items-center gap-3">
-        <div class="flex-shrink-0">
-          <div v-if="getFieldValidation(slotProps.data, 'invoice_number') === 'success'"
-               class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center"
-               title="✓ Factura coincide">
-            <i class="pi pi-check text-green-600 text-lg font-bold"></i>
-          </div>
-          <div v-else-if="getFieldValidation(slotProps.data, 'invoice_number') === 'error'"
-               class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center"
-               title="✗ Factura no coincide">
-            <i class="pi pi-times text-red-600 text-lg font-bold"></i>
-          </div>
-          <div v-else-if="getFieldValidation(slotProps.data, 'invoice_number') === 'warning'"
-               class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center"
-               title="⚠ Factura no encontrada">
-            <i class="pi pi-exclamation-triangle text-yellow-600 text-lg"></i>
-          </div>
-          <div v-else
-               class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"
-               title="? Estado desconocido">
-            <i class="pi pi-question text-gray-500 text-lg"></i>
-          </div>
-        </div>
-        <span class="font-mono">{{ slotProps.data.invoice_number }}</span>
-      </div>
-    </template>
-  </Column>
+            <!-- Columna Nro. Factura -->
+            <Column field="NRO FACTURA" header="Nro. Factura" sortable style="min-width: 12rem">
+              <template #body="slotProps">
+                <div class="flex items-center gap-3">
+                  <div class="flex-shrink-0">
+                    <div v-if="getFieldValidation(slotProps.data, 'invoice_number') === 'success'"
+                         class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center"
+                         title="✓ Factura coincide">
+                      <i class="pi pi-check text-green-600 text-lg font-bold"></i>
+                    </div>
+                    <div v-else-if="getFieldValidation(slotProps.data, 'invoice_number') === 'error'"
+                         class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center"
+                         title="✗ Factura no coincide">
+                      <i class="pi pi-times text-red-600 text-lg font-bold"></i>
+                    </div>
+                    <div v-else-if="getFieldValidation(slotProps.data, 'invoice_number') === 'warning'"
+                         class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center"
+                         title="⚠ Factura no encontrada">
+                      <i class="pi pi-exclamation-triangle text-yellow-600 text-lg"></i>
+                    </div>
+                    <div v-else
+                         class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"
+                         title="? Estado desconocido">
+                      <i class="pi pi-question text-gray-500 text-lg"></i>
+                    </div>
+                  </div>
+                  <span class="font-mono">{{ slotProps.data['NRO FACTURA'] }}</span>
+                </div>
+              </template>
+            </Column>
 
-  <!-- Columna RUC Cliente -->
-  <Column field="RUC_client" header="RUC Cliente" sortable style="min-width: 12rem">
-    <template #body="slotProps">
-      <div class="flex items-center gap-3">
-        <div class="flex-shrink-0">
-          <div v-if="getFieldValidation(slotProps.data, 'RUC_client') === 'success'"
-               class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center"
-               title="✓ RUC Cliente coincide">
-            <i class="pi pi-check text-green-600 text-lg font-bold"></i>
-          </div>
-          <div v-else-if="getFieldValidation(slotProps.data, 'RUC_client') === 'error'"
-               class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center"
-               title="✗ RUC Cliente no coincide">
-            <i class="pi pi-times text-red-600 text-lg font-bold"></i>
-          </div>
-          <div v-else-if="getFieldValidation(slotProps.data, 'RUC_client') === 'warning'"
-               class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center"
-               title="⚠ Cliente no encontrado">
-            <i class="pi pi-exclamation-triangle text-yellow-600 text-lg"></i>
-          </div>
-          <div v-else
-               class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"
-               title="? Estado desconocido">
-            <i class="pi pi-question text-gray-500 text-lg"></i>
-          </div>
-        </div>
-        <span class="font-mono">{{ slotProps.data.RUC_client }}</span>
-      </div>
-    </template>
-  </Column>
+            <!-- Columna RUC Aceptante -->
+            <Column field="RUC ACEPTANTE" header="RUC Aceptante" sortable style="min-width: 12rem">
+              <template #body="slotProps">
+                <div class="flex items-center gap-3">
+                  <div class="flex-shrink-0">
+                    <div v-if="getFieldValidation(slotProps.data, 'RUC_aceptante') === 'success'"
+                         class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center"
+                         title="✓ RUC Aceptante coincide">
+                      <i class="pi pi-check text-green-600 text-lg font-bold"></i>
+                    </div>
+                    <div v-else-if="getFieldValidation(slotProps.data, 'RUC_aceptante') === 'error'"
+                         class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center"
+                         title="✗ RUC Aceptante no coincide">
+                      <i class="pi pi-times text-red-600 text-lg font-bold"></i>
+                    </div>
+                    <div v-else-if="getFieldValidation(slotProps.data, 'RUC_aceptante') === 'warning'"
+                         class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center"
+                         title="⚠ Aceptante no encontrado">
+                      <i class="pi pi-exclamation-triangle text-yellow-600 text-lg"></i>
+                    </div>
+                    <div v-else
+                         class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"
+                         title="? Estado desconocido">
+                      <i class="pi pi-question text-gray-500 text-lg"></i>
+                    </div>
+                  </div>
+                  <span class="font-mono">{{ slotProps.data['RUC ACEPTANTE'] }}</span>
+                </div>
+              </template>
+            </Column>
 
-  <!-- Columna Moneda -->
-  <Column field="currency" header="Moneda" sortable style="min-width: 8rem">
-    <template #body="slotProps">
-      <div class="flex items-center gap-3">
-        <div class="flex-shrink-0">
-          <div v-if="getFieldValidation(slotProps.data, 'currency') === 'success'"
-               class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center"
-               title="✓ Moneda coincide">
-            <i class="pi pi-check text-green-600 text-lg font-bold"></i>
-          </div>
-          <div v-else-if="getFieldValidation(slotProps.data, 'currency') === 'error'"
-               class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center"
-               title="✗ Moneda no coincide">
-            <i class="pi pi-times text-red-600 text-lg font-bold"></i>
-          </div>
-          <div v-else-if="getFieldValidation(slotProps.data, 'currency') === 'warning'"
-               class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center"
-               title="⚠ Moneda no validada">
-            <i class="pi pi-exclamation-triangle text-yellow-600 text-lg"></i>
-          </div>
-          <div v-else
-               class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"
-               title="? Estado desconocido">
-            <i class="pi pi-question text-gray-500 text-lg"></i>
-          </div>
-        </div>
-        <Tag :value="slotProps.data.currency"
-          :severity="slotProps.data.currency === 'PEN' ? 'info' : 'warning'" />
-      </div>
-    </template>
-  </Column>
+            <!-- Columna Moneda -->
+            <Column field="MONEDA" header="Moneda" sortable style="min-width: 8rem">
+              <template #body="slotProps">
+                <div class="flex items-center gap-3">
+                  <div class="flex-shrink-0">
+                    <div v-if="getFieldValidation(slotProps.data, 'currency') === 'success'"
+                         class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center"
+                         title="✓ Moneda coincide">
+                      <i class="pi pi-check text-green-600 text-lg font-bold"></i>
+                    </div>
+                    <div v-else-if="getFieldValidation(slotProps.data, 'currency') === 'error'"
+                         class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center"
+                         title="✗ Moneda no coincide">
+                      <i class="pi pi-times text-red-600 text-lg font-bold"></i>
+                    </div>
+                    <div v-else-if="getFieldValidation(slotProps.data, 'currency') === 'warning'"
+                         class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center"
+                         title="⚠ Moneda no validada">
+                      <i class="pi pi-exclamation-triangle text-yellow-600 text-lg"></i>
+                    </div>
+                    <div v-else
+                         class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"
+                         title="? Estado desconocido">
+                      <i class="pi pi-question text-gray-500 text-lg"></i>
+                    </div>
+                  </div>
+                  <Tag :value="slotProps.data['MONEDA']"
+                    :severity="getCurrencySeverity(slotProps.data['MONEDA'])" />
+                </div>
+              </template>
+            </Column>
 
-  <!-- Columna Monto -->
-  <Column field="amount" header="Monto" sortable style="min-width: 12rem">
-    <template #body="slotProps">
-      <div class="flex items-center gap-3">
-        <div class="flex-shrink-0">
-          <div v-if="getFieldValidation(slotProps.data, 'amount') === 'success'"
-               class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center"
-               title="✓ Monto coincide">
-            <i class="pi pi-check text-green-600 text-lg font-bold"></i>
-          </div>
-          <div v-else-if="getFieldValidation(slotProps.data, 'amount') === 'error'"
-               class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center"
-               title="✗ Monto no coincide">
-            <i class="pi pi-times text-red-600 text-lg font-bold"></i>
-          </div>
-          <div v-else-if="getFieldValidation(slotProps.data, 'amount') === 'warning'"
-               class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center"
-               title="⚠ Monto no validado">
-            <i class="pi pi-exclamation-triangle text-yellow-600 text-lg"></i>
-          </div>
-          <div v-else
-               class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"
-               title="? Estado desconocido">
-            <i class="pi pi-question text-gray-500 text-lg"></i>
-          </div>
-        </div>
-        <span class="font-mono font-semibold">
-          {{ formatCurrency(slotProps.data.amount, slotProps.data.currency) }}
-        </span>
-      </div>
-    </template>
-  </Column>
+            <!-- Columna Monto Documento -->
+            <Column field="MONTO DOCUMENTO" header="Monto Documento" sortable style="min-width: 12rem">
+              <template #body="slotProps">
+                <div class="flex items-center gap-3">
+                  <div class="flex-shrink-0">
+                    <div v-if="getFieldValidation(slotProps.data, 'monto_documento') === 'success'"
+                         class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center"
+                         title="✓ Monto coincide">
+                      <i class="pi pi-check text-green-600 text-lg font-bold"></i>
+                    </div>
+                    <div v-else-if="getFieldValidation(slotProps.data, 'monto_documento') === 'error'"
+                         class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center"
+                         title="✗ Monto no coincide">
+                      <i class="pi pi-times text-red-600 text-lg font-bold"></i>
+                    </div>
+                    <div v-else-if="getFieldValidation(slotProps.data, 'monto_documento') === 'warning'"
+                         class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center"
+                         title="⚠ Monto no validado">
+                      <i class="pi pi-exclamation-triangle text-yellow-600 text-lg"></i>
+                    </div>
+                    <div v-else
+                         class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"
+                         title="? Estado desconocido">
+                      <i class="pi pi-question text-gray-500 text-lg"></i>
+                    </div>
+                  </div>
+                  <span class="font-mono font-semibold">
+                    {{ formatCurrency(slotProps.data['MONTO DOCUMENTO'], slotProps.data['MONEDA']) }}
+                  </span>
+                </div>
+              </template>
+            </Column>
 
-  <!-- Columna Fecha Estimada -->
-  <Column field="estimated_pay_date" header="Fecha Estimada" sortable style="min-width: 12rem">
-    <template #body="slotProps">
-      <div class="flex items-center gap-3">
-        <div class="flex-shrink-0">
-          <div v-if="getFieldValidation(slotProps.data, 'estimated_pay_date') === 'success'"
-               class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center"
-               title="✓ Fecha coincide">
-            <i class="pi pi-check text-green-600 text-lg font-bold"></i>
-          </div>
-          <div v-else-if="getFieldValidation(slotProps.data, 'estimated_pay_date') === 'error'"
-               class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center"
-               title="✗ Fecha no coincide">
-            <i class="pi pi-times text-red-600 text-lg font-bold"></i>
-          </div>
-          <div v-else-if="getFieldValidation(slotProps.data, 'estimated_pay_date') === 'warning'"
-               class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center"
-               title="⚠ Fecha no validada">
-            <i class="pi pi-exclamation-triangle text-yellow-600 text-lg"></i>
-          </div>
-          <div v-else
-               class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"
-               title="? Estado desconocido">
-            <i class="pi pi-question text-gray-500 text-lg"></i>
-          </div>
-        </div>
-        <span class="font-mono text-sm">{{ slotProps.data.estimated_pay_date }}</span>
-      </div>
-    </template>
-  </Column>
+            <!-- Columna Fecha Pago -->
+            <Column field="FECHA PAGO" header="Fecha Pago" sortable style="min-width: 12rem">
+              <template #body="slotProps">
+                <div class="flex items-center gap-3">
+                  <div class="flex-shrink-0">
+                    <div v-if="getFieldValidation(slotProps.data, 'fecha_pago') === 'success'"
+                         class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center"
+                         title="✓ Fecha coincide">
+                      <i class="pi pi-check text-green-600 text-lg font-bold"></i>
+                    </div>
+                    <div v-else-if="getFieldValidation(slotProps.data, 'fecha_pago') === 'error'"
+                         class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center"
+                         title="✗ Fecha no coincide">
+                      <i class="pi pi-times text-red-600 text-lg font-bold"></i>
+                    </div>
+                    <div v-else-if="getFieldValidation(slotProps.data, 'fecha_pago') === 'warning'"
+                         class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center"
+                         title="⚠ Fecha no validada">
+                      <i class="pi pi-exclamation-triangle text-yellow-600 text-lg"></i>
+                    </div>
+                    <div v-else
+                         class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"
+                         title="? Estado desconocido">
+                      <i class="pi pi-question text-gray-500 text-lg"></i>
+                    </div>
+                  </div>
+                  <span class="font-mono text-sm">{{ slotProps.data['FECHA PAGO'] }}</span>
+                </div>
+              </template>
+            </Column>
 
-  <!-- Columna Monto Pago (sin validación, solo muestra el valor) -->
-  <Column field="saldo" header="Monto Pago" sortable style="min-width: 12rem">
-    <template #body="slotProps">
-      <span class="font-mono text-blue-600 font-medium">
-        {{ formatCurrency(slotProps.data.saldo, slotProps.data.currency) }}
-      </span>
-    </template>
-  </Column>
+            <!-- Columna Monto Pagado -->
+            <Column field="MONTO PAGADO" header="Monto Pagado" sortable style="min-width: 12rem">
+              <template #body="slotProps">
+                <span class="font-mono text-blue-600 font-medium">
+                  {{ formatCurrency(slotProps.data['MONTO PAGADO'], slotProps.data['MONEDA']) }}
+                </span>
+              </template>
+            </Column>
 
-  <!-- Columna Tipo Pago (sin validación, solo muestra el valor) -->
-  <Column field="tipo_pago" header="T. Pago" sortable style="min-width: 12rem">
-    <template #body="slotProps">
-      <Tag :value="slotProps.data.tipo_pago" 
-           :severity="getTipoPagoSeverity(slotProps.data.tipo_pago)" />
-    </template>
-  </Column>
+            <!-- Columna Tipo Pago -->
+            <Column field="tipo_pago" header="T. Pago" sortable style="min-width: 12rem">
+              <template #body="slotProps">
+                <Tag :value="slotProps.data.tipo_pago" 
+                     :severity="getTipoPagoSeverity(slotProps.data.tipo_pago)" />
+              </template>
+            </Column>
 
-  <!-- Columna Estado -->
-  <Column field="status" header="Estado" sortable style="min-width: 10rem">
-    <template #body="slotProps">
-      <div class="flex items-center gap-3">
-        <div class="flex-shrink-0">
-          <div v-if="getFieldValidation(slotProps.data, 'status') === 'success'"
-               class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center"
-               title="✓ Estado coincide">
-            <i class="pi pi-check text-green-600 text-lg font-bold"></i>
-          </div>
-          <div v-else-if="getFieldValidation(slotProps.data, 'status') === 'error'"
-               class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center"
-               title="✗ Estado no coincide">
-            <i class="pi pi-times text-red-600 text-lg font-bold"></i>
-          </div>
-          <div v-else-if="getFieldValidation(slotProps.data, 'status') === 'warning'"
-               class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center"
-               title="⚠ Estado no validado">
-            <i class="pi pi-exclamation-triangle text-yellow-600 text-lg"></i>
-          </div>
-          <div v-else
-               class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"
-               title="? Estado desconocido">
-            <i class="pi pi-question text-gray-500 text-lg"></i>
-          </div>
-        </div>
-        <Tag :value="slotProps.data.status"
-          :severity="getStatusSeverity(slotProps.data.status)" />
-      </div>
-    </template>
-  </Column>
+            <!-- Columna Estado General -->
+            <Column field="estado" header="Resultado General" sortable style="min-width: 12rem">
+              <template #body="slotProps">
+                <div class="flex items-center justify-center">
+                  <div class="flex items-center gap-2">
+                    <div v-if="slotProps.data.estado === 'Coincide'"
+                         class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center shadow-md"
+                         title="✓ Todos los campos coinciden">
+                      <i class="pi pi-check text-white text-xl font-bold"></i>
+                    </div>
+                    <div v-else-if="slotProps.data.estado === 'No coincide'"
+                         class="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center shadow-md"
+                         title="✗ Algunos campos no coinciden">
+                      <i class="pi pi-times text-white text-xl font-bold"></i>
+                    </div>
+                    <div v-else-if="slotProps.data.estado === 'Procesado'"
+                         class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center shadow-md"
+                         title="✓✓ Ya procesado">
+                      <i class="pi pi-verified text-white text-lg"></i>
+                    </div>
+                    <div v-else
+                         class="w-10 h-10 bg-gray-400 rounded-full flex items-center justify-center shadow-md"
+                         title="? Estado desconocido">
+                      <i class="pi pi-question text-white text-lg"></i>
+                    </div>
+                    
+                    <span class="font-medium text-sm"
+                          :class="{
+                            'text-green-700': slotProps.data.estado === 'Coincide',
+                            'text-red-700': slotProps.data.estado === 'No coincide',
+                            'text-blue-700': slotProps.data.estado === 'Procesado',
+                            'text-gray-600': !['Coincide', 'No coincide', 'Procesado'].includes(slotProps.data.estado)
+                          }">
+                      {{ slotProps.data.estado }}
+                    </span>
+                  </div>
+                </div>
+              </template>
+            </Column>
 
-  <!-- Columna Resultado General - MEJORADA -->
-  <Column field="estado" header="Resultado General" sortable style="min-width: 12rem">
-    <template #body="slotProps">
-      <div class="flex items-center justify-center">
-        <!-- Icono grande del resultado general -->
-        <div class="flex items-center gap-2">
-          <div v-if="slotProps.data.estado === 'Coincide'"
-               class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center shadow-md"
-               title="✓ Todos los campos coinciden">
-            <i class="pi pi-check text-white text-xl font-bold"></i>
-          </div>
-          <div v-else-if="slotProps.data.estado === 'No coincide'"
-               class="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center shadow-md"
-               title="✗ Algunos campos no coinciden">
-            <i class="pi pi-times text-white text-xl font-bold"></i>
-          </div>
-          <div v-else-if="slotProps.data.estado === 'Procesado'"
-               class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center shadow-md"
-               title="✓✓ Ya procesado">
-            <i class="pi pi-verified text-white text-lg"></i>
-          </div>
-          <div v-else
-               class="w-10 h-10 bg-gray-400 rounded-full flex items-center justify-center shadow-md"
-               title="? Estado desconocido">
-            <i class="pi pi-question text-white text-lg"></i>
-          </div>
-          
-          <!-- Texto del estado -->
-          <span class="font-medium text-sm"
-                :class="{
-                  'text-green-700': slotProps.data.estado === 'Coincide',
-                  'text-red-700': slotProps.data.estado === 'No coincide',
-                  'text-blue-700': slotProps.data.estado === 'Procesado',
-                  'text-gray-600': !['Coincide', 'No coincide', 'Procesado'].includes(slotProps.data.estado)
-                }">
-            {{ slotProps.data.estado }}
-          </span>
-        </div>
-      </div>
-    </template>
-  </Column>
-
-  <!-- Columna Acciones - sin cambios -->
-  <Column header="Acciones" style="min-width: 12rem">
-    <template #body="slotProps">
-      <div class="flex gap-2 justify-center">
-        <Button 
-          v-if="slotProps.data.estado === 'Coincide'" 
-          icon="pi pi-credit-card" 
-          severity="success" 
-          text 
-          rounded 
-          @click="realizarPago(slotProps.data)"
-          v-tooltip="'Realizar pago'" 
-        />
-        
-        <Button 
-          v-else-if="slotProps.data.estado === 'Procesado'" 
-          icon="pi pi-check-circle" 
-          severity="info" 
-          text 
-          rounded 
-          disabled
-          v-tooltip="'Pago ya procesado'" 
-        />
-        
-        <Button 
-          v-else
-          icon="pi pi-exclamation-triangle" 
-          severity="warning" 
-          text 
-          rounded 
-          disabled
-          v-tooltip="'No se puede procesar: ' + slotProps.data.estado" 
-        />
-        
-        <Button 
-          icon="pi pi-info-circle" 
-          severity="secondary" 
-          text 
-          rounded 
-          @click="verDetalles(slotProps.data)"
-          v-tooltip="'Ver detalles completos'" 
-        />
-      </div>
-    </template>
-  </Column>
-</DataTable>
+            <!-- Columna Acciones -->
+            <Column header="Acciones" style="min-width: 12rem">
+              <template #body="slotProps">
+                <div class="flex gap-2 justify-center">
+                  <Button 
+                    v-if="slotProps.data.estado === 'Coincide' && slotProps.data.id_pago" 
+                    icon="pi pi-credit-card" 
+                    severity="success" 
+                    text 
+                    rounded 
+                    @click="realizarPago(slotProps.data)"
+                    v-tooltip="'Realizar pago'" 
+                  />
+                  
+                  <Button 
+                    v-else-if="slotProps.data.estado === 'Procesado'" 
+                    icon="pi pi-check-circle" 
+                    severity="info" 
+                    text 
+                    rounded 
+                    disabled
+                    v-tooltip="'Pago ya procesado'" 
+                  />
+                  
+                  <Button 
+                    v-else
+                    icon="pi pi-exclamation-triangle" 
+                    severity="warning" 
+                    text 
+                    rounded 
+                    disabled
+                    v-tooltip="'No se puede procesar: ' + slotProps.data.estado" 
+                  />
+                  
+                  <Button 
+                    icon="pi pi-info-circle" 
+                    severity="secondary" 
+                    text 
+                    rounded 
+                    @click="verDetalles(slotProps.data)"
+                    v-tooltip="'Ver detalles completos'" 
+                  />
+                </div>
+              </template>
+            </Column>
+          </DataTable>
         </div>
       </div>
     </div>
@@ -465,17 +430,17 @@
 
   <!-- Diálogo para mostrar detalles de validación -->
   <Dialog v-model:visible="detailsDialog" :style="{ width: '70vw', maxWidth: '800px' }" 
-    :header="`Detalles de Validación - ${selectedRecord?.invoice_number || ''}`" :modal="true">
+    :header="`Detalles de Validación - ${selectedRecord?.['NRO FACTURA'] || ''}`" :modal="true">
     <div v-if="selectedRecord" class="flex flex-col gap-4">
       <!-- Información general -->
       <div class="grid grid-cols-2 gap-4 mb-4">
         <div class="p-4 border border-gray-200 rounded-lg bg-gray-50">
           <h4 class="font-semibold mb-2 text-gray-800">Información del Registro</h4>
           <div class="space-y-2 text-sm">
-            <div><strong>Factura:</strong> {{ selectedRecord.invoice_number }}</div>
-            <div><strong>Préstamo:</strong> {{ selectedRecord.loan_number }}</div>
-            <div><strong>Cliente:</strong> {{ selectedRecord.RUC_client }}</div>
-            <div><strong>Proveedor:</strong> {{ selectedRecord.document }}</div>
+            <div><strong>Factura:</strong> {{ selectedRecord['NRO FACTURA'] }}</div>
+            <div><strong>Préstamo:</strong> {{ selectedRecord['NRO PRESTAMO'] }}</div>
+            <div><strong>Aceptante:</strong> {{ selectedRecord['RUC ACEPTANTE'] }}</div>
+            <div><strong>Proveedor:</strong> {{ selectedRecord['RUC PROVEEDOR'] }}</div>
           </div>
         </div>
         <div class="p-4 border border-gray-200 rounded-lg" 
@@ -519,9 +484,9 @@
         <h4 class="font-semibold text-blue-800 mb-2">Información de Pago</h4>
         <div class="grid grid-cols-2 gap-4 text-sm">
           <div><strong>Tipo de Pago:</strong> {{ selectedRecord.tipo_pago }}</div>
-          <div><strong>Monto Original:</strong> {{ formatCurrency(selectedRecord.amount, selectedRecord.currency) }}</div>
-          <div><strong>Monto a Pagar:</strong> {{ formatCurrency(selectedRecord.saldo, selectedRecord.currency) }}</div>
-          <div><strong>Moneda:</strong> {{ selectedRecord.currency }}</div>
+          <div><strong>Monto Documento:</strong> {{ formatCurrency(selectedRecord['MONTO DOCUMENTO'], selectedRecord['MONEDA']) }}</div>
+          <div><strong>Monto a Pagar:</strong> {{ formatCurrency(selectedRecord['MONTO PAGADO'], selectedRecord['MONEDA']) }}</div>
+          <div><strong>Moneda:</strong> {{ selectedRecord['MONEDA'] }}</div>
         </div>
       </div>
     </div>
@@ -529,17 +494,20 @@
     <template #footer>
       <div class="flex justify-end gap-2">
         <Button label="Cerrar" icon="pi pi-times" text severity="secondary" @click="detailsDialog = false" />
-        <Button v-if="selectedRecord?.estado === 'Coincide'" 
+        <Button v-if="selectedRecord?.estado === 'Coincide' && selectedRecord?.id_pago" 
           label="Realizar Pago" icon="pi pi-credit-card" severity="success" 
           @click="realizarPagoFromDetails()" />
       </div>
     </template>
   </Dialog>
 
-  <!-- Componente de procesamiento de pago -->
-  <addPaymensts :visible="showPaymentDialog" :payment-data="selectedPaymentData"
-    @update:visible="showPaymentDialog = $event" @payment-processed="onPaymentProcessed"
-    @cancelled="onPaymentCancelled" />
+  <addPaymensts 
+    :visible="showPaymentDialog" 
+    :payment-data="selectedPaymentData"
+    @update:visible="(value) => showPaymentDialog = value" 
+    @payment-processed="onPaymentProcessed"
+    @cancelled="onPaymentCancelled" 
+  />
 </template>
 
 <script setup>
@@ -559,22 +527,6 @@ import ProgressBar from 'primevue/progressbar';
 import { useToast } from 'primevue/usetoast';
 import { defineEmits } from 'vue';
 import addPaymensts from './addPaymensts.vue';
-
-// Componente para iconos de validación
-const ValidationIcon = {
-  props: {
-    validation: {
-      type: String,
-      default: 'unknown'
-    }
-  },
-  template: `
-    <i v-if="validation === 'success'" class="pi pi-check text-green-600" title="Coincide"></i>
-    <i v-else-if="validation === 'error'" class="pi pi-times text-red-600" title="No coincide"></i>
-    <i v-else-if="validation === 'warning'" class="pi pi-exclamation-triangle text-yellow-600" title="No encontrado"></i>
-    <i v-else class="pi pi-question text-gray-400" title="Sin validar"></i>
-  `
-};
 
 const toast = useToast();
 const emit = defineEmits(['agregado']);
@@ -601,22 +553,21 @@ function getFieldValidation(record, field) {
   
   // Mapeo de campos a sus patrones en el detalle
   const fieldPatterns = {
-    'document': 'Documento empresa: OK',
-    'RUC_client': 'RUC Cliente: OK',
+    'loan_number': 'Nro Prestamo: OK',
+    'RUC_proveedor': 'RUC Proveedor: OK',
     'invoice_number': 'Nro Factura: OK',
-    'loan_number': 'Loan Number: OK',
-    'amount': 'Monto: OK',
-    'estimated_pay_date': 'Fecha estimada: OK',
+    'RUC_aceptante': 'RUC Aceptante: OK',
     'currency': 'Moneda: OK',
-    'status': 'Estado: OK'
+    'monto_documento': 'Monto documento: OK',
+    'fecha_pago': 'Fecha estimada: OK'
   };
 
   if (record.estado === 'No coincide' && detalle.includes('no registrada')) {
-    return 'warning'; // Empresa no encontrada
+    return 'warning';
   }
 
   if (record.estado === 'No coincide' && detalle.includes('no encontrada')) {
-    return 'warning'; // Factura no encontrada
+    return 'warning';
   }
 
   const pattern = fieldPatterns[field];
@@ -640,11 +591,11 @@ function getDetailedValidations(record) {
   const details = detalle.split(' | ');
   
   details.forEach(detail => {
-    if (detail.includes('Documento empresa:')) {
+    if (detail.includes('RUC Aceptante:')) {
       const status = detail.includes('OK') ? 'success' : 'error';
       validations.push({
-        field: 'document',
-        label: 'Documento Empresa',
+        field: 'RUC_aceptante',
+        label: 'RUC Aceptante',
         status,
         message: detail,
         dbValue: status === 'error' ? extractValue(detail, 'BD:') : null,
@@ -652,11 +603,11 @@ function getDetailedValidations(record) {
       });
     }
     
-    if (detail.includes('RUC Cliente:')) {
+    if (detail.includes('Nro Prestamo:')) {
       const status = detail.includes('OK') ? 'success' : 'error';
       validations.push({
-        field: 'RUC_client',
-        label: 'RUC Cliente',
+        field: 'loan_number',
+        label: 'Número de Préstamo',
         status,
         message: detail,
         dbValue: status === 'error' ? extractValue(detail, 'BD:') : null,
@@ -676,23 +627,11 @@ function getDetailedValidations(record) {
       });
     }
     
-    if (detail.includes('Loan Number:')) {
+    if (detail.includes('Monto documento:')) {
       const status = detail.includes('OK') ? 'success' : 'error';
       validations.push({
-        field: 'loan_number',
-        label: 'Número de Préstamo',
-        status,
-        message: detail,
-        dbValue: status === 'error' ? extractValue(detail, 'BD:') : null,
-        excelValue: status === 'error' ? extractValue(detail, 'Excel:') : null
-      });
-    }
-    
-    if (detail.includes('Monto:')) {
-      const status = detail.includes('OK') ? 'success' : 'error';
-      validations.push({
-        field: 'amount',
-        label: 'Monto',
+        field: 'monto_documento',
+        label: 'Monto Documento',
         status,
         message: detail,
         dbValue: status === 'error' ? extractValue(detail, 'BD:') : null,
@@ -703,7 +642,7 @@ function getDetailedValidations(record) {
     if (detail.includes('Fecha estimada:')) {
       const status = detail.includes('OK') ? 'success' : 'error';
       validations.push({
-        field: 'estimated_pay_date',
+        field: 'fecha_pago',
         label: 'Fecha Estimada',
         status,
         message: detail,
@@ -717,18 +656,6 @@ function getDetailedValidations(record) {
       validations.push({
         field: 'currency',
         label: 'Moneda',
-        status,
-        message: detail,
-        dbValue: status === 'error' ? extractValue(detail, 'BD:') : null,
-        excelValue: status === 'error' ? extractValue(detail, 'Excel:') : null
-      });
-    }
-    
-    if (detail.includes('Estado:') && !detail.includes('DEBUG:')) {
-      const status = detail.includes('OK') ? 'success' : 'error';
-      validations.push({
-        field: 'status',
-        label: 'Estado',
         status,
         message: detail,
         dbValue: status === 'error' ? extractValue(detail, 'BD:') : null,
@@ -790,42 +717,20 @@ function hideDialog() {
 }
 
 // Funciones para severidades de tags
-function getEstadoSeverity(estado) {
-  switch(estado) {
-    case 'Coincide': return 'success';
-    case 'No coincide': return 'danger';
-    case 'Procesado': return 'info';
-    default: return 'secondary';
-  }
-}
-
-function getEstadoIcon(estado) {
-  switch(estado) {
-    case 'Coincide': return 'pi pi-check';
-    case 'No coincide': return 'pi pi-times';
-    case 'Procesado': return 'pi pi-check-circle';
-    default: return 'pi pi-question';
-  }
-}
-
-function getStatusSeverity(status) {
-  switch (status) {
-    case 'active': return 'success';
-    case 'inactive': return 'secondary';
-    case 'expired': return 'warning';
-    case 'judicialized': return 'danger';
-    case 'reprogramed': return 'info';
-    case 'paid': return 'success';
-    case 'canceled': return 'secondary';
-    case 'daStandby': return 'contrast';
+function getCurrencySeverity(currency) {
+  switch(currency) {
+    case 'PEN': return 'info';
+    case 'USD': return 'warning';
+    case 'S/': return 'info';
     default: return 'secondary';
   }
 }
 
 function getTipoPagoSeverity(tipoPago) {
   switch (tipoPago) {
-    case 'Pago normal': return 'success';
+    case 'Paga toda la factura': return 'success';
     case 'Pago parcial': return 'warning';
+    case 'Pago de intereses': return 'info';
     case 'Sin determinar': return 'secondary';
     default: return 'secondary';
   }
@@ -834,12 +739,15 @@ function getTipoPagoSeverity(tipoPago) {
 // Función para formatear moneda
 function formatCurrency(amount, currency) {
   if (!amount) return '-';
-  const symbol = currency === 'PEN' ? 'S/' : '$';
+  const symbol = currency === 'PEN' || currency === 'S/' ? 'S/' : '$';
   return `${symbol} ${Number(amount).toLocaleString('es-PE', { minimumFractionDigits: 2 })}`;
 }
 
 // Función para realizar pago
+// Función para realizar pago
 function realizarPago(record) {
+  console.log('Iniciando proceso de pago para:', record);
+  
   if (!record.id_pago) {
     toast.add({
       severity: 'error',
@@ -860,8 +768,30 @@ function realizarPago(record) {
     return;
   }
 
-  selectedPaymentData.value = record;
+  // Preparar los datos para el pago
+  selectedPaymentData.value = {
+    id_pago: record.id_pago,
+    invoice_number: record['NRO FACTURA'],
+    loan_number: record['NRO PRESTAMO'],
+    document: record.document || 'Proveedor',
+    RUC_client: record['RUC ACEPTANTE'],
+    amount: record['MONTO DOCUMENTO'],
+    saldo: record['MONTO PAGADO'],
+    currency: record['MONEDA'],
+    estimated_pay_date: record['FECHA PAGO']
+  };
+
+  console.log('Datos preparados para pago:', selectedPaymentData.value);
+  
+  // Mostrar el diálogo
   showPaymentDialog.value = true;
+  
+  toast.add({
+    severity: 'info',
+    summary: 'Procesar Pago',
+    detail: `Preparando pago para factura ${record['NRO FACTURA']}`,
+    life: 3000
+  });
 }
 
 function realizarPagoFromDetails() {

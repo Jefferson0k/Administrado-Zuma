@@ -505,6 +505,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/deposits/investor/{id}', [PaymentsController::class, 'show']);
     });
 
+    Route::get('/comparacion/status', [PaymentsController::class, 'checkProcessingStatus']);
+    Route::get('/comparacion/result/{filename}', [PaymentsController::class, 'getResult']);
+    Route::get('/comparacion/results', [PaymentsController::class, 'listResults']);
     Route::post('/invoices/{invoiceId}/anular', [PaymentsController::class, 'anular'])
         ->name('invoices.anular');
 });

@@ -19,6 +19,7 @@ use App\Models\Invoice;
 use App\Models\Movement;
 use App\Models\Payment;
 use App\Notifications\InvoiceAnnulledRefundNotification;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -30,136 +31,165 @@ use Maatwebsite\Excel\Excel as ExcelType;
 use Illuminate\Support\Str;
 
 class PaymentsController extends Controller{
-     public function comparacion(Request $request){
-        $request->validate([
-            'excel_file' => 'required|file|mimetypes:application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/plain,application/octet-stream',
+    public function comparacion(Request $request){
+    $request->validate([
+        'excel_file' => 'required|file|mimetypes:application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/plain,application/octet-stream',
+    ]);
+
+    $file = $request->file('excel_file');
+    $data = Excel::toArray([], $file, null, ExcelType::XLSX);
+    $sheet = $data[0] ?? [];
+
+    if (empty($sheet)) {
+        return response()->json([
+            'success' => false,
+            'data' => [],
+            'message' => 'El archivo está vacío',
         ]);
+    }
 
-        $file = $request->file('excel_file');
-        $data = Excel::toArray([], $file, null, ExcelType::XLSX);
-        $sheet = $data[0] ?? [];
+    $headers = array_map(function($header) {
+        return trim(strval($header));
+    }, $sheet[0]);
+    
+    // Encabezados requeridos
+    $requiredColumns = ['NRO PRESTAMO', 'RUC PROVEEDOR', 'NRO FACTURA', 'RUC ACEPTANTE', 
+                       'MONEDA', 'MONTO DOCUMENTO', 'FECHA PAGO', 'MONTO PAGADO', 
+                       'ESTADO', 'SITUACION'];
+    
+    $missingColumns = array_diff($requiredColumns, $headers);
+    if (!empty($missingColumns)) {
+        return response()->json([
+            'success' => false,
+            'data' => [],
+            'message' => 'Faltan las siguientes columnas en el archivo: ' . implode(', ', $missingColumns),
+        ]);
+    }
 
-        if (empty($sheet)) {
-            return response()->json([
-                'success' => false,
-                'data' => [],
-                'message' => 'El archivo está vacío',
-            ]);
-        }
+    // Mapeo de situaciones (type) de inglés a español
+    $typeMapping = [
+        'normal' => 'normal',
+        'annulled' => 'anulado',
+        'reprogramed' => 'reprogramado'
+    ];
 
-        $headers = array_map('strval', $sheet[0]);
-        
-        // Validar que existan las columnas requeridas
-        $requiredColumns = ['document', 'RUC_client', 'invoice_number', 'loan_number', 
-                           'estimated_pay_date', 'currency', 'amount', 'status', 'saldo'];
-        
-        $missingColumns = array_diff($requiredColumns, $headers);
-        if (!empty($missingColumns)) {
-            return response()->json([
-                'success' => false,
-                'data' => [],
-                'message' => 'Faltan las siguientes columnas en el archivo: ' . implode(', ', $missingColumns),
-            ]);
-        }
+    // Mapeo de estados
+    $estadoMapping = [
+        0 => 'Pago de intereses',
+        1 => 'Pago parcial',
+        2 => 'Paga toda la factura'
+    ];
 
-        $jsonData = [];
+    // Mapeo de monedas
+    $currencyMapping = [
+        'S/' => 'PEN',
+        'S' => 'PEN',
+        'PEN' => 'PEN',
+        'USD' => 'USD',
+        '$' => 'USD'
+    ];
 
-        foreach (array_slice($sheet, 1) as $row) {
-            $rowData = array_combine($headers, $row);
+    $jsonData = [];
 
-            // Campos desde Excel
-            $documentExcel          = trim(strval($rowData['document'] ?? ''));
-            $rucClientExcel         = trim(strval($rowData['RUC_client'] ?? ''));
-            $invoiceNumberExcel     = trim(strval($rowData['invoice_number'] ?? ''));
-            $loanNumberExcel        = trim(strval($rowData['loan_number'] ?? ''));
-            $estimatedPayDateExcel  = strval($rowData['estimated_pay_date'] ?? '');
-            $currencyExcel          = strtoupper(trim(strval($rowData['currency'] ?? '')));
-            $amountExcel            = floatval($rowData['amount'] ?? 0);
-            $statusExcel            = strtolower(trim(strval($rowData['status'] ?? '')));
-            $saldoExcel             = floatval($rowData['saldo'] ?? 0);
+    foreach (array_slice($sheet, 1) as $row) {
+        $rowData = array_combine($headers, $row);
 
-            // Normalizar fecha Excel a formato Y-m-d
-            $fechaExcelFormatted = null;
-            if (!empty($estimatedPayDateExcel)) {
-                $fechaParts = explode('/', $estimatedPayDateExcel);
-                if (count($fechaParts) === 3) {
-                    $fechaExcelFormatted = $fechaParts[2] . '-' .
-                        str_pad($fechaParts[1], 2, '0', STR_PAD_LEFT) . '-' .
-                        str_pad($fechaParts[0], 2, '0', STR_PAD_LEFT);
-                }
+        // Extraer datos del Excel
+        $loanNumberExcel        = trim(strval($rowData['NRO PRESTAMO'] ?? ''));
+        $rucProveedorExcel      = trim(strval($rowData['RUC PROVEEDOR'] ?? ''));
+        $invoiceNumberExcel     = trim(strval($rowData['NRO FACTURA'] ?? ''));
+        $rucAceptanteExcel      = trim(strval($rowData['RUC ACEPTANTE'] ?? ''));
+        $currencyExcel          = trim(strval($rowData['MONEDA'] ?? ''));
+        $montoDocumentoExcel    = floatval($rowData['MONTO DOCUMENTO'] ?? 0);
+        $estimatedPayDateExcel  = strval($rowData['FECHA PAGO'] ?? '');
+        $montoPagadoExcel       = floatval($rowData['MONTO PAGADO'] ?? 0);
+        $estadoExcel            = intval($rowData['ESTADO'] ?? -1);
+        $situacionExcel         = strtolower(trim(strval($rowData['SITUACION'] ?? '')));
+
+        // Normalizar moneda del Excel
+        $currencyExcelNormalized = $currencyMapping[$currencyExcel] ?? $currencyExcel;
+        $currencyExcelNormalized = strtoupper($currencyExcelNormalized);
+
+        // Formatear fecha
+        $fechaExcelFormatted = null;
+        if (!empty($estimatedPayDateExcel)) {
+            $fechaParts = explode('/', $estimatedPayDateExcel);
+            if (count($fechaParts) === 3) {
+                $fechaExcelFormatted = $fechaParts[2] . '-' .
+                    str_pad($fechaParts[1], 2, '0', STR_PAD_LEFT) . '-' .
+                    str_pad($fechaParts[0], 2, '0', STR_PAD_LEFT);
             }
+        }
 
-            // Buscar empresa
-            $company = Company::where('document', $documentExcel)->first();
-            $invoice = null;
-            $invoiceId = null; // Initialize invoice ID variable
+        // Buscar factura - ESTRATEGIA ESTRICTA
+        $invoice = Invoice::where('RUC_client', $rucAceptanteExcel)
+            ->where('loan_number', $loanNumberExcel)
+            ->where('invoice_number', $invoiceNumberExcel)
+            ->first();
+        
+        $invoiceId = null;
+        $detalle = [];
+        $estado = 'Coincide';
+        $criterioBusqueda = 'Exacto (RUC + Prestamo + Factura)';
+
+        if (!$invoice) {
+            // Si no encuentra con los 3 campos, buscar solo por RUC + Factura
+            $invoice = Invoice::where('RUC_client', $rucAceptanteExcel)
+                ->where('invoice_number', $invoiceNumberExcel)
+                ->first();
             
-            if ($company) {
-                $invoice = $company->invoices()
-                    ->where('RUC_client', $rucClientExcel)
-                    ->where('invoice_number', $invoiceNumberExcel)
-                    ->where('loan_number', $loanNumberExcel)
-                    ->first();
-                
-                if ($invoice) {
-                    $invoiceId = $invoice->id; // Set the invoice ID
-                }
+            if ($invoice) {
+                $criterioBusqueda = 'RUC + Factura (Prestamo diferente)';
+                $estado = 'No coincide'; // Porque el prestamo no coincide
+            }
+        }
+
+        if (!$invoice) {
+            $estado = 'No coincide';
+            $detalle[] = "Factura no encontrada (RUC: '{$rucAceptanteExcel}', Prestamo: '{$loanNumberExcel}', Factura: '{$invoiceNumberExcel}')";
+        } else {
+            $invoiceId = $invoice->id;
+            $amountInvoiceDecimal = floatval($invoice->amount);
+            
+            $detalle[] = "Criterio busqueda: {$criterioBusqueda}";
+            $detalle[] = "Loan BD: '{$invoice->loan_number}', Invoice BD: '{$invoice->invoice_number}'";
+
+            // Comparar RUC Aceptante (RUC_client)
+            if ($invoice->RUC_client === $rucAceptanteExcel) {
+                $detalle[] = "RUC Aceptante: OK";
+            } else {
+                $detalle[] = "RUC Aceptante: Diferente (BD: {$invoice->RUC_client} vs Excel: {$rucAceptanteExcel})";
+                $estado = 'No coincide';
             }
 
-            $detalle = [];
-            $estado = 'Coincide';
-
-            if (!$company) {
-                $estado = 'No coincide';
-                $detalle[] = "Empresa no registrada (Documento: '{$documentExcel}')";
-            } elseif (!$invoice) {
-                $estado = 'No coincide';
-                $detalle[] = "Factura no encontrada (RUC Cliente: '{$rucClientExcel}', Nro Factura: '{$invoiceNumberExcel}', Loan: '{$loanNumberExcel}')";
+            // Comparar loan_number - AHORA ES OBLIGATORIO
+            if ($invoice->loan_number === $loanNumberExcel) {
+                $detalle[] = "Nro Prestamo: OK";
             } else {
-                // Comparar document (Company)
-                if ($company->document === $documentExcel) {
-                    $detalle[] = "Documento empresa: OK";
-                } else {
-                    $detalle[] = "Documento empresa: Diferente (BD: {$company->document} vs Excel: {$documentExcel})";
-                    $estado = 'No coincide';
-                }
+                $detalle[] = "Nro Prestamo: Diferente (BD: '{$invoice->loan_number}' vs Excel: '{$loanNumberExcel}')";
+                $estado = 'No coincide';
+            }
 
-                // Comparar RUC_client (Invoice)
-                if ($invoice->RUC_client === $rucClientExcel) {
-                    $detalle[] = "RUC Cliente: OK";
-                } else {
-                    $detalle[] = "RUC Cliente: Diferente (BD: {$invoice->RUC_client} vs Excel: {$rucClientExcel})";
-                    $estado = 'No coincide';
-                }
+            // Comparar invoice_number
+            if ($invoice->invoice_number === $invoiceNumberExcel) {
+                $detalle[] = "Nro Factura: OK";
+            } else {
+                $detalle[] = "Nro Factura: Diferente (BD: {$invoice->invoice_number} vs Excel: {$invoiceNumberExcel})";
+                $estado = 'No coincide';
+            }
 
-                // Comparar invoice_number
-                if ($invoice->invoice_number === $invoiceNumberExcel) {
-                    $detalle[] = "Nro Factura: OK";
-                } else {
-                    $detalle[] = "Nro Factura: Diferente (BD: {$invoice->invoice_number} vs Excel: {$invoiceNumberExcel})";
-                    $estado = 'No coincide';
-                }
+            // Comparar monto total de la factura
+            if (abs($amountInvoiceDecimal - $montoDocumentoExcel) < 0.01) {
+                $detalle[] = 'Monto documento: OK';
+            } else {
+                $detalle[] = "Monto documento: Diferente (BD: {$amountInvoiceDecimal} vs Excel: {$montoDocumentoExcel})";
+                $estado = 'No coincide';
+            }
 
-                // Comparar loan_number
-                if ($invoice->loan_number === $loanNumberExcel) {
-                    $detalle[] = "Loan Number: OK";
-                } else {
-                    $detalle[] = "Loan Number: Diferente (BD: {$invoice->loan_number} vs Excel: {$loanNumberExcel})";
-                    $estado = 'No coincide';
-                }
-
-                // Comparar amount
-                $amountInvoice = floatval($invoice->amount);
-                if (abs($amountInvoice - $amountExcel) < 0.01) {
-                    $detalle[] = 'Monto: OK';
-                } else {
-                    $detalle[] = "Monto: Diferente (BD: {$amountInvoice} vs Excel: {$amountExcel})";
-                    $estado = 'No coincide';
-                }
-
-                // Comparar fecha estimada
-                $fechaBD = \Carbon\Carbon::parse($invoice->estimated_pay_date)->format('Y-m-d');
-                $fechaExcel = \Carbon\Carbon::parse($fechaExcelFormatted)->format('Y-m-d');
+            // Comparar fecha estimada
+            if ($invoice->estimated_pay_date && $fechaExcelFormatted) {
+                $fechaBD = Carbon::parse($invoice->estimated_pay_date)->format('Y-m-d');
+                $fechaExcel = Carbon::parse($fechaExcelFormatted)->format('Y-m-d');
 
                 if ($fechaBD === $fechaExcel) {
                     $detalle[] = 'Fecha estimada: OK';
@@ -167,61 +197,58 @@ class PaymentsController extends Controller{
                     $detalle[] = "Fecha estimada: Diferente (BD: {$fechaBD} vs Excel: {$fechaExcel})";
                     $estado = 'No coincide';
                 }
-
-
-                // Comparar currency
-                $currencyInvoice = strtoupper($invoice->currency);
-                if ($currencyInvoice === $currencyExcel) {
-                    $detalle[] = 'Moneda: OK';
-                } else {
-                    $detalle[] = "Moneda: Diferente (BD: {$currencyInvoice} vs Excel: {$currencyExcel})";
-                    $estado = 'No coincide';
-                }
-
-                // Comparar status
-                $statusInvoice = strtolower($invoice->status);
-                if ($statusInvoice === $statusExcel) {
-                    $detalle[] = "Estado: OK";
-                } else {
-                    $detalle[] = "Estado: Diferente (BD: {$statusInvoice} vs Excel: {$statusExcel})";
-                    $estado = 'No coincide';
-                }
-
-                $detalle[] = "DEBUG: ID Factura: {$invoice->id}";
-            }
-
-            // Determinar tipo de pago basado en saldo vs amount
-            $tipoPago = 'Sin determinar';
-            if ($saldoExcel > 0 && $amountExcel > 0) {
-                if (abs($saldoExcel - $amountExcel) < 0.01) {
-                    $tipoPago = 'Pago normal';
-                    $detalle[] = "Tipo pago: Normal (Saldo: {$saldoExcel} = Amount: {$amountExcel})";
-                } else {
-                    $tipoPago = 'Pago parcial';
-                    $detalle[] = "Tipo pago: Parcial (Saldo: {$saldoExcel} ≠ Amount: {$amountExcel})";
-                }
-            } elseif ($saldoExcel == 0 && $amountExcel > 0) {
-                $tipoPago = 'Pago normal';
-                $detalle[] = "Tipo pago: Normal (Saldo pagado completamente)";
             } else {
-                $detalle[] = "Tipo pago: Sin determinar (Saldo: {$saldoExcel}, Amount: {$amountExcel})";
+                $detalle[] = 'Fecha estimada: No se puede comparar (datos faltantes)';
             }
 
-            // Agregar los campos al resultado
-            $rowData['saldo'] = $saldoExcel;
-            $rowData['estado'] = $estado;
-            $rowData['tipo_pago'] = $tipoPago;
-            $rowData['id_pago'] = $invoiceId; // Use the correctly defined variable
-            $rowData['detalle'] = implode(' | ', $detalle);
+            // Comparar currency
+            $currencyInvoice = strtoupper($invoice->currency);
+            if ($currencyInvoice === $currencyExcelNormalized) {
+                $detalle[] = 'Moneda: OK';
+            } else {
+                $detalle[] = "Moneda: Diferente (BD: {$currencyInvoice} vs Excel: {$currencyExcel} -> {$currencyExcelNormalized})";
+                $estado = 'No coincide';
+            }
 
-            $jsonData[] = $rowData;
+            // Comparar type (situacion)
+            $typeInvoice = strtolower($invoice->type ?? '');
+            $typeInvoiceEspanol = $typeMapping[$typeInvoice] ?? $typeInvoice;
+            
+            if ($typeInvoiceEspanol === $situacionExcel) {
+                $detalle[] = "Situación: OK";
+            } else {
+                $detalle[] = "Situación: Diferente (BD: {$typeInvoiceEspanol} vs Excel: {$situacionExcel})";
+                $estado = 'No coincide';
+            }
+
+            $detalle[] = "ID Factura: {$invoice->id}";
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => $jsonData,
-        ]);
+        // Determinar tipo de pago basado en ESTADO
+        $tipoPago = 'Sin determinar';
+        if (array_key_exists($estadoExcel, $estadoMapping)) {
+            $tipoPago = $estadoMapping[$estadoExcel];
+            $detalle[] = "Tipo pago: {$tipoPago}";
+        } else {
+            $detalle[] = "Tipo pago: Estado inválido ({$estadoExcel})";
+        }
+
+        // Preparar datos de salida
+        $rowData['monto_documento'] = $montoDocumentoExcel;
+        $rowData['monto_pagado'] = $montoPagadoExcel;
+        $rowData['estado'] = $estado;
+        $rowData['tipo_pago'] = $tipoPago;
+        $rowData['id_pago'] = $invoiceId;
+        $rowData['detalle'] = implode(' | ', $detalle);
+
+        $jsonData[] = $rowData;
     }
+
+    return response()->json([
+        'success' => true,
+        'data' => $jsonData,
+    ]);
+}
     public function store(Request $request, $invoiceId)
 {
     $request->validate([
