@@ -495,6 +495,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('payments.comparacion');
         Route::post('/{invoiceId}', [PaymentsController::class, 'store'])
             ->name('payments.store');
+        Route::put('/{payment}/approve-level-2', [PaymentsController::class, 'approveLevel2'])
+            ->name('payments.approveLevel2');
         Route::post('/{invoiceId}/reembloso', [PaymentsController::class, 'storeReembloso'])
             ->name('payments.storeReembloso');
         Route::post('/reembolso', [PaymentsController::class, 'storeReembolso']);

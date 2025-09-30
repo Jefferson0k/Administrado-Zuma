@@ -9,10 +9,8 @@ import InputText from 'primevue/inputtext';
 import axios from 'axios';
 import Tag from 'primevue/tag';
 import { debounce } from 'lodash';
-// Aquí luego cambias DeleteSubSectores y UpdateSubSectores
-// cuando tengas los componentes listos para subsector
-// import DeleteSubSectores from './DeleteSubSectores.vue';
-// import UpdateSubSectores from './UpdateSubSectores.vue';
+import { useConfirm } from 'primevue/useconfirm';
+import { useToast } from 'primevue/usetoast';
 
 const props = defineProps({
     refresh: {
@@ -24,6 +22,11 @@ const props = defineProps({
         required: true,
     },
 });
+
+const emit = defineEmits(['edit-subsector']);
+
+const confirm = useConfirm();
+const toast = useToast();
 
 const dt = ref();
 const subSectores = ref([]);
@@ -48,6 +51,12 @@ const loadSubSectores = async () => {
         currentPage.value = 1;
     } catch (error) {
         console.error('Error al cargar subsectores:', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'No se pudieron cargar los subsectores',
+            life: 3000
+        });
     } finally {
         loading.value = false;
     }
@@ -73,6 +82,52 @@ const onGlobalSearch = debounce(() => {
 const onPage = (event) => {
     currentPage.value = event.page + 1;
     rowsPerPage.value = event.rows;
+};
+
+const editSubSector = (subsector) => {
+    emit('edit-subsector', subsector);
+};
+
+const confirmDelete = (subsector) => {
+    if (subsector.vinculado === 1) {
+        toast.add({
+            severity: 'warn',
+            summary: 'No permitido',
+            detail: 'No se puede eliminar un subsector vinculado',
+            life: 3000
+        });
+        return;
+    }
+
+    confirm.require({
+        message: `¿Estás seguro de eliminar el subsector "${subsector.name}"?`,
+        header: 'Confirmar eliminación',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Sí, eliminar',
+        rejectLabel: 'Cancelar',
+        accept: () => deleteSubSector(subsector.id)
+    });
+};
+
+const deleteSubSector = async (id) => {
+    try {
+        await axios.delete(`/subsectors/${id}`);
+        toast.add({
+            severity: 'success',
+            summary: 'Éxito',
+            detail: 'Subsector eliminado correctamente',
+            life: 3000
+        });
+        loadSubSectores();
+    } catch (error) {
+        console.error('Error al eliminar subsector:', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: error.response?.data?.message || 'No se pudo eliminar el subsector',
+            life: 3000
+        });
+    }
 };
 
 onMounted(() => {
@@ -109,10 +164,40 @@ onMounted(() => {
         <Column field="name" header="Nombre" sortable style="min-width: 13rem" />
         <Column field="creacion" header="Creación" sortable style="min-width: 13rem" />
         <Column field="update" header="Actualización" sortable style="min-width: 13rem" />
-        <Column>
+        <Column header="Estado" style="min-width: 8rem">
             <template #body="slotProps">
-                <Button icon="pi pi-pencil" outlined rounded class="mr-2" />
-                <Button icon="pi pi-trash" outlined rounded severity="danger" />
+                <Tag v-if="slotProps.data.vinculado === 1" severity="success" value="Vinculado" />
+                <Tag v-else severity="secondary" value="Sin vincular" />
+            </template>
+        </Column>
+        <Column header="Acciones" style="min-width: 10rem">
+            <template #body="slotProps">
+                <Button 
+                    icon="pi pi-pencil" 
+                    outlined 
+                    rounded 
+                    class="mr-2" 
+                    @click="editSubSector(slotProps.data)"
+                    v-tooltip.top="'Editar subsector'"
+                />
+                <Button 
+                    v-if="slotProps.data.vinculado === 0"
+                    icon="pi pi-trash" 
+                    outlined 
+                    rounded 
+                    severity="danger" 
+                    @click="confirmDelete(slotProps.data)"
+                    v-tooltip.top="'Eliminar subsector'"
+                />
+                <Button 
+                    v-else
+                    icon="pi pi-trash" 
+                    outlined 
+                    rounded 
+                    severity="danger" 
+                    disabled
+                    v-tooltip.top="'No se puede eliminar un subsector vinculado'"
+                />
             </template>
         </Column>
     </DataTable>

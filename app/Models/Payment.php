@@ -51,6 +51,15 @@ class Payment extends Model{
   {
     return $this->belongsTo(Invoice::class);
   }
+  public function approval1User()
+  {
+      return $this->belongsTo(User::class, 'approval1_by');
+  }
+
+  public function approval2User()
+  {
+      return $this->belongsTo(User::class, 'approval2_by');
+  }
 
   public function getAmountToBePaidMoney(): Money
   {
@@ -359,4 +368,30 @@ class Payment extends Model{
       'newInvoiceAvailableAmount' => $newInvoiceAvailableAmount, // nuevo monto disponible de la factura
     ]];
   }
+
+  public function getEvidenciaDataParsedAttribute(): array
+  {
+      if (empty($this->attributes['evidencia_data'])) {
+          return [];
+      }
+
+      $data = json_decode($this->attributes['evidencia_data'], true);
+
+      if (!is_array($data)) {
+          return [];
+      }
+
+      return array_map(function ($item) {
+          return [
+              'path'          => $item['path'],
+              'url'           => env('APP_URL') . '/s3/' . $item['path'], // 👈 URL pública
+              'size'          => $item['size'] ?? null,
+              'filename'      => $item['filename'] ?? null,
+              'mime_type'     => $item['mime_type'] ?? null,
+              'uploaded_at'   => $item['uploaded_at'] ?? null,
+              'original_name' => $item['original_name'] ?? null,
+          ];
+      }, $data);
+  }
+
 }

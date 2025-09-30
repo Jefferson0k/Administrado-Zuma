@@ -15,6 +15,7 @@ use App\Pipelines\SearchInvoiceFilter;
 use App\Pipelines\StatusFilter;
 use App\Services\InvoiceService;
 use App\Exports\InvoicesExport;
+use App\Http\Resources\Factoring\Invoice\PaymentsInvoiceResource;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
@@ -143,29 +144,35 @@ class InvoiceController extends Controller{
         }
     }
     public function indexfilter()
-    {
-        try {
-            Gate::authorize('viewAny', Invoice::class);
-            $allowedStatus = ['active', 'expired', 'judicialized', 'reprogramed', 'daStandby'];
-            $invoices = Invoice::whereIn('status', $allowedStatus)->get();
-            return response()->json([
-                'total' => $invoices->count(),
-                'data'  => InvoiceResource::collection($invoices),
-            ]);
-        } catch (AuthorizationException $e) {
-            return response()->json([
-                'message' => 'No tienes permiso para ver las facturas.'
-            ], 403);
-        } catch (Throwable $e) {
-            Log::error("Error en InvoiceController@indexfilter: " . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
-            ]);
-            return response()->json([
-                'message' => 'Error al listar las facturas.',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+{
+    try {
+        Gate::authorize('viewAny', Invoice::class);
+
+        $allowedStatus = ['active', 'expired', 'judicialized', 'reprogramed', 'daStandby'];
+
+        $invoices = Invoice::whereIn('status', $allowedStatus)
+            ->orderBy('created_at', 'desc') // 🔽 orden descendente por fecha de creación
+            ->get();
+
+        return response()->json([
+            'total' => $invoices->count(),
+            'data'  => PaymentsInvoiceResource::collection($invoices),
+        ]);
+    } catch (AuthorizationException $e) {
+        return response()->json([
+            'message' => 'No tienes permiso para ver las facturas.'
+        ], 403);
+    } catch (Throwable $e) {
+        Log::error("Error en InvoiceController@indexfilter: " . $e->getMessage(), [
+            'trace' => $e->getTraceAsString()
+        ]);
+        return response()->json([
+            'message' => 'Error al listar las facturas.',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
+
     public function store(StoreInvoiceRequest $request, InvoiceService $service)
     {
         try {
@@ -206,14 +213,11 @@ class InvoiceController extends Controller{
         }
     }
 
-    public function show($id)
-    {
+    public function show($id){
         try {
-            $invoice = Invoice::findOrFail($id);
+            $invoice = Invoice::with('investments')
+                ->findOrFail($id);
             Gate::authorize('view', $invoice);
-            if ($invoice->status === 'daStandby') {
-                $invoice->load('investments');
-            }
             return new InvoiceResource($invoice);
         } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Factura no encontrada.'], 404);
