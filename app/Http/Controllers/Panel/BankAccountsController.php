@@ -17,6 +17,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use App\Models\User;
+use App\Models\HistoryAprobadorBankAccount;
 
 class BankAccountsController extends Controller
 {
@@ -294,6 +296,18 @@ class BankAccountsController extends Controller
             $account->updated0_at = now();
             $account->save();
 
+
+            // Guardar en historial
+            HistoryAprobadorBankAccount::create([
+                'bank_account_id'   => $account->id,
+                'approval1_status'  => $account->status0,
+                'approval1_by'      => Auth::id(),
+                'approval1_comment' => $account->comment0,
+                'approval1_at'      => $account->updated0_at,
+            ]);
+
+
+
             return new BankAccountResource($account);
         } catch (AuthorizationException $e) {
             return response()->json(['message' => 'No tienes permiso para actualizar la primera validación de esta cuenta bancaria.'], 403);
@@ -346,6 +360,21 @@ class BankAccountsController extends Controller
             $account->updated_last_at = now();
 
             $account->save();
+
+
+            $history  = HistoryAprobadorBankAccount::where('bank_account_id', $account->id)
+                ->latest('id')
+                ->lockForUpdate()
+                ->first();
+
+            // Guardar en historial
+            $history?->update([
+                'bank_account_id'   => $account->id,
+                'approval2_status'  => $account->status0,
+                'approval2_by'      => Auth::id(),
+                'approval2_comment' => $account->comment0,
+                'approval2_at'      => $account->updated0_at,
+            ]);
 
             //Notificaciones (si ya las tienes)
             if ($account->status === 'approved') {
@@ -408,4 +437,38 @@ class BankAccountsController extends Controller
 
         return response()->json(['files' => $files], 200);
     }
+
+
+    public function history(BankAccount $bankAccount)
+    {
+        $rows = HistoryAprobadorBankAccount::with([
+        'approval1By:id,name',
+        'approval2By:id,name',
+    ])
+            ->where('bank_account_id', $bankAccount->id)
+            ->orderBy('id', 'desc')
+            ->get()
+            ->map(function ($h) {
+    return [
+        'id'                   => $h->id,
+
+        'approval1_status'     => $h->approval1_status,
+        'approval1_by_name'    => optional($h->approval1By)->name,
+        'approval1_at'         => $h->approval1_at,
+        'approval1_comment'    => $h->approval1_comment,
+
+        'approval2_status'     => $h->approval2_status,
+        'approval2_by_name'    => optional($h->approval2By)->name,
+        'approval2_at'         => $h->approval2_at,
+        'approval2_comment'    => $h->approval2_comment,
+    ];
+
+            });
+
+        return response()->json(['data' => $rows]);
+    }
+
+
+
+
 }

@@ -94,7 +94,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('bank-accounts.update-status');
 
     Route::delete('/ban/{id}/attachments/{attachment}', [BankAccountsController::class, 'destroyAttachment'])
-    ->name('bank-accounts.attachments.destroy');
+        ->name('bank-accounts.attachments.destroy');
+
+
+
+    Route::get('/ban/{bankAccount}/history', [BankAccountsController::class, 'history']);
+
+
 
     #PARA QUE CUANDO SE CREA UN USUARIO O MODIFICA SU PASSWORD LO REDIRECCIONE PARA QUE PUEDA ACTUALIZAR
     Route::get('/dashboard', function () {
@@ -204,17 +210,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{id}/approve-step-one', [WithdrawController::class, 'approveStepOne'])->name('withdraws.approveStepOne');
         Route::post('/{id}/approve-step-two', [WithdrawController::class, 'approveStepTwo'])->name('withdraws.approveStepTwo');
 
-        
-    // NUEVAS: observar / rechazar por etapa
-    Route::post('/{id}/observe-step-one', [WithdrawController::class, 'observeStepOne'])->name('withdraws.observeStepOne');
-    Route::post('/{id}/reject-step-one',  [WithdrawController::class, 'rejectStepOne'])->name('withdraws.rejectStepOne');
-    Route::post('/{id}/observe-step-two', [WithdrawController::class, 'observeStepTwo'])->name('withdraws.observeStepTwo');
-    Route::post('/{id}/reject-step-two',  [WithdrawController::class, 'rejectStepTwo'])->name('withdraws.rejectStepTwo');
 
+        // NUEVAS: observar / rechazar por etapa
+        Route::post('/{id}/observe-step-one', [WithdrawController::class, 'observeStepOne'])->name('withdraws.observeStepOne');
+        Route::post('/{id}/reject-step-one',  [WithdrawController::class, 'rejectStepOne'])->name('withdraws.rejectStepOne');
+        Route::post('/{id}/observe-step-two', [WithdrawController::class, 'observeStepTwo'])->name('withdraws.observeStepTwo');
+        Route::post('/{id}/reject-step-two',  [WithdrawController::class, 'rejectStepTwo'])->name('withdraws.rejectStepTwo');
     });
 
     // routes/web.php (o routes/api.php si llamas /api/...)
-Route::post('/withdraws/{withdraw}/pay', [WithdrawController::class, 'pay'])->name('withdraws.pay');
+    Route::post('/withdraws/{withdraw}/pay', [WithdrawController::class, 'pay'])->name('withdraws.pay');
 
 
 
@@ -293,8 +298,11 @@ Route::post('/withdraws/{withdraw}/pay', [WithdrawController::class, 'pay'])->na
             ->name('investor.rechazarSegunda');
         Route::put('/{id}/comentar-segunda', [InvestorController::class, 'comentarSegundaValidacion'])
             ->name('investor.comentarSegunda');
-        Route::put('/{id}/observaciones', [InvestorController::class, 'observarPrimeraValidacion'])
-            ->name('investor.observaciones');
+        Route::put('/{id}/observar-primera', [InvestorController::class, 'observarPrimeraValidacion'])
+            ->name('investor.observarPrimera');
+
+        Route::put('/{id}/observar-segunda', [InvestorController::class, 'observarSegundaValidacion'])
+            ->name('investor.observarSegunda');
 
         Route::put('/{id}/observar-dni-frontal',   [InvestorController::class, 'observarDniFrontal'])
             ->name('investor.observarDniFrontal');
@@ -315,6 +323,9 @@ Route::post('/withdraws/{withdraw}/pay', [WithdrawController::class, 'pay'])->na
         Route::delete('/{id}/evidencias-pep/{evidenceId}', [InvestorController::class, 'deletePepEvidence'])
             ->whereNumber('evidenceId');
     });
+
+
+    Route::get('/investor/{id}/approval-history', [InvestorController::class, 'approvalHistory']);
     # COMPANIA -> BACKEND
     Route::prefix('companies')->group(function () {
         Route::get('/',        [CompanyController::class, 'index'])->name('companies.index');
@@ -583,5 +594,3 @@ require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';
 Route::post('/detalle-inversionista', [DetalleInversionistaHipotecaController::class, 'store']);
 Route::get('/tipo-inmueble', [TipoInmuebleController::class, 'index']);
-
-

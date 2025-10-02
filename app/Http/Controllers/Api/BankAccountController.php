@@ -19,7 +19,8 @@ use Illuminate\Support\Str;
  *     description="Endpoints para gestionar cuentas bancarias de inversores"
  * )
  */
-class BankAccountController extends Controller{
+class BankAccountController extends Controller
+{
     public function index(Request $request)
     {
         try {
@@ -39,7 +40,8 @@ class BankAccountController extends Controller{
             return $th->getMessage();
         }
     }
-    public function store(StoreBankAccountRequest $request){
+    public function store(StoreBankAccountRequest $request)
+    {
         try {
             $validatedData = $request->validated();
 
@@ -133,7 +135,8 @@ class BankAccountController extends Controller{
             ], 500);
         }
     }
-    public function destroy(string $bankAccountID){
+    public function destroy(string $bankAccountID)
+    {
         try {
             $bank_account = BankAccount::find($bankAccountID);
             if (!$bank_account) {
@@ -157,4 +160,5 @@ class BankAccountController extends Controller{
             ], 500);
         }
     }
+
 }

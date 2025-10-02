@@ -1,14 +1,16 @@
 @php
+    // Marca
     $appName      = $appName      ?? 'ZUMA';
     $brandPrimary = $brandPrimary ?? '#ff4929';
     $brandButton  = $brandButton  ?? '#22c55e';
     $logoUrl      = $logoUrl      ?? '';
 
-    $title        = $title        ?? 'Tu cuenta fue observada';
-    $intro        = $intro        ?? 'Detectamos observaciones en tu cuenta que requieren tu atención.';
+    // Contenido
+    $title        = $title        ?? 'Necesitamos validar tu evidencia PEP';
     $userName     = $userName     ?? 'Usuario';
     $reasons      = $reasons      ?? [];
 
+    // Soporte & footer
     $companyAddr  = $companyAddr  ?? '';
     $prefsUrl     = $prefsUrl     ?? '#';
     $whatsappUrl  = $whatsappUrl  ?? '#';
@@ -59,7 +61,10 @@
                     <td style="padding:0 32px 6px 32px; color:#111827; font:400 14px/22px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;">
                         <p style="margin:0 0 14px 0;">Hola <strong>{{ $userName }}</strong>,</p>
 
-                        <p class="muted" style="margin:0 0 12px 0;">{{ $intro }}</p>
+                        <p class="muted" style="margin:0 0 12px 0;">
+                            Revisamos la <strong>evidencia PEP</strong> que registraste y encontramos observaciones
+                            que debemos corregir para continuar con la validación.
+                        </p>
 
                         @if(!empty($reasons))
                             <p style="margin:0 0 8px 0;">Motivos detectados:</p>
@@ -70,9 +75,26 @@
                             </ul>
                         @endif
 
+                        <p style="margin:12px 0 8px 0;color:#111827;font-weight:700;">
+                            ¿Qué puedes presentar como evidencia válida?
+                        </p>
+                        <ul class="list">
+                            <li>Constancia o carta oficial que acredite el cargo/relación PEP.</li>
+                            <li>Resolución o documento público (gaceta, diario oficial, web institucional).</li>
+                            <li>Declaración jurada firmada con sustento verificable.</li>
+                        </ul>
+
+                        <p style="margin:12px 0 8px 0;color:#111827;font-weight:700;">
+                            Recomendaciones para la imagen/documento:
+                        </p>
+                        <ul class="list">
+                            <li>Foto/escaneo nítido (sin recortes, buena iluminación).</li>
+                            <li>Documento completo, legible, con nombres y fechas visibles.</li>
+                            <li>Si es enlace web institucional, incluye la URL visible en el documento o adjunta PDF.</li>
+                        </ul>
+
                         <p class="muted" style="margin:12px 0 12px 0;">
-                            Para continuar, por favor <strong>contáctate con nuestro equipo</strong> para que te guiemos
-                            y completes la corrección correspondiente.
+                            Por favor <strong>contáctate con nuestro equipo</strong> para ayudarte a reenviar la evidencia correcta.
                         </p>
 
                         <p style="text-align:center; margin:18px 0 22px 0;">
@@ -83,7 +105,7 @@
                         </p>
 
                         <p class="muted" style="margin:0 0 12px 0;">
-                            Este proceso es seguro y busca proteger tu información.
+                            Este proceso es obligatorio por normativa y protege la seguridad de tu cuenta.
                         </p>
 
                         <p style="margin:0;color:#111827;">Gracias por tu colaboración,<br>El equipo de {{ $appName }}</p>
@@ -105,7 +127,7 @@
         </td>
     </tr>
 
-    <!-- Footer -->
+    <!-- Footer oscuro -->
     <tr>
         <td align="center" style="padding:0 0 24px 0;">
             <table class="container" role="presentation" width="640" cellspacing="0" cellpadding="0" border="0"
@@ -116,7 +138,8 @@
                             {{ $companyAddr }}
                         </p>
                         <p style="margin:0 0 10px 0;">
-                            <a href="{{ $prefsUrl }}" style="color:#A3A7AD; font:500 12px/18px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;">
+                            <a href="{{ $prefsUrl }}"
+                               style="color:#A3A7AD; font:500 12px/18px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;">
                                 Gestionar preferencias
                             </a>
                         </p>
