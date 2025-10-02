@@ -270,39 +270,14 @@ class InvestmentControllers extends Controller{
             return response()->json(['message' => 'Error al mostrar las inversiones.'], 500);
         }
     }
-    public function indexAll(Request $request)
-    {
+    public function indexAll(Request $request){
         try {
             Gate::authorize('viewAny', Investment::class);
-
-            $perPage  = $request->input('per_page', 15);
-            $search   = $request->input('razon_social', '');
-            $currency = $request->input('currency');
-            $status   = $request->input('status');
-
-            // ---- Sorting flexible con lista blanca y fallbacks
-            // Permitimos ordenar por columnas propias y por la fecha de la factura relacionada
-            $allowed = [
-                'created_at',         // investments.created_at
-                'id',                 // investments.id
-                'investment_date',    // si tu tabla lo tiene
-                'amount',             // si tu tabla lo tiene (monto invertido)
-                'rate',               // si tu tabla lo tiene (tasa)
-                'invoice_issue_date', // ordena por invoices.issue_date
-            ];
-
-            // Default: si existe invoice.issue_date lo usamos; si no, created_at; si no, id
-            $default = Schema::hasColumn('invoices', 'issue_date')
-                ? 'invoice_issue_date'
-                : (Schema::hasColumn('investments', 'created_at') ? 'created_at' : 'id');
-
-            $sortBy  = $request->input('sort_by', $default);
-            $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
-
-            if (!in_array($sortBy, $allowed, true)) {
-                $sortBy = $default;
-            }
-
+            $perPage     = $request->input('per_page', 15);
+            $search      = $request->input('razon_social', '');
+            $currency    = $request->input('currency');
+            $status      = $request->input('status');
+            $codigo      = $request->input('codigo', '');
             $query = app(Pipeline::class)
                 ->send(Investment::query()->with(['invoice.company', 'investor']))
                 ->through([
@@ -311,39 +286,15 @@ class InvestmentControllers extends Controller{
                     new StatusFilter($status),
                 ])
                 ->thenReturn();
-
-            // Aplicar orden:
-            if ($sortBy === 'invoice_issue_date') {
-                // Ordenar por la fecha de emisión de la factura relacionada
-                $query->leftJoin('invoices', 'invoices.id', '=', 'investments.invoice_id')
-                    ->orderBy('invoices.issue_date', $sortDir)
-                    ->orderBy('investments.id', 'desc')   // desempate estable
-                    ->select('investments.*');            // evita ambigüedad de columnas
-            } else {
-                // Mapear sortBy a la tabla investments
-                $column = in_array($sortBy, ['created_at', 'id', 'investment_date', 'amount', 'rate'], true)
-                    ? "investments.$sortBy"
-                    : 'investments.created_at';
-
-                // Si la columna no existe, usa fallback
-                $columnExists = str_contains($column, 'investments.')
-                    ? Schema::hasColumn('investments', str_replace('investments.', '', $column))
-                    : true;
-
-                if (!$columnExists) {
-                    $column = Schema::hasColumn('investments', 'created_at') ? 'investments.created_at' : 'investments.id';
-                }
-
-                $query->orderBy($column, $sortDir)
-                    ->orderBy('investments.id', 'desc');
-            }
-
-            $investments = $query->paginate($perPage)->appends($request->query());
-
+            $investments = $query->orderByDesc('created_at')->paginate($perPage);
             return InvestmentListResource::collection($investments)
-                ->additional(['total' => $investments->total()]);
+                ->additional([
+                    'total' => $investments->total(),
+                ]);
         } catch (AuthorizationException $e) {
-            return response()->json(['message' => 'No tienes permiso para ver las inversiones.'], 403);
+            return response()->json([
+                'message' => 'No tienes permiso para ver las inversiones.'
+            ], 403);
         } catch (Throwable $e) {
             return response()->json([
                 'message' => 'Error al listar las inversiones.',

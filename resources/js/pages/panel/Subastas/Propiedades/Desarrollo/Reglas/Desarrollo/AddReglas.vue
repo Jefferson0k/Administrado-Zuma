@@ -235,8 +235,8 @@
     </Dialog>
     
     <!-- Componente para ver cronograma -->
-    <VerCronograma v-model:visible="cronogramaVisible" :propiedad-data="propiedadSeleccionadaData"
-        :parametros="parametrosCronograma" />
+    <!-- <VerCronograma v-model:visible="cronogramaVisible" :propiedad-data="propiedadSeleccionadaData"
+        :parametros="parametrosCronograma" />-->
 </template>
 
 <script setup lang="ts">
