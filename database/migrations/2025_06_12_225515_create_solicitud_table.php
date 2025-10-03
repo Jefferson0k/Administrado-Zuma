@@ -6,23 +6,23 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
     public function up(): void {
-        Schema::create('properties', function (Blueprint $table) {
-            $table->ulid('id')->primary();
-            $table->string('departamento')->nullable();
-            $table->string('provincia')->nullable();
-            $table->string('distrito')->nullable();
-            $table->string('direccion')->nullable();
-            $table->string('nombre');
-            $table->text('descripcion')->nullable();
-            $table->bigInteger('valor_estimado')->default(0);
-            $table->bigInteger('valor_subasta')->default(0);
-            $table->foreignId('solicitud_id')->constrained('solicitudes')->cascadeOnDelete();
+        Schema::create('solicitudes', function (Blueprint $table) {
+            $table->id();
+            $table->string('codigo')->unique();
+            $table->bigInteger('valor_general')->default(0);
+            $table->bigInteger('valor_requerido')->default(0);
+            $table->foreignUlid('investor_id')->constrained('investors');
+            $table->foreignId('currency_id')->constrained('currencies');
             $table->enum('estado', [
                 'en_subasta', 'subastada', 'programada', 'desactivada',
                 'activa', 'adquirido', 'pendiente', 'completo', 'espera'
             ])->default('pendiente');
-            $table->string('pertenece')->nullable();
             $table->unsignedTinyInteger('config_total')->default(0);
+
+            $table->string('fuente_ingreso', 150)->nullable();
+            $table->string('profesion_ocupacion', 150)->nullable();
+            $table->decimal('ingreso_promedio', 12, 2)->nullable();
+
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
@@ -32,6 +32,6 @@ return new class extends Migration {
     }
 
     public function down(): void {
-        Schema::dropIfExists('properties');
+        Schema::dropIfExists('solicitudes');
     }
 };

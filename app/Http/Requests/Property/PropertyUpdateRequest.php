@@ -16,7 +16,6 @@ class PropertyUpdateRequest extends FormRequest{
             'riesgo' => 'in:A+,A,B,C,D',
             'tipo_cronograma' => 'required|in:frances,americano',
             'estado_property' => 'nullable|in:activa,desactiva',
-            //'estado_property' => 'required|in:activa,desactivada',
             'estado_configuracion' => 'required|in:1,2',
         ];
     }

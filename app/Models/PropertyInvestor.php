@@ -14,7 +14,7 @@ class PropertyInvestor extends Model implements AuditableContract{
     use HasFactory, SoftDeletes, Auditable;
     protected $table = 'property_investors';
     protected $fillable = [
-        'property_id',
+        'solicitud_id',
         'investor_id',
         'config_id',
         'amount',
@@ -27,8 +27,8 @@ class PropertyInvestor extends Model implements AuditableContract{
     // -------------------------
     // Relaciones
     // -------------------------
-    public function property(){
-        return $this->belongsTo(Property::class);
+    public function solicitud(){
+        return $this->belongsTo(Solicitud::class);
     }
     public function investor(){
         return $this->belongsTo(Investor::class);

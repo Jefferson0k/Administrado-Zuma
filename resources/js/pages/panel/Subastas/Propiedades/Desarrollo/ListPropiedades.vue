@@ -9,16 +9,16 @@ import InputText from 'primevue/inputtext';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import Button from 'primevue/button';
-import MultiSelect from 'primevue/multiselect';
 import Select from 'primevue/select';
-import Image from 'primevue/image';
 import Menu from 'primevue/menu';
 import ConfigPropiedades from './ConfigPropiedades.vue';
 import UpdatePropiedades from './UpdatePropiedades.vue';
 import DeletePropiedades from './DeletePropiedades.vue';
 import Tag from 'primevue/tag';
 
-const props = defineProps({ refresh: { type: Number, default: 0 } });
+const props = defineProps({ 
+  refresh: { type: Number, default: 0 } 
+});
 
 const toast = useToast();
 const dt = ref();
@@ -29,7 +29,6 @@ const totalRecords = ref(0);
 const currentPage = ref(1);
 const perPage = ref(10);
 const search = ref('');
-const selectedColumns = ref([]);
 const showModal = ref(false);
 const showUpdateModal = ref(false);
 const showDeleteModal = ref(false);
@@ -37,18 +36,14 @@ const selectedId = ref(null);
 const menu = ref();
 const menuItems = ref([]);
 
-// Server-side sort
-const sortField = ref(null); // e.g. 'nombre'
-const sortOrder = ref(null); // 1 | -1
+const sortField = ref(null);
+const sortOrder = ref(null);
 
 const selectedEstado = ref(null);
 const selectedOpcions = ref([
-  { name: 'En subasta', value: 'en_subasta' },
-  { name: 'Subastada', value: 'subastada' },
-  { name: 'Programada', value: 'programada' },
-  { name: 'Desactivada', value: 'desactivada' },
-  { name: 'Activa', value: 'activa' },
-  { name: 'Adquirido', value: 'adquirido' },
+  { name: 'Pendiente', value: 'pendiente' },
+  { name: 'Aprobada', value: 'aprobada' },
+  { name: 'Rechazada', value: 'rechazada' },
 ]);
 
 let searchTimeout;
@@ -62,26 +57,25 @@ const loadData = async () => {
       search: search.value,
       estado: selectedEstado.value?.value || null,
     };
+    
     if (sortField.value) {
       params.sort_field = sortField.value;
       params.sort_order = sortOrder.value === 1 ? 'asc' : 'desc';
     }
 
-    // ⚠️ Ensure your route points to the controller method below.
-    // If you mapped it to /property/list, change this URL accordingly.
     const { data } = await axios.get('/property', { params });
 
     products.value = data.data ?? [];
+    totalRecords.value = data.meta?.total ?? data.total ?? 0;
 
-    // Accept both ResourceCollection(meta) and custom (pagination) shapes
-    totalRecords.value =
-      data?.meta?.total ??
-      data?.pagination?.total ??
-      0;
-
-    // If backend returns current page in meta/pagination, you can read it here if needed
   } catch (error) {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar las propiedades', life: 3000 });
+    console.error('Error al cargar solicitudes:', error);
+    toast.add({ 
+      severity: 'error', 
+      summary: 'Error', 
+      detail: 'No se pudieron cargar las solicitudes', 
+      life: 3000 
+    });
   } finally {
     loading.value = false;
   }
@@ -111,33 +105,31 @@ const onSort = (event) => {
   loadData();
 };
 
-const isColumnSelected = (fieldName) => selectedColumns.value.some(col => col.field === fieldName);
+const onEditar = (data) => { 
+  selectedId.value = data.id; 
+  showUpdateModal.value = true; 
+};
 
-const optionalColumns = ref([
-  { field: 'direccion', header: 'Dirección' },
-  { field: 'descripcion', header: 'Descripción' },
-  { field: 'foto', header: 'Imagen' },
-  { field: 'valor_subasta', header: 'Valor Subasta' },
-]);
-
-const onEditar = (data) => { selectedId.value = data.id; showUpdateModal.value = true; };
-const onEliminar = (data) => { selectedId.value = data.id; showDeleteModal.value = true; };
+const onEliminar = (data) => { 
+  selectedId.value = data.id; 
+  showDeleteModal.value = true; 
+};
 
 const formatCurrency = (value, currency = 'USD') => {
   if (!value && value !== 0) return '-';
   if (Number(value) === 0) return '-';
-  return new Intl.NumberFormat('es-PE', { style: 'currency', currency, minimumFractionDigits: 2 }).format(value);
+  return new Intl.NumberFormat('es-PE', { 
+    style: 'currency', 
+    currency, 
+    minimumFractionDigits: 2 
+  }).format(value);
 };
 
 const getEstadoSeverity = (estado) => {
-  switch (estado) {
-    case 'en_subasta': return 'info';
-    case 'activa': return 'success';
-    case 'subastada': return 'warn';
-    case 'programada': return 'info';
-    case 'desactivada': return 'danger';
-    case 'adquirido': return 'success';
+  switch (estado?.toLowerCase()) {
     case 'pendiente': return 'warn';
+    case 'aprobada': return 'success';
+    case 'rechazada': return 'danger';
     default: return 'secondary';
   }
 };
@@ -148,9 +140,19 @@ const onPropiedadEliminada = () => loadData();
 const copiarId = async (id) => {
   try {
     await navigator.clipboard.writeText(id);
-    toast.add({ severity: 'success', summary: 'ID copiado', detail: `ID ${id} copiado al portapapeles`, life: 3000 });
+    toast.add({ 
+      severity: 'success', 
+      summary: 'ID copiado', 
+      detail: `ID ${id} copiado al portapapeles`, 
+      life: 3000 
+    });
   } catch {
-    toast.add({ severity: 'error', summary: 'Error al copiar', detail: 'No se pudo copiar el ID', life: 3000 });
+    toast.add({ 
+      severity: 'error', 
+      summary: 'Error al copiar', 
+      detail: 'No se pudo copiar el ID', 
+      life: 3000 
+    });
   }
 };
 
@@ -179,9 +181,8 @@ const showContextMenu = (event, data) => {
     @page="onPage"
     paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
     :rowsPerPageOptions="[10, 15, 25]"
-    currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} propiedades"
+    currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} solicitudes"
     class="p-datatable-sm"
-
     :sortField="sortField"
     :sortOrder="sortOrder"
     sortMode="single"
@@ -190,12 +191,14 @@ const showContextMenu = (event, data) => {
     <template #header>
       <div class="flex flex-wrap gap-2 items-center justify-between">
         <div class="flex items-center gap-2">
-          <h4 class="m-0">Propiedades</h4>
+          <h4 class="m-0">Solicitudes</h4>
         </div>
 
         <div class="flex flex-wrap gap-2">
           <IconField>
-            <InputIcon><i class="pi pi-search" /></InputIcon>
+            <InputIcon>
+              <i class="pi pi-search" />
+            </InputIcon>
             <InputText v-model="search" placeholder="Buscar..." />
           </IconField>
 
@@ -208,116 +211,61 @@ const showContextMenu = (event, data) => {
             showClear
           />
 
-          <MultiSelect
-            v-model="selectedColumns"
-            :options="optionalColumns"
-            optionLabel="header"
-            display="chip"
-            placeholder="Seleccionar Columnas"
+          <Button 
+            icon="pi pi-refresh" 
+            outlined 
+            rounded 
+            aria-label="Refresh" 
+            @click="loadData" 
           />
-
-          <Button icon="pi pi-refresh" outlined rounded aria-label="Refresh" @click="loadData" />
         </div>
       </div>
     </template>
 
     <Column selectionMode="multiple" style="width: 3rem" :exportable="false" />
-
-    <Column field="nombre" header="Nombre" sortable style="min-width: 15rem" />
-
-    <Column field="departamento" header="Departamento" sortable style="min-width: 12rem">
+    
+    <Column field="codigo" header="Código" sortable style="min-width: 8rem" />
+    
+    <Column field="investor" header="Inversionista" sortable style="min-width: 18rem" />
+    
+    <Column field="document" header="DNI" sortable style="min-width: 7rem" />
+    
+    <Column field="propiedades_count" header="Propiedades" sortable style="min-width: 8rem">
       <template #body="slotProps">
-        <span>{{ slotProps.data.departamento || '-' }}</span>
+        <span>{{ slotProps.data.propiedades_count || 0 }}</span>
       </template>
     </Column>
 
-    <Column field="provincia" header="Provincia" sortable style="min-width: 12rem">
+    <Column field="currency" header="Moneda" sortable style="min-width: 7rem">
       <template #body="slotProps">
-        <span>{{ slotProps.data.provincia || '-' }}</span>
+        <span>{{ slotProps.data.currency || '-' }}</span>
       </template>
     </Column>
 
-    <Column field="distrito" header="Distrito" sortable style="min-width: 12rem" />
-
-    <Column
-      v-if="isColumnSelected('direccion')"
-      field="direccion"
-      header="Dirección"
-      sortable
-      style="min-width: 20rem"
-    >
+    <Column field="valor_general" header="Valor Estimado" sortable style="min-width: 12rem">
       <template #body="slotProps">
-        <span>{{ slotProps.data.direccion || '-' }}</span>
+        <span>{{ formatCurrency(slotProps.data.valor_general, slotProps.data.currency) }}</span>
       </template>
     </Column>
 
-    <Column
-      v-if="isColumnSelected('descripcion')"
-      field="descripcion"
-      header="Descripción"
-      sortable
-      style="min-width: 25rem"
-    />
-
-    <Column v-if="isColumnSelected('foto')" header="Imagen">
+    <Column field="valor_requerido" header="Valor Requerido" sortable style="min-width: 12rem">
       <template #body="slotProps">
-        <div v-if="slotProps.data.foto && slotProps.data.foto.length > 0" class="flex gap-1">
-          <Image
-            v-for="(imagen, index) in slotProps.data.foto.slice(0, 3)"
-            :key="index"
-            :src="imagen"
-            class="rounded"
-            alt="Foto"
-            preview
-            width="40"
-            height="40"
-            style="object-fit: cover"
-          />
-          <span v-if="slotProps.data.foto.length > 3" class="text-sm text-gray-500 self-center">
-            +{{ slotProps.data.foto.length - 3 }}
-          </span>
-        </div>
-        <span v-else>Sin imágenes</span>
+        <span>{{ formatCurrency(slotProps.data.valor_requerido, slotProps.data.currency) }}</span>
       </template>
     </Column>
 
-    <Column field="Moneda" header="Moneda" sortable style="min-width: 5rem">
+    <Column field="estado_nombre" header="Estado" style="min-width: 10rem" sortable>
       <template #body="slotProps">
-        <span>{{ slotProps.data.Moneda || '-' }}</span>
+        <Tag 
+          :value="slotProps.data.estado_nombre" 
+          :severity="getEstadoSeverity(slotProps.data.estado_nombre)" 
+        />
       </template>
     </Column>
 
-    <Column field="valor_estimado" header="Valor Estimado" sortable style="min-width: 10rem">
-      <template #body="slotProps">
-        <span>{{ formatCurrency(slotProps.data.valor_estimado, slotProps.data.Moneda) }}</span>
-      </template>
-    </Column>
+    <Column field="created_at" header="Fecha Creación" sortable style="min-width: 12rem" />
 
-    <Column field="valor_requerido" header="Valor requerido" sortable style="min-width: 10rem">
-      <template #body="slotProps">
-        <span>{{ formatCurrency(slotProps.data.valor_requerido, slotProps.data.Moneda) }}</span>
-      </template>
-    </Column>
-
-    <Column
-      v-if="isColumnSelected('valor_subasta')"
-      field="valor_subasta"
-      header="Valor Subasta"
-      sortable
-      style="min-width: 10rem"
-    >
-      <template #body="slotProps">
-        <span>{{ formatCurrency(slotProps.data.valor_subasta, slotProps.data.Moneda) }}</span>
-      </template>
-    </Column>
-
-    <Column field="estado_nombre" header="Estado" style="min-width: 5rem" sortable>
-      <template #body="slotProps">
-        <Tag :value="slotProps.data.estado_nombre" :severity="getEstadoSeverity(slotProps.data.estado)" />
-      </template>
-    </Column>
-
-    <Column header="">
+    <Column header="" style="width: 4rem">
       <template #body="slotProps">
         <Button
           icon="pi pi-ellipsis-v"
@@ -332,7 +280,21 @@ const showContextMenu = (event, data) => {
 
   <Menu ref="menu" :model="menuItems" popup />
 
-  <ConfigPropiedades v-model:visible="showModal" :idPropiedad="selectedId" @configuracion-guardada="loadData" />
-  <UpdatePropiedades v-model:visible="showUpdateModal" :idPropiedad="selectedId" @propiedad-actualizada="onPropiedadActualizada" />
-  <DeletePropiedades v-model:visible="showDeleteModal" :idPropiedad="selectedId" @propiedad-eliminada="onPropiedadEliminada" />
+  <ConfigPropiedades 
+    v-model:visible="showModal" 
+    :idPropiedad="selectedId" 
+    @configuracion-guardada="loadData" 
+  />
+  
+  <UpdatePropiedades 
+    v-model:visible="showUpdateModal" 
+    :idPropiedad="selectedId" 
+    @propiedad-actualizada="onPropiedadActualizada" 
+  />
+  
+  <DeletePropiedades 
+    v-model:visible="showDeleteModal" 
+    :idPropiedad="selectedId" 
+    @propiedad-eliminada="onPropiedadEliminada" 
+  />
 </template>

@@ -8,39 +8,35 @@ return new class extends Migration{
     public function up(): void{
         Schema::create('property_loan_details', function (Blueprint $table) {
             $table->id();
-            $table->ulid('property_id');
-            $table->ulid('config_id'); // Agregado para la configuración
+            
+            $table->foreignId('solicitud_id')->constrained('solicitudes')->onDelete('cascade');
+            $table->ulid('config_id'); 
             $table->ulid('investor_id');
             
-            // Campos con límites específicos según el frontend
-            $table->string('ocupacion_profesion', 200)->nullable(); // 200 caracteres
-            $table->string('empresa_tasadora', 150)->nullable(); // 150 caracteres
-            $table->string('motivo_prestamo', 300)->nullable(); // 300 caracteres
-            $table->text('descripcion_financiamiento')->nullable(); // 500 caracteres (text para mayor flexibilidad)
-            $table->text('solicitud_prestamo_para')->nullable(); // 500 caracteres (text para mayor flexibilidad)
+            $table->string('ocupacion_profesion', 200)->nullable();
+            $table->string('empresa_tasadora', 150)->nullable();
+            $table->string('motivo_prestamo', 300)->nullable();
+            $table->text('descripcion_financiamiento')->nullable();
+            $table->text('solicitud_prestamo_para')->nullable();
 
-            // === NUEVOS CAMPOS ===
-            $table->unsignedBigInteger('monto_tasacion')->nullable();     // Monto de la tasación
-            $table->unsignedInteger('porcentaje_prestamo')->nullable();   // % para préstamo (entero 0-100)
-            $table->unsignedBigInteger('monto_invertir')->nullable();     // Monto a invertir
-            $table->unsignedBigInteger('monto_prestamo')->nullable();     // Monto del préstamo
+            $table->unsignedBigInteger('monto_tasacion')->nullable();
+            $table->unsignedInteger('porcentaje_prestamo')->nullable();
+            $table->unsignedBigInteger('monto_invertir')->nullable();
+            $table->unsignedBigInteger('monto_prestamo')->nullable();
 
-            // Foreign keys
-            $table->foreign('property_id')
-                ->references('id')
-                ->on('properties')
-                ->onDelete('cascade');
-
+            // Foreign key investor_id
             $table->foreign('investor_id')
                 ->references('id')
                 ->on('investors')
                 ->onDelete('cascade');
-                
-            $table->index(['property_id', 'investor_id']);
+
+            $table->index(['solicitud_id', 'investor_id']);
             $table->index('config_id');
+
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
+
             $table->timestamps();
             $table->softDeletes();
         });
