@@ -13,48 +13,86 @@ class PropertyLoanDetailResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $config = $this->property->configuraciones()
-            ->with('plazo')
-            ->latest()
+        $solicitud = $this->solicitud;
+        $investor = $this->investor;
+
+        // Obtenemos el PropertyInvestor correspondiente a esta solicitud y configuración
+        $propertyInvestor = $solicitud
+            ->propertyInvestors()
+            ->where('config_id', $this->config_id)
             ->first();
+
+        // Obtenemos el DetalleInversionistaHipoteca basado en investor_id y config_id
+        $detalleInversionista = \App\Models\DetalleInversionistaHipoteca::where('investor_id', $this->investor_id)
+            ->where('configuracion_id', $this->config_id)
+            ->first();
+
+        // Obtener TODAS las propiedades de la solicitud con sus imágenes
+        $propertiesWithImages = $solicitud->properties->map(function($property) use ($solicitud) {
+            return [
+                'property_id' => $property->id,
+                'nombre' => $property->nombre,
+                'direccion' => $property->direccion,
+                'departamento' => $property->departamento,
+                'provincia' => $property->provincia,
+                'distrito' => $property->distrito,
+                'descripcion' => $property->descripcion,
+                'pertenece' => $property->pertenece,
+                'valor_estimado' => $this->formatMoneyWithCurrency($property->valor_estimado, $solicitud->currency),
+                'valor_requerido' => $this->formatMoneyWithCurrency($property->valor_requerido, $solicitud->currency),
+                'tipo_inmueble' => $property->tipoInmueble->nombre_tipo_inmueble ?? null,
+                'imagenes' => $this->getImagenesFromProperty($property)
+            ];
+        });
 
         return [
             'id' => $this->id,
+            'solicitud_id' => $this->solicitud_id,
             'investor_id' => $this->investor_id,
+
+            // Datos del inversionista
             'inversionista' => [
-                'documento' => $this->investor->document ?? null,
-                'nombre_completo' => trim(
-                    ($this->investor->name ?? '') . ' ' .
-                    ($this->investor->first_last_name ?? '') . ' ' .
-                    ($this->investor->second_last_name ?? '')
-                ),
-                'email' => $this->investor->email ?? null,
-                'telefono' => $this->investor->telephone ?? null,
+                'documento' => $investor->document ?? null,
+                'nombre_completo' => trim(($investor->name ?? '') . ' ' . ($investor->first_last_name ?? '') . ' ' . ($investor->second_last_name ?? '')),
             ],
-            'property_id' => $this->property_id,
-            // 'ocupacion_profesion' => $this->ocupacion_profesion,
+
+            // Datos de préstamo
             'motivo_prestamo' => $this->motivo_prestamo,
             'descripcion_financiamiento' => $this->descripcion_financiamiento,
             'solicitud_prestamo_para' => $this->solicitud_prestamo_para,
-            'garantia' => $this->garantia,
-            'perfil_riesgo' => $this->perfil_riesgo,
-            'Property' => $this->property->nombre,
-            'Plazo' => $config?->plazo?->nombre ?? '-',
-            'Esquema' => $this->getEsquemaDetalle($config?->tipo_cronograma),
-            
-            'Monto' => $this->formatMoneyWithCurrency($this->property->valor_requerido, $this->property->currency),
-            'Monto_raw' => $this->formatMoney($this->property->valor_requerido),
-            'Valor_Estimado' => $this->formatMoneyWithCurrency($this->property->valor_estimado, $this->property->currency),
-            
-            'riesgo' => $config?->riesgo ?? 'medio',
+            'empresa_tasadora' => $this->empresa_tasadora ?? null,
+            'monto_tasacion' => $this->monto_tasacion ?? 0,
+            'porcentaje_prestamo' => $this->porcentaje_prestamo ?? 0,
+            'monto_invertir' => $this->monto_invertir ?? 0,
+            'monto_prestamo' => $this->monto_prestamo ?? 0,
 
-            'tea' => $config?->tea ? number_format($config->tea / 100, 3, '.', '') . '%' : null, // 1550 -> "15.500%"
-            'tem' => $config?->tem ? number_format($config->tem / 100, 3, '.', '') . '%' : null, // 125 -> "1.250%"
-            'tea_raw' => $config?->tea ? $config->tea / 100 : null, // Para cálculos frontend
-            'tem_raw' => $config?->tem ? $config->tem / 100 : null, // Para cálculos frontend
-            'imagenes' => $this->property->getImagenes(),
-            'cronograma' => $this->property->paymentSchedules->map(function($item) {
-                return [
+            // Montos desde Solicitud
+            'monto_general' => $solicitud ? $this->formatMoneyWithCurrency($solicitud->valor_general, $solicitud->currency) : null,
+            'monto_requerido' => $solicitud ? $this->formatMoneyWithCurrency($solicitud->valor_requerido, $solicitud->currency) : null,
+            'fuente_ingreso'    => $solicitud->fuente_ingreso ?? null,
+            'ingreso_promedio'    => $solicitud->ingreso_promedio ?? null,
+            'profesion_ocupacion'    => $solicitud->profesion_ocupacion ?? null,
+
+            // Configuración
+            'plazo' => $this->configuracion?->plazo?->nombre ?? '-',
+            'esquema' => $this->getEsquemaDetalle($this->configuracion?->tipo_cronograma),
+            'riesgo' => $this->configuracion?->riesgo ?? 'medio',
+            'tea' => $this->configuracion?->tea ? number_format($this->configuracion->tea / 100, 3, '.', '') . '%' : null,
+            'tem' => $this->configuracion?->tem ? number_format($this->configuracion->tem / 100, 3, '.', '') . '%' : null,
+            'tea_raw' => $this->configuracion?->tea ? $this->configuracion->tea / 100 : null,
+            'tem_raw' => $this->configuracion?->tem ? $this->configuracion->tem / 100 : null,
+
+            // TODAS las propiedades de la solicitud con sus datos completos
+            'propiedades' => $propertiesWithImages,
+
+            // Imágenes de todas las propiedades (para compatibilidad)
+            'imagenes' => $solicitud 
+                ? $solicitud->properties->flatMap(fn($p) => $this->getImagenesFromProperty($p)) 
+                : [],
+
+            // Cronograma desde PropertyInvestor
+            'cronograma' => $propertyInvestor 
+                ? $propertyInvestor->paymentSchedules->map(fn($item) => [
                     'cuota' => $item->cuota,
                     'vencimiento' => Carbon::parse($item->vencimiento)->format('d-m-Y'),
                     'saldo_inicial' => $this->formatDecimal($item->saldo_inicial),
@@ -64,45 +102,67 @@ class PropertyLoanDetailResource extends JsonResource
                     'total_cuota' => $this->formatDecimal($item->total_cuota),
                     'saldo_final' => $this->formatDecimal($item->saldo_final),
                     'estado' => $item->estado,
-                    'saldo_inicial_formatted' => $this->property->currency->simbolo . ' ' . number_format($item->saldo_inicial, 2, '.', ','),
-                    'capital_formatted' => $this->property->currency->simbolo . ' ' . number_format($item->capital, 2, '.', ','),
-                    'intereses_formatted' => $this->property->currency->simbolo . ' ' . number_format($item->intereses, 2, '.', ','),
-                    'cuota_neta_formatted' => $this->property->currency->simbolo . ' ' . number_format($item->cuota_neta, 2, '.', ','),
-                    'total_cuota_formatted' => $this->property->currency->simbolo . ' ' . number_format($item->total_cuota, 2, '.', ','),
-                ];
-            }),
+                ])->toArray()
+                : [],
+
+            // Recursos visuales
             'logo' => url('/imagenes/cabecera.svg'),
             'hipotecas' => url('/imagenes/hipotecas.svg'),
             'principal' => url('/imagenes/principal.svg'),
         ];
     }
-    private function formatMoney($money): float{
+
+    // Formatea Money en decimal
+    private function formatMoney($money): float
+    {
         if (!$money instanceof Money) {
             return 0.0;
         }
-        
+
         $currencies = new ISOCurrencies();
         $formatter = new DecimalMoneyFormatter($currencies);
         return (float) $formatter->format($money);
     }
-    private function formatMoneyWithCurrency($money, $currency): string{
+
+    // Formatea Money con símbolo de moneda
+    private function formatMoneyWithCurrency($money, $currency): string
+    {
         if (!$money instanceof Money) {
-            return $currency?->simbolo . ' 0.00';
+            return ($currency?->simbolo ?? '') . ' 0.00';
         }
-        
+
         $amount = $this->formatMoney($money);
         $simbolo = $currency?->simbolo ?? '';
-        
         return $simbolo . ' ' . number_format($amount, 2, '.', ',');
     }
-    private function formatDecimal($value): string{
+
+    // Formatea decimal
+    private function formatDecimal($value): string
+    {
         return number_format((float) $value, 2, '.', '');
     }
-    private function getEsquemaDetalle($tipoChronograma): string{
+
+    // Convierte tipo cronograma a texto
+    private function getEsquemaDetalle($tipoChronograma): string
+    {
         return match($tipoChronograma) {
             'americano' => 'Sistema Americano',
             'frances' => 'Sistema Francés',
-            default => 'Cuota fija'
+            default => 'Cuota fija',
         };
+    }
+
+    // Obtiene imágenes de una propiedad específica
+    private function getImagenesFromProperty($property): array
+    {
+        if (!$property?->images) {
+            return [];
+        }
+
+        return $property->images->map(fn($img) => [
+            'url' => $img->path ? url("s3/{$img->path}") : asset('Propiedades/no-image.png'),
+            'descripcion' => $img->description ?? '',
+            'property_id' => $property->id // Agregar referencia a la propiedad
+        ])->toArray();
     }
 }

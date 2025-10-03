@@ -600,25 +600,28 @@ const buscarPropiedades = debounce(async (texto: string) => {
             params: { search: texto },
         })
 
-        propiedades.value = response.data.data.map((propiedad: any) => ({
-            label: `${propiedad.nombre} - ${propiedad.departamento}, ${propiedad.provincia}`,
-            value: propiedad.property_id,
-            config_id: propiedad.config_id,
-            nombre: propiedad.nombre,
-            departamento: propiedad.departamento,
-            provincia: propiedad.provincia,
-            distrito: propiedad.distrito,
-            direccion: propiedad.direccion,
-            estado_property: propiedad.estado_property,
-            valor_estimado: propiedad.valor_estimado,
-            tea: propiedad.tea,
-            tem: propiedad.tem,
-            moneda: propiedad.moneda,
-            cliente_id: propiedad.cliente_id,
-            investor_name: propiedad.investor_name,
-            investor_first_last_name: propiedad.investor_first_last_name,
-            investor_second_last_name: propiedad.investor_second_last_name,
-            investor_document: propiedad.investor_document
+        propiedades.value = response.data.data.map((item: any) => ({
+            label: `${item.codigo_solicitud} - ${item.investor_name} ${item.investor_first_last_name}`,
+            value: item.solicitud_id,
+            config_id: item.config_id,
+            nombre: item.codigo_solicitud,
+            departamento: item.estado_solicitud,
+            provincia: '',
+            distrito: '',
+            direccion: `${item.investor_name} ${item.investor_first_last_name} ${item.investor_second_last_name}`,
+            estado_property: item.estado_solicitud,
+            valor_estimado: {
+                currency: item.moneda || 'PEN',
+                decimal: item.valor_requerido || '0' // Usando valor_requerido en lugar de valor_general
+            },
+            tea: item.tea,
+            tem: item.tem,
+            moneda: item.moneda,
+            cliente_id: item.investor_id,
+            investor_name: item.investor_name,
+            investor_first_last_name: item.investor_first_last_name,
+            investor_second_last_name: item.investor_second_last_name,
+            investor_document: item.investor_document
         }))
     } catch (error) {
         console.error('Error al buscar propiedades:', error)
@@ -646,7 +649,7 @@ const guardarFormulario = async () => {
 
     try {
         const payload = {
-            property_id: propiedadSeleccionada.value.value,
+            solicitud_id: propiedadSeleccionada.value.value,
             config_id: propiedadSeleccionada.value.config_id,
             investor_id: clienteVinculado.value?.cliente_id,
             ...form.value

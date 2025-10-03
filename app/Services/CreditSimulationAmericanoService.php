@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Property;
 use App\Models\Deadlines;
 use Carbon\Carbon;
 use Money\Money;
@@ -35,43 +34,37 @@ class CreditSimulationAmericanoService
 
     /**
      * Cronograma Americano: Solo intereses, capital al final
+     * @param object $model Puede ser Property o Solicitud, debe tener valor_requerido, tem, tea, currency_id
      */
-    public function generate(Property $property, Deadlines $deadline, int $page = 1, int $perPage = 10): array
+    public function generate($model, Deadlines $deadline, int $page = 1, int $perPage = 10): array
     {
         bcscale(6);
-        
+
         // Convertir Money object a string decimal
-        $capital = $this->moneyToDecimalString($property->valor_requerido);
-        
+        $capital = $this->moneyToDecimalString($model->valor_requerido);
+
         $plazoMeses = $deadline->duracion_meses;
-        $moneda = $property->currency_id == 1 ? 'Soles' : 'Dólares';
-        $simbolo = $property->currency_id == 1 ? 'PEN' : 'USD';
-        
+        $moneda = $model->currency_id == 1 ? 'Soles' : 'Dólares';
+        $simbolo = $model->currency_id == 1 ? 'PEN' : 'USD';
+
         // Convertir tasa entera a decimal: 125 -> 0.0125 (1.25%)
-        $tem_decimal = bcdiv((string) $property->tem, '10000', 6);
-        
+        $tem_decimal = bcdiv((string) $model->tem, '10000', 6);
+
         $fechaDesembolso = Carbon::now()->format('d/m/Y');
         $fechaInicio = Carbon::now()->addMonth()->day(15);
-        
+
         $pagos = [];
-        
+
         for ($cuota = 1; $cuota <= $plazoMeses; $cuota++) {
-            // En sistema americano: solo intereses hasta la última cuota
             $interesSinIGV = bcmul($capital, $tem_decimal, 6);
             $igv = '0.00';
-            
-            // Capital solo en la última cuota
             $capitalPago = ($cuota === $plazoMeses) ? $capital : '0.00';
-            
             $cuotaNeta = bcadd($interesSinIGV, $capitalPago, 6);
             $cuotaTotal = $cuotaNeta;
-            
-            // Saldo inicial siempre es el capital (no se amortiza hasta el final)
             $saldoInicial = $capital;
             $saldoFinal = ($cuota === $plazoMeses) ? '0.00' : $capital;
-            
             $fechaVcmto = $fechaInicio->copy()->addMonths($cuota - 1)->format('d/m/Y');
-            
+
             $pagos[] = [
                 'cuota' => $cuota,
                 'vcmto' => $fechaVcmto,
@@ -84,15 +77,14 @@ class CreditSimulationAmericanoService
                 'saldo_final' => $this->bcround($saldoFinal, 2),
             ];
         }
-        
+
         $total = count($pagos);
         $offset = ($page - 1) * $perPage;
         $paginatedPagos = array_slice($pagos, $offset, $perPage);
-        
-        // Convertir enteros a decimales para mostrar
-        $tea_display = $property->tea / 100; // 1550 -> 15.50
-        $tem_display = $property->tem / 100; // 125 -> 1.25
-        
+
+        $tea_display = $model->tea / 100; // 1550 -> 15.50
+        $tem_display = $model->tem / 100; // 125 -> 1.25
+
         return [
             'cliente' => 'CLIENTE SIMULACION',
             'monto_solicitado' => $this->bcround($capital, 2),

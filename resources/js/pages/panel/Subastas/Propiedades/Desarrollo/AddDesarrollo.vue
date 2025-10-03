@@ -7,46 +7,43 @@
     </template>
   </Toolbar>
 
-  <Dialog v-model:visible="modalVisible" :header="mostrarInmueble ? 'Registro Inmueble' : 'Registro Solicitud'"  :modal="true" :style="{ width: '650px' }">
+  <Dialog v-model:visible="modalVisible" :header="mostrarInmueble ? 'Registro Inmueble' : 'Registro Solicitud'"
+    :modal="true" :style="{ width: '500px' }">
     <form @submit.prevent="saveProperty" class="p-fluid">
       <div class="flex flex-col gap-4">
         <!-- Paso 1: Cliente -->
         <div v-if="!mostrarInmueble" class="flex flex-col gap-4 p-3 border-1 border-300 border-round">
           <div>
-            <label class="font-bold mb-1">DNI <span class="text-red-500">(*)</span></label>
+            <label class="font-bold mb-1">DNI <span class="text-red-500">*</span></label>
             <InputText v-model="form.dni" fluid maxlength="8" @input="handleDniInput" />
           </div>
-          <!-- NOMBRES -->
+
           <div class="flex gap-4">
             <div class="w-1/2">
-              <label class="font-bold mb-1">Nombres <span class="text-red-500">(*)</span></label>
+              <label class="font-bold mb-1">Nombres <span class="text-red-500">*</span></label>
               <InputText v-model="form.nombres" fluid :disabled="investorExists" />
             </div>
-            <!-- APELLIDOS -->
             <div class="w-1/2">
-              <label class="font-bold mb-1">Apellidos Paterno/Materno <span class="text-red-500">(*)</span></label>
+              <label class="font-bold mb-1">Apellidos <span class="text-red-500">*</span></label>
               <InputText v-model="form.apellidos" fluid :disabled="investorExists" />
             </div>
-          </div>      
-          <!-- Campos de Detalles del Cliente -->          
-          <h6 class="font-bold text-900 mb-3 flex items-center gap-2">
-            <i class="pi pi-briefcase text-orange-600"></i>
-            Detalles del Cliente
-          </h6>
+          </div>
+          <label class="font-bold mb-1">Detalles del cliente</label>
           <div>
-            <label class="font-bold mb-1">Fuente de Ingresos <span class="text-red-500">(*)</span></label>
+            <label class="font-bold mb-1">Fuente de Ingresos <span class="text-red-500">*</span></label>
             <InputText v-model="form.fuente_ingreso" fluid />
           </div>
+
           <div>
-           <label class="font-bold mb-1">Profesión / Ocupación <span class="text-red-500">(*)</span></label>
+            <label class="font-bold mb-1">Profesión / Ocupación <span class="text-red-500">*</span></label>
             <InputText v-model="form.profesion_ocupacion" fluid />
           </div>
+
           <div>
-            <label class="font-bold mb-1">Ingreso Promedio (S/.) <span class="text-red-500">(*)</span></label>
+            <label class="font-bold mb-1">Ingreso Promedio (S/.) <span class="text-red-500">*</span></label>
             <InputNumber v-model="form.ingreso_promedio" mode="currency" currency="PEN" locale="es-PE" fluid />
-          </div>   
-          
-          <!-- Mostrar información adicional si es consulta externa -->
+          </div>
+
           <div v-if="dniConsultaExterna && !investorExists"
             class="p-3 bg-blue-50 border-1 border-blue-200 border-round">
             <p class="text-sm text-blue-800 mb-2">Información adicional encontrada:</p>
@@ -66,7 +63,6 @@
             </div>
           </div>
 
-          <!-- Botones dinámicos -->
           <div class="flex gap-2">
             <Button v-if="investorExists && puedeContinuarCliente" label="Siguiente" icon="pi pi-arrow-right" fluid
               severity="contrast" rounded @click="continuarConInversorExistente" />
@@ -77,7 +73,6 @@
 
         <!-- Paso 2: Inmueble -->
         <div v-if="mostrarInmueble" class="flex flex-col gap-4">
-          <!-- Información del inversor seleccionado -->          
           <div class="p-3 bg-green-50 border-1 border-green-200 rounded-lg border-round mb-4">
             <p class="text-sm text-green-800 mb-1">
               <i class="pi pi-file mr-2"></i>
@@ -91,152 +86,255 @@
               <i class="pi pi-id-card mr-2"></i>
               <strong>DNI: </strong> {{ form.dni }}
             </p>
-          </div> 
-          <!-- Sección de Datos del Inmueble -->
-          <div v-for="(inmueble, index) in inmuebles" :key="index" class="flex flex-col gap-4 p-3 bg-gray-100 rounded-lg shadow-sm w-full">
-          <!-- Tipo de inmueble y La propierdad pertenece a -->
-           <Button label="Eliminar inmueble" icon="pi pi-trash" severity="danger"
-            v-if="inmuebles.length > 1"
-            @click="removeInmueble(index)" />
+          </div>
+
+          <!-- Navegación de inmuebles si hay más de uno -->
+          <div v-if="inmuebles.length > 1" class="flex flex-wrap gap-2 mb-4">
+            <Button
+              v-for="(inm, idx) in inmuebles"
+              :key="idx"
+              :severity="inmuebleActivo === idx ? 'contrast' : 'secondary'"
+              :outlined="inmuebleActivo !== idx"
+              size="small"
+              @click="editarInmueble(idx)"
+            >
+              <template #default>
+                <span class="flex items-center gap-2">
+                  <i :class="inm.bloqueado ? 'pi pi-lock' : 'pi pi-home'"></i>
+                  Inmueble {{ idx + 1 }}
+                  <i v-if="validarInmuebleCompleto(inm)" class="pi pi-check-circle text-green-500"></i>
+                </span>
+              </template>
+            </Button>
+          </div>
+
+          <!-- Mostrar solo el inmueble activo -->
+          <div class="flex flex-col gap-4 p-3 bg-gray-100 rounded-lg shadow-sm w-full">
+            <div class="flex justify-between items-center mb-2">
+              <h3 class="text-lg font-bold">Inmueble #{{ inmuebleActivo + 1 }}</h3>
+              <Button
+                v-if="inmuebles.length > 1"
+                label="Eliminar"
+                icon="pi pi-trash"
+                severity="danger"
+                size="small"
+                outlined
+                @click="removeInmueble(inmuebleActivo)"
+              />
+            </div>
+
             <div class="flex gap-4">
               <div class="w-1/2">
-                <label class="font-bold mb-2">
-                  Tipo de Inmueble <span class="text-red-500">(*)</span>
-                </label>
+                <label class="font-bold mb-2">Tipo de Inmueble <span class="text-red-500">(*)</span></label>
                 <Select
-                  v-model="inmueble.id_tipo_inmueble"
+                  v-model="inmuebles[inmuebleActivo].id_tipo_inmueble"
                   :options="tiposInmueble"
                   option-label="nombre_tipo_inmueble"
                   option-value="id_tipo_inmueble"
                   placeholder="Selecciona un tipo de inmueble"
                   class="w-full"
+                  :disabled="inmuebles[inmuebleActivo].bloqueado"
                 />
               </div>
               <div class="w-1/2">
-                <label class="font-bold mb-2">
-                  La Propierdad Pertenece a <span class="text-red-500">(*)</span>
-                </label>
-                <InputText v-model="inmueble.pertenece" class="w-full" />
+                <label class="font-bold mb-2">La Propiedad Pertenece a <span class="text-red-500">(*)</span></label>
+                <InputText
+                  v-model="inmuebles[inmuebleActivo].pertenece"
+                  class="w-full"
+                  :disabled="inmuebles[inmuebleActivo].bloqueado"
+                />
               </div>
             </div>
 
             <div>
               <label class="font-bold mb-1">Nombre <span class="text-red-500">(*)</span></label>
-              <InputText v-model="inmueble.nombre" class="w-full" />
+              <InputText
+                v-model="inmuebles[inmuebleActivo].nombre"
+                class="w-full"
+                :disabled="inmuebles[inmuebleActivo].bloqueado"
+              />
             </div>
-            <!-- Departamento/Porinvia/Distrito -->
+
             <div class="flex gap-3">
               <div class="w-1/2">
                 <label class="font-bold mb-1">Departamento <span class="text-red-500">(*)</span></label>
-                <Select v-model="inmueble.departamento" :options="departamentos" optionLabel="ubigeo_name" dataKey="ubigeo_id"
-                  placeholder="Seleccione departa..." class="w-full" @change="onDepartamentoChange(inmueble)" appendTo="self" />
+                <Select
+                  v-model="inmuebles[inmuebleActivo].departamento"
+                  :options="departamentos"
+                  optionLabel="ubigeo_name"
+                  dataKey="ubigeo_id"
+                  placeholder="Seleccione departa..."
+                  class="w-full"
+                  @change="onDepartamentoChange(inmuebles[inmuebleActivo])"
+                  appendTo="self"
+                  :disabled="inmuebles[inmuebleActivo].bloqueado"
+                />
               </div>
               <div class="w-1/2">
                 <label class="font-bold mb-1">Provincia <span class="text-red-500">(*)</span></label>
-                <Select v-model="inmueble.provincia" :options="inmueble.provincias" optionLabel="ubigeo_name" dataKey="ubigeo_id"
-                  placeholder="Seleccione provincia" class="w-full" :disabled="!inmueble.departamento"
-                  @change="onProvinciaChange(inmueble)" appendTo="self"/>
+                <Select
+                  v-model="inmuebles[inmuebleActivo].provincia"
+                  :options="inmuebles[inmuebleActivo].provincias"
+                  optionLabel="ubigeo_name"
+                  dataKey="ubigeo_id"
+                  placeholder="Seleccione provincia"
+                  class="w-full"
+                  :disabled="!inmuebles[inmuebleActivo].departamento || inmuebles[inmuebleActivo].bloqueado"
+                  @change="onProvinciaChange(inmuebles[inmuebleActivo])"
+                  appendTo="self"
+                />
               </div>
-              <div>
-                <label class="font-bold mb-1">Distrito <span class="text-red-500">(*)</span></label>
-                <Select v-model="inmueble.distrito" :options="inmueble.distritos" optionLabel="ubigeo_name" dataKey="ubigeo_id"
-                  placeholder="Seleccione distrito" class="w-full" :disabled="!inmueble.provincia" appendTo="self" />
-              </div>
-            </div> 
-            <!-- Dirección -->      
-            <div>
-              <label class="font-bold mb-1">Dirección <span class="text-red-500">(*)</span></label>
-              <InputText v-model="inmueble.direccion" class="w-full" />
             </div>
-            <!-- Descripción -->
+
             <div>
-              <label class="font-bold mb-1">Descripción <span class="text-red-500">(*)</span></label>
-              <Textarea v-model="inmueble.descripcion" rows="3" class="w-full" autoResize />
+              <label class="font-bold mb-1">Distrito <span class="text-red-500">(*)</span></label>
+              <Select
+                v-model="inmuebles[inmuebleActivo].distrito"
+                :options="inmuebles[inmuebleActivo].distritos"
+                optionLabel="ubigeo_name"
+                dataKey="ubigeo_id"
+                placeholder="Seleccione distrito"
+                class="w-full"
+                :disabled="!inmuebles[inmuebleActivo].provincia || inmuebles[inmuebleActivo].bloqueado"
+                appendTo="self"
+              />
             </div>
             
-            <!-- Sección de imágenes mejorada -->
-            <div class="flex flex-col gap-4">
+            <div>
+              <label class="font-bold mb-1">Dirección <span class="text-red-500">(*)</span></label>
+              <InputText
+                v-model="inmuebles[inmuebleActivo].direccion"
+                class="w-full"
+                :disabled="inmuebles[inmuebleActivo].bloqueado"
+              />
+            </div>
+
+            <div>
+              <label class="font-bold mb-1">Valor del Inmueble <span class="text-red-500">(*)</span></label>
+              <InputNumber
+                v-model="inmuebles[inmuebleActivo].valor_individual"
+                class="w-full"
+                :useGrouping="true"
+                :locale="'es-PE'"
+                :disabled="inmuebles[inmuebleActivo].bloqueado"
+              />
+            </div>
+
+            <div>
+              <label class="font-bold mb-1">Descripción <span class="text-red-500">(*)</span></label>
+              <Textarea
+                v-model="inmuebles[inmuebleActivo].descripcion"
+                rows="3"
+                class="w-full"
+                autoResize
+                :disabled="inmuebles[inmuebleActivo].bloqueado"
+              />
+            </div>
+
+            <!-- SECCIÓN DE IMÁGENES -->
+            <div class="flex flex-col gap-3">
               <div>
                 <label class="block font-bold mb-2">Imágenes <span class="text-red-500">(*)</span></label>
                 <p class="text-sm text-gray-600 mb-2">Se requieren al menos 3 imágenes con sus respectivas descripciones</p>
-                <FileUpload ref="`fileUpload-${index}`" name="imagenes[]" :multiple="true" accept="image/*" :maxFileSize="1000000"
-                  customUpload :auto="false" @select="onSelectedFiles($event, inmueble)" @upload="onTemplatedUpload"
-                  :showUploadButton="false" :showCancelButton="false" />
-              </div>
 
-              <!-- Botón para limpiar todas las imágenes -->
-              <div v-if="inmueble.imagenesConDescripcion.length > 0" class="flex justify-end">
-                <Button 
-                  label="Limpiar todas" 
-                  icon="pi pi-trash" 
-                  severity="danger" 
-                  size="small" 
-                  outlined
-                  @click="clearAllImages" 
+                <FileUpload
+                  v-if="!inmuebles[inmuebleActivo].bloqueado"
+                  mode="basic"
+                  :name="`imagenes-${inmuebleActivo}`"
+                  accept="image/*"
+                  :maxFileSize="2048000"
+                  :multiple="true"
+                  :auto="false"
+                  chooseLabel="Seleccionar imágenes"
+                  class="w-full"
+                  @select="onFileSelect($event, inmuebles[inmuebleActivo])"
                 />
               </div>
 
-              <!-- Lista de imágenes seleccionadas con campos de descripción -->
-              <div v-if="inmueble.imagenesConDescripcion?.length > 0" class="flex flex-col gap-3">
-                <h4 class="font-bold text-sm">Imágenes seleccionadas ({{ inmueble.imagenesConDescripcion.length }})</h4>
-                <div v-for="(imagen, imgIndex) in inmueble.imagenesConDescripcion" :key="index"
-                  class="flex gap-3 p-3 border-1 border-300 border-round items-start">
-                  
-                  <!-- Preview de la imagen -->
+              <!-- Lista de imágenes seleccionadas -->
+              <div v-if="inmuebles[inmuebleActivo].imagenesConDescripcion?.length > 0" class="flex flex-col gap-3">
+                <div class="flex justify-between items-center">
+                  <h4 class="font-bold text-sm">
+                    Imágenes seleccionadas ({{ inmuebles[inmuebleActivo].imagenesConDescripcion.length }})
+                  </h4>
+                  <Button
+                    v-if="!inmuebles[inmuebleActivo].bloqueado"
+                    label="Limpiar todas"
+                    icon="pi pi-trash"
+                    severity="danger"
+                    size="small"
+                    outlined
+                    @click="clearImagesInmueble(inmuebles[inmuebleActivo])"
+                  />
+                </div>
+
+                <div
+                  v-for="(imagen, imgIndex) in inmuebles[inmuebleActivo].imagenesConDescripcion"
+                  :key="imgIndex"
+                  class="flex gap-3 p-3 border-1 border-300 border-round items-start"
+                >
                   <div class="flex-shrink-0">
-                    <img :src="imagen.preview" :alt="`Imagen ${index + 1}`" 
-                      class="w-20 h-20 object-cover border-round" />
+                    <img
+                      :src="imagen.preview"
+                      :alt="`Imagen ${imgIndex + 1}`"
+                      class="w-20 h-20 object-cover border-round"
+                    />
                   </div>
 
-                  <!-- Información y descripción -->
                   <div class="flex-grow flex flex-col gap-2">
                     <div class="text-sm">
                       <strong>{{ imagen.file.name }}</strong>
                       <span class="text-gray-500 ml-2">({{ formatFileSize(imagen.file.size) }})</span>
                     </div>
-                    
-                    <!-- Campo de descripción con límite de 35 caracteres -->
+
                     <div>
                       <label class="text-xs font-semibold mb-1 block">
-                        Descripción (máx. 35 caracteres) <span class="text-red-500">*</span>
+                        Descripción (máx. 255 caracteres) <span class="text-red-500">*</span>
                       </label>
-                      <InputText 
-                        v-model="imagen.description" 
-                        placeholder="Ej: Fachada, Sala, Cocina, etc."
+                      <InputText
+                        v-model="imagen.description"
+                        placeholder="Ej: Fachada principal, Sala de estar, Cocina moderna, etc."
                         class="w-full text-sm"
                         :class="{ 'p-invalid': submitted && !imagen.description?.trim() }"
-                        maxlength="35"
-                        @input="onDescriptionInput($event, imgIndex, index)"
+                        maxlength="255"
+                        :disabled="inmuebles[inmuebleActivo].bloqueado"
                       />
                       <div class="flex justify-between items-center mt-1">
                         <small v-if="submitted && !imagen.description?.trim()" class="text-red-500">
                           La descripción es requerida
                         </small>
-                        <small class="text-xs" :class="{
-                          'text-orange-500': imagen.description?.length >= 30,
-                          'text-red-500': imagen.description?.length >= 35,
-                          'text-gray-500': !imagen.description?.length || imagen.description.length < 30
-                        }">
-                          {{ imagen.description?.length || 0 }}/35
+                        <small
+                          class="text-xs"
+                          :class="{
+                            'text-orange-500': imagen.description?.length >= 200,
+                            'text-red-500': imagen.description?.length >= 250,
+                            'text-gray-500': !imagen.description?.length || imagen.description.length < 200
+                          }"
+                        >
+                          {{ imagen.description?.length || 0 }}/255
                         </small>
                       </div>
                     </div>
                   </div>
 
-                  <!-- Botón para eliminar -->
-                  <Button icon="pi pi-times" severity="danger" size="small" outlined
-                    @click="removeImage(index, imgIndex)" />
+                  <Button
+                    v-if="!inmuebles[inmuebleActivo].bloqueado"
+                    icon="pi pi-times"
+                    severity="danger"
+                    size="small"
+                    outlined
+                    @click="removeImage(inmuebles[inmuebleActivo], imgIndex)"
+                  />
                 </div>
 
-                <!-- Contador y validación -->
                 <div class="text-sm">
-                  <span v-if="inmueble.imagenesConDescripcion.length < 3" class="text-orange-600">
+                  <span v-if="inmuebles[inmuebleActivo].imagenesConDescripcion.length < 3" class="text-orange-600">
                     <i class="pi pi-exclamation-triangle mr-1"></i>
-                    Necesitas al menos {{ 3 - inmueble.imagenesConDescripcion.length }} imagen(es) más
+                    Necesitas al menos {{ 3 - inmuebles[inmuebleActivo].imagenesConDescripcion.length }} imagen(es) más
                   </span>
                   <span v-else class="text-green-600">
                     <i class="pi pi-check-circle mr-1"></i>
-                    Imágenes suficientes ({{ inmueble.imagenesConDescripcion.length }}/3 mínimo)
+                    Imágenes suficientes ({{ inmuebles[inmuebleActivo].imagenesConDescripcion.length }}/3 mínimo)
                   </span>
                 </div>
               </div>
@@ -247,28 +345,66 @@
               </div>
             </div>
           </div>
-          <Button label="Agregar inmueble" icon="pi pi-plus" @click="addInmueble" />
 
-          <!-- Moneda/Valor de la Porpiedad/Monto requerido -->
-          <div class="flex gap-3">
-            <div class="w-1/2">
-              <label class="font-bold mb-1">Moneda <span class="text-red-500">(*)</span></label>
-              <Select v-model="form.currency_id" :options="monedas" optionLabel="label" optionValue="value"
-                placeholder="Selecciona moneda" class="w-full" />
-            </div>
-            <div class="w-1/2">
-              <label class="font-bold mb-1">Valor de la Propiedad <span class="text-red-500">(*)</span></label>
-              <InputNumber v-model="form.valor_estimado" class="w-full" :useGrouping="true" :locale="'es-PE'" />
-            </div>
-            <div>
-              <label class="font-bold mb-1">Monto Requerido <span class="text-red-500"><span class="text-red-500">(*)</span></span></label>
-              <InputNumber v-model="form.valor_requerido" class="w-full" :useGrouping="true" :locale="'es-PE'" />
+          <!-- Resumen de inmuebles -->
+          <div v-if="inmuebles.length > 0" class="p-3 bg-blue-50 border-1 border-blue-200 rounded-lg border-round">
+            <h4 class="font-bold mb-2">Resumen de Inmuebles</h4>
+            <div class="flex flex-col gap-2">
+              <div v-for="(inm, idx) in inmuebles" :key="idx" class="flex justify-between items-center text-sm">
+                <span>
+                  <i class="pi pi-home mr-2"></i>
+                  {{ inm.nombre || `Inmueble ${idx + 1}` }}
+                </span>
+                <span class="font-bold">
+                  {{ inm.valor_individual ? `S/ ${inm.valor_individual.toLocaleString('es-PE')}` : 'S/ 0' }}
+                </span>
+              </div>
+              <hr class="my-2" />
+              <div class="flex justify-between items-center font-bold text-base">
+                <span>Total:</span>
+                <span class="text-green-700">S/ {{ valorTotalEstimado.toLocaleString('es-PE') }}</span>
+              </div>
             </div>
           </div>
 
-          <!-- Botón para regresar al paso anterior -->
-          <Button label="Volver a datos del cliente" icon="pi pi-arrow-left" severity="secondary" outlined
-            @click="volverADatosCliente" class="mt-2" />
+          <div class="flex gap-3">
+            <div class="w-1/2">
+              <label class="font-bold mb-1">Moneda <span class="text-red-500">(*)</span></label>
+              <Select
+                v-model="form.currency_id"
+                :options="monedas"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Selecciona moneda"
+                class="w-full"
+              />
+            </div>
+            <div class="w-1/2">
+              <label class="font-bold mb-1">Valor Total Estimado <span class="text-red-500">(*)</span></label>
+              <InputNumber
+                v-model="form.valor_estimado"
+                class="w-full"
+                :useGrouping="true"
+                :locale="'es-PE'"
+                disabled
+              />
+            </div>
+          </div>
+
+          <div>
+            <label class="font-bold mb-1">Monto Requerido <span class="text-red-500">(*)</span></label>
+            <InputNumber v-model="form.valor_requerido" class="w-full" :useGrouping="true" :locale="'es-PE'" />
+          </div>
+          
+          <Button label="Agregar otro inmueble" icon="pi pi-plus" severity="contrast" rounded @click="addInmueble" />
+          <Button
+            label="Volver a datos del cliente"
+            icon="pi pi-arrow-left"
+            severity="secondary"
+            rounded
+            @click="volverADatosCliente"
+            class="mt-2"
+          />
         </div>
       </div>
     </form>
@@ -282,7 +418,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, nextTick } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
@@ -298,42 +434,33 @@ import Select from 'primevue/select'
 interface ImagenConDescripcion {
   file: File
   description: string
-  preview: string | ArrayBuffer | null
+  preview: string
 }
 
 const toast = useToast()
 const emit = defineEmits(['agregado'])
 const modalVisible = ref(false)
 const submitted = ref(false)
-const fileUpload = ref()
 const mostrarInmueble = ref(false)
 const guardandoPropiedad = ref(false)
-// Carga de Tipo Inmueble
 const tiposInmueble = ref<any[]>([])
-
-// Estados para manejo de inversor
 const investorExists = ref(false)
 const investorId = ref<number | null>(null)
 const dniConsultaExterna = ref<any>(null)
 
-// Datos generales del cliente y la solicitud
 const form = ref({
-  // Cliente
   dni: '',
   nombres: '',
   apellidos: '',
   fuente_ingreso: '',
   profesion_ocupacion: '',
   ingreso_promedio: null,
-  // Código de Solicitud
   numero_solicitud: '',
-  // Datos globales (fuera del bucle de inmuebles)
   valor_estimado: null,
   valor_requerido: null,
   currency_id: null,
 })
 
-// Estructura base de un inmueble
 const initialInmueble = {
   id_tipo_inmueble: null,
   nombre: '',
@@ -345,65 +472,123 @@ const initialInmueble = {
   descripcion: '',
   provincias: [],
   distritos: [],
-  imagenesConDescripcion: [] as { file: File; preview: string | ArrayBuffer | null; description: string }[],
+  imagenesConDescripcion: [] as ImagenConDescripcion[],
+  valor_individual: null,
+  bloqueado: false,
 }
 
-// Lista de inmuebles (inicia con uno)
-const inmuebles = ref<any[]>([
-  { ...initialInmueble }
-])
+const inmuebles = ref<any[]>([{ ...initialInmueble, imagenesConDescripcion: [] }])
+const inmuebleActivo = ref(0)
 
-// Función para agregar inmueble
+const valorTotalEstimado = computed(() => {
+  return inmuebles.value.reduce((total, inm) => {
+    const valor = parseFloat(inm.valor_individual) || 0
+    return total + valor
+  }, 0)
+})
+
+watch(valorTotalEstimado, (newValue) => {
+  form.value.valor_estimado = newValue
+})
+
+const validarInmuebleCompleto = (inmueble: any): boolean => {
+  return !!(
+    inmueble.nombre?.trim() &&
+    inmueble.direccion?.trim() &&
+    inmueble.id_tipo_inmueble &&
+    inmueble.pertenece?.trim() &&
+    inmueble.departamento?.ubigeo_id &&
+    inmueble.provincia?.ubigeo_id &&
+    inmueble.distrito?.ubigeo_id &&
+    inmueble.descripcion?.trim() &&
+    inmueble.valor_individual &&
+    inmueble.imagenesConDescripcion?.length >= 3 &&
+    inmueble.imagenesConDescripcion.every((img: ImagenConDescripcion) => img.description?.trim())
+  )
+}
+
 const addInmueble = () => {
-  inmuebles.value.push({ ...initialInmueble })
+  const inmuebleActual = inmuebles.value[inmuebleActivo.value]
+  
+  if (!validarInmuebleCompleto(inmuebleActual)) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Validación',
+      detail: 'Completa todos los datos del inmueble actual antes de agregar otro',
+      life: 3000
+    })
+    return
+  }
+
+  inmuebleActual.bloqueado = true
+  
+  inmuebles.value.push({ ...initialInmueble, imagenesConDescripcion: [] })
+  inmuebleActivo.value = inmuebles.value.length - 1
+  
+  toast.add({
+    severity: 'success',
+    summary: 'Inmueble agregado',
+    detail: `Ahora ingresa los datos del inmueble #${inmuebles.value.length}`,
+    life: 2000
+  })
 }
 
-// Función para eliminar inmueble
 const removeInmueble = (index: number) => {
+  if (inmuebles.value.length === 1) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Atención',
+      detail: 'Debe haber al menos un inmueble',
+      life: 2000
+    })
+    return
+  }
+  
   inmuebles.value.splice(index, 1)
+  
+  if (inmuebleActivo.value >= inmuebles.value.length) {
+    inmuebleActivo.value = inmuebles.value.length - 1
+  }
+  
+  toast.add({
+    severity: 'info',
+    summary: 'Inmueble eliminado',
+    detail: 'El inmueble ha sido eliminado',
+    life: 2000
+  })
 }
 
+const editarInmueble = (index: number) => {
+  inmuebleActivo.value = index
+  toast.add({
+    severity: 'info',
+    summary: 'Editando inmueble',
+    detail: `Editando inmueble #${index + 1}`,
+    life: 2000
+  })
+}
 
 const monedas = [
   { label: 'PEN (S/)', value: 1 },
   { label: 'USD ($)', value: 2 }
 ]
-// GENERAR CÓDIGO DE SOLICITUD
+
 const generarNumeroSolicitud = (nombreCompleto: string): string => {
-  // Separar el nombre completo en palabras
   const partes = nombreCompleto.trim().split(' ')
-
-  // Tomar el primer nombre (ejemplo: "Juan")
   const primerNombre = partes[0] || ''
-
-  // Tomar las 3 primeras letras en mayúsculas
   const cliente = primerNombre.substring(0, 3).toUpperCase()
-
-  // Generar 2 letras aleatorias
   const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
   let letrasAleatorias = ''
   for (let i = 0; i < 2; i++) {
     const index = Math.floor(Math.random() * letras.length)
     letrasAleatorias += letras[index]
   }
-
-  // Generar número aleatorio de 1 a 9 (o más grande si quieres)
   const numero = Math.floor(Math.random() * 9) + 1
-
-  // Año actual
   const año = new Date().getFullYear()
-
   return `${cliente}${letrasAleatorias}${numero}-${año}`
 }
 
-// Nueva estructura para manejar imágenes con descripciones
-const imagenesConDescripcion = ref<ImagenConDescripcion[]>([])
-const totalSize = ref(0)
-const totalSizePercent = ref(0)
-
 const departamentos = ref<any[]>([])
-const provincias = ref<any[]>([])
-const distritos = ref<any[]>([])
 
 onMounted(async () => {
   try {
@@ -424,7 +609,7 @@ onMounted(async () => {
 })
 
 const resetForm = () => {
-   form.value = {
+  form.value = {
     dni: '',
     nombres: '',
     apellidos: '',
@@ -436,16 +621,12 @@ const resetForm = () => {
     valor_requerido: null,
     currency_id: null,
   }
+  inmuebles.value = [{ ...initialInmueble, imagenesConDescripcion: [] }]
+  inmuebleActivo.value = 0
   mostrarInmueble.value = false
   investorExists.value = false
   investorId.value = null
   dniConsultaExterna.value = null
-  provincias.value = []
-  distritos.value = []
-  imagenesConDescripcion.value = []
-  totalSize.value = 0
-  totalSizePercent.value = 0
-  if (fileUpload.value) fileUpload.value.clear()
   submitted.value = false
 }
 
@@ -470,34 +651,10 @@ const onProvinciaChange = (inmueble: any) => {
   inmueble.distritos = inmueble.provincia?.districts || []
 }
 
-// Función para manejar el input de descripción con límite de caracteres
-const onDescriptionInput = (event: Event, imgIndex: number, inmuebleIndex: number) => {
-  const target = event.target as HTMLInputElement
-  let value = target.value
+const onFileSelect = (event: any, inmueble: any) => {
+  const files = event.files || []
 
-  if (value.length > 35) {
-    value = value.substring(0, 35)
-    toast.add({
-      severity: 'warn',
-      summary: 'Límite alcanzado',
-      detail: 'La descripción no puede exceder 35 caracteres',
-      life: 2000
-    })
-  }
-
-  // Actualizar el valor en el inmueble correspondiente
-  inmuebles.value[inmuebleIndex].imagenesConDescripcion[imgIndex].description = value
-}
-
-  
-// FUNCIÓN CORREGIDA - Evita duplicación de imágenes
-const onSelectedFiles = (event: any, inmueble: typeof initialInmueble) => {
-  const files = [...event.files]
-  
-  inmueble.imagenesConDescripcion = []
-  
-  // Crear previews y estructura para cada imagen
-  files.forEach(file => {
+  files.forEach((file: File) => {
     const reader = new FileReader()
     reader.onload = (e) => {
       inmueble.imagenesConDescripcion.push({
@@ -509,18 +666,16 @@ const onSelectedFiles = (event: any, inmueble: typeof initialInmueble) => {
     reader.readAsDataURL(file)
   })
 
-  totalSize.value = files.reduce((acc, file) => acc + file.size, 0)
-  totalSizePercent.value = totalSize.value / 10000
+  toast.add({
+    severity: 'success',
+    summary: 'Archivos seleccionados',
+    detail: `${files.length} imagen(es) agregada(s)`,
+    life: 2000
+  })
 }
 
-// Nueva función para limpiar todas las imágenes
-const clearAllImages = () => {
-  imagenesConDescripcion.value = []
-  totalSize.value = 0
-  totalSizePercent.value = 0
-  if (fileUpload.value) {
-    fileUpload.value.clear()
-  }
+const clearImagesInmueble = (inmueble: any) => {
+  inmueble.imagenesConDescripcion = []
   toast.add({
     severity: 'info',
     summary: 'Imágenes eliminadas',
@@ -529,23 +684,14 @@ const clearAllImages = () => {
   })
 }
 
-const removeImage = (inmuebleIndex: number, imageIndex: number) => {
-  inmuebles.value[inmuebleIndex].imagenesConDescripcion.splice(imageIndex, 1)
-  
-  // Recalcular el tamaño total
-  totalSize.value = imagenesConDescripcion.value.reduce((acc, img) => acc + img.file.size, 0)
-  totalSizePercent.value = totalSize.value / 10000
-  const refName = `fileUpload-${inmuebleIndex}`
-  const fu = ( (ref as any)[refName] )
-  if (fu) {
-    fu.files = inmuebles.value[inmuebleIndex].imagenesConDescripcion.map((i:any) => i.file)
-  }
-  
-  // Actualizar el FileUpload con los archivos restantes
-  // if (fileUpload.value) {
-  //   const remainingFiles = imagenesConDescripcion.value.map(img => img.file)
-  //   fileUpload.value.files = remainingFiles
-  // }
+const removeImage = (inmueble: any, imageIndex: number) => {
+  inmueble.imagenesConDescripcion.splice(imageIndex, 1)
+  toast.add({
+    severity: 'info',
+    summary: 'Imagen eliminada',
+    detail: 'La imagen ha sido eliminada',
+    life: 2000
+  })
 }
 
 const formatFileSize = (bytes: number) => {
@@ -556,14 +702,8 @@ const formatFileSize = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-const onTemplatedUpload = () => {
-  toast.add({ severity: 'info', summary: 'Éxito', detail: 'Archivo subido', life: 3000 })
-}
-
 const handleDniInput = async () => {
   const dni = form.value.dni
-
-  // Resetear estados
   investorExists.value = false
   investorId.value = null
   dniConsultaExterna.value = null
@@ -573,15 +713,11 @@ const handleDniInput = async () => {
       const { data } = await axios.get(`/dni/${dni}`)
 
       if (data.success && data.data) {
-        // Verificar si es consulta local (inversor existe) o externa
         if (data.message === 'Datos obtenidos localmente.') {
-          // Inversor ya existe en la base de datos
           investorExists.value = true
           investorId.value = data.data.id || null
           form.value.nombres = data.data.nombres || ''
           form.value.apellidos = `${data.data.apellido_paterno || ''} ${data.data.apellido_materno || ''}`.trim()
-          // form.value.apellido_paterno = data.data.apellido_paterno || ''
-          // form.value.apellido_materno = data.data.apellido_materno || ''
 
           toast.add({
             severity: 'info',
@@ -590,14 +726,10 @@ const handleDniInput = async () => {
             life: 3000
           })
         } else {
-          // Consulta externa exitosa (RENIEC)
           investorExists.value = false
           dniConsultaExterna.value = data.data
-
           form.value.nombres = data.data.nombres || ''
           form.value.apellidos = `${data.data.apellido_paterno || ''} ${data.data.apellido_materno || ''}`.trim()
-          // form.value.apellido_paterno = data.data.apellido_paterno || ''
-          // form.value.apellido_materno = data.data.apellido_materno || ''
 
           toast.add({
             severity: 'success',
@@ -623,11 +755,8 @@ const handleDniInput = async () => {
       })
     }
   } else {
-    // Limpiar campos si el DNI no tiene 8 dígitos
     form.value.nombres = ''
     form.value.apellidos = ''
-    // form.value.apellido_paterno = ''
-    // form.value.apellido_materno = ''
   }
 }
 
@@ -639,22 +768,18 @@ const puedeContinuarCliente = computed(() => {
     (form.value.fuente_ingreso?.trim() !== '') &&
     (form.value.profesion_ocupacion?.trim() !== '') &&
     (form.value.ingreso_promedio !== null && form.value.ingreso_promedio !== '')
-    // form.value.apellido_paterno.trim() !== '' &&
-    // form.value.apellido_materno.trim() !== ''
   )
 })
 
 const continuarConInversorExistente = async () => {
   try {
-    // 1. Guardar detalle en detalle_inversionista_hipoteca
     await axios.post('/api/detalle-inversionista', {
-      investor_id: investorId.value, // este ya lo tienes guardado
+      investor_id: investorId.value,
       fuente_ingreso: form.value.fuente_ingreso,
       profesion_ocupacion: form.value.profesion_ocupacion,
       ingreso_promedio: form.value.ingreso_promedio,
     })
 
-    // 2. Mostrar siguiente paso
     form.value.numero_solicitud = generarNumeroSolicitud(form.value.nombres)
     mostrarInmueble.value = true
     toast.add({
@@ -678,7 +803,6 @@ const registrarNuevoInversor = async () => {
   try {
     const [paterno, materno = ''] = form.value.apellidos.split(' ')
 
-    // Datos base para el inversor
     const investorData = {
       name: form.value.nombres,
       first_last_name: paterno,
@@ -689,25 +813,20 @@ const registrarNuevoInversor = async () => {
     let nuevoInvestorId = null
 
     try {
-      // 1. Intentamos registrar un nuevo inversor
       const response = await axios.post('/customer', investorData)
       if (response.data.success) {
         nuevoInvestorId = response.data.data.id
       }
     } catch (error: any) {
-      // 2. Si el DNI ya existe, obtenemos el ID del inversor existente
       if (error.response?.status === 422 &&
-          error.response?.data?.errors?.document?.includes('has already been taken')) {
-
-        // Buscar investor existente por DNI
+        error.response?.data?.errors?.document?.includes('has already been taken')) {
         const res = await axios.get(`/investors/by-document/${form.value.dni}`)
         nuevoInvestorId = res.data.id
       } else {
-        throw error // Si es otro error, lo lanzamos
+        throw error
       }
     }
 
-    // 3. Guardamos el detalle en la tabla detalle_inversionista_hipoteca
     await axios.post('/api/detalle-inversionista', {
       investor_id: nuevoInvestorId,
       fuente_ingreso: form.value.fuente_ingreso,
@@ -740,7 +859,8 @@ const registrarNuevoInversor = async () => {
 const saveProperty = async () => {
   submitted.value = true
   guardandoPropiedad.value = true
-
+  
+  // Validación de cliente
   if (!mostrarInmueble.value) {
     toast.add({
       severity: 'warn',
@@ -752,6 +872,7 @@ const saveProperty = async () => {
     return
   }
 
+  // Validación de inversor
   if (!investorId.value) {
     toast.add({
       severity: 'error',
@@ -763,21 +884,7 @@ const saveProperty = async () => {
     return
   }
 
-  console.log('Validando inmuebles:', JSON.stringify(inmuebles.value, null, 2));
-
-  // ✅ Validar campos globales antes del loop de inmuebles
-  if (!form.value.currency_id || !form.value.valor_estimado || !form.value.valor_requerido) {
-    toast.add({
-      severity: 'warn',
-      summary: 'Validación',
-      detail: 'Completa todos los campos generales de la propiedad (moneda, valor estimado, monto requerido)',
-      life: 4000
-    })
-    guardandoPropiedad.value = false
-    return
-  }
-
-  // Validar campos requeridos de cada inmueble
+  // Validación de inmuebles
   for (const [idx, inm] of inmuebles.value.entries()) {
     if (
       !inm.nombre?.trim() ||
@@ -797,9 +904,9 @@ const saveProperty = async () => {
       return
     }
 
-    // Validación de imágenes de cada inmueble
     const imgs = inm.imagenesConDescripcion || []
 
+    // Al menos 3 imágenes
     if (imgs.length < 3) {
       toast.add({
         severity: 'warn',
@@ -811,6 +918,7 @@ const saveProperty = async () => {
       return
     }
 
+    // Todas deben tener descripción
     const sinDescripcion = imgs.filter(img => !img.description?.trim())
     if (sinDescripcion.length > 0) {
       toast.add({
@@ -823,29 +931,33 @@ const saveProperty = async () => {
       return
     }
   }
-
+  
   try {
     const formData = new FormData()
 
-    // Agregar campos globales
+    // Datos de la solicitud
     formData.append('investor_id', investorId.value.toString())
-    formData.append('numero_solicitud', form.value.numero_solicitud)
-    // formData.append('currency_id', form.value.currency_id)
-    // formData.append('valor_estimado', form.value.valor_estimado)
-    // formData.append('valor_requerido', form.value.valor_requerido)
+    formData.append('codigo', form.value.numero_solicitud)
+    formData.append('valor_general', form.value.valor_estimado?.toString() || '0')
+    formData.append('valor_requerido', form.value.valor_requerido?.toString() || '0')
+    formData.append('currency_id', form.value.currency_id?.toString() || '1')
+    
+    // Agregar los campos faltantes
+    formData.append('fuente_ingreso', form.value.fuente_ingreso || '')
+    formData.append('profesion_ocupacion', form.value.profesion_ocupacion || '')
+    formData.append('ingreso_promedio', form.value.ingreso_promedio?.toString() || '0')
 
-    // Agregar cada inmueble
+    // Datos de los inmuebles
     inmuebles.value.forEach((inmueble, idx) => {
       formData.append(`properties[${idx}][nombre]`, inmueble.nombre)
       formData.append(`properties[${idx}][direccion]`, inmueble.direccion)
       formData.append(`properties[${idx}][id_tipo_inmueble]`, inmueble.id_tipo_inmueble)
-      formData.append(`properties[${idx}][valor_estimado]`, inmueble.valor_estimado ?? '0');
-      formData.append(`properties[${idx}][valor_requerido]`, inmueble.valor_requerido ?? '0');
-      formData.append(`properties[${idx}][currency_id]`, inmueble.currency_id?.toString() || '1');
+      formData.append(`properties[${idx}][valor_estimado]`, inmueble.valor_individual?.toString() || '0')
+      formData.append(`properties[${idx}][valor_requerido]`, form.value.valor_requerido?.toString() || '0')
+      formData.append(`properties[${idx}][currency_id]`, form.value.currency_id?.toString() || '1')
       formData.append(`properties[${idx}][descripcion]`, inmueble.descripcion || '')
       formData.append(`properties[${idx}][pertenece]`, inmueble.pertenece || '')
 
-      
       if (inmueble.departamento) {
         formData.append(`properties[${idx}][departamento]`, inmueble.departamento.ubigeo_name)
         formData.append(`properties[${idx}][departamento_id]`, inmueble.departamento.ubigeo_id)
@@ -859,14 +971,20 @@ const saveProperty = async () => {
         formData.append(`properties[${idx}][distrito_id]`, inmueble.distrito.ubigeo_id)
       }
 
-      // imágenes
+      // Imágenes y descripciones
       inmueble.imagenesConDescripcion?.forEach((imagen: ImagenConDescripcion, imgIdx: number) => {
-        formData.append(`properties[${idx}][imagenes][]`, imagen.file)
-        // Si quieres, puedes descomentar la descripción:
-        // formData.append(`properties[${idx}][descriptions][${imgIdx}]`, imagen.description)
+        formData.append(`properties[${idx}][imagenes][${imgIdx}]`, imagen.file)
+        formData.append(`properties[${idx}][description][${imgIdx}]`, imagen.description)
       })
     })
 
+    // Para debug: mostrar lo que se está enviando
+    console.log('Datos enviados:')
+    for (let [key, value] of formData.entries()) {
+      console.log(key, value instanceof File ? `File: ${value.name}` : value)
+    }
+
+    // Enviar al backend
     await axios.post('/property', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
@@ -874,7 +992,7 @@ const saveProperty = async () => {
     toast.add({
       severity: 'success',
       summary: 'Éxito',
-      detail: 'Propiedad registrada correctamente',
+      detail: 'Solicitud registrada correctamente',
       life: 3000
     })
 
@@ -883,11 +1001,30 @@ const saveProperty = async () => {
     emit('agregado')
 
   } catch (error: any) {
-    console.error('Error al guardar propiedad:', error)
-    // aquí se mantiene toda tu lógica de manejo de errores
+    console.error('Error al guardar solicitud:', error)
+    
+    const errorMessage = error.response?.data?.message || 'Error al registrar la solicitud'
+    const errors = error.response?.data?.errors
+    
+    if (errors) {
+      Object.keys(errors).forEach(key => {
+        toast.add({
+          severity: 'error',
+          summary: 'Error de validación',
+          detail: errors[key][0],
+          life: 4000
+        })
+      })
+    } else {
+      toast.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: errorMessage,
+        life: 3000
+      })
+    }
   } finally {
     guardandoPropiedad.value = false
   }
 }
-
 </script>
