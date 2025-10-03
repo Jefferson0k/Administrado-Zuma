@@ -8,6 +8,7 @@ return new class extends Migration {
     public function up(): void {
         Schema::create('properties', function (Blueprint $table) {
             $table->ulid('id')->primary();
+            $table->unsignedBigInteger('id_solicitud')->nullable();
             $table->foreignUlid('investor_id')->constrained('investors');
             $table->string('departamento')->nullable();
             $table->string('provincia')->nullable();

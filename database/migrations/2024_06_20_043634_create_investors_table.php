@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void{
         Schema::create('investors', function (Blueprint $table) {
+            $table->engine = 'InnoDB';
             $table->ulid('id')->primary();
             $table->string('name');
             $table->string('first_last_name');
