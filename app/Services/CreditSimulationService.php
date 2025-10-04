@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Property;
 use App\Models\Deadlines;
 use Carbon\Carbon;
 use Money\Money;
@@ -26,38 +25,39 @@ class CreditSimulationService
         if ($precision < 0) {
             $precision = 0;
         }
-        
+
         $factor = bcpow('10', (string)$precision, $precision + 2);
         $rounded = bcdiv(bcadd(bcmul($number, $factor, $precision + 2), '0.5', $precision + 2), $factor, $precision);
-        
+
         return $rounded;
     }
 
     /**
      * Cronograma Francés: Cuotas fijas, amortización creciente
+     * @param object $model Puede ser Property o Solicitud, debe tener valor_requerido, tem, tea, currency_id
      */
-    public function generate(Property $property, Deadlines $deadline, int $page = 1, int $perPage = 10): array
+    public function generate($model, Deadlines $deadline, int $page = 1, int $perPage = 10): array
     {
         bcscale(6);
-        
+
         // Convertir Money object a string decimal
-        $capital = $this->moneyToDecimalString($property->valor_requerido);
-        
+        $capital = $this->moneyToDecimalString($model->valor_requerido);
+
         $plazoMeses = $deadline->duracion_meses;
-        $moneda = $property->currency_id == 1 ? 'Soles' : 'Dólares';
-        $simbolo = $property->currency_id == 1 ? 'PEN' : 'USD';
-        
+        $moneda = $model->currency_id == 1 ? 'Soles' : 'Dólares';
+        $simbolo = $model->currency_id == 1 ? 'PEN' : 'USD';
+
         // Convertir tasa entera a decimal: 125 -> 0.0125 (1.25%)
-        $tem_decimal = bcdiv((string) $property->tem, '10000', 6);
-        
+        $tem_decimal = bcdiv((string)$model->tem, '10000', 6);
+
         $fechaDesembolso = Carbon::now()->format('d/m/Y');
         $fechaInicio = Carbon::now()->addMonth()->day(15);
         $saldoInicial = $capital;
         $pagos = [];
-        
+
         // Calcular cuota fija para sistema francés
         $cuotaFija = $this->calcularCuotaFijaBC($capital, $tem_decimal, $plazoMeses);
-        
+
         for ($cuota = 1; $cuota <= $plazoMeses; $cuota++) {
             $interesSinIGV = bcmul($saldoInicial, $tem_decimal, 6);
             $igv = '0.00';
@@ -65,7 +65,7 @@ class CreditSimulationService
             $cuotaNeta = $cuotaFija;
             $cuotaTotal = $cuotaNeta;
             $saldoFinal = bcsub($saldoInicial, $capitalPago, 6);
-            
+
             // Ajuste para la última cuota (eliminar residuos)
             if ($cuota === $plazoMeses) {
                 $capitalPago = $saldoInicial;
@@ -74,9 +74,9 @@ class CreditSimulationService
                 $cuotaTotal = $cuotaNeta;
                 $saldoFinal = '0.00';
             }
-            
+
             $fechaVcmto = $fechaInicio->copy()->addMonths($cuota - 1)->format('d/m/Y');
-            
+
             $pagos[] = [
                 'cuota' => $cuota,
                 'vcmto' => $fechaVcmto,
@@ -88,18 +88,17 @@ class CreditSimulationService
                 'total_cuota' => $this->bcround($cuotaTotal, 2),
                 'saldo_final' => $this->bcround($saldoFinal, 2),
             ];
-            
+
             $saldoInicial = $saldoFinal;
         }
-        
+
         $total = count($pagos);
         $offset = ($page - 1) * $perPage;
         $paginatedPagos = array_slice($pagos, $offset, $perPage);
-        
-        // Convertir enteros a decimales para mostrar
-        $tea_display = $property->tea / 100; // 1550 -> 15.50
-        $tem_display = $property->tem / 100; // 125 -> 1.25
-        
+
+        $tea_display = $model->tea / 100; // 1550 -> 15.50
+        $tem_display = $model->tem / 100; // 125 -> 1.25
+
         return [
             'cliente' => 'CLIENTE SIMULACION',
             'monto_solicitado' => $this->bcround($capital, 2),
@@ -124,7 +123,7 @@ class CreditSimulationService
             ]
         ];
     }
-    
+
     /**
      * Calcula la cuota fija para el sistema francés
      */
@@ -133,12 +132,12 @@ class CreditSimulationService
         if (bccomp($tem, '0', 6) == 0) {
             return bcdiv($capital, (string)$plazo, 6);
         }
-        
+
         $unoPlusTem = bcadd('1', $tem, 6);
         $factor = bcpow($unoPlusTem, (string)$plazo, 6);
         $numerador = bcmul($capital, bcmul($tem, $factor, 6), 6);
         $denominador = bcsub($factor, '1', 6);
-        
+
         return bcdiv($numerador, $denominador, 6);
     }
 }

@@ -8,7 +8,7 @@ return new class extends Migration {
     public function up(): void {
         Schema::create('property_investors', function (Blueprint $table) {
             $table->id();
-            $table->foreignUlid('property_id')->constrained('properties')->onDelete('cascade');
+            $table->foreignId('solicitud_id')->constrained('solicitudes')->onDelete('cascade');
             $table->foreignId('config_id')->constrained('property_configuracions')->onDelete('cascade');
             $table->foreignUlid('investor_id')->nullable()->constrained('investors')->onDelete('cascade');
             $table->bigInteger('amount')->nullable();

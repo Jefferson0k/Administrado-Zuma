@@ -4,53 +4,54 @@ namespace App\Http\Resources\Subastas\PropertyLoanDetail;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Money\Formatter\DecimalMoneyFormatter;
+use Money\Money;
 use Money\Currencies\ISOCurrencies;
-class PropertyLoanDetailListResource extends JsonResource{
-    public function toArray(Request $request): array{
-        $property = $this->property;
-        $config = $property?->ultimaConfiguracion;
+use Money\Formatter\DecimalMoneyFormatter;
+
+class PropertyLoanDetailListResource extends JsonResource
+{
+    public function toArray(Request $request): array
+    {
+        $solicitud = $this->solicitud;
+        $config = $this->configuracion;
         $investor = $this->investor;
 
-        // Preparar formateador para Money
+        // Formateador de Money
         $currencies = new ISOCurrencies();
         $moneyFormatter = new DecimalMoneyFormatter($currencies);
 
+        $formatMoney = fn(?Money $money) => $money ? $moneyFormatter->format($money) : '0.00';
+        $formatCurrency = fn(?Money $money, $symbol = 'S/') => $money ? $symbol . ' ' . number_format((float)$money->getAmount()/100, 2, '.', ',') : $symbol . ' 0.00';
+
         return [
             'id' => $this->id,
-            'property_id' => $this->property_id,
+            'solicitud_id' => $this->solicitud_id,
+            'codigo_solicitud' => $solicitud?->codigo ?? 'Sin código', // Código de la solicitud
             'investor_id' => $this->investor_id,
-            // 'ocupacion_profesion' => $this->ocupacion_profesion,
             'motivo_prestamo' => $this->motivo_prestamo,
             'descripcion_financiamiento' => $this->descripcion_financiamiento,
             'solicitud_prestamo_para' => $this->solicitud_prestamo_para,
-            'garantia' => $this->garantia,
-            'perfil_riesgo' => $this->perfil_riesgo,
             'empresa_tasadora' => $this->empresa_tasadora,
             'config_id' => $this->config_id,
-            // Datos relacionados con verificaciones adicionales
+
+            // Datos del inversionista
             'documento' => $investor?->document ?? 'Sin documento',
-            'cliente' => $investor 
+            'cliente' => $investor
                 ? trim("{$investor->name} {$investor->first_last_name} {$investor->second_last_name}")
                 : 'Sin nombre',
-            'propiedad' => $property?->nombre ?? 'Sin nombre de propiedad',
 
-            // Aquí formateamos valores Money a decimal
-            'valor' => $property?->valor_estimado 
-                ? $moneyFormatter->format($property->valor_estimado) 
-                : '0.00',
-            'requerido' => $property?->valor_requerido 
-                ? $moneyFormatter->format($property->valor_requerido) 
-                : '0.00',
-            'subasta' => $property?->valor_subasta 
-                ? $moneyFormatter->format($property->valor_subasta) 
-                : '0.00',
+            // Montos desde Solicitud
+            'valor_general' => $formatCurrency($solicitud?->valor_general, $solicitud?->currency?->simbolo ?? 'S/'),
+            'valor_requerido' => $formatCurrency($solicitud?->valor_requerido, $solicitud?->currency?->simbolo ?? 'S/'),
 
+            // Configuración
             'riesgo' => $config?->riesgo ?? 'No asignado',
             'cronograma' => $config?->tipo_cronograma ?? 'No definido',
             'plazo' => $config?->plazo?->nombre ?? 'Sin plazo asignado',
-            'estado' => $property?->estado ?? 'sin_estado',
-            'estado_nombre' => match ($property?->estado) {
+
+            // Estado ahora viene de solicitud
+            'estado' => $solicitud?->estado ?? 'sin_estado',
+            'estado_nombre' => match ($solicitud?->estado) {
                 'en_subasta' => 'En subasta',
                 'activa' => 'Activa',
                 'subastada' => 'Subastada',
@@ -59,10 +60,10 @@ class PropertyLoanDetailListResource extends JsonResource{
                 'adquirido' => 'Adquirido',
                 'pendiente' => 'Pendiente',
                 'espera' => 'Espera',
+                'completo' => 'Completo',
                 null => 'Sin estado',
                 default => 'Estado desconocido',
             },
         ];
     }
-
 }

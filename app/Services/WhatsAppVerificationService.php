@@ -15,11 +15,16 @@ class WhatsAppVerificationService
 
     public function __construct()
     {
-        $this->twilio = new Client(
-            config('services.twilio.sid'),
-            config('services.twilio.token')
-        );
-        $this->from = 'whatsapp:' . config('services.twilio.whatsapp_number');
+        $sid = config('services.twilio.sid');
+        $token = config('services.twilio.token');
+        $from = config('services.twilio.whatsapp_number');
+        if($sid && $token && $from){
+            $this->twilio = new Client($sid,$token);
+            $this->from = 'whatsapp:' . $from;
+        }else{
+            $this->twilio= null;
+            $this->from = null;
+        }
     }
 
     /**
@@ -55,13 +60,18 @@ class WhatsAppVerificationService
         $message = $this->buildVerificationMessage($investor, $verificationCode);
 
         try {
-            $twilioMessage = $this->twilio->messages->create(
-                'whatsapp:' . $phoneNumber,
-                [
-                    'from' => $this->from,
-                    'body' => $message
-                ]
-            );
+            
+            if ($this->twilio && $this->from) {
+                $twilioMessage = $this->twilio->messages->create(
+                    'whatsapp:' . $phoneNumber,
+                    [
+                        'from' => $this->from,
+                        'body' => $message
+                    ]
+                );
+            }else{
+                
+            }
 
             // Actualizar el inversionista con los datos de verificación
             $investor->update([

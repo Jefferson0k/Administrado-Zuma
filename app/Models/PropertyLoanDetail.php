@@ -15,7 +15,7 @@ class PropertyLoanDetail extends Model implements AuditableContract
     protected $table = 'property_loan_details';
 
     protected $fillable = [
-        'property_id',
+        'solicitud_id',
         'config_id',
         'investor_id',
         // 'ocupacion_profesion',
@@ -39,14 +39,19 @@ class PropertyLoanDetail extends Model implements AuditableContract
     {
         return $this->belongsTo(Investor::class);
     }
-
-    public function property()
+    public function solicitud()
     {
-        return $this->belongsTo(Property::class);
+        return $this->belongsTo(Solicitud::class, 'solicitud_id', 'id');
     }
 
     public function configuracion()
     {
         return $this->belongsTo(PropertyConfiguracion::class, 'config_id');
     }
+public function detalleInversionistaHipoteca()
+{
+    return $this->hasOne(DetalleInversionistaHipoteca::class, 'configuracion_id', 'config_id');
+}
+
+
 }
