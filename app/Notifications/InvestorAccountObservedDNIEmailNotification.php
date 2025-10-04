@@ -20,21 +20,20 @@ class InvestorAccountObservedDNIEmailNotification extends Notification
         public ?string $supportPhone = null,
     ) {}
 
-    public function via($notifiable)
+    public function via($notifiable): array
     {
         return ['mail'];
     }
 
-    public function toMail($notifiable)
+    public function toMail($notifiable): MailMessage
     {
         $appName      = config('app.name', 'ZUMA');
-        $brandPrimary = '#F0372D'; // barra/logo bg (rojo)
+        $brandPrimary = '#F0372D'; // barra/logo (rojo)
         $brandButton  = '#22c55e'; // botón WhatsApp (verde)
-        $logoUrl      = rtrim(env('APP_URL', ''), '/') . '/images/zuma-logo-dark.png'; // usa URL absoluta
+        $logoUrl      = rtrim(env('APP_URL', ''), '/') . '/images/zuma-logo-dark.png'; // URL absoluta
         $whatsUrl     = $this->whatsappUrl ?: 'https://wa.me/51999999999';
         $supportPhone = $this->supportPhone ?: '+51 999 999 999';
 
-        // Se envía una vista Blade en lugar de texto plano.
         return (new MailMessage)
             ->subject($this->title)
             ->view('emails.investor.observeddni', [
@@ -48,7 +47,7 @@ class InvestorAccountObservedDNIEmailNotification extends Notification
                 'whatsappUrl'  => $whatsUrl,
                 'supportPhone' => $supportPhone,
                 'companyAddr'  => 'Av. Faustino Sánchez Carrión 417, Magdalena del Mar, Lima – Perú',
-                'prefsUrl'     => rtrim(env('CLIENT_APP_URL', 'https://zuma.com.pe'), '/') . '/preferencias', // “Gestionar preferencias”
+                'prefsUrl'     => rtrim(env('CLIENT_APP_URL', 'https://zuma.com.pe'), '/') . '/preferencias',
                 'footerYear'   => date('Y'),
             ]);
     }

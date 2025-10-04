@@ -691,10 +691,6 @@ class InvestorController extends Controller
     }
 
 
-
-
-
-
     public function lastInvoiceInvested()
     {
         /** @var \App\Models\Investor $investor */
@@ -732,8 +728,6 @@ class InvestorController extends Controller
     }
 
 
-
-
     public function showcliente($id)
     {
         $investor = Investor::select([
@@ -754,7 +748,6 @@ class InvestorController extends Controller
             'data' => $investor
         ]);
     }
-
 
     public function updatecliente(Request $request, $id)
     {
@@ -905,13 +898,10 @@ class InvestorController extends Controller
                             break;
 
                         case 'dni':
+
+                            Log::info('Sending DNI observation email to investor', ['investor_id' => $investor->id]);
                             // Usa tu método/mailable específico para DNI
-                            if (method_exists($investor, 'sendAccountObservedDniNotification')) {
-                                $investor->sendAccountObservedDniNotification();
-                            } else {
-                                // Mail::to($investor->email)->queue(new \App\Mail\Investor\RequestDniResubmissionMail($investor));
-                                $investor->sendAccountObservedEmailNotification(); // fallback si aún no tienes el mailable
-                            }
+                            $investor->sendAccountObservedDNIEmailNotification();
                             break;
 
                         case 'investor_photo':
@@ -1203,12 +1193,58 @@ class InvestorController extends Controller
 
             // Notificación si aplica
             // $investor->sendAccountObservedEmailNotification($request->approval2_comment);
+            $templates = collect($request->input('notify_templates', []))->unique()->values();
+
+            if ($templates->isEmpty()) {
+                // Sin selección: enviar el correo genérico existente.
+                $investor->sendAccountObservedEmailNotification();
+            } else {
+                foreach ($templates as $tpl) {
+                    switch ($tpl) {
+                        case 'general_observation':
+                            $investor->sendAccountObservedEmailNotification();
+                            break;
+
+                        case 'dni':
+                            Log::info('Sending DNI observation email to investor', ['investor_id' => $investor->id]);
+                            // Usa tu método/mailable específico para DNI
+                            $investor->sendAccountObservedDNIEmailNotification();
+                            break;
+                            
+                                // Mail::to($investor->email)->queue(new \App\Mail\Investor\RequestDniResubmissionMail($investor));
+                            
+
+                        case 'investor_photo':
+                            if (method_exists($investor, 'sendAccountObservedFotoNotification')) {
+                                $investor->sendAccountObservedFotoNotification();
+                            } else {
+                                // Mail::to($investor->email)->queue(new \App\Mail\Investor\RequestInvestorPhotoResubmissionMail($investor));
+                                $investor->sendAccountObservedEmailNotification(); // fallback
+                            }
+                            break;
+
+                        case 'evidencia_pep':
+                            if (method_exists($investor, 'sendAccountObservedPepEvidenceNotification')) {
+                                $investor->sendAccountObservedPepEvidenceNotification();
+                            } else {
+                                // Mail::to($investor->email)->queue(new \App\Mail\Investor\RequestPepEvidenceResubmissionMail($investor));
+                                $investor->sendAccountObservedEmailNotification(); // fallback
+                            }
+                            break;
+                    }
+                }
+            }
+
 
             return response()->json([
                 'message' => 'Inversionista observado en segunda validación. Archivos eliminados.',
                 'data'    => $investor->fresh(),
             ], 200);
         } catch (\Throwable $e) {
+            Log::error('Error al marcar inversionista como observado en segunda validación', [
+                'investor_id' => $id,
+                'error'       => $e->getMessage(),
+            ]);
             return response()->json([
                 'message' => 'Error al observar en segunda validación.',
                 'error'   => $e->getMessage(),

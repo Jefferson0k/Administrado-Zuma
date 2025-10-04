@@ -101,15 +101,120 @@
       </template>
     </Column>
 
-    <Column header="" :exportable="false" style="width: 6rem">
+    <Column header="" :exportable="false" style="width: 8.5rem">
       <template #body="{ data }">
-        <Button icon="pi pi-eye" severity="contrast" outlined rounded @click="verDeposito(data)"
-          v-tooltip="'Ver Detalle'" />
+        <div class="flex gap-2">
+          <Button icon="pi pi-eye" severity="contrast" outlined rounded @click="verDeposito(data)"
+            v-tooltip="'Ver Detalle'" />
+          <Button icon="pi pi-history" severity="secondary" outlined rounded @click="verHistorialAprobacion(data)"
+            v-tooltip="'Historial de aprobaciones'" />
+        </div>
       </template>
     </Column>
+
   </DataTable>
 
   <ShowDeposit v-if="selectedDeposit" :deposit="selectedDeposit" @close="cerrarDetalle" @refresh="cargarDepositos" />
+
+  <Dialog v-model:visible="historyVisible" :style="{ width: '900px', maxWidth: '95vw' }"
+    header="Historial de Aprobaciones" :modal="true" :closable="true" @hide="cerrarHistorial">
+    <div v-if="historyLoading" class="p-4 text-center">
+      <i class="pi pi-spin pi-spinner text-2xl"></i>
+      <p class="mt-2">Cargando historial...</p>
+    </div>
+
+    <div v-else>
+      <div v-if="historyRows.length === 0" class="p-4 text-center text-sm text-gray-500">
+        Sin registros de historial.
+      </div>
+
+      <DataTable v-else :value="historyRows" dataKey="id" class="p-datatable-sm">
+        <Column field="id" header="#" style="width: 5rem" />
+
+        <Column header="1º Aprobación" style="min-width: 10rem">
+          <template #body="{ data }">
+            <div class="space-y-1">
+              <div>
+
+                <Tag :value="traducirEstado(data.approval1_status)"
+                  :severity="obtenerColorEstado(data.approval1_status)" />
+              </div>
+            </div>
+          </template>
+        </Column>
+
+        <Column header="1º Usuario" style="min-width: 10rem">
+          <template #body="{ data }">
+            <div class="space-y-1">
+
+              <div> {{ resolveUserName(data, 'approval1_by') }}</div>
+
+            </div>
+          </template>
+        </Column>
+
+        <Column header="1º T Aprobación" style="min-width: 10rem">
+          <template #body="{ data }">
+            <div class="space-y-1">
+
+
+              <div> {{ formatFecha(data.approval1_at) }}</div>
+
+            </div>
+          </template>
+        </Column>
+
+        <Column header="1º Comentario" style="min-width: 10rem">
+          <template #body="{ data }">
+            <div class="space-y-1">
+              <div v-if="data.approval1_comment"> {{ data.approval1_comment }}</div>
+            </div>
+          </template>
+        </Column>
+
+        <Column header="2º Aprobación" style="min-width: 10rem">
+          <template #body="{ data }">
+            <div class="space-y-1">
+              <div>
+
+                <Tag :value="traducirEstado(data.approval2_status)"
+                  :severity="obtenerColorEstado(data.approval2_status)" />
+              </div>
+
+            </div>
+          </template>
+        </Column>
+
+        <Column header="2º Usuario" style="min-width: 10rem">
+          <template #body="{ data }">
+            <div class="space-y-1">
+
+              <div>{{ resolveUserName(data, 'approval2_by') }}</div>
+            </div>
+          </template>
+        </Column>
+
+        <Column header="2º T Aprobación" style="min-width: 10rem">
+          <template #body="{ data }">
+            <div class="space-y-1">
+
+              <div> {{ formatFecha(data.approval2_at) }}</div>
+
+            </div>
+          </template>
+        </Column>
+
+        <Column header="2º Comentario" style="min-width: 10rem">
+          <template #body="{ data }">
+            <div class="space-y-1">
+              <div v-if="data.approval2_comment"> {{ data.approval2_comment }}</div>
+            </div>
+          </template>
+        </Column>
+      </DataTable>
+    </div>
+  </Dialog>
+
 </template>
 
 <script setup lang="ts">
@@ -126,6 +231,8 @@ import Toolbar from 'primevue/toolbar';
 import { useToast } from 'primevue/usetoast';
 import { debounce } from 'lodash';
 import ShowDeposit from './showDeposit.vue';
+import Dialog from 'primevue/dialog';
+
 
 type SortOrder = 1 | 0 | -1;
 
@@ -149,6 +256,47 @@ const selectedDeposit = ref<any | null>(null);
 
 // export loading
 const exportingExcel = ref(false);
+
+
+// -------- historial modal ----------
+const historyVisible = ref(false);
+const historyLoading = ref(false);
+const historyRows = ref<any[]>([]);
+const historyForDeposit = ref<any | null>(null);
+
+async function verHistorialAprobacion(depositData: any) {
+  historyForDeposit.value = depositData;
+  historyVisible.value = true;
+  historyLoading.value = true;
+
+  try {
+    const { data } = await axios.get(`/deposit/${depositData.id}/approval-history`);
+    historyRows.value = Array.isArray(data?.data) ? data.data : [];
+  } catch (error: any) {
+    console.error('Error al cargar historial:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error?.response?.data?.message || 'No se pudo cargar el historial de aprobaciones',
+      life: 4000
+    });
+  } finally {
+    historyLoading.value = false;
+  }
+}
+
+function cerrarHistorial() {
+  historyVisible.value = false;
+  historyForDeposit.value = null;
+  historyRows.value = [];
+}
+
+// Evita choque de nombres entre columnas y relaciones en JSON (approval1_by / approval1By)
+function resolveUserName(row: any, key: 'approval1_by' | 'approval2_by') {
+  // intenta relación en snake_case (probable), luego camelCase, o muestra raya
+  return row?.[key]?.name || row?.[key.replace('_by', 'By')]?.name || '—';
+}
+
 
 // -------- data loading ----------
 const buildQueryParams = () => {

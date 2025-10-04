@@ -16,7 +16,7 @@ return new class extends Migration
             $table->decimal('reprogramation_rate', 5, 2)->nullable()->change();
         });
         Schema::table('invoices', function (Blueprint $table) {
-            $table->enum('status', ['inactive', 'active', 'expired', 'judicialized', 'reprogramed', 'paid', 'canceled'])->default('inactive')->change();
+            $table->enum('status', ['inactive','active','expired','judicialized','reprogramed','paid','canceled','daStandby','annulled','observed','rejected'])->default('inactive')->change();
             $table->decimal('paid_amount', 10, 2)->default(0)->change();
         });
     }

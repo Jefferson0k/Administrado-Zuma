@@ -53,8 +53,9 @@
                 todo esté listo para que seas de los primeros en acceder a la experiencia completa.
               </p>
 
-              <!-- Icono simple y seguro (emoji grande) -->
-              <div style="font-size:70px;line-height:1;margin:12px 0 22px 0;">🕒</div>
+              <!-- Icono simple y seguro-->
+              <img src="{{ asset('imagenes/personitareloj.png') }}" width="64" height="80" alt="Aviso" style="display:block;margin:0 auto 10px auto;">
+
 
               <p style="margin:0 0 6px 0;">
                 Gracias nuevamente por confiar en nosotros,<br>

@@ -1,6 +1,6 @@
 @php
     $appName      = $appName      ?? 'ZUMA';
-    $brandPrimary = $brandPrimary ?? '#ff4929';
+    $brandPrimary = $brandPrimary ?? '#fd4a2a';
     $brandButton  = $brandButton  ?? '#22c55e';
     $logoUrl      = $logoUrl      ?? '';
 

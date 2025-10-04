@@ -81,7 +81,7 @@ class InvestorEmailVerificationNotification_prod extends VerifyEmail
             $frontendUrl .= '?' . $query;
         }
 
-        return (new \Illuminate\Notifications\Messages\MailMessage)
+        return (new MailMessage)
             ->subject('Confirma tu correo en ZUMA')
             ->view(
                 'emails.investor-verify',

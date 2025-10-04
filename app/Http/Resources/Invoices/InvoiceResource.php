@@ -18,6 +18,15 @@ class InvoiceResource extends JsonResource{
             'company_id' => 'Sin Definir',
             'created_by' => $this->created_by,
             'updated_by' => $this->updated_by,
+
+
+            'approval1_status' => $this->approval1_status,
+            'approval2_status' => $this->approval2_status,
+            'approval1_by'     => $this->approval1_by,
+            'approval1_at'     => $this->approval1_at,
+            'approval2_by'     => $this->approval2_by,
+            'approval2_at'     => $this->approval2_at,
+
         ];
     }
 }

@@ -88,22 +88,24 @@
                 </template>
             </template>
         </Column>
-        <Column header="" style="min-width: 22rem">
+        <Column header="Acciones" style="min-width: 22rem">
             <template #body="slotProps">
                 <div class="flex gap-2 flex-wrap">
                     <!-- 1ª Validación -->
-                    <Button v-if="!slotProps.data.approval1_status" label="1ª Valid." icon="pi pi-check-circle"
-                        size="small" severity="warning" @click="openFirstApprovalDialog(slotProps.data)" />
+                    <Button v-if="!slotProps.data.approval1_status || slotProps.data.approval2_status === 'observed'"
+                        label="1ª Valid." icon="pi pi-check-circle" size="small" severity="warning"
+                        @click="openFirstApprovalDialog(slotProps.data)" />
 
                     <!-- 2ª Validación -->
                     <Button
-                        v-else-if="slotProps.data.approval1_status === 'approved' && !slotProps.data.approval2_status"
+                        v-else-if="slotProps.data.approval1_status === 'approved' && isEmptyOrPending(slotProps.data.approval2_status)"
                         label="2ª Valid." icon="pi pi-shield" size="small" severity="success"
                         @click="openSecondApprovalDialog(slotProps.data)" />
 
-                    <!-- Cuando ya no hay botones de validación, mostrar 'Validaciones' -->
+                    <!-- Detalle -->
                     <Button v-else label="Validaciones" icon="pi pi-list-check" size="small" severity="help" outlined
                         @click="openValidationDetails(slotProps.data)" />
+
 
                     <!-- Mostrar Pagar SOLO si NO hay comprobante ni comentario -->
                     <Button v-if="!slotProps.data.resource_path && !slotProps.data.payment_comment" label="Pagar"
@@ -120,7 +122,13 @@
                     <!-- Detalles del retiro / inversionista que ya tienes -->
                     <Button label="Detalles" icon="pi pi-eye" size="small" severity="info" outlined
                         @click="openDetailsDialog(slotProps.data)" />
+
+                    <Button label="Historial" icon="pi pi-history" size="small" severity="contrast" outlined
+                        @click="openHistory(slotProps.data)" />
                 </div>
+
+                <!-- Dentro del template #body del Column de acciones -->
+
             </template>
         </Column>
 
@@ -382,7 +390,7 @@
                             </span></div>
                         <div><span class="block">Descripción:</span>
                             <p class="font-medium whitespace-pre-line">{{ selectedValidationWithdraw?.description || '—'
-                            }}
+                                }}
                             </p>
                         </div>
                     </div>
@@ -549,7 +557,7 @@
             <div class="flex justify-between">
                 <span class="text-slate-600">Monto:</span>
                 <span class="font-medium">{{ formatCurrency(selectedPayment?.amount, selectedPayment?.currency)
-                    }}</span>
+                }}</span>
             </div>
 
             <div class="mt-2 p-3 rounded bg-slate-50">
@@ -579,7 +587,98 @@
 
 
 
+    <Dialog v-model:visible="historyVisible" :style="{ width: '900px', maxWidth: '95vw' }"
+        header="Historial de Aprobaciones" :modal="true" :closable="true" @hide="cerrarHistorial">
+        <div v-if="historyLoading" class="p-4 text-center">
+            <i class="pi pi-spin pi-spinner text-2xl"></i>
+            <p class="mt-2">Cargando historial...</p>
+        </div>
 
+        <div v-else>
+            <div v-if="historyRows.length === 0" class="p-4 text-center text-sm text-gray-500">
+                Sin registros de historial.
+            </div>
+
+            <DataTable v-else :value="historyRows" dataKey="id" class="p-datatable-sm">
+                <Column field="id" header="#" style="width: 5rem" />
+
+                <Column header="1º Aprobación" style="min-width: 10rem">
+                    <template #body="{ data }">
+                        <div class="space-y-1">
+                            <Tag :value="getStatusLabel(data.approval1_status)"
+                                :severity="getStatusSeverity(data.approval1_status)" />
+
+
+                        </div>
+                    </template>
+                </Column>
+
+                <Column header="1º Usuario" style="min-width: 10rem">
+                    <template #body="{ data }">
+                        <div class="space-y-1">
+                            <div>{{ data?.approval1_by?.name ?? data?.approval1_by ?? '—' }}</div>
+
+                        </div>
+                    </template>
+                </Column>
+
+                <Column header="1º T Aprobación" style="min-width: 10rem">
+                    <template #body="{ data }">
+                        <div class="space-y-1">
+                            <div>{{ data.approval1_at ? formatDateTime(data.approval1_at) : '—' }}</div>
+
+                        </div>
+                    </template>
+                </Column>
+
+                <Column header="1º Comentario" style="min-width: 10rem">
+                    <template #body="{ data }">
+                        <div class="space-y-1">
+                            <div>{{ data.approval1_comment || '—' }}</div>
+
+                        </div>
+                    </template>
+                </Column>
+
+                <Column header="2º Aprobación" style="min-width: 10rem">
+                    <template #body="{ data }">
+                        <div class="space-y-1">
+                            <Tag :value="getStatusLabel(data.approval2_status)"
+                                :severity="getStatusSeverity(data.approval2_status)" />
+
+                        </div>
+                    </template>
+                </Column>
+
+                <Column header="2º Usuario" style="min-width: 10rem">
+                    <template #body="{ data }">
+                        <div class="space-y-1">
+                            <div>{{ data?.approval2_by?.name ?? data?.approval2_by ?? '—' }}</div>
+
+                        </div>
+                    </template>
+                </Column>
+
+                <Column header="2º T Aprobación" style="min-width: 10rem">
+                    <template #body="{ data }">
+                        <div class="space-y-1">
+                            <div>{{ data.approval2_at ? formatDateTime(data.approval2_at) : '—' }}</div>
+
+                        </div>
+                    </template>
+                </Column>
+
+                <Column header="2º Comentario" style="min-width: 10rem">
+                    <template #body="{ data }">
+                        <div class="space-y-1">
+                            <div>{{ data.approval2_comment || '—' }}</div>
+
+                        </div>
+                    </template>
+                </Column>
+            </DataTable>
+        </div>
+    </Dialog>
 
 
     <AddWithdraw v-model:visible="detailsDialog" :investor-id="selectedInvestorId"
@@ -618,48 +717,48 @@ const onDragLeave = () => { isDragging.value = false; };
 
 const isImage = (file) => !!file && /^image\//i.test(file.type);
 const formatBytes = (bytes) => {
-  if (!bytes && bytes !== 0) return '';
-  const units = ['B','KB','MB','GB'];
-  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  const val = bytes / Math.pow(1024, i);
-  return `${val.toFixed(val >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+    if (!bytes && bytes !== 0) return '';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+    const val = bytes / Math.pow(1024, i);
+    return `${val.toFixed(val >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
 };
 
 const cleanupPreview = () => {
-  if (previewUrl.value && previewUrl.value.startsWith('blob:')) {
-    URL.revokeObjectURL(previewUrl.value);
-  }
-  previewUrl.value = '';
+    if (previewUrl.value && previewUrl.value.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl.value);
+    }
+    previewUrl.value = '';
 };
 
 const assignFile = (file) => {
-  // client-side cap 4MB just to hint early (backend also validates)
-  const MAX = 4 * 1024 * 1024;
-  if (file && file.size > MAX) {
-    toast.add({ severity: 'warn', summary: 'Archivo demasiado grande', detail: 'Máximo 4 MB.', life: 3000 });
-    return;
-  }
-  payForm.value.file = file || null;
-  cleanupPreview();
-  if (file && isImage(file)) {
-    previewUrl.value = URL.createObjectURL(file);
-  }
+    // client-side cap 4MB just to hint early (backend also validates)
+    const MAX = 4 * 1024 * 1024;
+    if (file && file.size > MAX) {
+        toast.add({ severity: 'warn', summary: 'Archivo demasiado grande', detail: 'Máximo 4 MB.', life: 3000 });
+        return;
+    }
+    payForm.value.file = file || null;
+    cleanupPreview();
+    if (file && isImage(file)) {
+        previewUrl.value = URL.createObjectURL(file);
+    }
 };
 
 const onDrop = (e) => {
-  isDragging.value = false;
-  const file = e.dataTransfer?.files?.[0];
-  if (file) assignFile(file);
+    isDragging.value = false;
+    const file = e.dataTransfer?.files?.[0];
+    if (file) assignFile(file);
 };
 
 const onPayFileChange = (e) => {
-  const f = e?.target?.files?.[0] ?? null;
-  assignFile(f);
+    const f = e?.target?.files?.[0] ?? null;
+    assignFile(f);
 };
 
 const removeFile = () => {
-  assignFile(null);
-  if (fileInput.value) fileInput.value.value = '';
+    assignFile(null);
+    if (fileInput.value) fileInput.value.value = '';
 };
 
 onBeforeUnmount(cleanupPreview);
@@ -1011,7 +1110,13 @@ const confirmFirstApproval = async () => {
             life: 3000
         });
 
+        // cerrar 1ª y abrir 2ª automáticamente con el registro actualizado
         closeFirstApprovalDialog();
+        const updatedRow = withdraws.value[withdrawIndex] || response.data.data;
+        if (updatedRow) {
+            openSecondApprovalDialog(updatedRow);
+        }
+
 
     } catch (error) {
         console.error('Error en primera validación:', error?.response ?? error);
@@ -1242,6 +1347,40 @@ const formatDateForBackend = (date) => {
     return new Date(date).toISOString().split('T')[0];
 };
 
+
+// --- Historial de aprobaciones (lazy via API) ---
+// Mantén estos nombres: son los que usa el <Dialog> del template
+const historyVisible = ref(false);
+const historyLoading = ref(false);
+const historyError = ref('');
+const historyRows = ref([]);
+
+const openHistory = async (row) => {
+    historyVisible.value = true;
+    historyLoading.value = true;
+    historyError.value = '';
+    selectedWithdraw.value = row; // opcional para mostrar resumen
+
+    try {
+        const { data } = await axios.get(`/withdraws/${row.id}/approval-history`);
+        historyRows.value = Array.isArray(data?.data) ? data.data : [];
+    } catch (e) {
+        historyError.value = extractErrorMessage(e, 'No se pudo cargar el historial');
+        historyRows.value = [];
+    } finally {
+        historyLoading.value = false;
+    }
+};
+
+const cerrarHistorial = () => {
+    historyVisible.value = false;
+    historyRows.value = [];
+    historyError.value = '';
+};
+
+
+const isEmptyOrPending = (v) =>
+    v === null || v === undefined || v === '' || v === 'pending';
 
 
 

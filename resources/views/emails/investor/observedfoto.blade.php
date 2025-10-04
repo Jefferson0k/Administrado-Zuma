@@ -1,6 +1,6 @@
 @php
     $appName      = $appName      ?? 'zuma';
-    $brandPrimary = '#ff4929';     // rojo barra/logo
+    $brandPrimary = '#fd4a2a';     // rojo barra/logo
     $ctaColor     = '#6790ff';     // azul del botón principal
     $title        = $title        ?? 'Tu validación facial no pudo completarse';
     $userName     = $userName     ?? 'Nombre del usuario';
@@ -40,7 +40,7 @@
         <table class="container" role="presentation" width="640" cellspacing="0" cellpadding="0" border="0" style="width:640px;max-width:640px;background:#FFFFFF;margin:0 auto;">
           <tr>
             <td style="padding:28px 32px 8px 32px; text-align:center;">
-               <img src="{{ asset('imagenes/personitadocumento.png') }}" width="64" height="64" alt="Aviso" style="display:block;margin:0 auto 10px auto;">
+               <img src="{{ asset('imagenes/personitadocumento.png') }}" width="64" height="80" alt="Aviso" style="display:block;margin:0 auto 10px auto;">
               <h1 class="hero-title" style="margin:8px 0;font:800 22px/28px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;color:#111827;text-decoration:underline;">
                 {{ $title }}
               </h1>

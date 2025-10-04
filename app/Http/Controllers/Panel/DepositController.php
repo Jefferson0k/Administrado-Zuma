@@ -23,6 +23,8 @@ use Throwable;
 use Illuminate\Support\Facades\Log;
 use App\Models\DepositAttachment;
 use Illuminate\Support\Facades\Storage;
+use App\Models\HistoryAprobadorDeposit;
+
 
 
 class DepositController extends Controller
@@ -126,7 +128,7 @@ class DepositController extends Controller
 
         $deposit = Deposit::findOrFail($id);
         Gate::authorize('approve1', $deposit);
-        
+
 
         // Exigir voucher si quieren aprobar en la 1ª validación
         if ($validated['status0'] === 'approved' && !$deposit->attachments()->exists()) {
@@ -134,6 +136,9 @@ class DepositController extends Controller
                 'message' => 'Debes adjuntar y subir el voucher antes de aprobar la primera validación.'
             ], 422);
         }
+
+
+
 
 
         // UI → DB (approved|observed|pending|rejected → valid|invalid|pending|rejected)
@@ -181,6 +186,17 @@ class DepositController extends Controller
 
 
         $deposit->save();
+
+
+
+        HistoryAprobadorDeposit::create([
+            'deposit_id' => $deposit->id,
+            'approval1_status' => $validated['status0'],
+            'approval1_by' => Auth::id(),
+            'approval1_comment' => $validated['comment0'] ?? null,
+            'approval1_at' => now(),
+        ]);
+
 
         return response()->json([
             'message' => 'Primera validación actualizada correctamente.',
@@ -289,6 +305,19 @@ class DepositController extends Controller
             $balance->amount = $balanceAmountMoney->add($movementAmountMoney);
             $balance->save();
         }
+
+
+        $history = HistoryAprobadorDeposit::where('deposit_id', $deposit->id)
+            ->latest('id')
+            ->lockForUpdate()
+            ->first();
+
+        $history?->update([
+            'approval2_status' => $validated['status'],
+            'approval2_by' => Auth::id(),
+            'approval2_comment' => $note ?? null,
+            'approval2_at' => now(),
+        ]);
 
         return response()->json([
             'message' => 'Segunda validación actualizada correctamente.',
@@ -593,5 +622,24 @@ class DepositController extends Controller
                 'file'    => $e->getFile(),
             ], 500);
         }
+    }
+
+
+    
+    public function approvalHistory($id)
+    {
+        $rows = HistoryAprobadorDeposit::query()
+            ->where('deposit_id', $id)
+            ->with([
+                'approval1By:id,name',
+                'approval2By:id,name',
+            ])
+            ->orderByDesc('id')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $rows,
+        ]);
     }
 }

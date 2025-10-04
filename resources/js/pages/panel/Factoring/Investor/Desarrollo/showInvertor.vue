@@ -70,9 +70,7 @@
 
                 <Button label="Ver completo" icon="pi pi-eye" size="small" outlined class="w-full mt-2"
                   data-export="ignore" @click="viewDocument(toViewUrl(editableInvestor.document_front))" />
-                <Button v-if="!isValidated" label="Observar" icon="pi pi-exclamation-triangle" size="small"
-                  data-export="ignore" severity="warn" class="w-full mt-2" @click="showObserveDialog('dni_front')"
-                  :disabled="isAnyRejected" />
+
               </div>
 
               <div v-else class="text-center py-6 bg-gray-50 border-2 border-dashed border-gray-300 rounded">
@@ -108,9 +106,7 @@
 
                 <Button label="Ver completo" icon="pi pi-eye" size="small" outlined class="w-full mt-2"
                   data-export="ignore" @click="viewDocument(toViewUrl(editableInvestor.document_back))" />
-                <Button v-if="!isValidated" label="Observar" icon="pi pi-exclamation-triangle" size="small"
-                  data-export="ignore" severity="warn" class="w-full mt-2" @click="showObserveDialog('dni_back')"
-                  :disabled="isAnyRejected" />
+              
               </div>
 
               <div v-else class="text-center py-6 bg-gray-50 border-2 border-dashed border-gray-300 rounded">
@@ -147,9 +143,7 @@
 
                 <Button label="Ver completo" icon="pi pi-eye" size="small" outlined class="w-full mt-2"
                   data-export="ignore" @click="viewDocument(toViewUrl(editableInvestor.investor_photo_path))" />
-                <Button v-if="!isValidated" label="Observar" icon="pi pi-exclamation-triangle" size="small"
-                  data-export="ignore" severity="warn" class="w-full mt-2" @click="showObserveDialog('investor_photo')"
-                  :disabled="isAnyRejected" />
+         
               </div>
 
               <div v-else class="text-center py-6 bg-gray-50 border-2 border-dashed border-gray-300 rounded">
@@ -404,8 +398,7 @@
               <div class="flex gap-2">
                 <Button label="Guardar Comentario" icon="pi pi-save" size="small" severity="info" @click="saveComment"
                   :loading="loading" :disabled="isAnyRejected || !commentText.trim()" />
-                <Button label="Observar" icon="pi pi-exclamation-triangle" size="small" severity="warn"
-                  @click="showObserveDialog()" :disabled="loading || isAnyRejected" />
+              
 
               </div>
             </div>

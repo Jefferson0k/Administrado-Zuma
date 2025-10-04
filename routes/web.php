@@ -216,6 +216,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{id}/reject-step-one',  [WithdrawController::class, 'rejectStepOne'])->name('withdraws.rejectStepOne');
         Route::post('/{id}/observe-step-two', [WithdrawController::class, 'observeStepTwo'])->name('withdraws.observeStepTwo');
         Route::post('/{id}/reject-step-two',  [WithdrawController::class, 'rejectStepTwo'])->name('withdraws.rejectStepTwo');
+    
+        Route::get('/{id}/approval-history', [WithdrawController::class, 'approvalHistory']);
+
+        
+    
     });
 
     // routes/web.php (o routes/api.php si llamas /api/...)
@@ -251,6 +256,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Show (catch-all) — must be LAST
         Route::get('/{id}', [DepositController::class, 'show'])->name('show');
+        Route::get('/{id}/approval-history', [DepositController::class, 'approvalHistory']);
     });
 
 
@@ -391,11 +397,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/{id}/activacion', [InvoiceController::class, 'activacion']);
         Route::patch('/{id}/rechazar', [InvoiceController::class, 'rechazar']);
         Route::patch('/{id}/observacion', [InvoiceController::class, 'observacion']);
+         Route::patch('/{id}/activacion2', [InvoiceController::class, 'activacion2']);
+        Route::patch('/{id}/rechazar2', [InvoiceController::class, 'rechazar2']);
+        Route::patch('/{id}/observacion2', [InvoiceController::class, 'observacion2']);
         Route::get('/{id}', [InvoiceController::class, 'show'])->name('invoices.show');
         Route::delete('/{id}', [InvoiceController::class, 'delete'])->name('invoices.delete');
 
         # Exportación a Excel
         Route::get('/export/excel', [InvoiceController::class, 'exportExcel'])->name('invoices.export');
+
+        Route::get('/{id}/approval-history', [InvoiceController::class, 'approvalHistory']);
+
+        Route::post('/{invoice}/pago-adelantado', [InvoiceController::class, 'adelantarPago'])
+    ->name('adelantar-pago');
+
     });
 
 

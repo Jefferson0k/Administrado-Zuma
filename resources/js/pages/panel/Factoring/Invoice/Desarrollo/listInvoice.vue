@@ -21,6 +21,78 @@ import showFacturas from './showFacturas.vue';
 import updateInvoice from './updateInvoice.vue';
 import paymentInvoice from './paymentInvoice.vue';
 
+import Dialog from 'primevue/dialog';
+
+import Calendar from 'primevue/calendar';
+
+function computeSemaforoColors(row) {
+  const normalize = (v) => {
+    const s = (v || '').toString().toLowerCase().trim();
+    const map = {
+      'aprobado': 'approved',
+      'observado': 'observed',
+      'rechazado': 'rejected',
+      'anulado': 'annulled',
+      'pendiente': 'pending',
+      'inactivo': 'inactive',
+      'activado': 'active',
+      'activo': 'active',
+      'standby': 'standby',
+      'en standby': 'standby',
+      'dastandby': 'standby'
+    };
+    return map[s] || s;
+  };
+
+  const a1 = normalize(row.PrimerStado);
+  const a2 = normalize(row.SegundaStado);
+  const estado = normalize(row.estado); // "Estado Conclusion"
+
+  const CLEAR = 'bg-transparent border border-gray-300'; // sin color (solo borde)
+  const WHITE = 'bg-white border border-gray-300';        // rechazado/anulado
+  const GREEN = 'bg-green-500';
+  const RED = 'bg-red-500';
+  const AMBER = 'bg-amber-400';
+  const GRAY = 'bg-gray-300';
+
+  // REGLA NUEVA: si "Estado Conclusion" está en standby → ambos sin color
+  if (estado === 'standby') {
+    return [CLEAR, CLEAR];
+  }
+
+  // Si cualquier estado global o individual es rechazado/anulado → ambos blancos
+  if (a1 === 'rejected' || a2 === 'rejected' || estado === 'rejected' ||
+    estado === 'annulled' || a1 === 'annulled' || a2 === 'annulled') {
+    return [WHITE, WHITE];
+  }
+
+  const empty1 = !a1;
+  const empty2 = !a2;
+
+  // Ambos sin estado → ambos verdes
+  if (empty1 && empty2) {
+    return [GREEN, GREEN];
+  }
+
+  // Uno “observed” → ese rojo y el otro ámbar
+  if (a1 === 'observed' && a2 !== 'observed') return [RED, AMBER];
+  if (a2 === 'observed' && a1 !== 'observed') return [AMBER, RED];
+
+  // Color individual
+  const colorFor = (s) => {
+    if (!s) return GREEN; // sin estado → verde
+    if (s === 'approved' || s === 'active') return GREEN;
+    if (s === 'observed') return RED;
+    if (s === 'rejected' || s === 'annulled') return WHITE;
+    if (s === 'pending' || s === 'inactive') return AMBER;
+    return GRAY;
+  };
+
+  return [colorFor(a1), colorFor(a2)];
+}
+
+
+
 const props = defineProps({
   refresh: { type: Number, default: 0 }
 });
@@ -34,6 +106,11 @@ const selectedFacturas = ref();
 const loading = ref(false);
 const menu = ref();
 const menuItems = ref([]);
+
+const showHistoryDialog = ref(false);
+const historyRows = ref([]);
+const historyLoading = ref(false);
+
 
 // ▸ NUEVO: estado de ordenamiento (server-side)
 const sortField = ref(null); // 'razonSocial' | 'codigo' | 'moneda' | 'montoFactura' | 'montoAsumidoZuma' | 'montoDisponible' | 'tasa' | 'fechaPago' | 'fechaCreacion' | 'estado'
@@ -337,10 +414,41 @@ function onDeleteCancelled() { selectedFacturaId.value = null; selectedFacturaDa
 function onUpdateConfirmed() { loadData(); showUpdateDialog.value = false; selectedFacturaId.value = null; }
 function onUpdateCancelled() { selectedFacturaId.value = null; showUpdateDialog.value = false; }
 
+
+async function verHistorialAprobadores(factura) {
+  showHistoryDialog.value = true;
+  historyLoading.value = true;
+  historyRows.value = [];
+  try {
+    const { data } = await axios.get(`/invoices/${factura.id}/approval-history`);
+    historyRows.value = Array.isArray(data?.data) ? data.data : [];
+  } catch (error) {
+    console.error('Error al cargar historial de aprobadores:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'No se pudo cargar el historial de aprobadores',
+      life: 3000
+    });
+    showHistoryDialog.value = false;
+  } finally {
+    historyLoading.value = false;
+  }
+}
+
+
 const toggleMenu = (event, factura) => {
   let items = [
-    { label: 'Ver factura', icon: 'pi pi-file', command: () => verFactura(factura) }
+    { label: 'Ver factura', icon: 'pi pi-file', command: () => verFactura(factura) },
+    { label: 'Historial aprobadores', icon: 'pi pi-clock', command: () => verHistorialAprobadores(factura) },
+    {
+      label: 'Pago adelantado',
+      icon: 'pi pi-calendar-clock',
+      command: () => abrirPagoAdelantado(factura)
+    },
+
   ];
+
 
   // 👇 inactive y observed tendrán las mismas opciones
   if (['inactive', 'observed'].includes(factura.estado?.toLowerCase().trim())) {
@@ -440,6 +548,72 @@ watch(() => props.refresh, () => loadData());
 onMounted(() => {
   loadData();
 });
+
+
+
+function condOportunidadMeta(value) {
+  const v = (value || '').toString().toLowerCase().trim();
+  // Etiqueta visible
+  const labelMap = {
+    'abierta': 'Abierta',
+    'open': 'Abierta',
+    'cerrada': 'Cerrada',
+    'closed': 'Cerrada'
+  };
+  // Colores PrimeVue Tag: info = azul, success = verde
+  const severityMap = {
+    'abierta': 'info',
+    'open': 'info',
+    'cerrada': 'danger',
+    'closed': 'danger'
+  };
+  return {
+    label: labelMap[v] || (value || '-'),
+    severity: severityMap[v] || 'secondary'
+  };
+}
+
+
+
+const showPagoAdelantadoDialog = ref(false);
+const pagoAdelantadoDate = ref(null);
+
+
+function toYMD(d) {
+  if (!d) return null;
+  const date = new Date(d);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function abrirPagoAdelantado(factura) {
+  selectedFacturaId.value = factura.id;
+  pagoAdelantadoDate.value = null;
+  showPagoAdelantadoDialog.value = true;
+}
+
+async function confirmarPagoAdelantado() {
+  try {
+    const ymd = toYMD(pagoAdelantadoDate.value);
+    if (!ymd) {
+      toast.add({ severity: 'warn', summary: 'Falta fecha', detail: 'Selecciona una fecha', life: 2500 });
+      return;
+    }
+    await axios.post(`/invoices/${selectedFacturaId.value}/pago-adelantado`, { date: ymd });
+    toast.add({ severity: 'success', summary: 'Guardado', detail: 'Pago adelantado registrado', life: 2500 });
+    showPagoAdelantadoDialog.value = false;
+    selectedFacturaId.value = null;
+    loadData();
+  } catch (e) {
+    console.error(e);
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo registrar el pago adelantado', life: 3000 });
+  }
+}
+
+
+
 </script>
 
 <template>
@@ -509,12 +683,19 @@ onMounted(() => {
       <Column selectionMode="multiple" style="width: 1rem" :exportable="false" />
       <Column field="razonSocial" header="Razón Social" sortable style="min-width: 9rem">
         <template #body="slotProps">
-          <span 
-            class="truncate block max-w-[5rem] cursor-pointer"
-            v-tooltip.top="slotProps.data.razonSocial"
-          >
+          <span class="truncate block max-w-[5rem] cursor-pointer" v-tooltip.top="slotProps.data.razonSocial">
             {{ slotProps.data.razonSocial }}
           </span>
+        </template>
+      </Column>
+      <Column field="semaforo" header="Semáforo" sortable style="min-width: 8rem">
+        <template #body="slotProps">
+          <div class="flex justify-center items-center gap-2">
+            <div :class="['w-4 h-4 rounded-full', computeSemaforoColors(slotProps.data)[0]]"
+              :title="`Aprobador 1: ${getApprovalStatusLabel(slotProps.data.PrimerStado || 'Sin estado')}`"></div>
+            <div :class="['w-4 h-4 rounded-full', computeSemaforoColors(slotProps.data)[1]]"
+              :title="`Aprobador 2: ${getApprovalStatusLabel(slotProps.data.SegundaStado || 'Sin estado')}`"></div>
+          </div>
         </template>
       </Column>
       <Column field="ruc" header="Ruc" sortable style="min-width: 7rem" />
@@ -537,31 +718,12 @@ onMounted(() => {
       </Column>
       <Column field="tasa" header="Tasa (%)" sortable style="min-width: 7rem" />
       <Column field="fechaPago" header="Fecha de Pago" sortable style="min-width: 10rem" />
-      <Column field="semaforo" header="Semáforo" sortable style="min-width: 8rem">
-        <template #body="slotProps">
-          <div class="flex justify-center">
-            <div 
-              :class="[
-                'w-6 h-6 rounded-full',
-                ['active', 'inactive'].includes(slotProps.data.estado) ? 'bg-green-500' : 
-                ['observed', 'rejected', 'annulled'].includes(slotProps.data.estado) ? 'bg-red-500' : 
-                'bg-gray-300'
-              ]"
-              :title="['active', 'inactive'].includes(slotProps.data.estado) ? 
-                     getStatusLabel(slotProps.data.estado) : 
-                     ['observed', 'rejected', 'annulled'].includes(slotProps.data.estado) ? 
-                     getStatusLabel(slotProps.data.estado) : 'Sin estado'"
-            ></div>
-          </div>
-        </template>
-      </Column>
+
       <Column field="PrimerStado" header="1ª Aprobador" sortable style="min-width: 9rem">
         <template #body="slotProps">
           <template v-if="slotProps.data.PrimerStado">
-            <Tag 
-              :value="getStatusLabel(slotProps.data.PrimerStado)" 
-              :severity="getStatusSeverity(slotProps.data.PrimerStado)" 
-            />
+            <Tag :value="getStatusLabel(slotProps.data.PrimerStado)"
+              :severity="getStatusSeverity(slotProps.data.PrimerStado)" />
           </template>
           <template v-else>
             <span class="italic text-gray-500"> - </span>
@@ -590,10 +752,8 @@ onMounted(() => {
       <Column field="SegundaStado" header="2ª Aprobador" sortable style="min-width: 9rem">
         <template #body="slotProps">
           <template v-if="slotProps.data.SegundaStado">
-            <Tag 
-              :value="getApprovalStatusLabel(slotProps.data.SegundaStado)" 
-              :severity="getApprovalStatusSeverity(slotProps.data.SegundaStado)" 
-            />
+            <Tag :value="getApprovalStatusLabel(slotProps.data.SegundaStado)"
+              :severity="getApprovalStatusSeverity(slotProps.data.SegundaStado)" />
           </template>
           <template v-else>
             <span class="italic text-gray-500"> - </span>
@@ -630,13 +790,24 @@ onMounted(() => {
           </template>
         </template>
       </Column>
+      <Column field="condicionOportunidadInversion" header="Cond. Oportunidad de Inversión" sortable
+        style="min-width: 18rem">
+        <template #body="slotProps">
+          <template v-if="slotProps.data.condicionOportunidadInversion">
+            <Tag :value="condOportunidadMeta(slotProps.data.condicionOportunidadInversion).label"
+              :severity="condOportunidadMeta(slotProps.data.condicionOportunidadInversion).severity" />
+          </template>
+          <span v-else class="italic">-</span>
+        </template>
+      </Column>
+
 
       <Column field="tipo" header="Tipo" sortable style="min-width: 5rem">
-      <template #body="slotProps">
-        <span class="italic text-gray-500" v-if="!slotProps.data.tipo">-</span>
-        <span v-else>{{ translateTipo(slotProps.data.tipo) }}</span>
-      </template>
-    </Column>
+        <template #body="slotProps">
+          <span class="italic text-gray-500" v-if="!slotProps.data.tipo">-</span>
+          <span v-else>{{ translateTipo(slotProps.data.tipo) }}</span>
+        </template>
+      </Column>
       <Column field="situacion" header="Situacion" sortable style="min-width: 10rem">
         <template #body="slotProps">
           <span :class="!slotProps.data.situacion ? 'italic' : ''">
@@ -644,14 +815,7 @@ onMounted(() => {
           </span>
         </template>
       </Column>
-      <Column field="condicionOportunidadInversion" header="Cond. Oportunidad de Inversión" sortable
-        style="min-width: 18rem">
-        <template #body="slotProps">
-          <span :class="!slotProps.data.condicionOportunidadInversion ? 'italic' : ''">
-            {{ slotProps.data.condicionOportunidadInversion || '-' }}
-          </span>
-        </template>
-      </Column>
+
       <Column field="fechaHoraCierreInversion" header="Fecha y Hora Cierre de Inversión" sortable
         style="min-width: 18rem">
         <template #body="slotProps">
@@ -688,6 +852,82 @@ onMounted(() => {
     <!-- Dialogs -->
     <UpdateStandby v-model="showStandbyDialog" :factura-id="selectedFacturaId" @confirmed="onStandbyConfirmed"
       @cancelled="onStandbyCancelled" />
+
+    <Dialog v-model:visible="showHistoryDialog" :modal="true" header="Historial de aprobadores"
+      :style="{ width: '80vw', maxWidth: '1000px' }">
+      <div v-if="historyLoading" class="p-4 flex items-center gap-2">
+        <i class="pi pi-spinner pi-spin text-xl"></i>
+        <span>Cargando historial...</span>
+      </div>
+
+      <div v-else>
+        <DataTable :value="historyRows" dataKey="id" :paginator="true" :rows="10" class="p-datatable-sm"
+          :emptyMessage="'Sin registros de historial'">
+          <Column field="id" header="#" style="width: 5rem" />
+
+          <Column header="1ª Estado">
+            <template #body="{ data }">
+              <Tag :value="getApprovalStatusLabel(data.approval1_status)"
+                :severity="getApprovalStatusSeverity(data.approval1_status)" />
+            </template>
+          </Column>
+          <Column header="1ª Por">
+            <template #body="{ data }">
+              {{ (data.approval1By?.name || data.approval1_by?.name || '-') }}
+            </template>
+          </Column>
+          <Column field="approval1_at" header="1ª Fecha" />
+
+          <Column header="2ª Estado">
+            <template #body="{ data }">
+              <Tag :value="getApprovalStatusLabel(data.approval2_status)"
+                :severity="getApprovalStatusSeverity(data.approval2_status)" />
+            </template>
+          </Column>
+          <Column header="2ª Por">
+            <template #body="{ data }">
+              {{ (data.approval2By?.name || data.approval2_by?.name || '-') }}
+            </template>
+          </Column>
+          <Column field="approval2_at" header="2ª Fecha" />
+
+          <Column header="Conclusión">
+            <template #body="{ data }">
+              <Tag :value="getApprovalStatusLabel(data.status_conclusion)"
+                :severity="getApprovalStatusSeverity(data.status_conclusion)" />
+            </template>
+          </Column>
+          <Column header="Conclusión por">
+            <template #body="{ data }">
+              {{ (data.approvalConclusionBy?.name || data.approval_conclusion_by?.name || '-') }}
+            </template>
+          </Column>
+          <Column field="approval_conclusion_at" header="Fecha conclusión" />
+
+          <Column field="approval1_comment" header="Comentario 1ª" style="min-width: 14rem" />
+          <Column field="approval2_comment" header="Comentario 2ª" style="min-width: 14rem" />
+          <Column field="approval_conclusion_comment" header="Comentario conclusión" style="min-width: 16rem" />
+        </DataTable>
+      </div>
+    </Dialog>
+
+
+    <Dialog v-model:visible="showPagoAdelantadoDialog" header="Pago adelantado" :modal="true"
+      :style="{ width: '28rem' }">
+      <div class="flex flex-col gap-3">
+        <div class="flex items-center gap-3">
+          <label class="w-32 font-medium">Fecha</label>
+          <Calendar v-model="pagoAdelantadoDate" dateFormat="yy-mm-dd" showIcon :minDate="new Date()" class="w-full" />
+        </div>
+
+        <div class="flex justify-end gap-2 mt-4">
+          <Button label="Cancelar" severity="secondary" outlined @click="showPagoAdelantadoDialog = false" />
+          <Button label="Confirmar" icon="pi pi-check" severity="success" @click="confirmarPagoAdelantado" />
+        </div>
+      </div>
+    </Dialog>
+
+
     <updateActive v-model="showActiveDialog" :factura-id="selectedFacturaId" @confirmed="onStandbyConfirmed"
       @cancelled="onStandbyCancelled" />
     <deleteInvoice v-model="showDeleteDialog" :factura-id="selectedFacturaId" :factura-data="selectedFacturaData"
