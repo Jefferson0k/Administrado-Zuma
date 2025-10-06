@@ -327,23 +327,28 @@ public function updateProperty(UpdatePropertyRequest $request, string $solicitud
                 'total' => $solicitudes->total(),
             ]);
     }
-    public function indexSubastaTotoal(Request $request)
+    public function indexSubastaTotal(Request $request)
     {
         try {
-            $perPage = $request->input('per_page', 10);
-            $search = $request->input('search', '');
+            $perPage    = $request->input('per_page', 10);
+            $search     = $request->input('search', '');
             $currencyId = $request->input('currency_id');
 
             $query = app(Pipeline::class)
                 ->send(
-                    PropertyConfiguracion::with([
-                        'property.currency',
-                        'plazo'
+                    Solicitud::with([
+                        'currency',
+                        'investor',
+                        // solo cargar configuración en estado 2
+                        'configuraciones' => function ($q) {
+                            $q->where('estado', 2)
+                              ->with('plazo');
+                        },
                     ])
-                            ->where('estado', 1)
-                            ->whereHas('property', function ($q) {
-                                $q->where('estado', 'activa');
-                            })
+                    ->where('estado', 'activa') // solicitudes activas
+                    ->whereHas('configuraciones', function ($q) {
+                        $q->where('estado', 2);
+                    })
                 )
                 ->through([
                     new FilterBySearch($search),
@@ -351,21 +356,14 @@ public function updateProperty(UpdatePropertyRequest $request, string $solicitud
                 ])
                 ->thenReturn();
 
-            return PropertyConfiguracionResource::collection($query->paginate($perPage));
+            return SolicitudResource::collection($query->paginate($perPage));
         } catch (Throwable $th) {
             return response()->json([
-                'message' => 'Error al cargar los datos',
-                'error' => $th->getMessage(),
+                'message' => 'Error al cargar los datos de la subasta',
+                'error'   => $th->getMessage(),
             ], 500);
         }
     }
-    /*public function show($id){
-        $property = Property::with('subasta')->find($id);
-        if (!$property) {
-            return response()->json(['error' => 'Propiedad no encontrada'], 404);
-        }
-        return new PropertyUpdateResource($property);
-    }*/
     public function show($id){
         $solicitud = Solicitud::with(['currency', 'investor', 'properties.images'])->find($id);
         if (!$solicitud) {
@@ -625,16 +623,13 @@ private function cleanNumericValue($value): float
     return (float) $value;
 }
 
-    public function subastadas(Request $request)
-    
-    {
+    public function subastadas(Request $request){
         try {
             $perPage = $request->input('per_page', 15);
             $search = $request->input('search', '');
             $ordenMonto = $request->input('orden_monto', 'desc');
             $ahora = now();
-
-            $propertyIdsConSubastasActivas = Auction::where('estado', 'en_subasta')
+            $solicitudIdsConSubastasActivas = Auction::where('estado', 'en_subasta')
                 ->where(function ($query) use ($ahora) {
                     $query->where('dia_subasta', '>', $ahora->toDateString())
                         ->orWhere(function ($q) use ($ahora) {
@@ -642,28 +637,27 @@ private function cleanNumericValue($value): float
                                 ->where('hora_fin', '>', $ahora->toTimeString());
                         });
                 })
-                ->pluck('property_id');
-
+                ->pluck('solicitud_id');
             $query = PropertyConfiguracion::where('estado', 1)
-                ->whereIn('property_id', $propertyIdsConSubastasActivas)
-                ->whereHas('property', function ($q) {
+                ->whereIn('solicitud_id', $solicitudIdsConSubastasActivas)
+                ->whereHas('solicitud', function ($q) {
                     $q->where('estado', 'en_subasta');
                 })
                 ->with([
-                    'property.currency',
-                    'plazo',
-                    'property.subasta',
-                    'propertyInvestor' // << importante
+                    'solicitud.currency',
+                    'solicitud.subasta',
+                    'solicitud.investor',
+                    'plazo'
                 ]);
-
             if (!empty($search)) {
-                $query->whereHas('property', function ($q) use ($search) {
-                    $q->where('nombre', 'like', "%{$search}%");
+                $query->whereHas('solicitud', function ($q) use ($search) {
+                    $q->where('codigo', 'like', "%{$search}%")
+                    ->orWhereHas('investor', function ($iq) use ($search) {
+                        $iq->where('nombre', 'like', "%{$search}%");
+                    });
                 });
             }
-
-            $result = $query->orderBy('id', 'desc')->paginate($perPage);
-
+            $result = $query->orderBy('id', $ordenMonto)->paginate($perPage);
             return PropertyConfiguracionSubastaResource::collection($result)->additional([
                 'success' => true,
                 'orden_monto' => $ordenMonto,
@@ -671,11 +665,12 @@ private function cleanNumericValue($value): float
         } catch (Throwable $th) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al cargar configuraciones en subasta',
+                'message' => 'Error al cargar solicitudes en subasta',
                 'error' => $th->getMessage(),
             ], 500);
         }
     }
+
     public function listProperties(Request $request){
         try {
             Gate::authorize('viewAny', Property::class);

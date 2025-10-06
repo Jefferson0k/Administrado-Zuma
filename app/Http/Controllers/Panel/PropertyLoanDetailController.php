@@ -11,6 +11,7 @@ use App\Http\Resources\Subastas\PropertyLoanDetail\PropertyLoanDetailResource;
 use App\Models\Investor;
 use App\Models\Property;
 use App\Models\PropertyInvestor;
+use App\Models\Solicitud;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -110,12 +111,15 @@ class PropertyLoanDetailController extends Controller{
     }
     public function activacion(Request $request, $id){
         try {
-            $property = Property::findOrFail($id);
-            Gate::authorize('activarSubasta', $property);
+            $solicitud = Solicitud::findOrFail($id);
+
+            // Validar permiso (opcional, si usas políticas)
+            //Gate::authorize('activarSubasta', $solicitud);
             $nuevoEstado = 'en_subasta';
             $diaSubasta = $request->input('dia_subasta');
             $horaInicio = $request->input('hora_inicio');
             $horaFin = $request->input('hora_fin');
+            $montoInicial = $request->input('monto_inicial');
             $fechaInicio = Carbon::createFromFormat('Y-m-d H:i:s', "$diaSubasta $horaInicio");
             $fechaFin = Carbon::createFromFormat('Y-m-d H:i:s', "$diaSubasta $horaFin");
             if ($fechaFin->lessThanOrEqualTo($fechaInicio)) {
@@ -123,30 +127,39 @@ class PropertyLoanDetailController extends Controller{
                     'message' => 'La hora de fin debe ser mayor a la de inicio'
                 ], 422);
             }
-            if (!$property->subasta) {
-                $property->subasta()->create([
-                    'monto_inicial'      => $request->input('monto_inicial'),
-                    'dia_subasta'        => $diaSubasta,
-                    'hora_inicio'        => $horaInicio,
-                    'hora_fin'           => $horaFin,
-                    'tiempo_finalizacion'=> $fechaFin,
-                    'estado'             => 'en_subasta',
-                    'created_by'         => Auth::id(),
+            if (!$solicitud->subasta) {
+                $solicitud->subasta()->create([
+                    'monto_inicial'       => $montoInicial,
+                    'dia_subasta'         => $diaSubasta,
+                    'hora_inicio'         => $horaInicio,
+                    'hora_fin'            => $horaFin,
+                    'tiempo_finalizacion' => $fechaFin,
+                    'estado'              => 'en_subasta',
+                    'created_by'          => Auth::id(),
+                ]);
+            } else {
+                $solicitud->subasta->update([
+                    'monto_inicial'       => $montoInicial,
+                    'dia_subasta'         => $diaSubasta,
+                    'hora_inicio'         => $horaInicio,
+                    'hora_fin'            => $horaFin,
+                    'tiempo_finalizacion' => $fechaFin,
+                    'estado'              => 'en_subasta',
+                    'updated_by'          => Auth::id(),
                 ]);
             }
-            $property->estado = $nuevoEstado;
-            $property->valor_subasta = $request->input('monto_inicial');
-            $property->updated_by = Auth::id();
-            $property->save();
+            $solicitud->estado = $nuevoEstado;
+            $solicitud->updated_by = Auth::id();
+            $solicitud->save();
             return response()->json([
-                'message'  => 'Propiedad activada en subasta correctamente.',
-                'property' => $property,
+                'message'   => 'Solicitud activada en subasta correctamente.',
+                'solicitud' => $solicitud->load('subasta'),
             ]);
         } catch (\Exception $e) {
-            Log::error('Error al activar propiedad en subasta: ' . $e->getMessage());
+            Log::error('Error al activar solicitud en subasta: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Error interno del servidor',
-                'error'   => $e->getMessage()
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }
