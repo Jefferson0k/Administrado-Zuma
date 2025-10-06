@@ -14,6 +14,7 @@ class InvoiceResource extends JsonResource{
             'paid_amount' => $this->paid_amount,
             'rate' => $this->rate,
             'due_date' => $this->due_date,
+            'FechaPago' => $this->estimated_pay_date,
             'status' => $this->status,
             'company_id' => 'Sin Definir',
             'created_by' => $this->created_by,

@@ -9,6 +9,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 
 use App\Notifications\BankAccountObserved;
+use App\Notifications\BAccountObservedWrongBankNotification;
+use App\Notifications\BAccountObservedAccountTypeErrorNotification;
+use App\Notifications\BAccountObservedAccountNumberErrorNotification;
+
+use App\Notifications\BAccountObservedJointAccountNotification;
+use App\Notifications\BAccountObservedIntangibleAccountNotification;
+
 class BankAccount extends Model
 {
     use HasFactory, HasUlids;
@@ -92,6 +99,42 @@ class BankAccount extends Model
     public function updatedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+
+    public function sendBankAccountObservedWrongBankEmail()
+    {
+        if ($this->investor && $this->investor->email) {
+                $this->investor->notify(new BAccountObservedWrongBankNotification());
+        }
+    }
+
+    public function sendBankAccountObservedAccountTypeErrorEmail()
+    {
+        if ($this->investor && $this->investor->email) {
+                $this->investor->notify(new BAccountObservedAccountTypeErrorNotification());
+            }
+    }
+
+    public function sendBankAccountObservedAccountNumberErrorEmail()
+    {
+        if ($this->investor && $this->investor->email) {
+                $this->investor->notify(new BAccountObservedAccountNumberErrorNotification());
+        }
+    }
+
+    public function sendBankAccountObservedJointAccountEmail()
+    {
+        if ($this->investor && $this->investor->email) {
+            $this->investor->notify(new BAccountObservedJointAccountNotification());
+        }
+    }
+
+    public function sendBankAccountObservedIntangibleAccountEmail()
+    {
+        if ($this->investor && $this->investor->email) {
+            $this->investor->notify(new BAccountObservedIntangibleAccountNotification());
+        }
     }
 
 }

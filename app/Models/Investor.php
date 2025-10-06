@@ -440,4 +440,10 @@ class Investor extends Authenticatable implements MustVerifyEmail, AuditableCont
     return $investor;
 }
 
+
+
+
+
+
+
 }

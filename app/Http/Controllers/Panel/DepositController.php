@@ -123,7 +123,8 @@ class DepositController extends Controller
         $validated = $request->validate([
             'status0'  => 'required|in:approved,observed,rejected,pending',
             'comment0' => 'required|string|max:1000',
-            'notify_message' => 'nullable|string|max:1000',
+            'notify_key' => 'nullable|in:cuenta_origen_ob,cuenta_destino_ob',
+
         ]);
 
         $deposit = Deposit::findOrFail($id);
@@ -167,7 +168,12 @@ class DepositController extends Controller
             try {
                 // requiere método helper en el modelo Deposit:
                 // public function sendDepositObservedEmail(?string $message = null) { ... }
-                $deposit->sendDepositObservedEmail($validated['notify_message'] ?? null);
+                if ($validated['notify_key']    == 'cuenta_origen_ob') {
+                    $deposit->sendSourceAccountErrorDeposit();
+                }
+                if ($validated['notify_key']    == 'cuenta_destino_ob') {
+                    $deposit->sendDestinationAccountErrorDeposit();
+                }
             } catch (\Throwable $e) {
                 // opcional: loggear
                 // \Log::warning('No se pudo enviar email de depósito observado (1ª val.): '.$e->getMessage());
@@ -268,7 +274,12 @@ class DepositController extends Controller
 
         if ($validated['status'] === 'observed') {
             try {
-                $deposit->sendDepositObservedEmail($validated['notify_message'] ?? null);
+                if ($validated['notify_key']    == 'cuenta_origen_ob') {
+                    $deposit->sendSourceAccountErrorDeposit();
+                }
+                if ($validated['notify_key']    == 'cuenta_destino_ob') {
+                    $deposit->sendDestinationAccountErrorDeposit();
+                }
             } catch (\Throwable $e) {
                 // opcional: loggear
                 // \Log::warning('No se pudo enviar email de depósito observado (2ª val.): '.$e->getMessage());
@@ -625,7 +636,7 @@ class DepositController extends Controller
     }
 
 
-    
+
     public function approvalHistory($id)
     {
         $rows = HistoryAprobadorDeposit::query()

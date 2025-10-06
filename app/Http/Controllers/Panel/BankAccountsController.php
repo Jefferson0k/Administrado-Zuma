@@ -275,18 +275,35 @@ class BankAccountsController extends Controller
             }
 
 
-            if ($validated['status0'] === 'observed') {
-                try {
-                    // usa SOLO el mensaje del popup (notify_message), no el comment
-                    $messageForClient = $validated['notify_message'] ?? null;
-                    if ($messageForClient) {
-                        // requiere el helper en el modelo + la notificación BankAccountObserved
+            try {
+                $messageForClient = $validated['notify_message'] ?? null;
+
+                if ($messageForClient) {
+                    // Envía correo distinto según opción seleccionada
+                    if (str_contains($messageForClient, 'Entidad bancaria errónea')) {
+                        Log::info('Enviando correo de observación: entidad bancaria errónea.');
+                        $account->sendBankAccountObservedWrongBankEmail($messageForClient);
+                    } elseif (str_contains($messageForClient, 'Error en tipo de cuenta bancaria')) {
+                        Log::info('Enviando correo de observación: error en tipo de cuenta.');
+                        $account->sendBankAccountObservedAccountTypeErrorEmail($messageForClient);
+                    } elseif (str_contains($messageForClient, 'Número de cuenta bancaria erróneo')) {
+                        Log::info('Enviando correo de observación: número de cuenta erróneo.');
+                        $account->sendBankAccountObservedAccountNumberErrorEmail($messageForClient);
+                    } elseif (str_contains($messageForClient, 'Cuenta mancomunada')) {
+                        Log::info('Enviando correo de observación: cuenta mancomunada.');
+                        $account->sendBankAccountObservedJointAccountEmail($messageForClient);
+                    } elseif (str_contains($messageForClient, 'Cuentas intangibles')) {
+                        Log::info('Enviando correo de observación: cuenta intangible (AFP/ONP/CTS, etc.).');
+                        $account->sendBankAccountObservedIntangibleAccountEmail($messageForClient);
+                    } else {
+                        // genérico (fallback)
+                        Log::info('Enviando correo de observación genérico.');
                         $account->sendBankAccountObservedEmail($messageForClient);
                     }
-                } catch (\Throwable $e) {
                 }
+            } catch (\Throwable $e) {
+                Log::warning('Error enviando correo de observación: ' . $e->getMessage());
             }
-
 
             $account->status0 = $validated['status0']; // approved|observed|rejected
             $account->status = 'pending'; // approved|observed|rejected
@@ -370,9 +387,9 @@ class BankAccountsController extends Controller
             // Guardar en historial
             $history?->update([
                 'bank_account_id'   => $account->id,
-                'approval2_status'  => $account->status0,
+                'approval2_status'  => $account->status,
                 'approval2_by'      => Auth::id(),
-                'approval2_comment' => $account->comment0,
+                'approval2_comment' => $account->comment,
                 'approval2_at'      => $account->updated0_at,
             ]);
 
@@ -391,9 +408,29 @@ class BankAccountsController extends Controller
                 try {
                     // usa SOLO el mensaje del popup (notify_message), no el comment
                     $messageForClient = $validated['notify_message'] ?? null;
+
                     if ($messageForClient) {
-                        // requiere el helper en el modelo + la notificación BankAccountObserved
-                        $account->sendBankAccountObservedEmail($messageForClient);
+                        // Envía correo distinto según opción seleccionada
+                        if (str_contains($messageForClient, 'Entidad bancaria errónea')) {
+                            Log::info('Enviando correo de observación: entidad bancaria errónea.');
+                            $account->sendBankAccountObservedWrongBankEmail($messageForClient);
+                        } elseif (str_contains($messageForClient, 'Error en tipo de cuenta bancaria')) {
+                            Log::info('Enviando correo de observación: error en tipo de cuenta.');
+                            $account->sendBankAccountObservedAccountTypeErrorEmail($messageForClient);
+                        } elseif (str_contains($messageForClient, 'Número de cuenta bancaria erróneo')) {
+                            Log::info('Enviando correo de observación: número de cuenta erróneo.');
+                            $account->sendBankAccountObservedAccountNumberErrorEmail($messageForClient);
+                        } elseif (str_contains($messageForClient, 'Cuenta mancomunada')) {
+                            Log::info('Enviando correo de observación: cuenta mancomunada.');
+                            $account->sendBankAccountObservedJointAccountEmail($messageForClient);
+                        } elseif (str_contains($messageForClient, 'Cuentas intangibles')) {
+                            Log::info('Enviando correo de observación: cuenta intangible (AFP/ONP/CTS, etc.).');
+                            $account->sendBankAccountObservedIntangibleAccountEmail($messageForClient);
+                        } else {
+                            // genérico (fallback)
+                            Log::info('Enviando correo de observación genérico.');
+                            $account->sendBankAccountObservedEmail($messageForClient);
+                        }
                     }
                 } catch (\Throwable $e) {
                 }
@@ -442,33 +479,28 @@ class BankAccountsController extends Controller
     public function history(BankAccount $bankAccount)
     {
         $rows = HistoryAprobadorBankAccount::with([
-        'approval1By:id,name',
-        'approval2By:id,name',
-    ])
+            'approval1By:id,name',
+            'approval2By:id,name',
+        ])
             ->where('bank_account_id', $bankAccount->id)
             ->orderBy('id', 'desc')
             ->get()
             ->map(function ($h) {
-    return [
-        'id'                   => $h->id,
+                return [
+                    'id'                   => $h->id,
 
-        'approval1_status'     => $h->approval1_status,
-        'approval1_by_name'    => optional($h->approval1By)->name,
-        'approval1_at'         => $h->approval1_at,
-        'approval1_comment'    => $h->approval1_comment,
+                    'approval1_status'     => $h->approval1_status,
+                    'approval1_by_name'    => optional($h->approval1By)->name,
+                    'approval1_at'         => $h->approval1_at,
+                    'approval1_comment'    => $h->approval1_comment,
 
-        'approval2_status'     => $h->approval2_status,
-        'approval2_by_name'    => optional($h->approval2By)->name,
-        'approval2_at'         => $h->approval2_at,
-        'approval2_comment'    => $h->approval2_comment,
-    ];
-
+                    'approval2_status'     => $h->approval2_status,
+                    'approval2_by_name'    => optional($h->approval2By)->name,
+                    'approval2_at'         => $h->approval2_at,
+                    'approval2_comment'    => $h->approval2_comment,
+                ];
             });
 
         return response()->json(['data' => $rows]);
     }
-
-
-
-
 }

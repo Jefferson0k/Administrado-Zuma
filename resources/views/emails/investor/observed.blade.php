@@ -33,21 +33,34 @@
     </style>
 </head>
 <body style="margin:0;padding:0;background:#F3F4F6;">
-<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-    <!-- Barra superior -->
-    <tr>
-        <td style="background: {{ $brandPrimary }}; padding: 18px 0; text-align:center;">
-            <span style="font:700 30px/1 sans-serif;color:#000;letter-spacing:0.5px;">{{ $appName }}</span>
-        </td>
-    </tr>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
 
-    <!-- Card -->
-    <tr>
-        <td align="center">
-            <table class="container" role="presentation" width="640" cellspacing="0" cellpadding="0" border="0"
-                   style="width:640px;max-width:640px;background:#FFFFFF;margin:0 auto;">
-                <tr>
-                    <td style="padding:28px 32px 8px 32px; text-align:center;">
+        <!-- Barra superior (misma anchura que la tarjeta 640px) -->
+        <tr>
+            <td align="center" style="padding:0 0 0 0;">
+                <table class="container" role="presentation" width="640" cellspacing="0" cellpadding="0" border="0"
+                    style="width:640px;max-width:640px;background:#fd4a2a;color:#E5E7EB;">
+                    <tr>
+                        <td style="padding:5px 0; text-align:center;">
+                            
+                                <img src="{{ asset('imagenes/zuma-logo.png') }}" width="370" height="90"
+                                    alt="Logo" style="display:block;margin:0 auto ;">
+                            
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+
+        <!-- Tarjeta (GRIS) -->
+        <tr>
+            <td align="center">
+                <table class="container darkmode-bg" role="presentation" width="640" cellspacing="0" cellpadding="0"
+                    border="0" bgcolor="#f7f7f7" style="width:640px;max-width:640px;background:#f7f7f7;margin:0 auto;">
+                    <tr>
+                        <td style="padding:8px 32px 8px 32px;text-align:center;">
+
+                
                         <h1 class="hero-title"
                             style="margin:8px 0 8px 0;font:800 22px/28px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu; color:#111827; text-decoration: underline;">
                             {{ $title }}

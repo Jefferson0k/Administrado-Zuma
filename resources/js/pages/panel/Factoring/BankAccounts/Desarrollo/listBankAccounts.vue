@@ -362,7 +362,18 @@
     :style="{ width: '620px' }">
     <div class="space-y-2">
       <p class="text-sm text-gray-600">Mensaje para el cliente:</p>
-      <Textarea v-model="observeMessage" :maxlength="OBSERVE_MAX" rows="7" autoResize class="w-full" :readonly="true" placeholder="Mensaje predeterminado (no editable)" />
+      <div class="space-y-2">
+        <div v-for="(msg, i) in observeOptions" :key="i" class="flex items-start gap-2">
+          <Checkbox v-model="selectedMessages" :inputId="'msg' + i" :value="msg" />
+          <label :for="'msg' + i" class="text-sm text-gray-700 cursor-pointer">{{ msg }}</label>
+        </div>
+
+        <div class="mt-2 p-2 border rounded bg-gray-50">
+          <p class="text-xs text-gray-500 mb-1">Vista previa del mensaje:</p>
+          <Textarea v-model="observeMessage" :maxlength="OBSERVE_MAX" rows="4" autoResize class="w-full"
+            placeholder="Selecciona los mensajes arriba..." readonly />
+        </div>
+      </div>
 
       <div class="mt-1 text-xs flex items-center justify-between">
         <small class="text-gray-500">Este mensaje se enviará por correo al cliente.</small>
@@ -382,7 +393,19 @@
     :style="{ width: '620px' }">
     <div class="space-y-2">
       <p class="text-sm text-gray-600">Mensaje para el cliente:</p>
-      <Textarea v-model="observeMessage" :maxlength="OBSERVE_MAX" rows="7" autoResize class="w-full" :readonly="true" placeholder="Mensaje predeterminado (no editable)" />
+      <div class="space-y-2">
+        <div v-for="(msg, i) in observeOptions" :key="i" class="flex items-start gap-2">
+          <Checkbox v-model="selectedMessages" :inputId="'msg' + i" :value="msg" />
+          <label :for="'msg' + i" class="text-sm text-gray-700 cursor-pointer">{{ msg }}</label>
+        </div>
+
+        <div class="mt-2 p-2 border rounded bg-gray-50">
+          <p class="text-xs text-gray-500 mb-1">Vista previa del mensaje:</p>
+          <Textarea v-model="observeMessage" :maxlength="OBSERVE_MAX" rows="4" autoResize class="w-full"
+            placeholder="Selecciona los mensajes arriba..." readonly />
+        </div>
+      </div>
+
 
       <div class="mt-1 text-xs flex items-center justify-between">
         <small class="text-gray-500">Este mensaje se enviará por correo al cliente.</small>
@@ -424,7 +447,8 @@
 
         <Column header="1ª Estado" style="min-width: 10rem" sortable>
           <template #body="{ data }">
-            <Tag :value="mapStatusEs(data.approval1_status)" :severity="getSeverityByApiStatus(data.approval1_status)" />
+            <Tag :value="mapStatusEs(data.approval1_status)"
+              :severity="getSeverityByApiStatus(data.approval1_status)" />
 
           </template>
         </Column>
@@ -432,7 +456,7 @@
         <Column field="approval1_by_name" header="1ª Por" style="min-width: 9rem" sortable />
 
         <Column header="1ª Fecha" style="min-width: 12rem" sortable>
-          <template #body="{ data }">{{data.approval1_at }}</template>
+          <template #body="{ data }">{{ data.approval1_at }}</template>
 
         </Column>
         <Column field="approval1_comment" header="1ª Comentario" style="min-width: 14rem" />
@@ -440,7 +464,8 @@
 
         <Column header="2ª Estado" style="min-width: 10rem" sortable>
           <template #body="{ data }">
-            <Tag :value="mapStatusEs(data.approval2_status)" :severity="getSeverityByApiStatus(data.approval2_status)" />
+            <Tag :value="mapStatusEs(data.approval2_status)"
+              :severity="getSeverityByApiStatus(data.approval2_status)" />
 
           </template>
         </Column>
@@ -485,6 +510,40 @@ import Dialog from 'primevue/dialog';
 import FileUpload from 'primevue/fileupload';
 import Textarea from 'primevue/textarea';
 import { debounce } from 'lodash';
+import { watch } from 'vue';
+
+
+import Checkbox from 'primevue/checkbox';
+
+const observeOptions = ref([
+  'Entidad bancaria errónea',
+  'Error en tipo de cuenta bancaria',
+  'Número de cuenta bancaria erróneo',
+  'Cuenta mancomunada',
+  'Cuentas intangibles (AFP/ONP/CTS, entre otras)',
+
+]);
+
+const selectedMessages = ref<string[]>([]);
+
+watch(selectedMessages, (vals, oldVals) => {
+  if (vals.length > 2) {
+    // Mantiene solo las dos primeras selecciones
+    selectedMessages.value = vals.slice(0, 2);
+
+    // Muestra aviso al usuario
+    toast.add({
+      severity: 'warn',
+      summary: 'Límite alcanzado',
+      detail: 'Solo puedes seleccionar hasta 2 observaciones a la vez.',
+      life: 3500,
+    });
+  }
+
+  observeMessage.value = selectedMessages.value.join('\n\n');
+});
+
+
 
 const sortField = ref<string | null>(null); // e.g. 'banco', 'inversionista', etc.
 const sortOrder = ref<number | null>(null); // 1 (asc) | -1 (desc)
@@ -1041,6 +1100,7 @@ const openObserveFirstDialog = () => {
   showObserveFirst.value = true;
 };
 const openObserveSecondDialog = () => {
+  selectedMessages.value = [];
   observeMessage.value = DEFAULT_OBSERVE_MESSAGE;
   showObserveSecond.value = true;
 };
@@ -1055,17 +1115,33 @@ const confirmObserveFirst = async () => {
   const raw = (observeMessage.value ?? '').trim();
   const message = (raw.length ? raw : DEFAULT_OBSERVE_MESSAGE).slice(0, OBSERVE_MAX);
   showObserveFirst.value = false;
-  await changeStatus0('observed', { closeAfter: false, notifyMessage: message });
+
+  // Enviar los mensajes seleccionados individualmente al backend (uno por opción)
+  if (selectedMessages.value.length > 0) {
+    for (const msg of selectedMessages.value) {
+      await changeStatus0('observed', { closeAfter: false, notifyMessage: msg });
+    }
+  } else {
+    // Si no se seleccionó ninguna opción, enviar mensaje genérico
+    await changeStatus0('observed', { closeAfter: false, notifyMessage: message });
+  }
 };
+
 
 
 const confirmObserveSecond = async () => {
   const raw = (observeMessage.value ?? '').trim();
   const message = (raw.length ? raw : DEFAULT_OBSERVE_MESSAGE).slice(0, OBSERVE_MAX);
   showObserveSecond.value = false;
-  await changeStatusSecond('observed', { notifyMessage: message });
-};
 
+  if (selectedMessages.value.length > 0) {
+    for (const msg of selectedMessages.value) {
+      await changeStatusSecond('observed', { notifyMessage: msg });
+    }
+  } else {
+    await changeStatusSecond('observed', { notifyMessage: message });
+  }
+};
 
 
 // helpers (place with other utils)

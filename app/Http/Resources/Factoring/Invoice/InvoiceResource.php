@@ -111,7 +111,7 @@ class InvoiceResource extends JsonResource{
             'tiempoDos'                  => $this->approval2_at
                                              ? $this->approval2_at->format('d-m-Y H:i:s A')
                                              : null,
-            'fechaPago'                  => $this->estimated_pay_date
+            'Fechapago'                  => $this->estimated_pay_date
                                              ? Carbon::parse($this->estimated_pay_date)->format('d-m-Y')
                                              : null,
             'fechaCreacion'              => $this->created_at

@@ -824,6 +824,16 @@ async function confirmarPagoAdelantado() {
           </span>
         </template>
       </Column>
+
+
+       <Column field="FechaPago" header="Fecha de Pago" sortable
+        style="min-width: 18rem">
+        <template #body="slotProps">
+          <span :class="!slotProps.data.FechaPago ? 'italic' : ''">
+            {{ slotProps.data.FechaPago || '-' }}
+          </span>
+        </template>
+      </Column>
       <Column field="porcentajeMetaTerceros" header="% Obj Terceros" sortable style="min-width: 10rem">
         <template #body="slotProps">
           <span :class="!slotProps.data.porcentajeMetaTerceros ? 'italic' : ''">

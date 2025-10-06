@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Str;
 use Money\Money;
+use App\Notifications\DepositObservedSource;
+use App\Notifications\DepositObservedDestination;
 
 class Deposit extends Model{
     use HasFactory, HasUlids;
@@ -146,6 +148,24 @@ class Deposit extends Model{
         // $stage: 'first' (Primera Validación) | 'second' (Aprobación Final)
         if ($this->investor && $this->investor->email) {
             $this->investor->notify(new InvestorDepositRejectedNotification($this));
+        }
+    }
+
+
+    public function sendSourceAccountErrorDeposit(): void
+    {
+        // $stage: 'first' (Primera Validación) | 'second' (Aprobación Final)
+        if ($this->investor && $this->investor->email) {
+            $this->investor->notify(new DepositObservedSource($this));
+        }
+    }
+
+
+    public function sendDestinationAccountErrorDeposit(): void
+    {
+        // $stage: 'first' (Primera Validación) | 'second' (Aprobación Final)
+        if ($this->investor && $this->investor->email) {
+            $this->investor->notify(new DepositObservedDestination($this));
         }
     }
 
