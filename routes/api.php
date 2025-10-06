@@ -34,6 +34,7 @@ use App\Http\Controllers\Panel\PropertyInvestorController;
 use App\Http\Controllers\Panel\VisitaProductoController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\Panel\DetalleInversionistaHipotecaController;
+use App\Http\Controllers\Panel\SolicitudController;
 use App\Http\Controllers\Panel\TwilioWebhookController;
 use App\Http\Controllers\TipoDocumentoController;
 use App\Http\Controllers\Web\SubastaHipotecas\TipoInmuebleController;
@@ -107,7 +108,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::prefix('property')->group(function () {
         Route::get('/', [PropertyControllers::class, 'index'])->name('propertys.index');
-        Route::get('/active/sow', [PropertyControllers::class, 'indexSubastaTotoal'])->name('active.indexSubastaTotoal');
+        Route::get('/active/sow', [PropertyControllers::class, 'indexSubastaTotal'])->name('active.indexSubastaTotal');
         Route::get('/{id}', [PropertyControllers::class, 'show'])->name('property.show');
         Route::put('/{id}/estado', [PropertyControllers::class, 'update'])->name('estado.update');
     });
@@ -273,3 +274,6 @@ Route::get('/blog/getcomentarios/{id}', [BlogController::class, 'getComentarios'
 Route::post('/detalle-inversionista', [DetalleInversionistaHipotecaController::class, 'store']);
 Route::get('/tipo-inmueble', [TipoInmuebleController::class, 'index']);
 
+    Route::prefix('solicitud')->group(function () {
+        Route::get('/{id}', [SolicitudController::class, 'show']);
+    });

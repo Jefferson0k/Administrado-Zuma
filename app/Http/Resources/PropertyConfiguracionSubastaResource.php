@@ -8,16 +8,19 @@ use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Collection;
 use Exception;
 
 class PropertyConfiguracionSubastaResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $inversionistas = [];
-        
-        if ($this->subasta) {
-            $inversionistas = Bid::where('auction_id', $this->subasta->id)
+        $solicitud = $this->solicitud; // ✅ relación belongsTo
+        $subasta = $solicitud?->subasta;
+        $inversionistas = collect(); // ✅ usamos colección
+
+        if ($subasta) {
+            $inversionistas = Bid::where('auction_id', $subasta->id)
                 ->with('investor')
                 ->select(
                     'investors_id',
@@ -38,76 +41,74 @@ class PropertyConfiguracionSubastaResource extends JsonResource
 
         return [
             'id' => $this->id,
-            'nombre' => optional($this->property)->nombre,
-            'departamento' => optional($this->property)->departamento,
-            'provincia' => optional($this->property)->provincia,
-            'distrito' => optional($this->property)->distrito,
-            'descripcion' => optional($this->property)->descripcion,
-            
-            // ✅ Formatear valores Money correctamente
-            'valor_requerido' => $this->formatMoneyValue(optional($this->property)->valor_requerido),
-            'valor_estimado' => $this->formatMoneyValue(optional($this->property)->valor_estimado),
-            'valor_subasta' => $this->formatMoneyValue(optional($this->property)->valor_subasta),
-            
+
+            // ✅ Datos base desde solicitud
+            'codigo_solicitud' => $solicitud?->codigo,
+            'estado_solicitud' => $solicitud?->estado,
+            'moneda' => $solicitud?->currency?->code,
+            'inversionista' => $solicitud?->investor?->name,
+
+            // ✅ Datos de subasta
+            'subasta' => $subasta ? [
+                'id' => $subasta->id,
+                'monto_inicial' => $subasta->monto_inicial,
+                'dia_subasta' => $subasta->dia_subasta,
+                'hora_inicio' => $subasta->hora_inicio,
+                'hora_fin' => $subasta->hora_fin,
+                'tiempo_finalizacion' => $subasta->tiempo_finalizacion,
+                'estado' => $subasta->estado,
+            ] : null,
+
+            // ✅ Inversionistas pujando
+            'inversionistas_pujando' => $inversionistas,
+            'total_inversionistas' => $inversionistas->count(),
+            'monto_actual_mayor' => $inversionistas->isNotEmpty()
+                ? $inversionistas->first()['monto']
+                : ($subasta->monto_inicial ?? 0),
+
+            // ✅ Campos financieros
             'tea' => $this->tea,
             'tem' => $this->tem,
             'tipo_cronograma' => $this->tipo_cronograma,
             'riesgo' => $this->riesgo,
-            
-            // ✅ Usar el método corregido para imágenes
-            'foto' => $this->getImagenesCorregido(),
-            
-            'subasta' => $this->subasta ? [
-                'id' => $this->subasta->id,
-                'monto_inicial' => $this->subasta->monto_inicial,
-                'dia_subasta' => $this->subasta->dia_subasta,
-                'hora_inicio' => $this->subasta->hora_inicio,
-                'hora_fin' => $this->subasta->hora_fin,
-                'tiempo_finalizacion' => $this->subasta->tiempo_finalizacion,
-                'estado' => $this->subasta->estado,
-            ] : null,
-            
-            'inversionistas_pujando' => $inversionistas,
-            'total_inversionistas' => count($inversionistas),
-            'monto_actual_mayor' => $inversionistas->isNotEmpty()
-                ? $inversionistas->first()['monto']
-                : ($this->subasta->monto_inicial ?? 0),
-            'property_investor_id' => optional($this->propertyInvestor)->id,
+
+            // ✅ Formatear valores monetarios
+            'valor_requerido' => $this->formatMoneyValue($solicitud?->valor_requerido),
+            'valor_general' => $this->formatMoneyValue($solicitud?->valor_general),
+
+            // ✅ Imagenes
+            'foto' => $this->getImagenesCorregido($solicitud),
         ];
     }
 
     /**
-     * ✅ Formatear objetos Money para la API
+     * ✅ Formatear objetos Money o numéricos
      */
     private function formatMoneyValue($moneyObject): ?array
     {
-        if (!$moneyObject) {
-            return null;
-        }
+        if (!$moneyObject) return null;
 
         try {
-            // Si es un objeto Money
-            if (method_exists($moneyObject, 'getAmount') && method_exists($moneyObject, 'getCurrency')) {
+            if (is_object($moneyObject) && method_exists($moneyObject, 'getAmount')) {
                 return [
-                    'amount' => (float) $moneyObject->getAmount() / 100, // Convertir centavos a unidades
+                    'amount' => (float) $moneyObject->getAmount() / 100,
                     'currency' => $moneyObject->getCurrency()->getCode(),
-                    'formatted' => $moneyObject->getCurrency()->getCode() . ' ' . number_format((float) $moneyObject->getAmount() / 100, 2, '.', ',')
+                    'formatted' => $moneyObject->getCurrency()->getCode() . ' ' . number_format((float) $moneyObject->getAmount() / 100, 2, '.', ','),
                 ];
             }
-            
-            // Si es un valor numérico (fallback)
+
             if (is_numeric($moneyObject)) {
                 return [
-                    'amount' => (float) $moneyObject / 100,
+                    'amount' => (float) $moneyObject,
                     'currency' => 'PEN',
-                    'formatted' => 'PEN ' . number_format((float) $moneyObject / 100, 2, '.', ',')
+                    'formatted' => 'PEN ' . number_format((float) $moneyObject, 2, '.', ','),
                 ];
             }
-            
+
             return null;
         } catch (Exception $e) {
-            Log::warning('Error formatting money value', [
-                'value' => $moneyObject,
+            Log::warning('Error al formatear monto', [
+                'valor' => $moneyObject,
                 'error' => $e->getMessage()
             ]);
             return null;
@@ -115,34 +116,33 @@ class PropertyConfiguracionSubastaResource extends JsonResource
     }
 
     /**
-     * ✅ Método corregido para obtener imágenes
-     * Usar tanto el método del modelo como fallback a carpeta pública
+     * ✅ Obtener imágenes asociadas
      */
-    private function getImagenesCorregido(): array
+    private function getImagenesCorregido($solicitud): array
     {
         $imagenes = [];
 
         try {
-            // Primero intentar usar el método del modelo Property
-            if ($this->property && method_exists($this->property, 'getImagenes')) {
-                $imagenesModelo = $this->property->getImagenes();
+            // Si existe una relación con propiedad dentro de solicitud
+            $property = $solicitud?->property ?? null;
+
+            if ($property && method_exists($property, 'getImagenes')) {
+                $imagenesModelo = $property->getImagenes();
                 if (!empty($imagenesModelo)) {
                     return $imagenesModelo;
                 }
             }
 
-            // Fallback: buscar en carpeta pública (método original)
-            if ($this->property && $this->property->id) {
-                $rutaCarpeta = public_path("Propiedades/{$this->property->id}");
-                
+            // Fallback: buscar imágenes en carpeta pública
+            if ($property && $property->id) {
+                $rutaCarpeta = public_path("Propiedades/{$property->id}");
+
                 if (File::exists($rutaCarpeta)) {
-                    $archivos = File::files($rutaCarpeta);
-                    foreach ($archivos as $archivo) {
-                        // Validar que sea una imagen
-                        $extension = strtolower($archivo->getExtension());
-                        if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'])) {
+                    foreach (File::files($rutaCarpeta) as $archivo) {
+                        $ext = strtolower($archivo->getExtension());
+                        if (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'])) {
                             $imagenes[] = [
-                                'url' => asset("Propiedades/{$this->property->id}/" . $archivo->getFilename()),
+                                'url' => asset("Propiedades/{$property->id}/" . $archivo->getFilename()),
                                 'descripcion' => 'Imagen de la propiedad'
                             ];
                         }
@@ -150,7 +150,6 @@ class PropertyConfiguracionSubastaResource extends JsonResource
                 }
             }
 
-            // Si no hay imágenes, devolver imagen por defecto
             if (empty($imagenes)) {
                 $imagenes[] = [
                     'url' => asset('Propiedades/no-image.png'),
@@ -159,13 +158,11 @@ class PropertyConfiguracionSubastaResource extends JsonResource
             }
 
             return $imagenes;
-            
         } catch (Exception $e) {
-            Log::error("Error obteniendo imágenes para propiedad configuración {$this->id}", [
-                'property_id' => $this->property->id ?? 'N/A',
+            Log::error("Error obteniendo imágenes para solicitud {$solicitud?->id}", [
                 'error' => $e->getMessage()
             ]);
-            
+
             return [[
                 'url' => asset('Propiedades/no-image.png'),
                 'descripcion' => 'Error al cargar imagen'
