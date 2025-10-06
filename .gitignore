@@ -25,3 +25,4 @@ yarn-error.log
 .qodo
 /public/images/
 
+/nbproject/private/

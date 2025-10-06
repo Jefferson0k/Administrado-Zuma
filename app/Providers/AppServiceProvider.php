@@ -8,6 +8,7 @@ use App\Http\Middleware\TrackUserActivity;
 use Illuminate\Support\ServiceProvider;
 use App\Models\Investor;
 use App\Observers\InvestorObserver;
+use Illuminate\Support\Facades\Schema;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -32,5 +33,6 @@ class AppServiceProvider extends ServiceProvider
 
         // Registrar el observer para inversionistas (verificación automática de WhatsApp)
         Investor::observe(InvestorObserver::class);
+        Schema::defaultStringLength(191);
     }
 }
