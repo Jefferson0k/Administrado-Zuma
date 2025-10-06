@@ -29,198 +29,200 @@ use Throwable;
 
 class InvestmentControllers extends Controller{
     public function store(Request $request)
-{
-    $request->validate([
-        'auction_id' => 'required|exists:auctions,id',
-        'amount' => 'required|numeric|min:0.01',
-    ]);
-
-    $investor = auth()->user();
-    $auction = Auction::with('property')->findOrFail($request->auction_id);
-
-    $currencyMap = [
-        1 => 'PEN',
-        2 => 'USD',
-    ];
-
-    $currencyName = $currencyMap[$auction->property->currency_id] ?? null;
-
-    if (!$currencyName) {
-        return response()->json(['message' => 'Moneda no válida.'], 400);
-    }
-
-    $amount = $request->amount;
-    
-    \Log::info('INICIANDO INVERSIÓN', [
-        'investor_id' => $investor->id,
-        'amount' => $amount,
-        'currency' => $currencyName,
-        'auction_id' => $auction->id
-    ]);
-
-    // Verificar balance directamente en la BD ANTES de crear
-    $existingBalance = \DB::table('balances')
-        ->where('investor_id', $investor->id)
-        ->where('currency', $currencyName)
-        ->first();
-
-    \Log::info('BALANCE EXISTENTE EN BD', [
-        'exists' => $existingBalance ? 'YES' : 'NO',
-        'amount_raw' => $existingBalance->amount ?? 'NULL',
-        'currency' => $existingBalance->currency ?? 'NULL'
-    ]);
-
-    // Si no existe balance o el amount es 0, detener inmediatamente
-    if (!$existingBalance || $existingBalance->amount <= 0) {
-        \Log::warning('SIN SALDO EN MONEDA SOLICITADA', [
-            'currency' => $currencyName,
-            'balance_amount' => $existingBalance->amount ?? 0
+    {
+        $request->validate([
+            'auction_id' => 'required|exists:auctions,id',
+            'amount' => 'required|numeric|min:0.01',
         ]);
-        
-        return response()->json([
-            'message' => "No tienes saldo suficiente en {$currencyName} para invertir.",
-            'current_balance' => $existingBalance ? ($existingBalance->amount / 100) : 0,
-            'required_amount' => $amount,
-            'currency' => $currencyName
-        ], 400);
-    }
 
-    // Obtener el balance con Eloquent
-    $balance = $investor->balances()->where('currency', $currencyName)->first();
+        $investor = auth()->user();
+        $auction = Auction::with('solicitud')->findOrFail($request->auction_id); // 👈 corregido
 
-    // Convertir el monto a objeto Money
-    $amountMoney = MoneyConverter::fromDecimal($amount, $currencyName);
+        $currencyMap = [
+            1 => 'PEN',
+            2 => 'USD',
+        ];
 
-    \Log::info('VALIDACIÓN DE SALDO', [
-        'balance_amount_subunits' => $existingBalance->amount,
-        'required_amount_subunits' => $amountMoney->getAmount(),
-        'balance_amount_decimal' => $existingBalance->amount / 100,
-        'required_amount_decimal' => $amount,
-        'currency' => $currencyName
-    ]);
+        // 👇 ahora usamos solicitud, no property
+        $currencyName = $currencyMap[$auction->solicitud->currency_id] ?? null;
 
-    // Validación directa en subunidades
-    if ($existingBalance->amount < $amountMoney->getAmount()) {
-        \Log::warning('SALDO INSUFICIENTE', [
-            'balance_subunits' => $existingBalance->amount,
-            'required_subunits' => $amountMoney->getAmount(),
-            'balance_decimal' => $existingBalance->amount / 100,
-            'required_decimal' => $amount
-        ]);
-        
-        return response()->json([
-            'message' => "Saldo insuficiente. Tienes " . ($existingBalance->amount / 100) . " {$currencyName}, necesitas {$amount} {$currencyName}.",
-            'current_balance' => $existingBalance->amount / 100,
-            'required_amount' => $amount,
-            'currency' => $currencyName
-        ], 400);
-    }
-
-    DB::beginTransaction();
-
-    try {
-        \Log::info('ACTUALIZANDO BALANCE');
-        
-        $amountSubunits = $amountMoney->getAmount();
-        
-        \Log::info('ACTUALIZACIÓN SQL', [
-            'amount_restar' => $amountSubunits,
-            'amount_actual' => $existingBalance->amount,
-            'nuevo_amount' => $existingBalance->amount - $amountSubunits,
-            'nuevo_invested' => $existingBalance->invested_amount + $amountSubunits
-        ]);
-        
-        // Actualización directa con SQL
-        $affected = DB::table('balances')
-            ->where('id', $existingBalance->id)
-            ->update([
-                'amount' => DB::raw("amount - $amountSubunits"),
-                'invested_amount' => DB::raw("invested_amount + $amountSubunits"),
-                'updated_at' => now()
-            ]);
-            
-        \Log::info('RESULTADO ACTUALIZACIÓN SQL', [
-            'affected_rows' => $affected,
-        ]);
-        
-        if ($affected === 0) {
-            throw new \Exception('No se pudo actualizar el balance');
+        if (!$currencyName) {
+            return response()->json(['message' => 'Moneda no válida.'], 400);
         }
 
-        // Crear movimiento
-        $movement = Movement::create([
-            'currency' => $currencyName,
-            'amount' => $amount,
+        $amount = $request->amount;
+
+        \Log::info('INICIANDO INVERSIÓN', [
             'investor_id' => $investor->id,
-            'type' => MovementType::INVESTMENT,
-            'status' => MovementStatus::CONFIRMED,
-            'confirm_status' => MovementStatus::CONFIRMED,
-            'description' => 'Inversión en subasta de hipotecas',
+            'amount' => $amount,
+            'currency' => $currencyName,
+            'auction_id' => $auction->id
         ]);
 
-        \Log::info('MOVEMENT CREADO', [
-            'movement_id' => $movement->id,
-            'amount' => $movement->amount
-        ]);
-
-        // Buscar bid existente
-        $existingBid = Bid::where('auction_id', $auction->id)
-            ->where('investors_id', $investor->id)
+        // Verificar balance directamente en la BD ANTES de crear
+        $existingBalance = \DB::table('balances')
+            ->where('investor_id', $investor->id)
+            ->where('currency', $currencyName)
             ->first();
 
-        if ($existingBid) {
-            $existingBid->monto += $amount;
-            $bidSaved = $existingBid->save();
-            \Log::info('BID ACTUALIZADO', [
-                'bid_id' => $existingBid->id,
-                'nuevo_monto' => $existingBid->monto
-            ]);
-        } else {
-            $newBid = Bid::create([
-                'auction_id' => $auction->id,
-                'investors_id' => $investor->id,
+        \Log::info('BALANCE EXISTENTE EN BD', [
+            'exists' => $existingBalance ? 'YES' : 'NO',
+            'amount_raw' => $existingBalance->amount ?? 'NULL',
+            'currency' => $existingBalance->currency ?? 'NULL'
+        ]);
+
+        // Si no existe balance o el amount es 0, detener inmediatamente
+        if (!$existingBalance || $existingBalance->amount <= 0) {
+            \Log::warning('SIN SALDO EN MONEDA SOLICITADA', [
                 'currency' => $currencyName,
-                'monto' => $amount,
+                'balance_amount' => $existingBalance->amount ?? 0
             ]);
-            \Log::info('NUEVO BID CREADO', ['bid_id' => $newBid->id]);
+
+            return response()->json([
+                'message' => "No tienes saldo suficiente en {$currencyName} para invertir.",
+                'current_balance' => $existingBalance ? ($existingBalance->amount / 100) : 0,
+                'required_amount' => $amount,
+                'currency' => $currencyName
+            ], 400);
         }
 
-        DB::commit();
-        \Log::info('TRANSACCIÓN COMMITEADA EXITOSAMENTE');
+        // Obtener el balance con Eloquent
+        $balance = $investor->balances()->where('currency', $currencyName)->first();
 
-        // Obtener balance actualizado
-        $finalBalance = DB::table('balances')
-            ->where('id', $existingBalance->id)
-            ->first();
-            
-        \Log::info('VERIFICACIÓN FINAL EN BD', [
-            'amount_final' => $finalBalance->amount,
-            'invested_amount_final' => $finalBalance->invested_amount
+        // Convertir el monto a objeto Money
+        $amountMoney = MoneyConverter::fromDecimal($amount, $currencyName);
+
+        \Log::info('VALIDACIÓN DE SALDO', [
+            'balance_amount_subunits' => $existingBalance->amount,
+            'required_amount_subunits' => $amountMoney->getAmount(),
+            'balance_amount_decimal' => $existingBalance->amount / 100,
+            'required_amount_decimal' => $amount,
+            'currency' => $currencyName
         ]);
 
-        return response()->json([
-            'message' => 'Inversión registrada exitosamente.',
-            'data' => [
-                'nuevo_balance' => $finalBalance->amount / 100,
-                'nuevo_invertido' => $finalBalance->invested_amount / 100,
+        // Validación directa en subunidades
+        if ($existingBalance->amount < $amountMoney->getAmount()) {
+            \Log::warning('SALDO INSUFICIENTE', [
+                'balance_subunits' => $existingBalance->amount,
+                'required_subunits' => $amountMoney->getAmount(),
+                'balance_decimal' => $existingBalance->amount / 100,
+                'required_decimal' => $amount
+            ]);
+
+            return response()->json([
+                'message' => "Saldo insuficiente. Tienes " . ($existingBalance->amount / 100) . " {$currencyName}, necesitas {$amount} {$currencyName}.",
+                'current_balance' => $existingBalance->amount / 100,
+                'required_amount' => $amount,
                 'currency' => $currencyName
-            ]
-        ], 201);
+            ], 400);
+        }
 
-    } catch (\Exception $e) {
-        DB::rollBack();
-        
-        \Log::error('ERROR EN INVERSIÓN', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-        
-        return response()->json([
-            'message' => 'Error al registrar la inversión.',
-            'error' => $e->getMessage(),
-        ], 500);
+        DB::beginTransaction();
+
+        try {
+            \Log::info('ACTUALIZANDO BALANCE');
+
+            $amountSubunits = $amountMoney->getAmount();
+
+            \Log::info('ACTUALIZACIÓN SQL', [
+                'amount_restar' => $amountSubunits,
+                'amount_actual' => $existingBalance->amount,
+                'nuevo_amount' => $existingBalance->amount - $amountSubunits,
+                'nuevo_invested' => $existingBalance->invested_amount + $amountSubunits
+            ]);
+
+            // Actualización directa con SQL
+            $affected = DB::table('balances')
+                ->where('id', $existingBalance->id)
+                ->update([
+                    'amount' => DB::raw("amount - $amountSubunits"),
+                    'invested_amount' => DB::raw("invested_amount + $amountSubunits"),
+                    'updated_at' => now()
+                ]);
+
+            \Log::info('RESULTADO ACTUALIZACIÓN SQL', [
+                'affected_rows' => $affected,
+            ]);
+
+            if ($affected === 0) {
+                throw new \Exception('No se pudo actualizar el balance');
+            }
+
+            // Crear movimiento
+            $movement = Movement::create([
+                'currency' => $currencyName,
+                'amount' => $amount,
+                'investor_id' => $investor->id,
+                'type' => MovementType::INVESTMENT,
+                'status' => MovementStatus::CONFIRMED,
+                'confirm_status' => MovementStatus::CONFIRMED,
+                'description' => 'Inversión en subasta de hipotecas',
+            ]);
+
+            \Log::info('MOVEMENT CREADO', [
+                'movement_id' => $movement->id,
+                'amount' => $movement->amount
+            ]);
+
+            // Buscar bid existente
+            $existingBid = Bid::where('auction_id', $auction->id)
+                ->where('investors_id', $investor->id)
+                ->first();
+
+            if ($existingBid) {
+                $existingBid->monto += $amount;
+                $existingBid->save();
+                \Log::info('BID ACTUALIZADO', [
+                    'bid_id' => $existingBid->id,
+                    'nuevo_monto' => $existingBid->monto
+                ]);
+            } else {
+                $newBid = Bid::create([
+                    'auction_id' => $auction->id,
+                    'investors_id' => $investor->id,
+                    'currency' => $currencyName,
+                    'monto' => $amount,
+                ]);
+                \Log::info('NUEVO BID CREADO', ['bid_id' => $newBid->id]);
+            }
+
+            DB::commit();
+            \Log::info('TRANSACCIÓN COMMITEADA EXITOSAMENTE');
+
+            // Obtener balance actualizado
+            $finalBalance = DB::table('balances')
+                ->where('id', $existingBalance->id)
+                ->first();
+
+            \Log::info('VERIFICACIÓN FINAL EN BD', [
+                'amount_final' => $finalBalance->amount,
+                'invested_amount_final' => $finalBalance->invested_amount
+            ]);
+
+            return response()->json([
+                'message' => 'Inversión registrada exitosamente.',
+                'data' => [
+                    'nuevo_balance' => $finalBalance->amount / 100,
+                    'nuevo_invertido' => $finalBalance->invested_amount / 100,
+                    'currency' => $currencyName
+                ]
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            \Log::error('ERROR EN INVERSIÓN', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Error al registrar la inversión.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
-}
+
     public function index($property_id){
         $inversiones = Investment::with('investors')
             ->where('property_id', $property_id)

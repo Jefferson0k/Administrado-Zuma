@@ -56,12 +56,23 @@ class PropertyConfiguracion extends Model implements AuditableContract
     public function getTemAttribute($value){
         return $value === null ? null : number_format($value / 100, 2, '.', '');
     }
+    public function setTemAttribute($value){
+        $this->attributes['tem'] = ($value === null || $value === '') ? null : (int) round(floatval($value) * 100);
+    }
 
     public function setTeaAttribute($value){
         $this->attributes['tea'] = ($value === null || $value === '') ? null : (int) round(floatval($value) * 100);
     }
 
-    public function setTemAttribute($value){
-        $this->attributes['tem'] = ($value === null || $value === '') ? null : (int) round(floatval($value) * 100);
+    public function currency()
+    {
+        return $this->belongsTo(Currency::class, 'currency_id', 'id');
     }
+
+    public function subasta()
+    {
+        // Relación indirecta: la subasta se asocia por solicitud_id
+        return $this->hasOne(Auction::class, 'solicitud_id', 'solicitud_id');
+    }
+
 }

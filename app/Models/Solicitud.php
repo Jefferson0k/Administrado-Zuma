@@ -80,14 +80,9 @@ class Solicitud extends Model
     }
     public function configuraciones()
     {
-        return $this->hasMany(PropertyConfiguracion::class, 'solicitud_id', 'id');
+        return $this->hasMany(PropertyConfiguracion::class, 'solicitud_id');
     }
 
-    public function configuracionActiva()
-    {
-        return $this->hasOne(PropertyConfiguracion::class, 'solicitud_id', 'id')
-                    ->where('estado', 'activa');
-    }
     public function propertyInvestors()
     {
         return $this->hasMany(PropertyInvestor::class, 'solicitud_id', 'id');
@@ -105,4 +100,19 @@ class Solicitud extends Model
             ? (int) round($value * 100)
             : (int) $value;
     }
+    public function subasta()
+    {
+        return $this->hasOne(Auction::class, 'solicitud_id');
+    }
+    public function configuracionSubasta(){
+        return $this->hasOne(PropertyConfiguracion::class, 'solicitud_id')
+            ->where('estado', 2);
+    }
+
+    public function configuracionActiva()
+    {
+        return $this->hasOne(PropertyConfiguracion::class, 'solicitud_id')
+            ->where('estado', 1);
+    }
+
 }

@@ -636,7 +636,7 @@ const verDetalle = (prestamo) => {
 
 const abrirConfiguracion = (data) => {
     console.log('Abrir configuración para:', data); // Debug
-    prestamosId.value = data.property_id;
+    prestamosId.value = data.solicitud_id;
     showModal.value = true;
 };
 
