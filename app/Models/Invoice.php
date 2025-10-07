@@ -57,8 +57,7 @@ class Invoice extends Model implements AuditableContract{
         'approval2_at' => 'datetime',
         'estimated_pay_date' => 'date',
         'created_at' => 'datetime',
-            'due_date'           => 'date',
-
+        
     ];
 
 
