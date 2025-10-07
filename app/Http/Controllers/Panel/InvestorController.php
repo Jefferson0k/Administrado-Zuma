@@ -271,7 +271,7 @@ class InvestorController extends Controller
             $investorCode->save();
             $investor->codigo = $codigo;
             $investor->save();
-            $investor->sendEmailVerificationNotification();
+            //$investor->sendEmailVerificationNotification();
             DB::commit();
             return response()->json([
                 'success' => true,

@@ -466,7 +466,7 @@ class MovementController extends Controller
                 $deposit->save();
 
                 // Notificación
-                $investor->sendDepositPendingEmailNotification($deposit);
+                //$investor->sendDepositPendingEmailNotification($deposit);
 
                 DB::commit();
 
