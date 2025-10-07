@@ -576,6 +576,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/comparacion/results', [PaymentsController::class, 'listResults']);
     Route::post('/invoices/{invoiceId}/anular', [PaymentsController::class, 'anular'])
         ->name('invoices.anular');
+
+        
+Route::patch('/invoices/{invoice}/cerrar', [InvoiceController::class, 'cerrar'])
+    ->name('invoices.cerrar');
+
 });
 
 

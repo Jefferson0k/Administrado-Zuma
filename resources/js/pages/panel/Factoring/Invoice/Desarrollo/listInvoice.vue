@@ -25,6 +25,50 @@ import Dialog from 'primevue/dialog';
 
 import Calendar from 'primevue/calendar';
 
+
+// --- NEW: cerrar refs
+const showCerrarDialog = ref(false);
+const cerrarLoading = ref(false);
+
+// open confirm
+function abrirCerrar(factura) {
+  selectedFacturaId.value = factura.id;
+  showCerrarDialog.value = true;
+}
+
+// confirm & call backend
+async function confirmarCerrar() {
+  if (!selectedFacturaId.value) return;
+  try {
+    cerrarLoading.value = true;
+
+    // Optional: send extra info (e.g., reason). Here it's plain.
+    const { data } = await axios.patch(`/invoices/${selectedFacturaId.value}/cerrar`);
+
+    toast.add({
+      severity: 'success',
+      summary: 'Cerrado',
+      detail: data?.message || 'La factura fue cerrada correctamente',
+      life: 3000
+    });
+
+    showCerrarDialog.value = false;
+    selectedFacturaId.value = null;
+    await loadData();
+  } catch (e) {
+    console.error(e);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: e?.response?.data?.message || 'No se pudo cerrar la factura',
+      life: 4000
+    });
+  } finally {
+    cerrarLoading.value = false;
+  }
+}
+
+
 function computeSemaforoColors(row) {
   const normalize = (v) => {
     const s = (v || '').toString().toLowerCase().trim();
@@ -441,176 +485,141 @@ const toggleMenu = (event, factura) => {
   let items = [
     { label: 'Ver factura', icon: 'pi pi-file', command: () => verFactura(factura) },
     { label: 'Historial aprobadores', icon: 'pi pi-clock', command: () => verHistorialAprobadores(factura) },
-    {
-      label: 'Pago adelantado',
-      icon: 'pi pi-calendar-clock',
-      command: () => abrirPagoAdelantado(factura)
-    },
-
+    { label: 'Pago adelantado', icon: 'pi pi-calendar-clock', command: () => abrirPagoAdelantado(factura) },
   ];
 
-
-  // 👇 inactive y observed tendrán las mismas opciones
-  if (['inactive', 'observed'].includes(factura.estado?.toLowerCase().trim())) {
+  if (['inactive', 'observed'].includes((factura.estado || '').toLowerCase().trim())) {
     items = items.concat([
-      {
-        label: 'Activo',
-        icon: 'pi pi-check-circle',
-        command: () => ponerActivo(factura)
-      },
+      { label: 'Activo', icon: 'pi pi-check-circle', command: () => ponerActivo(factura) },
       { separator: true },
-      {
-        label: 'Editar',
-        icon: 'pi pi-pencil',
-        command: () => editFactura(factura)
-      },
-      {
-        label: 'Eliminar',
-        icon: 'pi pi-trash',
-        command: () => confirmDelete(factura),
-        class: 'p-menuitem-link-danger'
-      }
+      { label: 'Editar', icon: 'pi pi-pencil', command: () => editFactura(factura) },
+      { label: 'Eliminar', icon: 'pi pi-trash', command: () => confirmDelete(factura), class: 'p-menuitem-link-danger' },
+      { label: 'Cerrar', icon: 'pi pi-times-circle', command: () => abrirCerrar(factura), class: 'p-menuitem-link-danger' }, // NEW
     ]);
   } else if (factura.estado === 'active') {
     items = items.concat([
-      {
-        label: 'Ver inversionistas',
-        icon: 'pi pi-eye',
-        command: () => verInversionistas(factura)
-      },
+      { label: 'Ver inversionistas', icon: 'pi pi-eye', command: () => verInversionistas(factura) },
       { separator: true },
-      {
-        label: 'Poner en standby',
-        icon: 'pi pi-pause',
-        command: () => ponerEnStandby(factura)
-      }
+      { label: 'Poner en standby', icon: 'pi pi-pause', command: () => ponerEnStandby(factura) },
+      { label: 'Cerrar', icon: 'pi pi-times-circle', command: () => abrirCerrar(factura), class: 'p-menuitem-link-danger' }, // NEW
     ]);
   } else if (factura.estado === 'daStandby') {
     items = items.concat([
-      {
-        label: 'Gestionar pago',
-        icon: 'pi pi-wallet',
-        command: () => gestionarPago(factura)
-      }
+      { label: 'Gestionar pago', icon: 'pi pi-wallet', command: () => gestionarPago(factura) },
+      { label: 'Cerrar', icon: 'pi pi-times-circle', command: () => abrirCerrar(factura), class: 'p-menuitem-link-danger' }, // NEW
     ]);
   } else if (factura.estado === 'reprogramed') {
     items = items.concat([
-      {
-        label: 'Ver inversionistas',
-        icon: 'pi pi-eye',
-        command: () => verInversionistas(factura)
-      }
+      { label: 'Ver inversionistas', icon: 'pi pi-eye', command: () => verInversionistas(factura) },
+      { label: 'Cerrar', icon: 'pi pi-times-circle', command: () => abrirCerrar(factura), class: 'p-menuitem-link-danger' }, // NEW
     ]);
   } else {
     items = items.concat([
-      {
-        label: 'Ver inversionistas',
-        icon: 'pi pi-eye',
-        command: () => verInversionistas(factura)
-      }
+      { label: 'Ver inversionistas', icon: 'pi pi-eye', command: () => verInversionistas(factura) },
+      { label: 'Cerrar', icon: 'pi pi-times-circle', command: () => abrirCerrar(factura), class: 'p-menuitem-link-danger' }, // NEW
     ]);
   }
 
   menuItems.value = items;
-  menu.value.toggle(event);
-};
+  menu.value.toggle(event); // ✅ finish the call
+}; //
 
-let searchTimeout;
-watch(() => filters.value.search, () => {
-  clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(() => applyFilters(), 500);
-});
+  let searchTimeout;
+  watch(() => filters.value.search, () => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => applyFilters(), 500);
+  });
 
-const translateTipo = (value) => {
-  if (!value) return null;
+  const translateTipo = (value) => {
+    if (!value) return null;
 
-  const traducciones = {
-    'annulled': 'Anulado',
-    'pending': 'Pendiente',
-    'approved': 'Aprobado',
-    'rejected': 'Rechazado'
+    const traducciones = {
+      'annulled': 'Anulado',
+      'pending': 'Pendiente',
+      'approved': 'Aprobado',
+      'rejected': 'Rechazado'
+    };
+
+    return traducciones[value] || value;
   };
 
-  return traducciones[value] || value;
-};
+  watch([
+    () => filters.value.status,
+    () => filters.value.currency,
+    () => filters.value.min_amount,
+    () => filters.value.max_amount,
+    () => filters.value.min_rate,
+    () => filters.value.max_rate
+  ], () => applyFilters());
+  watch(selectedFilterFields, () => { clearUnselectedFilters(); applyFilters(); });
+  watch(() => props.refresh, () => loadData());
 
-watch([
-  () => filters.value.status,
-  () => filters.value.currency,
-  () => filters.value.min_amount,
-  () => filters.value.max_amount,
-  () => filters.value.min_rate,
-  () => filters.value.max_rate
-], () => applyFilters());
-watch(selectedFilterFields, () => { clearUnselectedFilters(); applyFilters(); });
-watch(() => props.refresh, () => loadData());
-
-onMounted(() => {
-  loadData();
-});
-
-
-
-function condOportunidadMeta(value) {
-  const v = (value || '').toString().toLowerCase().trim();
-  // Etiqueta visible
-  const labelMap = {
-    'abierta': 'Abierta',
-    'open': 'Abierta',
-    'cerrada': 'Cerrada',
-    'closed': 'Cerrada'
-  };
-  // Colores PrimeVue Tag: info = azul, success = verde
-  const severityMap = {
-    'abierta': 'info',
-    'open': 'info',
-    'cerrada': 'danger',
-    'closed': 'danger'
-  };
-  return {
-    label: labelMap[v] || (value || '-'),
-    severity: severityMap[v] || 'secondary'
-  };
-}
-
-
-
-const showPagoAdelantadoDialog = ref(false);
-const pagoAdelantadoDate = ref(null);
-
-
-function toYMD(d) {
-  if (!d) return null;
-  const date = new Date(d);
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function abrirPagoAdelantado(factura) {
-  selectedFacturaId.value = factura.id;
-  pagoAdelantadoDate.value = null;
-  showPagoAdelantadoDialog.value = true;
-}
-
-async function confirmarPagoAdelantado() {
-  try {
-    const ymd = toYMD(pagoAdelantadoDate.value);
-    if (!ymd) {
-      toast.add({ severity: 'warn', summary: 'Falta fecha', detail: 'Selecciona una fecha', life: 2500 });
-      return;
-    }
-    await axios.post(`/invoices/${selectedFacturaId.value}/pago-adelantado`, { date: ymd });
-    toast.add({ severity: 'success', summary: 'Guardado', detail: 'Pago adelantado registrado', life: 2500 });
-    showPagoAdelantadoDialog.value = false;
-    selectedFacturaId.value = null;
+  onMounted(() => {
     loadData();
-  } catch (e) {
-    console.error(e);
-    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo registrar el pago adelantado', life: 3000 });
+  });
+
+
+
+  function condOportunidadMeta(value) {
+    const v = (value || '').toString().toLowerCase().trim();
+    // Etiqueta visible
+    const labelMap = {
+      'abierta': 'Abierta',
+      'open': 'Abierta',
+      'cerrada': 'Cerrada',
+      'closed': 'Cerrada'
+    };
+    // Colores PrimeVue Tag: info = azul, success = verde
+    const severityMap = {
+      'abierta': 'info',
+      'open': 'info',
+      'cerrada': 'danger',
+      'closed': 'danger'
+    };
+    return {
+      label: labelMap[v] || (value || '-'),
+      severity: severityMap[v] || 'secondary'
+    };
   }
-}
+
+
+
+  const showPagoAdelantadoDialog = ref(false);
+  const pagoAdelantadoDate = ref(null);
+
+
+  function toYMD(d) {
+    if (!d) return null;
+    const date = new Date(d);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function abrirPagoAdelantado(factura) {
+    selectedFacturaId.value = factura.id;
+    pagoAdelantadoDate.value = null;
+    showPagoAdelantadoDialog.value = true;
+  }
+
+  async function confirmarPagoAdelantado() {
+    try {
+      const ymd = toYMD(pagoAdelantadoDate.value);
+      if (!ymd) {
+        toast.add({ severity: 'warn', summary: 'Falta fecha', detail: 'Selecciona una fecha', life: 2500 });
+        return;
+      }
+      await axios.post(`/invoices/${selectedFacturaId.value}/pago-adelantado`, { date: ymd });
+      toast.add({ severity: 'success', summary: 'Guardado', detail: 'Pago adelantado registrado', life: 2500 });
+      showPagoAdelantadoDialog.value = false;
+      selectedFacturaId.value = null;
+      loadData();
+    } catch (e) {
+      console.error(e);
+      toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo registrar el pago adelantado', life: 3000 });
+    }
+  }
 
 
 
@@ -717,8 +726,7 @@ async function confirmarPagoAdelantado() {
         </template>
       </Column>
       <Column field="tasa" header="Tasa (%)" sortable style="min-width: 7rem" />
-      <Column field="fechaPago" header="Fecha de Pago" sortable style="min-width: 10rem" />
-
+   
       <Column field="PrimerStado" header="1ª Aprobador" sortable style="min-width: 9rem">
         <template #body="slotProps">
           <template v-if="slotProps.data.PrimerStado">
@@ -826,11 +834,10 @@ async function confirmarPagoAdelantado() {
       </Column>
 
 
-       <Column field="FechaPago" header="Fecha de Pago" sortable
-        style="min-width: 18rem">
+      <Column field="fechaPago" header="Fecha de Pago" sortable style="min-width: 18rem">
         <template #body="slotProps">
-          <span :class="!slotProps.data.FechaPago ? 'italic' : ''">
-            {{ slotProps.data.FechaPago || '-' }}
+          <span :class="!slotProps.data.fechaPago ? 'italic' : ''">
+            {{ slotProps.data.fechaPago || '-' }}
           </span>
         </template>
       </Column>
@@ -936,6 +943,25 @@ async function confirmarPagoAdelantado() {
         </div>
       </div>
     </Dialog>
+
+
+
+    <Dialog v-model:visible="showCerrarDialog" header="Confirmar cierre" :modal="true" :style="{ width: '26rem' }">
+      <div class="flex gap-3 items-start">
+        <i class="pi pi-exclamation-triangle text-orange-500 text-2xl mt-1"></i>
+        <div>
+          <p class="font-semibold text-gray-800">¿Deseas cerrar esta factura?</p>
+          <p class="text-sm text-gray-600">Esta acción registrará el cierre en el sistema.</p>
+        </div>
+      </div>
+
+      <template #footer>
+        <Button label="Cancelar" text icon="pi pi-times" @click="showCerrarDialog = false" :disabled="cerrarLoading" />
+        <Button label="Confirmar cierre" icon="pi pi-check" severity="danger" @click="confirmarCerrar"
+          :loading="cerrarLoading" />
+      </template>
+    </Dialog>
+
 
 
     <updateActive v-model="showActiveDialog" :factura-id="selectedFacturaId" @confirmed="onStandbyConfirmed"
