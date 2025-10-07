@@ -12,21 +12,17 @@ class Auction extends Model implements AuditableContract{
     use HasFactory, SoftDeletes, Auditable;
     protected $table = 'auctions';
     protected $fillable = [
-        'property_id', 'monto_inicial', 'dia_subasta',
+        'solicitud_id', 'monto_inicial', 'dia_subasta',
         'hora_inicio', 'hora_fin', 'tiempo_finalizacion',
         'estado', 'ganador_id', 'created_by', 'updated_by', 'deleted_by'
     ];
-    public function propiedad() {
-        return $this->belongsTo(Property::class);
-    }
     public function pujas() {
         return $this->hasMany(Bid::class);
     }
     public function ganador() {
         return $this->belongsTo(Investor::class, 'ganador_id');
     }
-    public function property(){
-        return $this->belongsTo(Property::class, 'property_id');
+    public function solicitud(){
+        return $this->belongsTo(Solicitud::class, 'solicitud_id');
     }
-
 }

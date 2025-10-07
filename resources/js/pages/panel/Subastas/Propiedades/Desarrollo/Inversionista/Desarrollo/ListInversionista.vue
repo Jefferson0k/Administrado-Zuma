@@ -32,12 +32,9 @@
         <Column selectionMode="multiple" style="width: 3rem" :exportable="false" />
         <Column field="documento" header="DNI" />
         <Column field="cliente" header="Cliente" />
-        <Column field="propiedad" header="Propiedad" />
-        <Column field="requerido" header="Valor Requerido">
-            <template #body="{ data }">
-                {{ formatCurrency(data.requerido) }}
-            </template>
-        </Column>
+        <Column field="codigo_solicitud" header="Solicitud" />
+        <Column field="valor_general" header="Valor Estimado"></Column>
+        <Column field="valor_requerido" header="Valor Requerido"></Column>
         <Column field="cronograma" header="Tipo Cronograma">
             <template #body="{ data }">
                 {{ formatCronograma(data.cronograma) }}
@@ -639,7 +636,7 @@ const verDetalle = (prestamo) => {
 
 const abrirConfiguracion = (data) => {
     console.log('Abrir configuración para:', data); // Debug
-    prestamosId.value = data.property_id;
+    prestamosId.value = data.solicitud_id;
     showModal.value = true;
 };
 

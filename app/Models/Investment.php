@@ -135,4 +135,11 @@ class Investment extends Model{
             )->getAmount();
         }
     }
+
+
+    // App\Models\Investment.php
+protected $casts = [
+    'due_date' => 'date',
+];
+
 }

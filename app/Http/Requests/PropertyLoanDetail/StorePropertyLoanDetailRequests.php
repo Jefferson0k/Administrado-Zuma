@@ -14,7 +14,7 @@ class StorePropertyLoanDetailRequests extends FormRequest
     public function rules(): array
     {
         return [
-            'property_id' => ['required', 'exists:properties,id'],
+            'solicitud_id' => ['required', 'exists:solicitudes,id'],
             'config_id' => ['required', 'exists:property_configuracions,id'],
             'investor_id' => ['required', 'exists:investors,id'],
             // 'ocupacion_profesion' => ['nullable', 'string', 'max:200'],

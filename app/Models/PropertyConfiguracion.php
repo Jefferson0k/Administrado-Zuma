@@ -15,7 +15,7 @@ class PropertyConfiguracion extends Model implements AuditableContract
     protected $table = 'property_configuracions';
 
     protected $fillable = [
-        'property_id',
+        'solicitud_id',
         'deadlines_id',
         'tea',
         'tem',
@@ -34,53 +34,45 @@ class PropertyConfiguracion extends Model implements AuditableContract
         return $this->belongsTo(Deadlines::class, 'deadlines_id');
     }
 
-    public function property(){
-        return $this->belongsTo(Property::class, 'property_id');
-    }
-
-    public function subasta(){
-        return $this->property->subasta();
+    public function solicitud(){
+        return $this->belongsTo(Solicitud::class, 'solicitud_id');
     }
 
     public function propertyInvestor(){
         return $this->hasOne(PropertyInvestor::class, 'config_id');
     }
 
+    public function detalleInversionistaHipoteca(){
+        return $this->hasOne(DetalleInversionistaHipoteca::class, 'configuracion_id');
+    }
+
     // -------------------------
     // Mutators & Accessors
     // -------------------------
-
-    // Getter TEA → devuelve decimal con 2 decimales
-    public function getTeaAttribute($value)
-    {
+    public function getTeaAttribute($value){
         return $value === null ? null : number_format($value / 100, 2, '.', '');
     }
 
-    // Getter TEM → devuelve decimal con 2 decimales
-    public function getTemAttribute($value)
-    {
+    public function getTemAttribute($value){
         return $value === null ? null : number_format($value / 100, 2, '.', '');
     }
-
-    // Setter TEA → guarda como entero multiplicado por 100
-    public function setTeaAttribute($value)
-    {
-        $this->attributes['tea'] = ($value === null || $value === '')
-            ? null
-            : (int) round(floatval($value) * 100);
+    public function setTemAttribute($value){
+        $this->attributes['tem'] = ($value === null || $value === '') ? null : (int) round(floatval($value) * 100);
     }
 
-    // Setter TEM → guarda como entero multiplicado por 100
-    public function setTemAttribute($value)
-    {
-        $this->attributes['tem'] = ($value === null || $value === '')
-            ? null
-            : (int) round(floatval($value) * 100);
+    public function setTeaAttribute($value){
+        $this->attributes['tea'] = ($value === null || $value === '') ? null : (int) round(floatval($value) * 100);
     }
 
-    public function detalleInversionistaHipoteca()
+    public function currency()
     {
-        return $this->hasOne(DetalleInversionistaHipoteca::class, 'configuracion_id');
+        return $this->belongsTo(Currency::class, 'currency_id', 'id');
+    }
+
+    public function subasta()
+    {
+        // Relación indirecta: la subasta se asocia por solicitud_id
+        return $this->hasOne(Auction::class, 'solicitud_id', 'solicitud_id');
     }
 
 }

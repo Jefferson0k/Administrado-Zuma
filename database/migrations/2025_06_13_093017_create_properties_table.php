@@ -18,12 +18,12 @@ return new class extends Migration {
             $table->text('descripcion')->nullable();
             $table->bigInteger('valor_estimado')->default(0);
             $table->bigInteger('valor_subasta')->default(0);
-            $table->bigInteger('valor_requerido')->default(0);
-            $table->foreignId('currency_id')->constrained('currencies');
+            $table->foreignId('solicitud_id')->constrained('solicitudes')->cascadeOnDelete();
             $table->enum('estado', [
                 'en_subasta', 'subastada', 'programada', 'desactivada',
                 'activa', 'adquirido', 'pendiente', 'completo', 'espera'
             ])->default('pendiente');
+            $table->string('pertenece')->nullable();
             $table->unsignedTinyInteger('config_total')->default(0);
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
@@ -32,6 +32,7 @@ return new class extends Migration {
             $table->softDeletes();
         });
     }
+
     public function down(): void {
         Schema::dropIfExists('properties');
     }

@@ -127,17 +127,17 @@ const model = computed(() => {
             icon: 'pi pi-fw pi-home',
             items: [
                 hasPermission('ver propiedades') && {
-                    label: 'Registro de Inmuebles',
+                    label: 'Registro de Solicitud',
                     icon: 'pi pi-fw pi-building',
                     to: '/subasta-hipotecas/propiedades'
                 },
                 hasPermission('ver reglas del imueble') && {
-                    label: 'Reglas del Inmueble',
+                    label: 'Reglas del Solicitud',
                     icon: 'pi pi-fw pi-list',
                     to: '/subasta-hipotecas/reglas'
                 },
                 hasPermission('ver informacion del cliente') && {
-                    label: 'Información del Cliente',
+                    label: 'Información del Solicitud',
                     icon: 'pi pi-fw pi-user',
                     to: '/subasta-hipotecas/inversionista'
                 },

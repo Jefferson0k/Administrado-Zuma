@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Money\Money;
 use Money\Currency as MoneyCurrency;
 use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
@@ -22,11 +21,13 @@ class Property extends Model implements AuditableContract
     protected $table = 'properties';
     public $incrementing = false;
     protected $keyType = 'string';
+
     protected $fillable = [
         'investor_id', 'nombre', 'departamento', 'provincia', 'distrito',
         'direccion', 'descripcion', 'valor_estimado', 'valor_subasta',
-        'valor_requerido', 'currency_id', 'estado', 'id_tipo_inmueble', 'id_solicitud', 'pertenece','created_by', 
-        'updated_by', 'deleted_by'
+        'valor_requerido', 'estado', 'id_tipo_inmueble',
+        'solicitud_id', 'pertenece',
+        'created_by', 'updated_by', 'deleted_by'
     ];
 
     protected $casts = [
@@ -64,82 +65,52 @@ class Property extends Model implements AuditableContract
     // 💰 Mutators y Accessors
     // -------------------------
 
-    // Mutators: Convertir de unidades a centavos al guardar (SOLO para CREATE)
     public function setValorEstimadoAttribute($value)
     {
-        // Solo aplicar mutator si es CREATE (no existe en BD)
-        if (!$this->exists) {
-            $this->attributes['valor_estimado'] = (int) round($value * 100);
-        } else {
-            // Para UPDATE, asumir que ya viene en centavos
-            $this->attributes['valor_estimado'] = (int) $value;
-        }
+        $this->attributes['valor_estimado'] = !$this->exists
+            ? (int) round($value * 100)
+            : (int) $value;
     }
 
     public function setValorSubastaAttribute($value)
     {
-        if (!$this->exists) {
-            $this->attributes['valor_subasta'] = $value ? (int) round($value * 100) : null;
-        } else {
-            $this->attributes['valor_subasta'] = $value ? (int) $value : null;
-        }
+        $this->attributes['valor_subasta'] = !$this->exists
+            ? ($value ? (int) round($value * 100) : null)
+            : ($value ? (int) $value : null);
     }
 
     public function setValorRequeridoAttribute($value)
     {
-        if (!$this->exists) {
-            $this->attributes['valor_requerido'] = (int) round($value * 100);
-        } else {
-            $this->attributes['valor_requerido'] = (int) $value;
-        }
+        $this->attributes['valor_requerido'] = !$this->exists
+            ? (int) round($value * 100)
+            : (int) $value;
     }
 
-    // Accessors: Convertir de centavos a objetos Money
     public function getValorEstimadoAttribute($value)
     {
-        try {
-            $currencyCode = $this->getCurrencyCode();
-            return new Money((int) $value, new MoneyCurrency($currencyCode));
-        } catch (Exception $e) {
-            Log::warning('Error creating Money object for valor_estimado', [
-                'property_id' => $this->id,
-                'value' => $value,
-                'currency_id' => $this->currency_id,
-                'error' => $e->getMessage()
-            ]);
-            return new Money((int) $value, new MoneyCurrency('PEN'));
-        }
+        return $this->asMoney($value, 'valor_estimado');
     }
 
     public function getValorSubastaAttribute($value)
     {
-        if ($value === null) {
-            return null;
-        }
-        try {
-            $currencyCode = $this->getCurrencyCode();
-            return new Money((int) $value, new MoneyCurrency($currencyCode));
-        } catch (Exception $e) {
-            Log::warning('Error creating Money object for valor_subasta', [
-                'property_id' => $this->id,
-                'value' => $value,
-                'currency_id' => $this->currency_id,
-                'error' => $e->getMessage()
-            ]);
-            return new Money((int) $value, new MoneyCurrency('PEN'));
-        }
+        return $value === null ? null : $this->asMoney($value, 'valor_subasta');
     }
 
     public function getValorRequeridoAttribute($value)
+    {
+        return $this->asMoney($value, 'valor_requerido');
+    }
+
+    private function asMoney($value, string $field): Money
     {
         try {
             $currencyCode = $this->getCurrencyCode();
             return new Money((int) $value, new MoneyCurrency($currencyCode));
         } catch (Exception $e) {
-            Log::warning('Error creating Money object for valor_requerido', [
+            Log::warning("Error creando Money para {$field}", [
                 'property_id' => $this->id,
                 'value' => $value,
-                'currency_id' => $this->currency_id,
+                'currency_id' => $this->solicitud->currency_id ?? null,
                 'error' => $e->getMessage()
             ]);
             return new Money((int) $value, new MoneyCurrency('PEN'));
@@ -148,15 +119,19 @@ class Property extends Model implements AuditableContract
 
     private function getCurrencyCode(): string
     {
-        if ($this->relationLoaded('currency') && $this->currency) {
-            return $this->currency->codigo;
+        if ($this->relationLoaded('solicitud') && $this->solicitud) {
+            if ($this->solicitud->relationLoaded('currency') && $this->solicitud->currency) {
+                return $this->solicitud->currency->codigo;
+            }
         }
-        if ($this->currency_id) {
-            $currency = Currency::find($this->currency_id);
+
+        if ($this->solicitud && $this->solicitud->currency_id) {
+            $currency = Currency::find($this->solicitud->currency_id);
             if ($currency && $currency->codigo) {
                 return $currency->codigo;
             }
         }
+
         return 'PEN';
     }
 
@@ -171,11 +146,6 @@ class Property extends Model implements AuditableContract
     public function subasta()
     {
         return $this->hasOne(Auction::class);
-    }
-
-    public function currency()
-    {
-        return $this->belongsTo(Currency::class);
     }
 
     public function investor()
@@ -197,6 +167,7 @@ class Property extends Model implements AuditableContract
     {
         return $this->hasOne(PropertyLoanDetail::class, 'property_id');
     }
+
     public function getImagenes(): array
     {
         try {
@@ -235,12 +206,6 @@ class Property extends Model implements AuditableContract
     {
         return $this->hasMany(PropertyConfiguracion::class);
     }
-
-    public function ultimaConfiguracion()
-    {
-        return $this->hasOne(PropertyConfiguracion::class)->latestOfMany();
-    }
-
     public function property_configuraciones()
     {
         return $this->hasMany(PropertyConfiguracion::class, 'property_id');
@@ -263,12 +228,11 @@ class Property extends Model implements AuditableContract
 
     public function tipoInmueble()
     {
-    return $this->belongsTo(TipoInmueble::class, 'id_tipo_inmueble', 'id_tipo_inmueble');
+        return $this->belongsTo(TipoInmueble::class, 'id_tipo_inmueble', 'id_tipo_inmueble');
     }
 
     public function solicitud()
     {
-        return $this->belongsTo(Solicitud::class, 'id_solicitud', 'id_solicitud');
+        return $this->belongsTo(Solicitud::class, 'solicitud_id', 'id');
     }
-
 }

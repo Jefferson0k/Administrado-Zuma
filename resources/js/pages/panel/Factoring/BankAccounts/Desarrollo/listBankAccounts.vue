@@ -77,14 +77,19 @@
     <Column field="creacion" header="Creación" sortable style="min-width: 15rem" />
 
     <!-- Acciones -->
-    <Column header="" style="min-width: 7rem; text-align:center">
+    <Column header="Acciones" style="min-width: 7rem; text-align:center">
       <template #body="{ data }">
         <div class="flex items-center gap-2 justify-center">
           <Button v-if="data.can_show_conclusion" icon="pi pi-eye" text rounded @click="openShowModal(data)" />
           <span v-else class="text-xs text-gray-400">N/A</span>
+
+          <!-- NUEVO: botón Historial -->
+          <Button icon="pi pi-history" text rounded @click="openHistoryModal(data)"
+            v-tooltip.bottom="'Ver historial'" />
         </div>
       </template>
     </Column>
+
   </DataTable>
 
   <!-- Modal de Detalle -->
@@ -157,8 +162,8 @@
                   <div class="flex items-center gap-2">
                     <Button icon="pi pi-download" label="Descargar" size="small" text @click="downloadAttachment(f)" />
                     <!-- NUEVO: eliminar -->
-                    <Button icon="pi pi-trash" label="" size="small" text severity="danger"
-  :disabled="isAnyRejected" @click="confirmDeleteAttachment(f)" />
+                    <Button icon="pi pi-trash" label="" size="small" text severity="danger" :disabled="isAnyRejected"
+                      @click="confirmDeleteAttachment(f)" />
                   </div>
                 </li>
 
@@ -219,7 +224,7 @@
             Comentario (Primera Validación)
           </p>
           <Textarea v-model="comment0" autoResize rows="3" class="w-full" placeholder="Escribe un comentario..."
-  :readonly="isFirstApproved || isAnyRejected" />
+            :readonly="isFirstApproved || isAnyRejected" />
 
           <small class="text-gray-500">
             Se guarda al confirmar la Primera Validación
@@ -233,9 +238,10 @@
           </p>
 
           <Textarea v-model="comment" autoResize rows="3" class="w-full" placeholder="Escribe un comentario..."
-  :readonly="!isFirstApproved || isFullyApproved || isAnyRejected" :title="!isFirstApproved
-    ? 'Solo editable tras aprobar la Primera Validación'
-    : (isFullyApproved ? 'Solo lectura: validación completada' : (isAnyRejected ? 'Bloqueado por rechazo' : ''))" />
+            :readonly="!isFirstApproved || isFullyApproved || isAnyRejected"
+            :title="!isFirstApproved
+              ? 'Solo editable tras aprobar la Primera Validación'
+              : (isFullyApproved ? 'Solo lectura: validación completada' : (isAnyRejected ? 'Bloqueado por rechazo' : ''))" />
 
 
           <small class="text-gray-500">
@@ -299,21 +305,21 @@
           <Button label="Cerrar" icon="pi pi-times" @click="showDialog = false" />
 
           <Button label="Aprobar" icon="pi pi-check" severity="success" :loading="loading && actionBusy === 'approve'"
-  :disabled="isAnyRejected || !hasFirstComment || !hasAnyAttachment"
-  :title="isAnyRejected ? 'Bloqueado por rechazo' : (!hasFirstComment ? 'Escribe un comentario interno antes de aprobar' : (!hasAnyAttachment ? 'Sube al menos un archivo antes de aprobar' : ''))"
-  @click="approveWithFiles()" />
+            :disabled="isAnyRejected || !hasFirstComment || !hasAnyAttachment"
+            :title="isAnyRejected ? 'Bloqueado por rechazo' : (!hasFirstComment ? 'Escribe un comentario interno antes de aprobar' : (!hasAnyAttachment ? 'Sube al menos un archivo antes de aprobar' : ''))"
+            @click="approveWithFiles()" />
 
 
           <!-- OBSERVAR abre popup con input -->
           <Button label="Observar" icon="pi pi-eye" severity="info" :loading="loading && actionBusy === 'observe'"
-  :disabled="isAnyRejected || !hasFirstComment"
-  :title="isAnyRejected ? 'Bloqueado por rechazo' : (!hasFirstComment ? 'Escribe un comentario interno antes de observar' : '')"
-  @click="openObserveFirstDialog" />
+            :disabled="isAnyRejected || !hasFirstComment"
+            :title="isAnyRejected ? 'Bloqueado por rechazo' : (!hasFirstComment ? 'Escribe un comentario interno antes de observar' : '')"
+            @click="openObserveFirstDialog" />
 
           <Button label="Rechazar" icon="pi pi-times" severity="danger" :loading="loading && actionBusy === 'reject'"
-  :disabled="isAnyRejected || !hasFirstComment"
-  :title="isAnyRejected ? 'Bloqueado por rechazo' : (!hasFirstComment ? 'Escribe un comentario interno antes de rechazar' : '')"
-  @click="changeStatus0('rejected', { closeAfter: true })" />
+            :disabled="isAnyRejected || !hasFirstComment"
+            :title="isAnyRejected ? 'Bloqueado por rechazo' : (!hasFirstComment ? 'Escribe un comentario interno antes de rechazar' : '')"
+            @click="changeStatus0('rejected', { closeAfter: true })" />
         </div>
 
       </div>
@@ -328,20 +334,20 @@
           <Button label="Cerrar" icon="pi pi-times" @click="showDialog = false" />
 
           <Button label="Aprobar" icon="pi pi-check" severity="success" :loading="loading && actionBusy === 'approve2'"
-  :disabled="isAnyRejected || isFullyApproved || !hasSecondComment"
-  :title="isAnyRejected ? 'Bloqueado por rechazo' : (isFullyApproved ? 'Solo lectura: validación completada' : (!hasSecondComment ? 'Escribe un comentario interno antes de aprobar' : ''))"
-  @click="confirmSecond('approved', 'aprobar')" />
+            :disabled="isAnyRejected || isFullyApproved || !hasSecondComment"
+            :title="isAnyRejected ? 'Bloqueado por rechazo' : (isFullyApproved ? 'Solo lectura: validación completada' : (!hasSecondComment ? 'Escribe un comentario interno antes de aprobar' : ''))"
+            @click="confirmSecond('approved', 'aprobar')" />
 
           <!-- OBSERVAR abre popup con input -->
           <Button label="Observar" icon="pi pi-eye" severity="info" :loading="loading && actionBusy === 'observe2'"
-  :disabled="isAnyRejected || isFullyApproved || !hasSecondComment"
-  :title="isAnyRejected ? 'Bloqueado por rechazo' : (isFullyApproved ? 'Solo lectura: validación completada' : (!hasSecondComment ? 'Escribe un comentario interno antes de observar' : ''))"
-  @click="openObserveSecondDialog" />
+            :disabled="isAnyRejected || isFullyApproved || !hasSecondComment"
+            :title="isAnyRejected ? 'Bloqueado por rechazo' : (isFullyApproved ? 'Solo lectura: validación completada' : (!hasSecondComment ? 'Escribe un comentario interno antes de observar' : ''))"
+            @click="openObserveSecondDialog" />
 
           <Button label="Rechazar" icon="pi pi-times" severity="danger" :loading="loading && actionBusy === 'reject2'"
-  :disabled="isAnyRejected || isFullyApproved || !hasSecondComment"
-  :title="isAnyRejected ? 'Bloqueado por rechazo' : (isFullyApproved ? 'Solo lectura: validación completada' : (!hasSecondComment ? 'Escribe un comentario interno antes de rechazar' : ''))"
-  @click="confirmSecond('rejected', 'rechazar')" />
+            :disabled="isAnyRejected || isFullyApproved || !hasSecondComment"
+            :title="isAnyRejected ? 'Bloqueado por rechazo' : (isFullyApproved ? 'Solo lectura: validación completada' : (!hasSecondComment ? 'Escribe un comentario interno antes de rechazar' : ''))"
+            @click="confirmSecond('rejected', 'rechazar')" />
 
         </div>
 
@@ -356,8 +362,19 @@
     :style="{ width: '620px' }">
     <div class="space-y-2">
       <p class="text-sm text-gray-600">Mensaje para el cliente:</p>
-      <Textarea v-model="observeMessage" :maxlength="OBSERVE_MAX" rows="7" autoResize class="w-full"
-        placeholder="Escribe el mensaje que se enviará por correo (máx. 500 caracteres)" />
+      <div class="space-y-2">
+        <div v-for="(msg, i) in observeOptions" :key="i" class="flex items-start gap-2">
+          <Checkbox v-model="selectedMessages" :inputId="'msg' + i" :value="msg" />
+          <label :for="'msg' + i" class="text-sm text-gray-700 cursor-pointer">{{ msg }}</label>
+        </div>
+
+        <div class="mt-2 p-2 border rounded bg-gray-50">
+          <p class="text-xs text-gray-500 mb-1">Vista previa del mensaje:</p>
+          <Textarea v-model="observeMessage" :maxlength="OBSERVE_MAX" rows="4" autoResize class="w-full"
+            placeholder="Selecciona los mensajes arriba..." readonly />
+        </div>
+      </div>
+
       <div class="mt-1 text-xs flex items-center justify-between">
         <small class="text-gray-500">Este mensaje se enviará por correo al cliente.</small>
         <span :class="observeCount >= OBSERVE_MAX - 20 ? 'text-red-600' : 'text-gray-500'">
@@ -376,8 +393,20 @@
     :style="{ width: '620px' }">
     <div class="space-y-2">
       <p class="text-sm text-gray-600">Mensaje para el cliente:</p>
-      <Textarea v-model="observeMessage" :maxlength="OBSERVE_MAX" rows="7" autoResize class="w-full"
-        placeholder="Escribe el mensaje que se enviará por correo (máx. 500 caracteres)" />
+      <div class="space-y-2">
+        <div v-for="(msg, i) in observeOptions" :key="i" class="flex items-start gap-2">
+          <Checkbox v-model="selectedMessages" :inputId="'msg' + i" :value="msg" />
+          <label :for="'msg' + i" class="text-sm text-gray-700 cursor-pointer">{{ msg }}</label>
+        </div>
+
+        <div class="mt-2 p-2 border rounded bg-gray-50">
+          <p class="text-xs text-gray-500 mb-1">Vista previa del mensaje:</p>
+          <Textarea v-model="observeMessage" :maxlength="OBSERVE_MAX" rows="4" autoResize class="w-full"
+            placeholder="Selecciona los mensajes arriba..." readonly />
+        </div>
+      </div>
+
+
       <div class="mt-1 text-xs flex items-center justify-between">
         <small class="text-gray-500">Este mensaje se enviará por correo al cliente.</small>
         <span :class="observeCount >= OBSERVE_MAX - 20 ? 'text-red-600' : 'text-gray-500'">
@@ -399,6 +428,69 @@
         class="max-h-[75vh] w-auto object-contain rounded-lg" />
     </div>
   </Dialog>
+
+
+  <!-- Modal de Historial -->
+  <Dialog v-model:visible="showHistory" header="Historial de Cuenta" :modal="true"
+    :style="{ width: '760px', maxWidth: '92vw' }">
+
+    <div v-if="historyLoading" class="p-4 text-center">
+      <i class="pi pi-spin pi-spinner text-2xl"></i>
+      <p class="text-sm mt-2">Cargando historial...</p>
+    </div>
+
+    <div v-else>
+      <DataTable v-if="historyItems.length" :value="historyItems" dataKey="id" class="p-datatable-sm" :paginator="false"
+        responsiveLayout="scroll">
+
+        <Column field="id" header="ID" style="width: 5rem" sortable />
+
+        <Column header="1ª Estado" style="min-width: 10rem" sortable>
+          <template #body="{ data }">
+            <Tag :value="mapStatusEs(data.approval1_status)"
+              :severity="getSeverityByApiStatus(data.approval1_status)" />
+
+          </template>
+        </Column>
+
+        <Column field="approval1_by_name" header="1ª Por" style="min-width: 9rem" sortable />
+
+        <Column header="1ª Fecha" style="min-width: 12rem" sortable>
+          <template #body="{ data }">{{ data.approval1_at }}</template>
+
+        </Column>
+        <Column field="approval1_comment" header="1ª Comentario" style="min-width: 14rem" />
+
+
+        <Column header="2ª Estado" style="min-width: 10rem" sortable>
+          <template #body="{ data }">
+            <Tag :value="mapStatusEs(data.approval2_status)"
+              :severity="getSeverityByApiStatus(data.approval2_status)" />
+
+          </template>
+        </Column>
+
+        <Column field="approval2_by_name" header="2ª Por" style="min-width: 9rem" sortable />
+
+        <Column header="2ª Fecha" style="min-width: 12rem" sortable>
+          <template #body="{ data }">{{ data.approval2_at }}</template>
+
+        </Column>
+        <Column field="approval2_comment" header="2ª Comentario" style="min-width: 14rem" />
+
+      </DataTable>
+
+      <div v-else class="p-4 text-center text-gray-500">
+        No hay eventos registrados.
+      </div>
+    </div>
+
+    <template #footer>
+      <Button label="Cerrar" icon="pi pi-times" @click="showHistory = false" />
+    </template>
+  </Dialog>
+
+
 </template>
 
 <script setup lang="ts">
@@ -418,6 +510,40 @@ import Dialog from 'primevue/dialog';
 import FileUpload from 'primevue/fileupload';
 import Textarea from 'primevue/textarea';
 import { debounce } from 'lodash';
+import { watch } from 'vue';
+
+
+import Checkbox from 'primevue/checkbox';
+
+const observeOptions = ref([
+  'Entidad bancaria errónea',
+  'Error en tipo de cuenta bancaria',
+  'Número de cuenta bancaria erróneo',
+  'Cuenta mancomunada',
+  'Cuentas intangibles (AFP/ONP/CTS, entre otras)',
+
+]);
+
+const selectedMessages = ref<string[]>([]);
+
+watch(selectedMessages, (vals, oldVals) => {
+  if (vals.length > 2) {
+    // Mantiene solo las dos primeras selecciones
+    selectedMessages.value = vals.slice(0, 2);
+
+    // Muestra aviso al usuario
+    toast.add({
+      severity: 'warn',
+      summary: 'Límite alcanzado',
+      detail: 'Solo puedes seleccionar hasta 2 observaciones a la vez.',
+      life: 3500,
+    });
+  }
+
+  observeMessage.value = selectedMessages.value.join('\n\n');
+});
+
+
 
 const sortField = ref<string | null>(null); // e.g. 'banco', 'inversionista', etc.
 const sortOrder = ref<number | null>(null); // 1 (asc) | -1 (desc)
@@ -503,6 +629,14 @@ const first = ref(0); // index of the first row in the current page
 
 
 
+
+const showHistory = ref(false);
+const historyItems = ref<any[]>([]);
+const historyLoading = ref(false);
+
+
+
+
 // ¿Primera validación aprobada?
 const isFirstApproved = computed(() => {
   const es = selectedAccount.value?.estado0;
@@ -522,10 +656,32 @@ const isFullyApproved = computed(() => {
 const isAnyRejected = computed(() => {
   const s0 = selectedAccount.value?.status0
     ?? (selectedAccount.value?.estado0 === 'Rechazado' ? 'rejected' : null);
-  const s  = selectedAccount.value?.status
+  const s = selectedAccount.value?.status
     ?? (selectedAccount.value?.estado === 'Rechazado' ? 'rejected' : null);
   return s0 === 'rejected' || s === 'rejected';
 });
+
+
+const getSeverityByApiStatus = (statusApi?: string) => {
+  switch (statusApi) {
+    case 'approved': return 'success';
+    case 'observed': return 'info';
+    case 'rejected': return 'danger';
+    case 'pending': return 'warn';
+    default: return 'secondary';
+  }
+};
+
+const mapStatusEs = (statusApi?: string) => {
+  switch (statusApi) {
+    case 'approved': return 'Aprobado';
+    case 'observed': return 'Observado';
+    case 'rejected': return 'Rechazado';
+    case 'pending': return 'Pendiente';
+    default: return statusApi ?? '—';
+  }
+};
+
 
 
 const loadAccounts = async (event: any = {}) => {
@@ -582,6 +738,31 @@ const loadAccounts = async (event: any = {}) => {
     loading.value = false;
   }
 };
+
+
+
+const openHistoryModal = (row: any) => {
+  selectedAccount.value = row;
+  showHistory.value = true;
+  loadHistory();
+};
+
+const loadHistory = async () => {
+  historyLoading.value = true;
+  historyItems.value = [];
+  try {
+    if (!selectedAccount.value?.id) return;
+    const { data } = await axios.get(`/ban/${selectedAccount.value.id}/history`);
+    historyItems.value = data?.data ?? [];
+  } catch (e: any) {
+    const msg = e.response?.data?.message || e.message || 'No se pudo cargar el historial';
+    toast.add({ severity: 'error', summary: 'Error', detail: msg, life: 5000 });
+  } finally {
+    historyLoading.value = false;
+  }
+};
+
+
 
 const onGlobalSearch = debounce(() => { first.value = 0; loadAccounts(); }, 500);
 
@@ -674,11 +855,11 @@ const changeStatusSecond = async (
   }
 
   if (isAnyRejected.value) {
-  toast.add({ severity: 'warn', summary: 'Bloqueado', detail: 'Acciones deshabilitadas: existe un rechazo en alguna validación.', life: 4000 });
-  return;
-}
+    toast.add({ severity: 'warn', summary: 'Bloqueado', detail: 'Acciones deshabilitadas: existe un rechazo en alguna validación.', life: 4000 });
+    return;
+  }
 
-  
+
   actionBusy.value = newStatus === 'approved' ? 'approve2' : newStatus === 'observed' ? 'observe2' : 'reject2';
 
   // Guardia: exige comentario interno para cualquier acción de 2ª validación
@@ -841,9 +1022,9 @@ const changeStatus0 = async (
     return;
   }
   if (isAnyRejected.value) {
-  toast.add({ severity: 'warn', summary: 'Bloqueado', detail: 'Acciones deshabilitadas: existe un rechazo en alguna validación.', life: 4000 });
-  return;
-}
+    toast.add({ severity: 'warn', summary: 'Bloqueado', detail: 'Acciones deshabilitadas: existe un rechazo en alguna validación.', life: 4000 });
+    return;
+  }
   actionBusy.value = newStatus0 === 'approved' ? 'approve' : newStatus0 === 'observed' ? 'observe' : 'reject';
 
   // Guardia: exige comentario interno para cualquier acción de 1ª validación
@@ -911,14 +1092,19 @@ const observeMessage = ref<string>('');
 const observeCount = computed(() => observeMessage.value.length);
 
 // abrir popups
+const DEFAULT_OBSERVE_MESSAGE =
+  'Hemos revisado su cuenta bancaria y necesitamos información adicional para continuar con la validación. Por favor, responda este correo adjuntando los documentos solicitados o aclarando la información indicada. Gracias.';
+
 const openObserveFirstDialog = () => {
-  observeMessage.value = '';
+  observeMessage.value = DEFAULT_OBSERVE_MESSAGE;
   showObserveFirst.value = true;
 };
 const openObserveSecondDialog = () => {
-  observeMessage.value = '';
+  selectedMessages.value = [];
+  observeMessage.value = DEFAULT_OBSERVE_MESSAGE;
   showObserveSecond.value = true;
 };
+
 
 // cancelar
 const cancelObserveFirst = () => { showObserveFirst.value = false; };
@@ -926,16 +1112,35 @@ const cancelObserveSecond = () => { showObserveSecond.value = false; };
 
 // confirmar (recorta/limpia a 500)
 const confirmObserveFirst = async () => {
-  const message = observeMessage.value.slice(0, OBSERVE_MAX).trim();
+  const raw = (observeMessage.value ?? '').trim();
+  const message = (raw.length ? raw : DEFAULT_OBSERVE_MESSAGE).slice(0, OBSERVE_MAX);
   showObserveFirst.value = false;
-  await changeStatus0('observed', { closeAfter: false, notifyMessage: message });
+
+  // Enviar los mensajes seleccionados individualmente al backend (uno por opción)
+  if (selectedMessages.value.length > 0) {
+    for (const msg of selectedMessages.value) {
+      await changeStatus0('observed', { closeAfter: false, notifyMessage: msg });
+    }
+  } else {
+    // Si no se seleccionó ninguna opción, enviar mensaje genérico
+    await changeStatus0('observed', { closeAfter: false, notifyMessage: message });
+  }
 };
 
 
+
 const confirmObserveSecond = async () => {
-  const message = observeMessage.value.slice(0, OBSERVE_MAX).trim();
+  const raw = (observeMessage.value ?? '').trim();
+  const message = (raw.length ? raw : DEFAULT_OBSERVE_MESSAGE).slice(0, OBSERVE_MAX);
   showObserveSecond.value = false;
-  await changeStatusSecond('observed', { notifyMessage: message });
+
+  if (selectedMessages.value.length > 0) {
+    for (const msg of selectedMessages.value) {
+      await changeStatusSecond('observed', { notifyMessage: msg });
+    }
+  } else {
+    await changeStatusSecond('observed', { notifyMessage: message });
+  }
 };
 
 

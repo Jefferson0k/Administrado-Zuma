@@ -31,7 +31,7 @@ use Laravel\Sanctum\PersonalAccessToken;
 use App\Models\InvestorSpectroEvidence;
 use App\Models\InvestorPepEvidence;
 use Illuminate\Support\Facades\Log;
-
+use App\Models\HistoryAprobadorInvestor;
 use Throwable;
 
 class InvestorController extends Controller
@@ -691,10 +691,6 @@ class InvestorController extends Controller
     }
 
 
-
-
-
-
     public function lastInvoiceInvested()
     {
         /** @var \App\Models\Investor $investor */
@@ -732,8 +728,6 @@ class InvestorController extends Controller
     }
 
 
-
-
     public function showcliente($id)
     {
         $investor = Investor::select([
@@ -754,7 +748,6 @@ class InvestorController extends Controller
             'data' => $investor
         ]);
     }
-
 
     public function updatecliente(Request $request, $id)
     {
@@ -847,8 +840,11 @@ class InvestorController extends Controller
     public function observarPrimeraValidacion(Request $request, $id)
     {
         $request->validate([
-            'approval1_comment' => 'nullable|string',
+            'approval1_comment'   => 'nullable|string',
+            'notify_templates'    => 'sometimes|array',
+            'notify_templates.*'  => 'in:general_observation,dni,investor_photo,evidencia_pep',
         ]);
+
 
 
 
@@ -865,7 +861,8 @@ class InvestorController extends Controller
                 $investor->update([
                     'approval1_status'      => 'observed',
                     'approval1_by'          => Auth::id(),
-               
+                    'approval1_comment'     => $request->approval1_comment,
+
                     'approval1_at'          => now(),
                     'status'                => 'proceso',
                     'updated_by'            => Auth::id(),
@@ -875,14 +872,72 @@ class InvestorController extends Controller
                 ]);
             });
 
+
+
+            HistoryAprobadorInvestor::create([
+                'investor_id' => $investor->id,
+                'aprobador_primera_validacion' => Auth::id(),
+                'approval1_by'          => Auth::id(),
+                'approval1_at'          => now(),
+                'approval1_status'      => 'observed',
+                'approval1_comment'     => $request->approval1_comment,
+            ]);
+
+
+
+            $templates = collect($request->input('notify_templates', []))->unique()->values();
+
+            if ($templates->isEmpty()) {
+                // Sin selección: enviar el correo genérico existente.
+                $investor->sendAccountObservedEmailNotification();
+            } else {
+                foreach ($templates as $tpl) {
+                    switch ($tpl) {
+                        case 'general_observation':
+                            $investor->sendAccountObservedEmailNotification();
+                            break;
+
+                        case 'dni':
+
+                            Log::info('Sending DNI observation email to investor', ['investor_id' => $investor->id]);
+                            // Usa tu método/mailable específico para DNI
+                            $investor->sendAccountObservedDNIEmailNotification();
+                            break;
+
+                        case 'investor_photo':
+                            if (method_exists($investor, 'sendAccountObservedFotoNotification')) {
+                                $investor->sendAccountObservedFotoNotification();
+                            } else {
+                                // Mail::to($investor->email)->queue(new \App\Mail\Investor\RequestInvestorPhotoResubmissionMail($investor));
+                                $investor->sendAccountObservedEmailNotification(); // fallback
+                            }
+                            break;
+
+                        case 'evidencia_pep':
+                            if (method_exists($investor, 'sendAccountObservedPepEvidenceNotification')) {
+                                $investor->sendAccountObservedPepEvidenceNotification();
+                            } else {
+                                // Mail::to($investor->email)->queue(new \App\Mail\Investor\RequestPepEvidenceResubmissionMail($investor));
+                                $investor->sendAccountObservedEmailNotification(); // fallback
+                            }
+                            break;
+                    }
+                }
+            }
+
+
+
             // 3) Notify AFTER commit
-            $investor->sendAccountObservedEmailNotification();
 
             return response()->json([
                 'message' => 'Inversionista marcado como observado (en proceso). Archivos eliminados y notificación enviada.',
                 'data'    => $investor->fresh(),
             ], 200);
         } catch (\Throwable $e) {
+            Log::error('Error al marcar inversionista como observado', [
+                'investor_id' => $id,
+                'error'       => $e->getMessage(),
+            ]);
             return response()->json([
                 'message' => 'Error al marcar como observado.',
                 'error'   => $e->getMessage(),
@@ -931,6 +986,16 @@ class InvestorController extends Controller
                 'approval1_at'     => now(),
                 'updated_by'       => Auth::id(),
             ]);
+
+            HistoryAprobadorInvestor::create([
+                'investor_id' => $investor->id,
+                'aprobador_primera_validacion' => Auth::id(),
+                'approval1_by'          => Auth::id(),
+                'approval1_at'          => now(),
+                'approval1_status'      => 'approved',
+                'approval1_comment'     => $request->approval1_comment,
+            ]);
+
             return response()->json([
                 'message' => 'Primera validación aprobada correctamente.',
                 'data'    => $investor,
@@ -966,6 +1031,17 @@ class InvestorController extends Controller
                 'updated_by'       => Auth::id(),
             ]);
             $investor->sendAccountRejectedEmailNotification();
+
+
+            HistoryAprobadorInvestor::create([
+                'investor_id' => $investor->id,
+                'aprobador_primera_validacion' => Auth::id(),
+                'approval1_by'          => Auth::id(),
+                'approval1_at'          => now(),
+                'approval1_status'      => 'rejected',
+                'approval1_comment'     => $request->approval1_comment,
+            ]);
+
             return response()->json([
                 'message' => 'Primera validación rechazada correctamente.',
                 'data'    => $investor,
@@ -1029,6 +1105,23 @@ class InvestorController extends Controller
 
             $investor->sendAccountApprovedEmailNotification();
 
+
+            $history  = HistoryAprobadorInvestor::where('investor_id', $investor->id)
+                ->latest('id')
+                ->lockForUpdate()
+                ->first();
+
+
+            $history?->update([
+                'approval2_by'      => Auth::id(),
+                'approval2_at'      => now(),
+                'approval2_status'  => 'approved',
+                'approval2_comment' => $request->approval2_comment,
+            ]);
+
+
+
+
             return response()->json([
                 'message' => 'Segunda validación aprobada correctamente.',
                 'data'    => $investor,
@@ -1060,26 +1153,98 @@ class InvestorController extends Controller
 
                 // 2) Update flags + clear file columns
                 $investor->update([
-                    'approval2_status'     => 'observed',
-                    'approval2_by'         => Auth::id(),
-                    'approval2_comment'    => $request->approval2_comment,
-                    'approval2_at'         => now(),
-                    'status'               => 'observed', // ó 'proceso' si prefieres el mismo estado que en 1ra
+                    // 👇 Volver a la PRIMERA validación
+                    'approval1_status'     => 'observed',
+                    'approval1_comment'    => $request->approval2_comment, // opcional: prefijar si deseas
+                    'approval1_at'         => now(),
+
+                    // 👇 Limpiar estado de SEGUNDA validación (ya no debe estar activa)
+                    'approval2_status'     => null,
+                    'approval2_by'         => null,
+                    'approval2_comment'    => null,
+                    'approval2_at'         => null,
+
+                    // 👇 Mismo comportamiento que en observación de primera
+                    'status'               => 'proceso',
                     'updated_by'           => Auth::id(),
+
+                    // 👇 Se vuelven a solicitar archivos
                     'document_front'       => null,
                     'document_back'        => null,
                     'investor_photo_path'  => null,
                 ]);
             });
 
+
+
+            $history  = HistoryAprobadorInvestor::where('investor_id', $investor->id)
+                ->latest('id')
+                ->lockForUpdate()
+                ->first();
+
+
+            $history?->update([
+                'approval2_by'      => Auth::id(),
+                'approval2_at'      => now(),
+                'approval2_status'  => 'observed',
+                'approval2_comment' => $request->approval2_comment,
+            ]);
+
+
             // Notificación si aplica
             // $investor->sendAccountObservedEmailNotification($request->approval2_comment);
+            $templates = collect($request->input('notify_templates', []))->unique()->values();
+
+            if ($templates->isEmpty()) {
+                // Sin selección: enviar el correo genérico existente.
+                $investor->sendAccountObservedEmailNotification();
+            } else {
+                foreach ($templates as $tpl) {
+                    switch ($tpl) {
+                        case 'general_observation':
+                            $investor->sendAccountObservedEmailNotification();
+                            break;
+
+                        case 'dni':
+                            Log::info('Sending DNI observation email to investor', ['investor_id' => $investor->id]);
+                            // Usa tu método/mailable específico para DNI
+                            $investor->sendAccountObservedDNIEmailNotification();
+                            break;
+                            
+                                // Mail::to($investor->email)->queue(new \App\Mail\Investor\RequestDniResubmissionMail($investor));
+                            
+
+                        case 'investor_photo':
+                            if (method_exists($investor, 'sendAccountObservedFotoNotification')) {
+                                $investor->sendAccountObservedFotoNotification();
+                            } else {
+                                // Mail::to($investor->email)->queue(new \App\Mail\Investor\RequestInvestorPhotoResubmissionMail($investor));
+                                $investor->sendAccountObservedEmailNotification(); // fallback
+                            }
+                            break;
+
+                        case 'evidencia_pep':
+                            if (method_exists($investor, 'sendAccountObservedPepEvidenceNotification')) {
+                                $investor->sendAccountObservedPepEvidenceNotification();
+                            } else {
+                                // Mail::to($investor->email)->queue(new \App\Mail\Investor\RequestPepEvidenceResubmissionMail($investor));
+                                $investor->sendAccountObservedEmailNotification(); // fallback
+                            }
+                            break;
+                    }
+                }
+            }
+
 
             return response()->json([
                 'message' => 'Inversionista observado en segunda validación. Archivos eliminados.',
                 'data'    => $investor->fresh(),
             ], 200);
         } catch (\Throwable $e) {
+            Log::error('Error al marcar inversionista como observado en segunda validación', [
+                'investor_id' => $id,
+                'error'       => $e->getMessage(),
+            ]);
             return response()->json([
                 'message' => 'Error al observar en segunda validación.',
                 'error'   => $e->getMessage(),
@@ -1109,7 +1274,21 @@ class InvestorController extends Controller
                 'document_back'     => null,
                 'updated_by'        => Auth::id(),
             ]);
-             $investor->sendAccountRejectedEmailNotification();
+            $investor->sendAccountRejectedEmailNotification();
+
+
+            $history  = HistoryAprobadorInvestor::where('investor_id', $investor->id)
+                ->latest('id')
+                ->lockForUpdate()
+                ->first();
+
+
+            $history?->update([
+                'approval2_by'      => Auth::id(),
+                'approval2_at'      => now(),
+                'approval2_status'  => 'rejected',
+                'approval2_comment' => $request->approval2_comment,
+            ]);
 
             return response()->json([
                 'message' => 'Segunda validación rechazada correctamente.',
@@ -1272,6 +1451,24 @@ class InvestorController extends Controller
         }
     }
 
+
+
+    public function approvalHistory($id)
+    {
+        $rows = HistoryAprobadorInvestor::query()
+            ->where('investor_id', $id)
+            ->with([
+                'approval1By:id,name',
+                'approval2By:id,name',
+            ])
+            ->orderByDesc('id')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $rows,
+        ]);
+    }
 
 
 

@@ -10,7 +10,9 @@
                 </p>
                 <p class="text-sm text-gray-600">
                     {{ isFacturaInReadOnlyState ? 'La factura ya ha sido procesada' : 'Tu decisión será registrada en el sistema' }}
+
                 </p>
+
             </div>
 
             <!-- Detalles de la factura -->
@@ -161,22 +163,49 @@
                     <Button label="Cerrar" severity="secondary" text @click="onCancel" :disabled="loading"
                         icon="pi pi-times" />
 
-                    <!-- Botones de acción - Solo se muestran si la factura NO está en estado readonly -->
+                    <!-- Botones de acción - Solo si NO está bloqueado globalmente -->
                     <template v-if="!isFacturaInReadOnlyState">
-                        <!-- Botón de Observación -->
-                        <Button label="Observar" @click="onObservar" :loading="loading && actionType === 'observe'"
-                            :disabled="isObservacionAction && !comentario.trim()" icon="pi pi-eye" severity="warn"
-                            class="px-4" />
+                        <!-- Mostrar SOLO Nivel 1 -->
+                        <template v-if="showLevel1Group">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-semibold text-gray-600">Nivel 1:</span>
 
-                        <!-- Botón de Rechazo -->
-                        <Button label="Rechazar" @click="onReject" :loading="loading && actionType === 'reject'"
-                            :disabled="isRechazoAction && !comentario.trim()" icon="pi pi-times" severity="danger"
-                            class="px-4" />
+                                <Button label="Observar" @click="() => { actionType = 'observe'; onObservar(); }"
+                                    :loading="loading && actionType === 'observe'" icon="pi pi-eye" severity="warn"
+                                    class="px-3" />
 
-                        <!-- Botón de Aprobación -->
-                        <Button label="Aprobar" @click="onApprove" :loading="loading && actionType === 'approve'"
-                            icon="pi pi-check" severity="success" class="px-4" />
+                                <Button label="Rechazar" @click="() => { actionType = 'reject'; onReject(); }"
+                                    :loading="loading && actionType === 'reject'" icon="pi pi-times" severity="danger"
+                                    class="px-3" />
+
+                                <Button label="Aprobar" @click="() => { actionType = 'approve'; onApprove(); }"
+                                    :loading="loading && actionType === 'approve'" icon="pi pi-check" severity="success"
+                                    class="px-3" />
+                            </div>
+                        </template>
+
+                        <!-- Mostrar SOLO Nivel 2 -->
+                        <template v-else-if="showLevel2Group">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-semibold text-gray-600">Nivel 2:</span>
+
+                                <Button label="Observar" @click="() => { actionType = 'observe2'; onObservar2(); }"
+                                    :loading="loading && actionType === 'observe2'" icon="pi pi-eye" severity="warn"
+                                    class="px-3" />
+
+                                <Button label="Rechazar" @click="() => { actionType = 'reject2'; onReject2(); }"
+                                    :loading="loading && actionType === 'reject2'" icon="pi pi-times" severity="danger"
+                                    class="px-3" />
+
+                                <Button label="Aprobar" @click="() => { actionType = 'approve2'; onApprove2(); }"
+                                    :loading="loading && actionType === 'approve2'" icon="pi pi-check"
+                                    severity="success" class="px-3" />
+                            </div>
+                        </template>
                     </template>
+
+
+
                 </div>
             </div>
         </template>
@@ -184,7 +213,8 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, watchEffect } from 'vue';
+
 import axios from 'axios';
 import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
@@ -218,17 +248,120 @@ const actionType = ref(''); // 'approve', 'reject', 'observe'
 
 // Computed properties
 const isObservacionAction = computed(() => {
-    return actionType.value === 'observe';
+    return actionType.value === 'observe' || actionType.value === 'observe2';
 });
 
 const isRechazoAction = computed(() => {
-    return actionType.value === 'reject';
+    return actionType.value === 'reject' || actionType.value === 'reject2';
 });
 
-const isFacturaInReadOnlyState = computed(() => {
+
+const _norm = (s) => (typeof s === 'string' ? s.trim().toLowerCase() : s ?? null);
+
+const a1Status = computed(() => _norm(
+    facturaData.value?.approval1_status ?? facturaData.value?.PrimerStado
+));
+const a2Status = computed(() => _norm(
+    facturaData.value?.approval2_status ?? facturaData.value?.SegundaStado
+));
+
+
+const isAnyRejected = computed(() =>
+    a1Status.value === 'rejected' || a2Status.value === 'rejected'
+);
+
+const areBothApproved = computed(() =>
+    a1Status.value === 'approved' && a2Status.value === 'approved'
+);
+
+// BLOCK everything if one is rejected OR both are approved
+const isFacturaInReadOnlyState = computed(() => isAnyRejected.value || areBothApproved.value);
+
+// Buttons availability per your rules
+// L1: available if not locked, and either L1 not approved yet OR L2 is observed
+const canActLevel1 = computed(() => {
+
     if (!facturaData.value) return false;
-    return facturaData.value.PrimerStado === 'observed' || facturaData.value.PrimerStado === 'rejected';
+    if (isFacturaInReadOnlyState.value) return false;
+    return a1Status.value !== 'approved' || a2Status.value === 'observed';
 });
+
+
+// L2: available only if L1 is approved and L2 not decided yet (not approved/rejected/observed)
+const canActLevel2 = computed(() => {
+    if (!facturaData.value) return false;
+    if (isFacturaInReadOnlyState.value) return false;
+    const s2 = a2Status.value ?? '';
+    return a1Status.value === 'approved' && !['approved', 'rejected', 'observed'].includes(s2);
+});
+
+
+// Mostrar SOLO un grupo de botones a la vez (sin botones deshabilitados)
+const showLevel1Group = computed(() => {
+    if (!facturaData.value) return false;                    // 👈 guard
+    if (isFacturaInReadOnlyState.value) return false;
+    if (a2Status.value === 'observed') return true;
+    return a1Status.value !== 'approved';
+});
+
+
+const showLevel2Group = computed(() => {
+    if (!facturaData.value) return false;                    // 👈 guard
+    if (isFacturaInReadOnlyState.value) return false;
+
+    const n1Approved =
+        a1Status.value === 'approved' ||
+        !!facturaData.value?.approval1_at ||
+        !!facturaData.value?.approval1_by;
+
+    return n1Approved && !['approved', 'rejected', 'observed'].includes(a2Status.value ?? '');
+});
+
+
+
+// ---- DEBUG ----
+const showDebug = ref(true); // ponlo en false si no quieres ver el panel visual
+const debugDump = computed(() => JSON.stringify({
+    a1Status: a1Status.value,
+    a2Status: a2Status.value,
+    approval1_at: facturaData.value?.approval1_at ?? facturaData.value?.tiempoUno ?? null,
+    approval1_by: facturaData.value?.approval1_by ?? facturaData.value?.userprimerNombre ?? facturaData.value?.userprimer ?? null,
+
+    approval2_at: facturaData.value?.approval2_at ?? facturaData.value?.tiempoDos ?? null,
+    approval2_by: facturaData.value?.approval2_by ?? facturaData.value?.userdosNombre ?? facturaData.value?.userdos ?? null,
+
+    isAnyRejected: isAnyRejected.value,
+    areBothApproved: areBothApproved.value,
+    isFacturaInReadOnlyState: isFacturaInReadOnlyState.value,
+    canActLevel1: canActLevel1.value,
+    canActLevel2: canActLevel2.value,
+    showLevel1Group: showLevel1Group.value,
+    showLevel2Group: showLevel2Group.value,
+    actionType: actionType.value,
+}, null, 2));
+
+watchEffect(() => {
+    console.log('[DEBUG] Estados actuales =>', {
+        a1Status: a1Status.value,
+        a2Status: a2Status.value,
+        approval1_at: facturaData.value?.approval1_at ?? facturaData.value?.tiempoUno ?? null,
+        approval1_by: facturaData.value?.approval1_by ?? facturaData.value?.userprimerNombre ?? facturaData.value?.userprimer ?? null,
+        approval2_at: facturaData.value?.approval2_at ?? facturaData.value?.tiempoDos ?? null,
+        approval2_by: facturaData.value?.approval2_by ?? facturaData.value?.userdosNombre ?? facturaData.value?.userdos ?? null,
+        isAnyRejected: isAnyRejected.value,
+        areBothApproved: areBothApproved.value,
+        isFacturaInReadOnlyState: isFacturaInReadOnlyState.value,
+        canActLevel1: canActLevel1.value,
+        canActLevel2: canActLevel2.value,
+        showLevel1Group: showLevel1Group.value,
+        showLevel2Group: showLevel2Group.value,
+        actionType: actionType.value,
+        raw: facturaData.value
+    });
+});
+
+
+
 
 // Watchers
 watch(() => props.modelValue, (newValue) => {
@@ -258,8 +391,12 @@ const fetchFacturaData = async () => {
         facturaData.value = response.data?.data || null;
 
         // Si la factura está en estado readonly, cargar el comentario existente
-        if (isFacturaInReadOnlyState.value && facturaData.value?.approval1_comment) {
-            comentario.value = facturaData.value.approval1_comment;
+        // Prefill comentario when locked or reviewing
+        const preferredComment = facturaData.value?.approval2_comment
+            ?? facturaData.value?.approval1_comment
+            ?? '';
+        if (isFacturaInReadOnlyState.value && preferredComment) {
+            comentario.value = preferredComment;
         }
     } catch (error) {
         console.error('Error al cargar datos de la factura:', error);
@@ -299,8 +436,10 @@ const onApprove = async () => {
 
         emit('approved', response.data);
         emit('confirmed', response.data);
-        visible.value = false;
-
+        // No cierres: refresca y muestra Nivel 2
+        await fetchFacturaData();
+        actionType.value = '';
+        comentario.value = '';
     } catch (error) {
         console.error('Error al aprobar factura:', error);
         handleError(error, 'Error al procesar la aprobación');
@@ -392,6 +531,114 @@ const onObservar = async () => {
     }
 };
 
+const onApprove2 = async () => {
+    if (!props.facturaId) return;
+    try {
+        loading.value = true;
+        actionType.value = 'approve2';
+
+        const payload = {};
+        if (comentario.value.trim()) payload.comment = comentario.value.trim();
+
+        const response = await axios.patch(`/invoices/${props.facturaId}/activacion2`, payload);
+
+        toast.add({
+            severity: 'success',
+            summary: 'Éxito',
+            detail: response.data?.message || 'Aprobación (nivel 2) registrada correctamente',
+            life: 5000
+        });
+
+        emit('approved', response.data);
+        emit('confirmed', response.data);
+        visible.value = false;
+    } catch (error) {
+        console.error('Error al aprobar factura (nivel 2):', error);
+        handleError(error, 'Error al procesar la aprobación (nivel 2)');
+    } finally {
+        loading.value = false;
+        actionType.value = '';
+    }
+};
+
+const onReject2 = async () => {
+    if (!props.facturaId || !comentario.value.trim()) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Comentario requerido',
+            detail: 'Debes agregar un comentario para rechazar en nivel 2',
+            life: 5000
+        });
+        return;
+    }
+
+    try {
+        loading.value = true;
+        actionType.value = 'reject2';
+
+        const payload = { comment: comentario.value.trim() };
+        const response = await axios.patch(`/invoices/${props.facturaId}/rechazar2`, payload);
+
+        toast.add({
+            severity: 'success',
+            summary: 'Éxito',
+            detail: response.data?.message || 'Rechazo (nivel 2) registrado correctamente',
+            life: 5000
+        });
+
+        emit('rejected', response.data);
+        emit('confirmed', response.data);
+        visible.value = false;
+    } catch (error) {
+        console.error('Error al rechazar factura (nivel 2):', error);
+        handleError(error, 'Error al procesar el rechazo (nivel 2)');
+    } finally {
+        loading.value = false;
+        actionType.value = '';
+    }
+};
+
+const onObservar2 = async () => {
+    if (!props.facturaId || !comentario.value.trim()) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Comentario requerido',
+            detail: 'Debes agregar un comentario para observar en nivel 2',
+            life: 5000
+        });
+        return;
+    }
+
+    try {
+        loading.value = true;
+        actionType.value = 'observe2';
+
+        const payload = { comment: comentario.value.trim() };
+        const response = await axios.patch(`/invoices/${props.facturaId}/observacion2`, payload);
+
+        toast.add({
+            severity: 'success',
+            summary: 'Éxito',
+            detail: response.data?.message || 'Observación (nivel 2) registrada correctamente',
+            life: 5000
+        });
+
+        emit('observed', response.data);
+        emit('confirmed', response.data);
+        visible.value = false;
+    } catch (error) {
+        console.error('Error al observar factura (nivel 2):', error);
+        handleError(error, 'Error al procesar la observación (nivel 2)');
+    } finally {
+        loading.value = false;
+        actionType.value = '';
+    }
+};
+
+
+
+
+
 const handleError = (error, defaultMessage) => {
     const errorMessage = error.response?.data?.message || defaultMessage;
     toast.add({
@@ -444,91 +691,87 @@ const getCommentPlaceholder = () => {
 
 const getActionStepInfo = () => {
     if (isFacturaInReadOnlyState.value) {
-        const estado = facturaData.value?.PrimerStado;
-        if (estado === 'observed') {
-            return 'Esta factura ha sido marcada como observada';
+        if (isAnyRejected.value) {
+            const nivel = a2Status.value === 'rejected' ? ' (nivel 2)' : a1Status.value === 'rejected' ? ' (nivel 1)' : '';
+            return `Esta factura ha sido rechazada${nivel}`;
         }
-        if (estado === 'rejected') {
-            return 'Esta factura ha sido rechazada';
+        if (areBothApproved.value) {
+            return 'Esta factura ha sido aprobada en ambos niveles';
         }
-        return 'Esta factura ya ha sido procesada';
     }
 
+    // Estado intermedio (no bloqueado)
+    if (a2Status.value === 'observed') {
+        return 'La observación en nivel 2 requiere revisión; nivel 1 está habilitado.';
+    }
+    if (a1Status.value === 'observed') {
+        return 'La observación en nivel 1 requiere corrección antes de continuar.';
+    }
+
+    // Según la acción elegida
     if (isObservacionAction.value) {
-        return 'La observación cambiará el estado de la factura y requerirá revisión';
+        return actionType.value === 'observe2'
+            ? 'La observación en nivel 2 enviará el caso a revisión y bloqueará nivel 2.'
+            : 'La observación en nivel 1 enviará el caso a revisión.';
     }
-
     if (isRechazoAction.value) {
-        return 'El rechazo cambiará el estado de la factura permanentemente';
+        return actionType.value === 'reject2'
+            ? 'El rechazo en nivel 2 bloqueará el expediente definitivamente.'
+            : 'El rechazo en nivel 1 bloqueará el expediente definitivamente.';
     }
 
+    // Default
     return 'Tu comentario será registrado con tu decisión sobre la factura';
 };
 
+
 const getInfoBoxClass = () => {
-    if (isFacturaInReadOnlyState.value) {
-        const estado = facturaData.value?.PrimerStado;
-        if (estado === 'observed') {
-            return 'bg-orange-50 border border-orange-200';
-        }
-        if (estado === 'rejected') {
-            return 'bg-red-50 border border-red-200';
-        }
-    }
+    if (isAnyRejected.value) return 'bg-red-50 border border-red-200';
+    if (areBothApproved.value) return 'bg-green-50 border border-green-200';
+    if (a2Status.value === 'observed' || a1Status.value === 'observed') return 'bg-orange-50 border border-orange-200';
     return 'bg-blue-50 border border-blue-200';
 };
 
+
 const getInfoBoxIconClass = () => {
-    if (isFacturaInReadOnlyState.value) {
-        const estado = facturaData.value?.PrimerStado;
-        if (estado === 'observed') {
-            return 'bg-orange-500';
-        }
-        if (estado === 'rejected') {
-            return 'bg-red-500';
-        }
-    }
+    if (isAnyRejected.value) return 'bg-red-500';
+    if (areBothApproved.value) return 'bg-green-600';
+    if (a2Status.value === 'observed' || a1Status.value === 'observed') return 'bg-orange-500';
     return 'bg-blue-500';
 };
 
+
 const getInfoBoxIcon = () => {
-    if (isFacturaInReadOnlyState.value) {
-        const estado = facturaData.value?.PrimerStado;
-        if (estado === 'observed') {
-            return 'pi pi-eye';
-        }
-        if (estado === 'rejected') {
-            return 'pi pi-times';
-        }
-    }
+    if (isAnyRejected.value) return 'pi pi-times';
+    if (areBothApproved.value) return 'pi pi-check-circle';
+    if (a2Status.value === 'observed' || a1Status.value === 'observed') return 'pi pi-eye';
     return 'pi pi-user';
 };
 
+
 const getInfoBoxText = () => {
-    if (isFacturaInReadOnlyState.value) {
-        const estado = facturaData.value?.PrimerStado;
-        if (estado === 'observed') {
-            return 'Factura Observada';
-        }
-        if (estado === 'rejected') {
-            return 'Factura Rechazada';
-        }
+    if (isAnyRejected.value) {
+        return a2Status.value === 'rejected' ? 'Rechazo (Nivel 2)' : 'Rechazo (Nivel 1)';
     }
+    if (areBothApproved.value) return 'Aprobada en ambos niveles';
+    if (a2Status.value === 'observed') return 'Observada (Nivel 2)';
+    if (a1Status.value === 'observed') return 'Observada (Nivel 1)';
+    if (a1Status.value === 'approved' && a2Status.value == null) return 'Pendiente de aprobación (Nivel 2)';
     return 'Acción de Usuario';
 };
+
 
 const getStatusLabel = () => {
     if (!facturaData.value) return '';
 
-    // Prioridad al PrimerStado si existe
-    if (facturaData.value.PrimerStado === 'observed') {
-        return 'Observada';
-    }
-    if (facturaData.value.PrimerStado === 'rejected') {
-        return 'Rechazada';
-    }
+    // Reglas de prioridad sobre aprobaciones/observaciones/rechazos
+    if (isAnyRejected.value) return 'Rechazada';
+    if (areBothApproved.value) return 'Aprobada (N1 y N2)';
+    if (a2Status.value === 'observed') return 'Observada (N2)';
+    if (a1Status.value === 'observed') return 'Observada (N1)';
+    if (a1Status.value === 'approved' && !a2Status.value) return 'Aprobada (N1)';
 
-    // Si no hay PrimerStado, usar el estado normal
+    // Si nada de lo anterior aplica, mostrar estado general
     const statusLabels = {
         'inactive': 'Inactiva',
         'active': 'Activa',
@@ -540,21 +783,18 @@ const getStatusLabel = () => {
         'daStandby': 'En Espera DA',
         'annulled': 'Anulada'
     };
-    return statusLabels[facturaData.value.estado] || facturaData.value.estado;
+    return statusLabels[facturaData.value.estado] || facturaData.value.estado || '';
 };
+
 
 const getStatusTextClass = () => {
     if (!facturaData.value) return 'text-gray-600';
 
-    // Prioridad al PrimerStado si existe
-    if (facturaData.value.PrimerStado === 'observed') {
-        return 'text-orange-600 font-medium';
-    }
-    if (facturaData.value.PrimerStado === 'rejected') {
-        return 'text-red-600 font-medium';
-    }
+    if (isAnyRejected.value) return 'text-red-600 font-medium';
+    if (areBothApproved.value) return 'text-green-700 font-medium';
+    if (a2Status.value === 'observed' || a1Status.value === 'observed') return 'text-orange-600 font-medium';
+    if (a1Status.value === 'approved' && !a2Status.value) return 'text-green-600 font-medium';
 
-    // Si no hay PrimerStado, usar el estado normal
     const statusClasses = {
         'inactive': 'text-gray-600 font-medium',
         'active': 'text-green-600 font-medium',
@@ -568,6 +808,7 @@ const getStatusTextClass = () => {
     };
     return statusClasses[facturaData.value.estado] || 'text-gray-600';
 };
+
 
 const formatCurrency = (value, moneda) => {
     if (!value) return '';

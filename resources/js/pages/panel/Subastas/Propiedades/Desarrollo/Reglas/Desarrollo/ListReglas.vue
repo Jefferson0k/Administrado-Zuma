@@ -43,7 +43,7 @@
             <template #header>
               <div class="flex flex-wrap gap-2 items-center justify-between">
                 <h4 class="m-0">
-                  {{ estadoSeleccionado === '1' ? 'Reglas Inversionista' : 'Reglas Cliente' }}
+                  {{ estadoSeleccionado === '1' ? 'Solicitud Inversionista' : 'Solicitud Cliente' }}
                 </h4>
                 <IconField>
                   <template #icon><i class="pi pi-search" /></template>
@@ -57,20 +57,26 @@
             </template>
 
             <Column selectionMode="multiple" style="width: 3rem" :exportable="false" />
-            <Column field="nombre" header="Propiedad" sortable style="width: 25rem" />
+            <Column field="nombre" header="Solicitud" sortable style="width: 15rem" />
             <Column field="Moneda" header="Moneda" sortable style="width: 5rem" />
-            <Column field="valor_estimado" header="Valor de la propiedad" sortable style="width: 16rem">
+            <Column field="valor_estimado" header="Monto Estimado" sortable style="width: 15rem">
               <template #body="{ data }">{{ formatMoney(data.valor_estimado) }}</template>
             </Column>
             <Column field="requerido" header="Monto Requerido" sortable style="width: 14rem">
               <template #body="{ data }">{{ formatMoney(data.requerido) }}</template>
             </Column>
             <Column field="tea" header="TEA" sortable style="width: 8rem">
-              <template #body="{ data }">{{ data.tea }}%</template>
-            </Column>
-            <Column field="tem" header="TEM" sortable style="width: 8rem">
-              <template #body="{ data }">{{ data.tem }}%</template>
-            </Column>
+  <template #body="{ data }">
+    {{ formatPercent(data.tea) }}
+  </template>
+</Column>
+
+<Column field="tem" header="TEM" sortable style="width: 8rem">
+  <template #body="{ data }">
+    {{ formatPercent(data.tem) }}
+  </template>
+</Column>
+
             <Column field="tipo_cronograma" header="Cronograma" sortable style="width: 10rem">
               <template #body="{ data }">{{ formatCronograma(data.tipo_cronograma) }}</template>
             </Column>
@@ -277,6 +283,15 @@ const copiarId = async () => {
   } catch {
     toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo copiar el ID', life: 3000 })
   }
+}
+
+const formatPercent = (value) => {
+  if (!value && value !== 0) return '0.000%'
+
+  return new Intl.NumberFormat('es-PE', {
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3
+  }).format(value / 100) + '%'
 }
 
 onMounted(() => {

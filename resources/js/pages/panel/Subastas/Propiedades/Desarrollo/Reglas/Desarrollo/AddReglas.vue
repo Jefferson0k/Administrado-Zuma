@@ -491,8 +491,8 @@ const canSaveCliente = computed(() => {
 })
 
 const cronogramaOpciones = [
-    { label: 'Cuota Fija', value: 'frances' },
-    { label: 'Libre Amortización', value: 'americano' }
+    { label: 'Francés', value: 'frances' },
+    { label: 'Americano', value: 'americano' }
 ]
 
 const openDialog = () => {
@@ -519,22 +519,6 @@ const getEstadoSeverity = (estado) => {
     }
 }
 
-const getRiesgoSeverity = (riesgo) => {
-    switch (riesgo) {
-        case 'A+':
-        case 'A':
-            return 'success'
-        case 'B':
-            return 'info'
-        case 'C':
-            return 'warn'
-        case 'D':
-            return 'danger'
-        default:
-            return 'secondary'
-    }
-}
-
 const buscarPropiedades = debounce(async (texto) => {
     if (!texto) {
         propiedades.value = []
@@ -547,8 +531,8 @@ const buscarPropiedades = debounce(async (texto) => {
         })
 
         propiedades.value = response.data.data.map((propiedad) => ({
-            label: `${propiedad.nombre} - ${propiedad.departamento}, ${propiedad.provincia}`,
-            sublabel: `${propiedad.distrito} | ${propiedad.direccion}`,
+            label: `${propiedad.codigo}`,
+            sublabel: `Valor General: ${propiedad.currency_symbol}${propiedad.valor_general} | Valor Requerido: ${propiedad.currency_symbol}${propiedad.valor_requerido}`,
             value: propiedad.id,
             estado: propiedad.estado,
             valor_requerido: propiedad.valor_requerido,
