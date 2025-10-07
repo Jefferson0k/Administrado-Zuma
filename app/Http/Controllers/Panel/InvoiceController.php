@@ -714,4 +714,21 @@ class InvoiceController extends Controller
             return response()->json(['message' => 'Error al crear la factura.', 'error' => $e->getMessage()], 500);
         }
     }
+
+
+     public function cerrar(Invoice $invoice)
+    {
+        // (optional) auth/permissions
+        // $this->authorize('close', $invoice);
+
+        // do your domain logic here
+        // e.g. $invoice->close($request->input('comment'));
+        $invoice->type = 'annulled'; // or whatever “closed” means for you
+        $invoice->save();
+
+        return response()->json([
+            'message' => 'La factura se cerró correctamente',
+            'data' => $invoice,
+        ]);
+    }
 }
