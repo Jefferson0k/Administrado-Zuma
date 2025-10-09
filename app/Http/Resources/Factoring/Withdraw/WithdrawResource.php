@@ -33,8 +33,10 @@ class WithdrawResource extends JsonResource
             'invesrionista'    => $this->investor->name.' '.$this->investor->first_last_name.' '.$this->investor->second_last_name,
             'documento'        => $this->investor->document,
             'tipo_banco'       => $this->bank_account->type,
-            'cc'               => $this->bank_account->cc,
-            'cci'              => $this->bank_account->cci,
+            'cc'               => $this->bank_account?->cc,
+            'cci'              => $this->bank_account?->cci,
+            'alias'            => $this->bank_account?->alias,
+            'banco_cuenta'            => $this->bank_account?->bank?->name,
 
             'status'            => $this->status,
 

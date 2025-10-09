@@ -174,9 +174,7 @@
                                     :loading="loading && actionType === 'observe'" icon="pi pi-eye" severity="warn"
                                     class="px-3" />
 
-                                <Button label="Rechazar" @click="() => { actionType = 'reject'; onReject(); }"
-                                    :loading="loading && actionType === 'reject'" icon="pi pi-times" severity="danger"
-                                    class="px-3" />
+                                
 
                                 <Button label="Aprobar" @click="() => { actionType = 'approve'; onApprove(); }"
                                     :loading="loading && actionType === 'approve'" icon="pi pi-check" severity="success"
@@ -193,9 +191,6 @@
                                     :loading="loading && actionType === 'observe2'" icon="pi pi-eye" severity="warn"
                                     class="px-3" />
 
-                                <Button label="Rechazar" @click="() => { actionType = 'reject2'; onReject2(); }"
-                                    :loading="loading && actionType === 'reject2'" icon="pi pi-times" severity="danger"
-                                    class="px-3" />
 
                                 <Button label="Aprobar" @click="() => { actionType = 'approve2'; onApprove2(); }"
                                     :loading="loading && actionType === 'approve2'" icon="pi pi-check"
@@ -236,7 +231,7 @@ const props = defineProps({
 });
 
 // Emits
-const emit = defineEmits(['update:modelValue', 'approved', 'rejected', 'observed', 'cancelled', 'confirmed']);
+const emit = defineEmits(['update:modelValue', 'approved', 'observed', 'cancelled', 'confirmed']);
 
 // Reactive data
 const visible = ref(props.modelValue);
@@ -298,11 +293,13 @@ const canActLevel2 = computed(() => {
 
 // Mostrar SOLO un grupo de botones a la vez (sin botones deshabilitados)
 const showLevel1Group = computed(() => {
-    if (!facturaData.value) return false;                    // 👈 guard
-    if (isFacturaInReadOnlyState.value) return false;
-    if (a2Status.value === 'observed') return true;
-    return a1Status.value !== 'approved';
+  if (!facturaData.value) return false;
+  if (isFacturaInReadOnlyState.value) return false;
+
+  // Nivel 1 only if it’s still pending or observed itself
+  return ['pending', 'observed', null, undefined, ''].includes(a1Status.value);
 });
+
 
 
 const showLevel2Group = computed(() => {
@@ -314,7 +311,7 @@ const showLevel2Group = computed(() => {
         !!facturaData.value?.approval1_at ||
         !!facturaData.value?.approval1_by;
 
-    return n1Approved && !['approved', 'rejected', 'observed'].includes(a2Status.value ?? '');
+    return n1Approved && !['approved', 'rejected'].includes(a2Status.value ?? '');
 });
 
 
@@ -449,46 +446,7 @@ const onApprove = async () => {
     }
 };
 
-const onReject = async () => {
-    if (!props.facturaId || !comentario.value.trim()) {
-        toast.add({
-            severity: 'warn',
-            summary: 'Comentario requerido',
-            detail: 'Debes agregar un comentario para rechazar la factura',
-            life: 5000
-        });
-        return;
-    }
 
-    try {
-        loading.value = true;
-        actionType.value = 'reject';
-
-        const payload = {
-            comment: comentario.value.trim()
-        };
-
-        const response = await axios.patch(`/invoices/${props.facturaId}/rechazar`, payload);
-
-        toast.add({
-            severity: 'success',
-            summary: 'Éxito',
-            detail: response.data?.message || 'Rechazo registrado correctamente',
-            life: 5000
-        });
-
-        emit('rejected', response.data);
-        emit('confirmed', response.data);
-        visible.value = false;
-
-    } catch (error) {
-        console.error('Error al rechazar factura:', error);
-        handleError(error, 'Error al procesar el rechazo');
-    } finally {
-        loading.value = false;
-        actionType.value = '';
-    }
-};
 
 const onObservar = async () => {
     if (!props.facturaId || !comentario.value.trim()) {
@@ -561,42 +519,7 @@ const onApprove2 = async () => {
     }
 };
 
-const onReject2 = async () => {
-    if (!props.facturaId || !comentario.value.trim()) {
-        toast.add({
-            severity: 'warn',
-            summary: 'Comentario requerido',
-            detail: 'Debes agregar un comentario para rechazar en nivel 2',
-            life: 5000
-        });
-        return;
-    }
 
-    try {
-        loading.value = true;
-        actionType.value = 'reject2';
-
-        const payload = { comment: comentario.value.trim() };
-        const response = await axios.patch(`/invoices/${props.facturaId}/rechazar2`, payload);
-
-        toast.add({
-            severity: 'success',
-            summary: 'Éxito',
-            detail: response.data?.message || 'Rechazo (nivel 2) registrado correctamente',
-            life: 5000
-        });
-
-        emit('rejected', response.data);
-        emit('confirmed', response.data);
-        visible.value = false;
-    } catch (error) {
-        console.error('Error al rechazar factura (nivel 2):', error);
-        handleError(error, 'Error al procesar el rechazo (nivel 2)');
-    } finally {
-        loading.value = false;
-        actionType.value = '';
-    }
-};
 
 const onObservar2 = async () => {
     if (!props.facturaId || !comentario.value.trim()) {

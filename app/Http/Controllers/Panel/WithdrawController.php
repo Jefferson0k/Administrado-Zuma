@@ -123,8 +123,8 @@ class WithdrawController extends Controller
         $withdraw = Withdraw::findOrFail($id);
         Gate::authorize('approve1', $withdraw);
         $request->validate([
-            'nro_operation'    => 'required|string|max:50',
-            'deposit_pay_date' => 'required|date',
+            'nro_operation'    => 'nullable|string|max:50',
+            'deposit_pay_date' => 'nullable|date',
             'description'      => 'nullable|string',
         ]);
         try {

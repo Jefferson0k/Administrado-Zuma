@@ -189,6 +189,7 @@ class InvoiceController extends Controller
             $data['created_by'] = Auth::id();
             $data['updated_by'] = Auth::id();
             $invoice = $service->create($data);
+
             return response()->json([
                 'message' => $request->input('id')
                     ? 'Factura actualizada correctamente.'
@@ -208,6 +209,7 @@ class InvoiceController extends Controller
             Gate::authorize('update', $invoice);
             $invoice->update([
                 'status' => 'daStandby',
+                'condicion_oportunidad' => 'cerrada',
                 'updated_by' => Auth::id(),
             ]);
 
@@ -215,12 +217,27 @@ class InvoiceController extends Controller
             $history = HistoryAprobadorInvoice::where('invoice_id', $invoice->id)
                 ->latest()
                 ->first();
-            $history?->update([
-                'status_conclusion'  => 'daStandby',
-                'approval_conclusion_by'      => Auth::id(),
-                'approval_conclusion_at'      => now(),
-                'approval_conclusion_comment' => $request->input('comment', 'Factura puesta en standby'),
-            ]);
+            if ($history && $history->status_conclusion == null) {
+                $history?->update([
+                    'status_conclusion'  => 'daStandby',
+                    'approval_conclusion_by'      => Auth::id(),
+                    'approval_conclusion_at'      => now(),
+                    'approval_conclusion_comment' => $request->input('comment', 'Factura puesta en standby'),
+                ]);
+            } else {
+
+                HistoryAprobadorInvoice::create([
+                    'invoice_id'       => $invoice->id,
+                    'status_conclusion' => 'daStandby',
+
+                    'approval_conclusion_by'      => Auth::id(),
+                    'approval_conclusion_at'      => now(),
+                    'approval_conclusion_comment' => $request->input('comment', 'Factura puesta en standby'),
+
+                ]);
+            }
+
+
             return response()->json([
                 'message' => 'Factura puesta en standby correctamente.',
                 'data' => $invoice
@@ -323,7 +340,7 @@ class InvoiceController extends Controller
                 'approval1_by'      => $userId,
                 'approval1_at'      => now(),
                 'approval1_comment' => $request->input('comment'),
-                'status'            => 'inactive',
+                'status'            => 'observed',
                 'updated_by'        => $userId,
             ]);
 
@@ -398,8 +415,6 @@ class InvoiceController extends Controller
             $userId = Auth::id();
             Gate::authorize('update', $invoice);
 
-
-
             //Gate::authorize('aprobar factura nivel 2');
 
             $invoice->update([
@@ -411,6 +426,9 @@ class InvoiceController extends Controller
                 'type'              => 'normal',
                 'updated_by'        => $userId,
             ]);
+
+            $invoice->condicion_oportunidad = 'abierta';
+            $invoice->save();
 
             $history = HistoryAprobadorInvoice::where('invoice_id', $invoice->id)
                 ->latest()
@@ -452,7 +470,7 @@ class InvoiceController extends Controller
                 'comment.min'      => 'El comentario debe tener al menos 3 caracteres.'
             ]);
 
-            if ($invoice->approval1_status === 'observed') {
+            if ($invoice->approval2_status === 'observed') {
                 return response()->json([
                     'message' => 'La factura ya fue observada.',
                     'data'    => $invoice
@@ -461,11 +479,10 @@ class InvoiceController extends Controller
 
             $invoice->update([
                 'approval2_status'  => 'observed',
-                'approval1_status'  => null,
                 'approval2_by'      => $userId,
                 'approval2_at'      => now(),
                 'approval2_comment' => $request->input('comment'),
-                'status'            => 'inactive',
+                'status'            => 'observed',
                 'updated_by'        => $userId,
             ]);
 
@@ -579,6 +596,28 @@ class InvoiceController extends Controller
             $data = $request->validated();
             $data['updated_by'] = Auth::id();
             $invoice = $service->update($data, $id);
+            Log::info($data);
+
+
+
+            $history = HistoryAprobadorInvoice::where('invoice_id', $invoice->id)
+                ->latest()
+                ->first();
+            if ($history && $history->fecha_actualizacion == null) {
+                $history?->update([
+                    'updated_by'      => Auth::id(),
+                    'fecha_actualizacion'      => now(),
+                ]);
+            } else {
+
+                HistoryAprobadorInvoice::create([
+                    'invoice_id'       => $invoice->id,
+
+                    'updated_by'      => Auth::id(),
+                    'fecha_actualizacion'      => now(),
+
+                ]);
+            }
             return response()->json([
                 'message' => 'Factura actualizada correctamente.',
                 'data'    => $invoice
@@ -644,7 +683,9 @@ class InvoiceController extends Controller
             ->with([
                 'approval1By:id,name',
                 'approval2By:id,name',
-                'approvalConclusionBy:id,name'
+                'approvalConclusionBy:id,name',
+                'updatedBy:id,name',
+
             ])
             ->orderByDesc('id')
             ->get();
@@ -695,7 +736,33 @@ class InvoiceController extends Controller
 
             $invoice->save();
 
-            Log::info('Adelantar pago data', $data);
+            $history = HistoryAprobadorInvoice::where('invoice_id', $invoice->id)
+                ->latest()
+                ->first();
+
+            if ($history && $history->status_conclusion == null) {
+                $history?->update([
+                    'status_conclusion'  => 'adelantado',
+                    'approval_conclusion_by'      => Auth::id(),
+                    'approval_conclusion_at'      => now(),
+                    'approval_conclusion_comment' => 'Pago adelantado registrado',
+                ]);
+            } else {
+
+                HistoryAprobadorInvoice::create([
+                    'invoice_id'       => $invoice->id,
+                    'status_conclusion' => 'adelantado',
+
+                    'approval_conclusion_by'      => Auth::id(),
+                    'approval_conclusion_at'      => now(),
+                    'approval_conclusion_comment' => 'Pago adelantado registrado',
+                ]);
+            }
+
+
+
+
+
 
             return response()->json([
                 'message' => 'Pago adelantado registrado correctamente.',
@@ -716,18 +783,121 @@ class InvoiceController extends Controller
     }
 
 
-     public function cerrar(Invoice $invoice)
+    public function cerrar(Request $request, Invoice $invoice)
+
     {
+
+        $request->validate([
+            'comentario' => 'nullable|string|max:500',
+        ]);
         // (optional) auth/permissions
         // $this->authorize('close', $invoice);
+        $history = HistoryAprobadorInvoice::where('invoice_id', $invoice->id)
+            ->latest()
+            ->first();
+
+        if ($history && $history->status_conclusion == null) {
+            $history?->update([
+                'status_conclusion'  => 'cerrada',
+                'approval_conclusion_by'      => Auth::id(),
+                'approval_conclusion_at'      => now(),
+                'approval_conclusion_comment' => $request->comentario
+            ]);
+        } else {
+
+            HistoryAprobadorInvoice::create([
+                'invoice_id'       => $invoice->id,
+                'status_conclusion' => 'cerrada',
+
+                'approval_conclusion_by'      => Auth::id(),
+                'approval_conclusion_at'      => now(),
+                'approval_conclusion_comment' => $request->comentario
+            ]);
+        }
+
 
         // do your domain logic here
         // e.g. $invoice->close($request->input('comment'));
-        $invoice->type = 'annulled'; // or whatever “closed” means for you
+        $invoice->condicion_oportunidad = 'cerrada'; // or whatever “closed” means for you
         $invoice->save();
 
         return response()->json([
             'message' => 'La factura se cerró correctamente',
+            'data' => $invoice,
+        ]);
+    }
+
+
+    public function abrir(Request $request, Invoice $invoice)
+
+    {
+
+
+
+
+        
+
+
+
+        $request->validate([
+            'comentario' => 'nullable|string|max:500',
+        ]);
+
+
+        if($invoice->financed_amount <= 0){
+            return response()->json([
+                'message' => 'No se puede abrir la factura. Ya tiene monto financiado.'
+            ], 400);
+        }
+
+         $today = Carbon::today();
+        $limitDate = $today->subDays(25);
+        if($invoice->estimated_pay_date < $limitDate){
+            return response()->json([
+                'message' => 'No se puede abrir la factura. La fecha estimada de pago es menor a 25 días desde hoy.'
+            ], 400);
+        }
+        
+       
+
+        if ($invoice->approval1_status !== 'approved' || $invoice->approval2_status !== 'approved') {
+            return response()->json([
+                'message' => 'No se puede abrir la factura. Ambos niveles de aprobación deben estar en "approved".'
+            ], 400);
+        }
+        // (optional) auth/permissions
+        // $this->authorize('close', $invoice);
+        $history = HistoryAprobadorInvoice::where('invoice_id', $invoice->id)
+            ->latest()
+            ->first();
+
+        if ($history && $history->status_conclusion == null) {
+            $history?->update([
+                'status_conclusion'  => 'abierta',
+                'approval_conclusion_by'      => Auth::id(),
+                'approval_conclusion_at'      => now(),
+                'approval_conclusion_comment' => $request->comentario
+            ]);
+        } else {
+
+            HistoryAprobadorInvoice::create([
+                'invoice_id'       => $invoice->id,
+                'status_conclusion' => 'abierta',
+
+                'approval_conclusion_by'      => Auth::id(),
+                'approval_conclusion_at'      => now(),
+                'approval_conclusion_comment' => $request->comentario
+            ]);
+        }
+
+
+        // do your domain logic here
+        // e.g. $invoice->close($request->input('comment'));
+        $invoice->condicion_oportunidad = 'abierta'; // or whatever “closed” means for you
+        $invoice->save();
+
+        return response()->json([
+            'message' => 'La factura se abrió correctamente',
             'data' => $invoice,
         ]);
     }

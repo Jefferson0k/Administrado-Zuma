@@ -26,6 +26,53 @@ import Dialog from 'primevue/dialog';
 import Calendar from 'primevue/calendar';
 
 
+
+const showAbrirDialog = ref(false);
+const abrirComentario = ref('');
+const abrirLoading = ref(false);
+
+function abrirAbrir(factura) {
+  selectedFacturaId.value = factura.id;
+  showAbrirDialog.value = true;
+}
+
+async function confirmarAbrir() {
+  if (!selectedFacturaId.value) return;
+  try {
+    abrirLoading.value = true;
+    const { data } = await axios.patch(`/invoices/${selectedFacturaId.value}/abrir`, {
+      comentario: abrirComentario.value
+    });
+
+    toast.add({
+      severity: 'success',
+      summary: 'Abierto',
+      detail: data?.message || 'La factura fue abierta correctamente',
+      life: 3000
+    });
+
+    showAbrirDialog.value = false;
+    selectedFacturaId.value = null;
+    abrirComentario.value = '';
+    await loadData();
+  } catch (e) {
+    console.error(e);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: e?.response?.data?.message || 'No se pudo abrir la factura',
+      life: 4000
+    });
+  } finally {
+    abrirLoading.value = false;
+  }
+}
+
+
+const cerrarComentario = ref('');
+
+
+
 // --- NEW: cerrar refs
 const showCerrarDialog = ref(false);
 const cerrarLoading = ref(false);
@@ -43,7 +90,9 @@ async function confirmarCerrar() {
     cerrarLoading.value = true;
 
     // Optional: send extra info (e.g., reason). Here it's plain.
-    const { data } = await axios.patch(`/invoices/${selectedFacturaId.value}/cerrar`);
+    const { data } = await axios.patch(`/invoices/${selectedFacturaId.value}/cerrar`, {
+      comentario: cerrarComentario.value
+    });
 
     toast.add({
       severity: 'success',
@@ -54,6 +103,7 @@ async function confirmarCerrar() {
 
     showCerrarDialog.value = false;
     selectedFacturaId.value = null;
+    cerrarComentario.value = '';
     await loadData();
   } catch (e) {
     console.error(e);
@@ -90,50 +140,64 @@ function computeSemaforoColors(row) {
 
   const a1 = normalize(row.PrimerStado);
   const a2 = normalize(row.SegundaStado);
-  const estado = normalize(row.estado); // "Estado Conclusion"
+  const estado = normalize(row.estado);
 
-  const CLEAR = 'bg-transparent border border-gray-300'; // sin color (solo borde)
-  const WHITE = 'bg-white border border-gray-300';        // rechazado/anulado
+  const CLEAR = 'bg-transparent border border-gray-300';
+  const WHITE = 'bg-white border border-gray-300';
   const GREEN = 'bg-green-500';
   const RED = 'bg-red-500';
   const AMBER = 'bg-amber-400';
   const GRAY = 'bg-gray-300';
 
-  // REGLA NUEVA: si "Estado Conclusion" está en standby → ambos sin color
+  // Estado global en standby → sin color
   if (estado === 'standby') {
     return [CLEAR, CLEAR];
   }
 
-  // Si cualquier estado global o individual es rechazado/anulado → ambos blancos
+  // Rechazado o anulado en cualquier etapa → blancos
   if (a1 === 'rejected' || a2 === 'rejected' || estado === 'rejected' ||
-    estado === 'annulled' || a1 === 'annulled' || a2 === 'annulled') {
+    a1 === 'annulled' || a2 === 'annulled' || estado === 'annulled') {
     return [WHITE, WHITE];
   }
 
   const empty1 = !a1;
   const empty2 = !a2;
 
-  // Ambos sin estado → ambos verdes
+  // Ambos sin estado → blancos (inicio)
   if (empty1 && empty2) {
-    return [GREEN, GREEN];
+    return [WHITE, WHITE];
   }
 
-  // Uno “observed” → ese rojo y el otro ámbar
-  if (a1 === 'observed' && a2 !== 'observed') return [RED, AMBER];
-  if (a2 === 'observed' && a1 !== 'observed') return [AMBER, RED];
+  // 🚫 Si el primer aprobador observó → detener flujo, rojo + ámbar
+  if (a1 === 'observed' && empty2 ) {
+    return [RED, WHITE];
+  }
 
-  // Color individual
+  // 🚫 Si el segundo aprobador observó → detener también (no pasa de ahí)
+  if (a2 === 'observed') {
+    return [AMBER, RED];
+  }
+
+  if (a1 === 'approved' && empty2) {
+    return [GREEN, AMBER];
+  }
+
+  // Si la oportunidad está cerrada → ambos rojos
+
+
+  // Colores normales
   const colorFor = (s) => {
-    if (!s) return GREEN; // sin estado → verde
+    if (!s) return GREEN;
     if (s === 'approved' || s === 'active') return GREEN;
+    if (s === 'pending' || s === 'inactive') return AMBER;
     if (s === 'observed') return RED;
     if (s === 'rejected' || s === 'annulled') return WHITE;
-    if (s === 'pending' || s === 'inactive') return AMBER;
     return GRAY;
   };
 
   return [colorFor(a1), colorFor(a2)];
 }
+
 
 
 
@@ -260,7 +324,7 @@ defineExpose({
 // Funciones para los estados de aprobación
 function getApprovalStatusLabel(status) {
   const approvalLabels = {
-    'pending': 'Inactivo',
+    'pending': 'Pendiente',
     'approved': 'Aprobado',
     'rejected': 'Anulado',
     'active': 'Activado',
@@ -273,7 +337,7 @@ function getApprovalStatusLabel(status) {
 
 function getApprovalStatusSeverity(status) {
   switch (status) {
-    case 'pending': return 'secondary';
+    case 'pending': return 'warning';
     case 'approved': return 'success';
     case 'rejected': return 'danger';
     case 'daStandby': return 'warn';
@@ -463,6 +527,7 @@ async function verHistorialAprobadores(factura) {
   showHistoryDialog.value = true;
   historyLoading.value = true;
   historyRows.value = [];
+  selectedFacturaData.value = factura; // ✅ store selected factura (to access creator later)
   try {
     const { data } = await axios.get(`/invoices/${factura.id}/approval-history`);
     historyRows.value = Array.isArray(data?.data) ? data.data : [];
@@ -481,6 +546,7 @@ async function verHistorialAprobadores(factura) {
 }
 
 
+
 const toggleMenu = (event, factura) => {
   let items = [
     { label: 'Ver factura', icon: 'pi pi-file', command: () => verFactura(factura) },
@@ -494,7 +560,10 @@ const toggleMenu = (event, factura) => {
       { separator: true },
       { label: 'Editar', icon: 'pi pi-pencil', command: () => editFactura(factura) },
       { label: 'Eliminar', icon: 'pi pi-trash', command: () => confirmDelete(factura), class: 'p-menuitem-link-danger' },
+
       { label: 'Cerrar', icon: 'pi pi-times-circle', command: () => abrirCerrar(factura), class: 'p-menuitem-link-danger' }, // NEW
+      { label: 'Abrir', icon: 'pi pi-check-circle', command: () => abrirAbrir(factura), class: 'p-menuitem-link-success' },
+
     ]);
   } else if (factura.estado === 'active') {
     items = items.concat([
@@ -502,21 +571,30 @@ const toggleMenu = (event, factura) => {
       { separator: true },
       { label: 'Poner en standby', icon: 'pi pi-pause', command: () => ponerEnStandby(factura) },
       { label: 'Cerrar', icon: 'pi pi-times-circle', command: () => abrirCerrar(factura), class: 'p-menuitem-link-danger' }, // NEW
+      { label: 'Abrir', icon: 'pi pi-check-circle', command: () => abrirAbrir(factura), class: 'p-menuitem-link-success' },
+
     ]);
   } else if (factura.estado === 'daStandby') {
     items = items.concat([
       { label: 'Gestionar pago', icon: 'pi pi-wallet', command: () => gestionarPago(factura) },
       { label: 'Cerrar', icon: 'pi pi-times-circle', command: () => abrirCerrar(factura), class: 'p-menuitem-link-danger' }, // NEW
+      { label: 'Abrir', icon: 'pi pi-check-circle', command: () => abrirAbrir(factura), class: 'p-menuitem-link-success' },
+
     ]);
   } else if (factura.estado === 'reprogramed') {
     items = items.concat([
       { label: 'Ver inversionistas', icon: 'pi pi-eye', command: () => verInversionistas(factura) },
       { label: 'Cerrar', icon: 'pi pi-times-circle', command: () => abrirCerrar(factura), class: 'p-menuitem-link-danger' }, // NEW
+      { label: 'Abrir', icon: 'pi pi-check-circle', command: () => abrirAbrir(factura), class: 'p-menuitem-link-success' },
+
     ]);
   } else {
     items = items.concat([
       { label: 'Ver inversionistas', icon: 'pi pi-eye', command: () => verInversionistas(factura) },
       { label: 'Cerrar', icon: 'pi pi-times-circle', command: () => abrirCerrar(factura), class: 'p-menuitem-link-danger' }, // NEW
+      { label: 'Abrir', icon: 'pi pi-check-circle', command: () => abrirAbrir(factura), class: 'p-menuitem-link-success' },
+
+
     ]);
   }
 
@@ -524,102 +602,102 @@ const toggleMenu = (event, factura) => {
   menu.value.toggle(event); // ✅ finish the call
 }; //
 
-  let searchTimeout;
-  watch(() => filters.value.search, () => {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => applyFilters(), 500);
-  });
+let searchTimeout;
+watch(() => filters.value.search, () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => applyFilters(), 500);
+});
 
-  const translateTipo = (value) => {
-    if (!value) return null;
+const translateTipo = (value) => {
+  if (!value) return null;
 
-    const traducciones = {
-      'annulled': 'Anulado',
-      'pending': 'Pendiente',
-      'approved': 'Aprobado',
-      'rejected': 'Rechazado'
-    };
-
-    return traducciones[value] || value;
+  const traducciones = {
+    'annulled': 'Anulado',
+    'pending': 'Pendiente',
+    'approved': 'Aprobado',
+    'rejected': 'Rechazado'
   };
 
-  watch([
-    () => filters.value.status,
-    () => filters.value.currency,
-    () => filters.value.min_amount,
-    () => filters.value.max_amount,
-    () => filters.value.min_rate,
-    () => filters.value.max_rate
-  ], () => applyFilters());
-  watch(selectedFilterFields, () => { clearUnselectedFilters(); applyFilters(); });
-  watch(() => props.refresh, () => loadData());
+  return traducciones[value] || value;
+};
 
-  onMounted(() => {
-    loadData();
-  });
+watch([
+  () => filters.value.status,
+  () => filters.value.currency,
+  () => filters.value.min_amount,
+  () => filters.value.max_amount,
+  () => filters.value.min_rate,
+  () => filters.value.max_rate
+], () => applyFilters());
+watch(selectedFilterFields, () => { clearUnselectedFilters(); applyFilters(); });
+watch(() => props.refresh, () => loadData());
 
-
-
-  function condOportunidadMeta(value) {
-    const v = (value || '').toString().toLowerCase().trim();
-    // Etiqueta visible
-    const labelMap = {
-      'abierta': 'Abierta',
-      'open': 'Abierta',
-      'cerrada': 'Cerrada',
-      'closed': 'Cerrada'
-    };
-    // Colores PrimeVue Tag: info = azul, success = verde
-    const severityMap = {
-      'abierta': 'info',
-      'open': 'info',
-      'cerrada': 'danger',
-      'closed': 'danger'
-    };
-    return {
-      label: labelMap[v] || (value || '-'),
-      severity: severityMap[v] || 'secondary'
-    };
-  }
+onMounted(() => {
+  loadData();
+});
 
 
 
-  const showPagoAdelantadoDialog = ref(false);
-  const pagoAdelantadoDate = ref(null);
+function condOportunidadMeta(value) {
+  const v = (value || '').toString().toLowerCase().trim();
+  // Etiqueta visible
+  const labelMap = {
+    'abierta': 'Abierta',
+    'open': 'Abierta',
+    'cerrada': 'Cerrada',
+    'closed': 'Cerrada'
+  };
+  // Colores PrimeVue Tag: info = azul, success = verde
+  const severityMap = {
+    'abierta': 'info',
+    'open': 'info',
+    'cerrada': 'danger',
+    'closed': 'danger'
+  };
+  return {
+    label: labelMap[v] || (value || '-'),
+    severity: severityMap[v] || 'secondary'
+  };
+}
 
 
-  function toYMD(d) {
-    if (!d) return null;
-    const date = new Date(d);
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  }
 
-  function abrirPagoAdelantado(factura) {
-    selectedFacturaId.value = factura.id;
-    pagoAdelantadoDate.value = null;
-    showPagoAdelantadoDialog.value = true;
-  }
+const showPagoAdelantadoDialog = ref(false);
+const pagoAdelantadoDate = ref(null);
 
-  async function confirmarPagoAdelantado() {
-    try {
-      const ymd = toYMD(pagoAdelantadoDate.value);
-      if (!ymd) {
-        toast.add({ severity: 'warn', summary: 'Falta fecha', detail: 'Selecciona una fecha', life: 2500 });
-        return;
-      }
-      await axios.post(`/invoices/${selectedFacturaId.value}/pago-adelantado`, { date: ymd });
-      toast.add({ severity: 'success', summary: 'Guardado', detail: 'Pago adelantado registrado', life: 2500 });
-      showPagoAdelantadoDialog.value = false;
-      selectedFacturaId.value = null;
-      loadData();
-    } catch (e) {
-      console.error(e);
-      toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo registrar el pago adelantado', life: 3000 });
+
+function toYMD(d) {
+  if (!d) return null;
+  const date = new Date(d);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function abrirPagoAdelantado(factura) {
+  selectedFacturaId.value = factura.id;
+  pagoAdelantadoDate.value = null;
+  showPagoAdelantadoDialog.value = true;
+}
+
+async function confirmarPagoAdelantado() {
+  try {
+    const ymd = toYMD(pagoAdelantadoDate.value);
+    if (!ymd) {
+      toast.add({ severity: 'warn', summary: 'Falta fecha', detail: 'Selecciona una fecha', life: 2500 });
+      return;
     }
+    await axios.post(`/invoices/${selectedFacturaId.value}/pago-adelantado`, { date: ymd });
+    toast.add({ severity: 'success', summary: 'Guardado', detail: 'Pago adelantado registrado', life: 2500 });
+    showPagoAdelantadoDialog.value = false;
+    selectedFacturaId.value = null;
+    loadData();
+  } catch (e) {
+    console.error(e);
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo registrar el pago adelantado', life: 3000 });
   }
+}
 
 
 
@@ -726,7 +804,7 @@ const toggleMenu = (event, factura) => {
         </template>
       </Column>
       <Column field="tasa" header="Tasa (%)" sortable style="min-width: 7rem" />
-   
+
       <Column field="PrimerStado" header="1ª Aprobador" sortable style="min-width: 9rem">
         <template #body="slotProps">
           <template v-if="slotProps.data.PrimerStado">
@@ -872,6 +950,9 @@ const toggleMenu = (event, factura) => {
 
     <Dialog v-model:visible="showHistoryDialog" :modal="true" header="Historial de aprobadores"
       :style="{ width: '80vw', maxWidth: '1000px' }">
+
+
+     
       <div v-if="historyLoading" class="p-4 flex items-center gap-2">
         <i class="pi pi-spinner pi-spin text-xl"></i>
         <span>Cargando historial...</span>
@@ -881,19 +962,47 @@ const toggleMenu = (event, factura) => {
         <DataTable :value="historyRows" dataKey="id" :paginator="true" :rows="10" class="p-datatable-sm"
           :emptyMessage="'Sin registros de historial'">
           <Column field="id" header="#" style="width: 5rem" />
+          <Column header="Creador" style="min-width: 10rem">
+            <template #body="{ data }">
+              {{ selectedFacturaData.created_by_name || 'Desconocido' }}
+            </template>
+          </Column>
 
-          <Column header="1ª Estado">
+           <Column field="updated_by" header="Actualizado por" style="min-width: 10rem">
+            <template #body="{ data }">
+              {{ (data.updatedBy?.name || data.updated_by?.name || '-') }}
+            </template>
+          </Column>
+
+
+           <Column header="Fecha Actualización" style="min-width: 14rem">
+            <template #body="{ data }">
+              {{ data.fecha_actualizacion || '-' }}
+            </template>
+          </Column>
+
+
+
+
+          <Column header="1° Estado">
             <template #body="{ data }">
               <Tag :value="getApprovalStatusLabel(data.approval1_status)"
                 :severity="getApprovalStatusSeverity(data.approval1_status)" />
             </template>
           </Column>
-          <Column header="1ª Por">
+
+
+          <Column header="1ª Por" style="min-width: 10rem">
             <template #body="{ data }">
               {{ (data.approval1By?.name || data.approval1_by?.name || '-') }}
             </template>
           </Column>
-          <Column field="approval1_at" header="1ª Fecha" />
+          
+         
+          <Column field="approval1_at" header="1ª Fecha" style="min-width: 10rem" />
+
+          <Column field="approval1_comment" header="Comentario 1ª" style="min-width: 14rem" />
+
 
           <Column header="2ª Estado">
             <template #body="{ data }">
@@ -901,12 +1010,15 @@ const toggleMenu = (event, factura) => {
                 :severity="getApprovalStatusSeverity(data.approval2_status)" />
             </template>
           </Column>
-          <Column header="2ª Por">
+          <Column header="2ª Por" style="min-width: 10rem">
             <template #body="{ data }">
               {{ (data.approval2By?.name || data.approval2_by?.name || '-') }}
             </template>
           </Column>
-          <Column field="approval2_at" header="2ª Fecha" />
+          <Column field="approval2_at" header="2ª Fecha" style="min-width: 10rem" />
+
+          <Column field="approval2_comment" header="Comentario 2ª" style="min-width: 14rem" />
+
 
           <Column header="Conclusión">
             <template #body="{ data }">
@@ -914,15 +1026,13 @@ const toggleMenu = (event, factura) => {
                 :severity="getApprovalStatusSeverity(data.status_conclusion)" />
             </template>
           </Column>
-          <Column header="Conclusión por">
+          <Column header="Conclusión por" style="min-width: 10rem">
             <template #body="{ data }">
               {{ (data.approvalConclusionBy?.name || data.approval_conclusion_by?.name || '-') }}
             </template>
           </Column>
-          <Column field="approval_conclusion_at" header="Fecha conclusión" />
+          <Column field="approval_conclusion_at" header="Fecha conclusión" style="min-width: 10rem" />
 
-          <Column field="approval1_comment" header="Comentario 1ª" style="min-width: 14rem" />
-          <Column field="approval2_comment" header="Comentario 2ª" style="min-width: 14rem" />
           <Column field="approval_conclusion_comment" header="Comentario conclusión" style="min-width: 16rem" />
         </DataTable>
       </div>
@@ -955,12 +1065,45 @@ const toggleMenu = (event, factura) => {
         </div>
       </div>
 
+      <!-- 🆕 Comment input -->
+      <div class="mt-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Comentario (opcional)</label>
+        <textarea v-model="cerrarComentario" class="w-full" placeholder="Ejemplo: Cierre por pago completo"></textarea>
+      </div>
+
       <template #footer>
         <Button label="Cancelar" text icon="pi pi-times" @click="showCerrarDialog = false" :disabled="cerrarLoading" />
         <Button label="Confirmar cierre" icon="pi pi-check" severity="danger" @click="confirmarCerrar"
           :loading="cerrarLoading" />
       </template>
     </Dialog>
+
+
+
+    <Dialog v-model:visible="showAbrirDialog" header="Confirmar apertura" :modal="true" :style="{ width: '26rem' }">
+      <div class="flex gap-3 items-start">
+        <i class="pi pi-info-circle text-green-500 text-2xl mt-1"></i>
+        <div>
+          <p class="font-semibold text-gray-800">¿Deseas abrir esta factura?</p>
+          <p class="text-sm text-gray-600">Esta acción registrará la apertura en el sistema.</p>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Comentario (opcional)</label>
+        <textarea v-model="abrirComentario" rows="3"
+          class="w-full p-inputtext p-component rounded-md border border-gray-300"
+          placeholder="Ejemplo: Apertura manual por revisión"></textarea>
+      </div>
+
+      <template #footer>
+        <Button label="Cancelar" text icon="pi pi-times" @click="showAbrirDialog = false" :disabled="abrirLoading" />
+        <Button label="Confirmar apertura" icon="pi pi-check" severity="success" @click="confirmarAbrir"
+          :loading="abrirLoading" />
+      </template>
+    </Dialog>
+
+
 
 
 

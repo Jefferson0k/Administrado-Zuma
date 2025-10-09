@@ -22,6 +22,8 @@ class HistoryAprobadorInvoice extends Model
         'approval_conclusion_by',
         'approval_conclusion_comment',
         'approval_conclusion_at',
+        'fecha_actualizacion',
+        'updated_by',
     ];
     public function invoice()
     {
@@ -34,6 +36,12 @@ class HistoryAprobadorInvoice extends Model
     public function approval2By()
     {
         return $this->belongsTo(User::class, 'approval2_by');
+    }
+
+
+    public function updatedBy()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
     }
     public function approvalConclusionBy()
     {

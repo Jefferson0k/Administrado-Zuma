@@ -25,10 +25,14 @@ return new class extends Migration
             $table->timestamp('approval2_at')->nullable();
 
 
-            $table->enum('status_conclusion', ['inactive','active','expired','judicialized','reprogramed','paid','canceled','daStandby','annulled','observed','rejected'])->nullable();
+            $table->enum('status_conclusion', ['inactive','active','expired','judicialized','reprogramed','paid','canceled','daStandby','annulled','observed','rejected', 'cerrada','abierta','adelantado'])->nullable();
             $table->foreignId('approval_conclusion_by')->nullable()->constrained('users')->nullOnDelete();
             $table->text('approval_conclusion_comment')->nullable();
             $table->timestamp('approval_conclusion_at')->nullable();
+            $table->timestamp('fecha_actualizacion')->nullable();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+
+
             $table->timestamps();
         });
     }

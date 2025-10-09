@@ -52,18 +52,20 @@ class PermissionSeeder extends Seeder{
         Permission::create(['name' => 'eliminar cargo']);
         Permission::create(['name' => 'ver cargo']);
         // Invoice/Facturas
+        Permission::create(['name' => 'ver factura']);
         Permission::create(['name' => 'crear factura']);
         Permission::create(['name' => 'editar factura']);
-        Permission::create(['name' => 'ver factura']);
+        Permission::create(['name' => 'adelantar pago factura']);
         Permission::create(['name' => 'exportar factura']);
+        Permission::create(['name' => 'aprobar primera validacion factura']);
+        Permission::create(['name' => 'aprobar segunda validacion factura']);
+        Permission::create(['name' => 'poner standby factura']);
+        
         // Inversionistas
         Permission::create(['name' => 'ver inversionistas']);
         Permission::create(['name' => 'editar inversionistas']);
         Permission::create(['name' => 'aprobar primera validacion inversionistas']);
         Permission::create(['name' => 'aprobar segunda validacion inversionistas']);
-        Permission::create(['name' => 'observar dni frontal inversionistas']);
-        Permission::create(['name' => 'observar dni posterior inversionistas']);
-        Permission::create(['name' => 'observar foto inversionistas']);
         Permission::create(['name' => 'subir evidencia espectro inversionistas']);
         Permission::create(['name' => 'subir evidencia pep inversionistas']);
         Permission::create(['name' => 'eliminar evidencia espectro inversionistas']);

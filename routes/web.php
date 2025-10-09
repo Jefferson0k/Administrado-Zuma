@@ -216,11 +216,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{id}/reject-step-one',  [WithdrawController::class, 'rejectStepOne'])->name('withdraws.rejectStepOne');
         Route::post('/{id}/observe-step-two', [WithdrawController::class, 'observeStepTwo'])->name('withdraws.observeStepTwo');
         Route::post('/{id}/reject-step-two',  [WithdrawController::class, 'rejectStepTwo'])->name('withdraws.rejectStepTwo');
-    
-        Route::get('/{id}/approval-history', [WithdrawController::class, 'approvalHistory']);
 
-        
-    
+        Route::get('/{id}/approval-history', [WithdrawController::class, 'approvalHistory']);
     });
 
     // routes/web.php (o routes/api.php si llamas /api/...)
@@ -397,7 +394,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/{id}/activacion', [InvoiceController::class, 'activacion']);
         Route::patch('/{id}/rechazar', [InvoiceController::class, 'rechazar']);
         Route::patch('/{id}/observacion', [InvoiceController::class, 'observacion']);
-         Route::patch('/{id}/activacion2', [InvoiceController::class, 'activacion2']);
+        Route::patch('/{id}/activacion2', [InvoiceController::class, 'activacion2']);
         Route::patch('/{id}/rechazar2', [InvoiceController::class, 'rechazar2']);
         Route::patch('/{id}/observacion2', [InvoiceController::class, 'observacion2']);
         Route::get('/{id}', [InvoiceController::class, 'show'])->name('invoices.show');
@@ -409,8 +406,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/{id}/approval-history', [InvoiceController::class, 'approvalHistory']);
 
         Route::post('/{invoice}/pago-adelantado', [InvoiceController::class, 'adelantarPago'])
-    ->name('adelantar-pago');
-
+            ->name('adelantar-pago');
     });
 
 
@@ -577,9 +573,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/invoices/{invoiceId}/anular', [PaymentsController::class, 'anular'])
         ->name('invoices.anular');
 
-        
-Route::patch('/invoices/{invoice}/cerrar', [InvoiceController::class, 'cerrar'])
-    ->name('invoices.cerrar');
+
+    Route::patch('/invoices/{invoice}/cerrar', [InvoiceController::class, 'cerrar']);
+    Route::patch('/invoices/{invoice}/abrir', [InvoiceController::class, 'abrir'])
+    ->name('invoices.abrir');
 
 });
 

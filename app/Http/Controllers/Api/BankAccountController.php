@@ -11,6 +11,7 @@ use App\Models\Investor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Alias;
+use AWS\CRT\Log;
 use Illuminate\Support\Str;
 
 /**
@@ -154,6 +155,7 @@ class BankAccountController extends Controller
                 'data' => null,
             ], 201);
         } catch (\Throwable $th) {
+            Log::error('Error al eliminar cuenta bancaria: ' . $th->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error interno del servidor',
