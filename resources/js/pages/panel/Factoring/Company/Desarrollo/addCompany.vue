@@ -514,11 +514,11 @@ const serverErrors = ref({});
 const loadingSubsectors = ref(false);
 
 const riesgos = [
-    { label: 'A', value: 0 },
-    { label: 'B', value: 1 },
-    { label: 'C', value: 2 },
-    { label: 'D', value: 3 },
-    { label: 'E', value: 4 },
+    { label: 'A', value: 'A' },
+    { label: 'B', value: 'B' },
+    { label: 'C', value: 'C' },
+    { label: 'D', value: 'D' },
+    { label: 'E', value: 'E' },
 ];
 
 // Opciones de moneda actualizadas para manejar BOTH
