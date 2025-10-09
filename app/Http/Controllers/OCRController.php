@@ -27,7 +27,7 @@ class OCRController extends Controller{
 
         $response = Http::attach(
             'file', file_get_contents($fullPath), $fileName
-        )->post('https://api.ocr.space/parse/image', [
+        )->post('http://api.ocr.space/parse/image', [
             'apikey' => 'K88534373188957',
             'language' => 'spa',
         ]);
