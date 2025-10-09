@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Subastas\Property;
 
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\File;
@@ -9,20 +10,23 @@ use Money\Money;
 use Money\Currencies\ISOCurrencies;
 use Money\Formatter\DecimalMoneyFormatter;
 
-class PropertyConfiguracionResource extends JsonResource
-{
-    public function toArray(Request $request): array
-    {
+class PropertyConfiguracionResource extends JsonResource{
+    public function toArray(Request $request): array{
         $solicitud = $this->solicitud;
-        $property  = $this->property ?? null; // si existe alguna relación property
-
+        $property  = $this->property ?? null;
         return [
             'id'              => $this->id,
             'solicitud_id'    => $this->solicitud_id,
-
-            // 🔹 Convertir a float con 3 decimales, no string
             'tea'             => $this->tea !== null ? round((float) $this->tea, 3) : null,
             'tem'             => $this->tem !== null ? round((float) $this->tem, 3) : null,
+            'estado_conclusion' => $this->estado_conclusion,
+            'approval1_status'  => $this->approval1_status,
+            'approval1_by' => $this->approval1User
+                ? ($this->approval1User->name . ' ' . $this->approval1User->apellidos)
+                : null,
+            'approval1_at' => $this->approval1_at 
+                ? Carbon::parse($this->approval1_at)->format('d/m/Y H:i:s A')
+                : null,
 
             'tipo_cronograma' => $this->tipo_cronograma,
             'riesgo'          => $this->riesgo,
@@ -30,8 +34,6 @@ class PropertyConfiguracionResource extends JsonResource
             'estado_nombre'   => $this->estado === 1 
                                     ? 'Inversionista' 
                                     : ($this->estado === 2 ? 'Cliente' : 'Desconocido'),
-
-            // Campos provenientes de Solicitud o Property
             'nombre'          => $property->nombre ?? $solicitud->codigo ?? '',
             'requerido'       => $property 
                                     ? $this->formatMoney($property->valor_requerido) 
@@ -42,7 +44,6 @@ class PropertyConfiguracionResource extends JsonResource
             'deadlines_id'    => $this->plazo->nombre ?? null,
             'Moneda'          => $property->currency->nombre ?? $solicitud->currency->nombre ?? null,
             'foto'            => $property ? $this->getImagenes() : [asset('Propiedades/no-image.png')],
-            
             'estadoProperty'  => match ($this->solicitud->estado ?? '') {
                 'en_subasta'  => 'En subasta',
                 'activa'      => 'Activa',
@@ -55,7 +56,6 @@ class PropertyConfiguracionResource extends JsonResource
                 'espera'      => 'Espera',
                 default       => 'Estado desconocido',
             },
-
             'cronograma_info' => [
                 'tipo'        => $this->tipo_cronograma === 'americano' 
                                     ? 'Americano (Solo Intereses)' 

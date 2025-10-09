@@ -9,13 +9,15 @@ use App\Http\Requests\PropertyLoanDetail\StorePropertyLoanDetailRequests;
 use App\Http\Resources\Subastas\PropertyLoanDetail\PropertyLoanDetailListResource;
 use App\Http\Resources\Subastas\PropertyLoanDetail\PropertyLoanDetailResource;
 use App\Models\Investor;
-use App\Models\Property;
 use App\Models\PropertyInvestor;
+use App\Models\PropertyLoanDetailApproval;
 use App\Models\Solicitud;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class PropertyLoanDetailController extends Controller{
     public function index(Request $request){
@@ -28,69 +30,95 @@ class PropertyLoanDetailController extends Controller{
 
         return PropertyLoanDetailListResource::collection($loanDetails);
     }
-    public function store(StorePropertyLoanDetailRequests $request)
-    {
+    public function store(StorePropertyLoanDetailRequests $request){
         $validated = $request->validated();
-
-        // Convertir a enteros los campos numéricos
         $validated['monto_tasacion']      = isset($validated['monto_tasacion']) ? (int) $validated['monto_tasacion'] : null;
         $validated['porcentaje_prestamo'] = isset($validated['porcentaje_prestamo']) ? (int) $validated['porcentaje_prestamo'] : null;
         $validated['monto_invertir']      = isset($validated['monto_invertir']) ? (int) $validated['monto_invertir'] : null;
         $validated['monto_prestamo']      = isset($validated['monto_prestamo']) ? (int) $validated['monto_prestamo'] : null;
-
         $validated['created_by'] = Auth::id();
         $validated['updated_by'] = Auth::id();
-
-        // Crear o actualizar PropertyLoanDetail
         $loanDetail = PropertyLoanDetail::updateOrCreate(
             ['solicitud_id' => $validated['solicitud_id']],
             $validated
         );
-
-        // Activar la solicitud asociada
-        $solicitud = $loanDetail->solicitud;
-        if ($solicitud && $solicitud->estado !== 'activa') {
-            $solicitud->estado = 'activa';
-            $solicitud->save();
-        }
-
-        // Actualizar PropertyInvestor y marcar al inversor como asignado
+        $loanDetail->estado_conclusion = 'pendiente';
+        $loanDetail->save();
         $propertyInvestor = PropertyInvestor::where('config_id', $validated['config_id'])->first();
         if ($propertyInvestor) {
             $propertyInvestor->investor_id = $validated['investor_id'];
             $propertyInvestor->save();
-
-            Investor::where('id', $validated['investor_id'])->update(['asignado' => 1]);
+            Investor::where('id', $validated['investor_id'])
+                ->update(['asignado' => 1]);
         }
-
         return response()->json([
-            'status' => 'success',
-            'message' => 'Información del financiamiento guardada correctamente.',
-            'data' => new PropertyLoanDetailResource($loanDetail),
+            'status'  => 'success',
+            'message' => 'Información del financiamiento registrada correctamente. Pendiente de aprobación.',
+            'data'    => new PropertyLoanDetailResource($loanDetail),
         ]);
     }
-    public function show($id){
-    $loanDetail = PropertyLoanDetail::with([
-        'investor',
-        'solicitud.properties.images', // Esto ya trae todas las propiedades de la solicitud
-        'solicitud.configuracionActiva.detalleInversionistaHipoteca',
-    ])->findOrFail($id);
-    
-    $propertyInvestor = PropertyInvestor::where('solicitud_id', $loanDetail->solicitud_id)
-        ->where('config_id', $loanDetail->config_id)
-        ->first();
+    public function approve(Request $request, $id){
+        $validated = $request->validate([
+            'status' => 'required|in:approved,rejected,observed',
+            'comment' => 'nullable|string|max:500',
+        ]);
+        $userId = Auth::id();
+        DB::beginTransaction();
+        try {
+            $loanDetail = PropertyLoanDetail::findOrFail($id);
+            $loanDetail->update([
+                'estado_conclusion' => $validated['status'],
+                'approval1_status'  => $validated['status'],
+                'approval1_by'      => $userId,
+                'approval1_comment' => $validated['comment'] ?? null,
+                'approval1_at'      => now(),
+                'updated_by'        => $userId,
+            ]);
+            PropertyLoanDetailApproval::create([
+                'loan_detail_id' => $loanDetail->id,
+                'status'         => $validated['status'],
+                'approved_by'    => $userId,
+                'comment'        => $validated['comment'] ?? null,
+                'approved_at'    => now(),
+            ]);
+            if ($validated['status'] === 'approved') {
+                Solicitud::where('id', $loanDetail->solicitud_id)
+                    ->update(['estado' => 'activa']);
+            }
+            DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => 'Aprobación registrada correctamente.',
+                'data'    => $loanDetail,
+            ]);
+        } catch (Throwable $e) {
+            DB::rollBack();
 
-    if (!$propertyInvestor) {
-        abort(404, 'No se encontró un inversionista con esta configuración.');
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al registrar la aprobación.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
     }
-
-    $loanDetail->solicitud->setRelation(
-        'paymentSchedules',
-        $propertyInvestor->paymentSchedules
-    );
-
-    return new PropertyLoanDetailResource($loanDetail);
-}
+    public function show($id){
+        $loanDetail = PropertyLoanDetail::with([
+            'investor',
+            'solicitud.properties.images',
+            'solicitud.configuracionActiva.detalleInversionistaHipoteca',
+        ])->findOrFail($id);
+        $propertyInvestor = PropertyInvestor::where('solicitud_id', $loanDetail->solicitud_id)
+            ->where('config_id', $loanDetail->config_id)
+            ->first();
+        if (!$propertyInvestor) {
+            abort(404, 'No se encontró un inversionista con esta configuración.');
+        }
+        $loanDetail->solicitud->setRelation(
+            'paymentSchedules',
+            $propertyInvestor->paymentSchedules
+        );
+        return new PropertyLoanDetailResource($loanDetail);
+    }
     public function update(StorePropertyLoanDetailRequests $request, $id){
         $validated = $request->validated();
         $loanDetail = PropertyLoanDetail::findOrFail($id);
@@ -112,8 +140,6 @@ class PropertyLoanDetailController extends Controller{
     public function activacion(Request $request, $id){
         try {
             $solicitud = Solicitud::findOrFail($id);
-
-            // Validar permiso (opcional, si usas políticas)
             //Gate::authorize('activarSubasta', $solicitud);
             $nuevoEstado = 'en_subasta';
             $diaSubasta = $request->input('dia_subasta');
@@ -163,4 +189,5 @@ class PropertyLoanDetailController extends Controller{
             ], 500);
         }
     }
+    
 }

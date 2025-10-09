@@ -491,8 +491,8 @@ const canSaveCliente = computed(() => {
 })
 
 const cronogramaOpciones = [
-    { label: 'Francés', value: 'frances' },
-    { label: 'Americano', value: 'americano' }
+    { label: 'Sistema Francés (cuota fija)', value: 'frances' },
+    { label: 'Sistema Americano (cuota de interés y pago final)', value: 'americano' }
 ]
 
 const openDialog = () => {
@@ -643,7 +643,7 @@ const actualizarPropiedad = async (tipoUsuario) => {
     }
 }
 const riesgos = [
-    { label: 'Amas', value: 'Amas' },
+    { label: 'A+', value: 'A+' },
     { label: 'A', value: 'A' },
     { label: 'B', value: 'B' },
     { label: 'C', value: 'C' }

@@ -240,6 +240,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
             return back()->with('error', 'Error al reenviar: ' . $result['error']);
         }
     })->name('investors.resend-whatsapp-verification');
+
+    Route::prefix('solicitud')->group(function () {
+        Route::get('/{id}', [SolicitudController::class, 'show']);
+    });
 });
 
 Route::prefix('investments')->group(function () {
@@ -273,7 +277,3 @@ Route::get('/blog/showpost/{id}', [BlogController::class, 'showPost']);
 Route::get('/blog/getcomentarios/{id}', [BlogController::class, 'getComentarios']);
 Route::post('/detalle-inversionista', [DetalleInversionistaHipotecaController::class, 'store']);
 Route::get('/tipo-inmueble', [TipoInmuebleController::class, 'index']);
-
-    Route::prefix('solicitud')->group(function () {
-        Route::get('/{id}', [SolicitudController::class, 'show']);
-    });

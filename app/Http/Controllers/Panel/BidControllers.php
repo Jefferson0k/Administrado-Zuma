@@ -8,10 +8,12 @@ use App\Models\Bid;
 use Illuminate\Http\Request;
 
 class BidControllers extends Controller{
-    public function index(Request $request){
+    public function index(Request $request)
+    {
         $bids = Bid::with([
-            'subasta' => function($query) {
-                $query->with(['ganador', 'property']);
+            'subasta' => function ($query) {
+                // 🔹 Cambiado de 'property' a 'solicitud'
+                $query->with(['ganador', 'solicitud']);
             },
             'investor'
         ])
@@ -26,10 +28,13 @@ class BidControllers extends Controller{
             })
             ->flatten()
             ->sortByDesc('created_at');
+
         $perPage = $request->get('per_page', 10);
         $currentPage = $request->get('page', 1);
         $total = $bids->count();
+
         $paginatedBids = $bids->forPage($currentPage, $perPage)->values();
+
         $response = BidResource::collection($paginatedBids);
         $response->additional([
             'meta' => [

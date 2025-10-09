@@ -69,6 +69,7 @@ use App\Models\TipoDocumento;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\Panel\DetalleInversionistaHipotecaController;
+use App\Http\Controllers\Panel\SolicitudController;
 use App\Http\Controllers\Web\SubastaHipotecas\TipoInmuebleController;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
@@ -387,8 +388,7 @@ Route::post('/withdraws/{withdraw}/pay', [WithdrawController::class, 'pay'])->na
         Route::get('/export/excel', [InvoiceController::class, 'exportExcel'])->name('invoices.export');
     });
 
-
-    #PROPERTY => BACKEND (SOLO ADMINISTRADOR MAS NO CLIENTE)
+    # PROPERTY => BACKEND (SOLO ADMINISTRADOR MAS NO CLIENTE)
     Route::prefix('property')->group(function () {
         Route::get('/', [PropertyControllers::class, 'index'])->name('property.index');
         Route::get('/reglas', [PropertyControllers::class, 'listReglas'])->name('property.listReglas');
@@ -400,6 +400,7 @@ Route::post('/withdraws/{withdraw}/pay', [WithdrawController::class, 'pay'])->na
         Route::delete('/{id}', [PropertyControllers::class, 'delete'])->name('property.delete');
         Route::get('/reglas/{id}/show', [PropertyControllers::class, 'showReglas']);
         Route::post('/enviar-emails', [PropertyControllers::class, 'enviar']);
+        Route::post('/{id}/approve-config', [PropertyControllers::class, 'approveConfig'])->name('property.approveConfig');
     });
 
     Route::get('/propiedad/{id}/cronograma', [PaymentScheduleController::class, 'getCronogramaPorPropiedad']);
@@ -463,10 +464,15 @@ Route::post('/withdraws/{withdraw}/pay', [WithdrawController::class, 'pay'])->na
     Route::prefix('property-loan-details')->group(function () {
         Route::get('/', [PropertyLoanDetailController::class, 'index']);
         Route::post('/', [PropertyLoanDetailController::class, 'store']);
-        Route::get('/{id}', [PropertyLoanDetailController::class, 'show']); // Cliente
+        Route::get('/{id}', [PropertyLoanDetailController::class, 'show']);
         Route::put('/{id}', [PropertyLoanDetailController::class, 'update']);
         Route::delete('/{id}', [PropertyLoanDetailController::class, 'destroy']);
+
+        // 🟩 Nueva ruta para aprobar / rechazar / observar
+        Route::post('/{id}/approve', [PropertyLoanDetailController::class, 'approve'])
+            ->name('property-loan-details.approve');
     });
+
 
     Route::post('/properties/{id}/activacion', [PropertyLoanDetailController::class, 'activacion']);
 
@@ -550,6 +556,12 @@ Route::post('/withdraws/{withdraw}/pay', [WithdrawController::class, 'pay'])->na
     Route::get('/comparacion/results', [PaymentsController::class, 'listResults']);
     Route::post('/invoices/{invoiceId}/anular', [PaymentsController::class, 'anular'])
         ->name('invoices.anular');
+    
+    Route::prefix('solicitud-activacion')->group(function () {
+        Route::put('/{id}', [SolicitudController::class, 'update']);
+    });
+    Route::get('/solicitud-activacion/{id}/historial', [SolicitudController::class, 'showlist'])
+        ->name('solicitud.historial');
 });
 
 

@@ -25,8 +25,8 @@ class BidResource extends JsonResource{
         return [
             'id' => $this->id,
             'monto' => $this->monto,
-            'created_at' => Carbon::parse($this->created_at)->format('d-m-Y H:i'),
-            'updated_at' => Carbon::parse($this->updated_at)->format('d-m-Y H:i'),
+            'created_at' => Carbon::parse($this->created_at)->format('d-m-Y H:i:s A'),
+            'updated_at' => Carbon::parse($this->updated_at)->format('d-m-Y H:i:s A'),
             'investor' => $this->investor->document,
             'nombre' => $this->investor->name . ' ' . $this->investor->first_last_name . ' ' . $this->investor->second_last_name,
             'subasta_id' => $this->subasta ? $this->subasta->id : null,

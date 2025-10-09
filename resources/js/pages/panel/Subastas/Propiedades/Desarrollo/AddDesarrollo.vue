@@ -28,20 +28,22 @@
               <InputText v-model="form.apellidos" fluid :disabled="investorExists" />
             </div>
           </div>
-          <label class="font-bold mb-1">Detalles del cliente</label>
-          <div>
-            <label class="font-bold mb-1">Fuente de Ingresos <span class="text-red-500">*</span></label>
-            <InputText v-model="form.fuente_ingreso" fluid />
-          </div>
+          <div v-if="!investorExists">
+            <label class="font-bold mb-1">Detalles del cliente</label>
+            <div>
+              <label class="font-bold mb-1">Fuente de Ingresos <span class="text-red-500">*</span></label>
+              <InputText v-model="form.fuente_ingreso" fluid />
+            </div>
 
-          <div>
-            <label class="font-bold mb-1">Profesión / Ocupación <span class="text-red-500">*</span></label>
-            <InputText v-model="form.profesion_ocupacion" fluid />
-          </div>
+            <div>
+              <label class="font-bold mb-1">Profesión / Ocupación <span class="text-red-500">*</span></label>
+              <InputText v-model="form.profesion_ocupacion" fluid />
+            </div>
 
-          <div>
-            <label class="font-bold mb-1">Ingreso Promedio (S/.) <span class="text-red-500">*</span></label>
-            <InputNumber v-model="form.ingreso_promedio" mode="currency" currency="PEN" locale="es-PE" fluid />
+            <div>
+              <label class="font-bold mb-1">Ingreso Promedio (S/.) <span class="text-red-500">*</span></label>
+              <InputNumber v-model="form.ingreso_promedio" mode="currency" currency="PEN" locale="es-PE" fluid />
+            </div>
           </div>
 
           <div v-if="dniConsultaExterna && !investorExists"
@@ -138,8 +140,12 @@
               </div>
               <div class="w-1/2">
                 <label class="font-bold mb-2">La Propiedad Pertenece a <span class="text-red-500">(*)</span></label>
-                <InputText
+                <Select
                   v-model="inmuebles[inmuebleActivo].pertenece"
+                  :options="tiposPertenencia"
+                  option-label="label"
+                  option-value="value"
+                  placeholder="Selecciona a quién pertenece"
                   class="w-full"
                   :disabled="inmuebles[inmuebleActivo].bloqueado"
                 />
@@ -573,6 +579,15 @@ const monedas = [
   { label: 'USD ($)', value: 2 }
 ]
 
+const tiposPertenencia = [
+  { label: 'Personal', value: 'Personal' },
+  { label: 'Familiar', value: 'Familiar' },
+  { label: 'Conyugal', value: 'Conyugal' },
+  { label: 'Herencia', value: 'Herencia' },
+  { label: 'Sociedad', value: 'Sociedad' },
+  { label: 'Empresa', value: 'Empresa' }
+]
+
 const generarNumeroSolicitud = (nombreCompleto: string): string => {
   const partes = nombreCompleto.trim().split(' ')
   const primerNombre = partes[0] || ''
@@ -761,6 +776,16 @@ const handleDniInput = async () => {
 }
 
 const puedeContinuarCliente = computed(() => {
+  // Si el inversor existe, solo necesita DNI, nombres y apellidos
+  if (investorExists.value) {
+    return (
+      (form.value.dni?.length === 8) &&
+      (form.value.nombres?.trim() !== '') &&
+      (form.value.apellidos?.trim() !== '')
+    )
+  }
+  
+  // Si es nuevo, necesita todos los campos
   return (
     (form.value.dni?.length === 8) &&
     (form.value.nombres?.trim() !== '') &&
@@ -773,23 +798,17 @@ const puedeContinuarCliente = computed(() => {
 
 const continuarConInversorExistente = async () => {
   try {
-    await axios.post('/api/detalle-inversionista', {
-      investor_id: investorId.value,
-      fuente_ingreso: form.value.fuente_ingreso,
-      profesion_ocupacion: form.value.profesion_ocupacion,
-      ingreso_promedio: form.value.ingreso_promedio,
-    })
-
+    // No enviamos detalles porque el inversor ya existe y ya tiene sus detalles registrados
     form.value.numero_solicitud = generarNumeroSolicitud(form.value.nombres)
     mostrarInmueble.value = true
     toast.add({
       severity: 'success',
-      summary: 'Detalles guardados',
-      detail: 'Se registraron los detalles del cliente. Ahora ingresa los datos de la propiedad',
+      summary: 'Cliente encontrado',
+      detail: 'Cliente existente. Ahora ingresa los datos de la propiedad',
       life: 3000
     })
   } catch (error: any) {
-    const errorMessage = error.response?.data?.message || 'Error al guardar los detalles'
+    const errorMessage = error.response?.data?.message || 'Error al continuar'
     toast.add({
       severity: 'error',
       summary: 'Error',
@@ -890,6 +909,7 @@ const saveProperty = async () => {
       !inm.nombre?.trim() ||
       !inm.direccion?.trim() ||
       !inm.id_tipo_inmueble ||
+      !inm.pertenece ||
       !inm.departamento?.ubigeo_id ||
       !inm.provincia?.ubigeo_id ||
       !inm.distrito?.ubigeo_id

@@ -147,7 +147,7 @@ const model = computed(() => {
                     icon: 'pi pi-fw pi-calendar-plus',
                     to: '/subasta-hipotecas/reserva'
                 },
-                hasPermission('ver pujas') && {
+                {
                     label: 'Histórico de Pujas',
                     icon: 'pi pi-fw pi-chart-line',
                     to: '/subasta-hipotecas/historicos'
