@@ -40,6 +40,18 @@ class SolicitudDetalleResource extends JsonResource
             'property_investors' => PropertyInvestorSimpleResource::collection(
                 $this->whenLoaded('propertyInvestors')->sortBy('id')
             ),
+            'subasta' => $this->configuracionSubasta->subasta ? [
+                'id' => $this->configuracionSubasta->subasta->id,
+                'nombre' => $this->configuracionSubasta->subasta->solicitud?->codigo ?? ('Subasta #' . $this->configuracionSubasta->subasta->id),
+                'estado' => $this->configuracionSubasta->subasta->estado,
+                'dia_subasta' => $this->configuracionSubasta->subasta->dia_subasta,
+                'hora_inicio' => $this->configuracionSubasta->subasta->hora_inicio,
+                'hora_fin' => $this->configuracionSubasta->subasta->hora_fin,
+                'ganador_nombre' => $this->configuracionSubasta->subasta->ganador
+                    ? trim($this->configuracionSubasta->subasta->ganador->name . ' ' . $this->configuracionSubasta->subasta->ganador->first_last_name . ' ' . $this->configuracionSubasta->subasta->ganador->second_last_name)
+                    : null,
+            ] : null,
+
         ];
     }
 

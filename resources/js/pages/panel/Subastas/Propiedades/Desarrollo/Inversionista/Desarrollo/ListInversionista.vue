@@ -30,37 +30,17 @@
         </template>
 
         <Column selectionMode="multiple" style="width: 3rem" :exportable="false" />
-        <Column field="documento" header="DNI" />
-        <Column field="cliente" header="Cliente" />
-        <Column field="codigo_solicitud" header="Solicitud" />
-        <Column field="valor_general" header="Valor Estimado"></Column>
-        <Column field="valor_requerido" header="Valor Requerido"></Column>
-        <Column field="cronograma" header="Tipo Cronograma">
+        <Column field="documento" header="DNI" style="width: 3rem" :exportable="false" />
+        <Column field="cliente" header="Cliente" style="width: 30rem" :exportable="false"/>
+        <Column field="codigo_solicitud" header="Solicitud" style="width: 10rem" :exportable="false" />
+        <Column field="valor_general" header="Valor Estimado" style="width: 15rem" :exportable="false"></Column>
+        <Column field="valor_requerido" header="Valor Requerido" style="width: 15rem" :exportable="false"></Column>
+        <Column field="cronograma" header="Tipo Cronograma" style="width: 15rem" :exportable="false">
             <template #body="{ data }">
                 {{ formatCronograma(data.cronograma) }}
             </template>
         </Column>
         <Column field="plazo" header="Plazo" />
-        
-        <!-- Columnas opcionales -->
-        <!-- <Column v-if="isColumnSelected('ocupacion_profesion')" field="ocupacion_profesion" header="Ocupación/Profesión" style="min-width: 15rem">
-            <template #body="{ data }">
-                <div v-if="data.ocupacion_profesion">
-                    <span v-if="data.ocupacion_profesion.length <= 50">{{ data.ocupacion_profesion }}</span>
-                    <div v-else>
-                        <span>{{ data.ocupacion_profesion.substring(0, 50) }}...</span>
-                        <Button 
-                            label="Leer más" 
-                            link 
-                            size="small" 
-                            class="ml-2 p-0"
-                            @click="openDetailDialog('Ocupación/Profesión', data.ocupacion_profesion, data)"
-                        />
-                    </div>
-                </div>
-                <span v-else>-</span>
-            </template>
-        </Column> -->
 
         <Column v-if="isColumnSelected('motivo_prestamo')" field="motivo_prestamo" header="Motivo del Préstamo" style="min-width: 15rem">
             <template #body="{ data }">
@@ -178,13 +158,22 @@
             </template>
         </Column>
         
-        <Column field="estado_nombre" header="Estado">
+        <Column field="approval1_status" header="1ª Aprobador" sortable style="width: 10rem">
             <template #body="{ data }">
-                <Tag :value="data.estado_nombre" :severity="getEstadoSeverity(data.estado)" />
+                <Tag v-if="data.approval1_status" :value="formatApprovalStatus(data.approval1_status)" :severity="getApprovalStatusSeverity(data.approval1_status)" />
+                <span v-else class="text-gray-400">-</span>
+            </template>
+        </Column>
+        <Column field="approval1_by" header="1ª Usuario" sortable style="width: 20rem" />
+        <Column field="approval1_at" header="T. 1ª Aprobación" sortable style="width: 11rem" />
+
+        <Column field="estado_conclusion" header="Estado Conclusión">
+            <template #body="{ data }">
+                <Tag :value="formatEstadoConclusion(data.estado_conclusion)" :severity="getEstadoConclusionSeverity(data.estado_conclusion)" />
             </template>
         </Column>
 
-        <!-- COLUMNA CORREGIDA - Usando ref() correctamente -->
+        <!-- COLUMNA DE ACCIONES -->
         <Column style="width: 5rem">
             <template #body="{ data }">
                 <div class="flex justify-center">
@@ -304,8 +293,22 @@
         </template>
     </Dialog>
 
-    <A4 v-if="showPrintDialog" :prestamosId="prestamosId" v-model:visible="showPrintDialog"
-        @close="handleClosePrestamo" />
+    <!-- Dialog A4 para Ver Detalle (PDF) -->
+    <A4 
+        v-if="showPrintDialog" 
+        :prestamosId="prestamosId" 
+        v-model:visible="showPrintDialog"
+        @close="handleClosePrestamo" 
+    />
+
+    <!-- Dialog ShowPropertyVer para Aprobar/Revisar -->
+    <ShowPropertyVer 
+        v-model:visible="showPropertyVerDialog" 
+        :prestamosId="prestamosId"
+        @close="handleClosePropertyVer"
+        @approved="handleApproved"
+    />
+
     <Congiguracion v-model:visible="showModal" :idPropiedad="prestamosId" @configuracion-guardada="getData" />
 </template>
 
@@ -327,6 +330,7 @@ import Menu from 'primevue/menu';
 import Textarea from 'primevue/textarea';
 import A4 from './A4.vue';
 import Congiguracion from './Congiguracion.vue';
+import ShowPropertyVer from './ShowPropertyVer.vue';
 
 const toast = useToast();
 const dt = ref();
@@ -337,7 +341,7 @@ const prestamosId = ref(null);
 const showModal = ref(false);
 const currentData = ref(null);
 
-// CORRECCIÓN: Crear un objeto para almacenar las referencias de los menús
+// Crear un objeto para almacenar las referencias de los menús
 const menuRefs = ref({});
 
 // Estados para el MultiSelect y Dialog
@@ -353,13 +357,15 @@ const emailAddress = ref('');
 const emailMessage = ref('');
 const emailSubject = ref('Completar datos del perfil');
 
+// Estado para ShowPropertyVer Dialog
+const showPropertyVerDialog = ref(false);
+
 const filters = ref({
     global: { value: null, matchMode: FilterMatchMode.CONTAINS }
 });
 
 // Columnas opcionales que pueden ser seleccionadas
 const optionalColumns = ref([
-    // { field: 'ocupacion_profesion', header: 'Ocupación/Profesión' },
     { field: 'motivo_prestamo', header: 'Motivo del Préstamo' },
     { field: 'descripcion_financiamiento', header: 'Descripción Financiamiento' },
     { field: 'solicitud_prestamo_para', header: 'Solicitud Para' },
@@ -369,10 +375,61 @@ const optionalColumns = ref([
     { field: 'subasta', header: 'Valor Subasta' },
 ]);
 
-// CORRECCIÓN: Función para establecer referencias de menús
+// Función para establecer referencias de menús
 const setMenuRef = (el, id) => {
     if (el) {
         menuRefs.value[`menu_${id}`] = el;
+    }
+};
+
+// Función para formatear el estado de conclusión
+const formatEstadoConclusion = (estado) => {
+    const estados = {
+        'approved': 'Aprobado',
+        'rejected': 'Rechazado',
+        'observed': 'Observado',
+        'pendiente': 'Pendiente'
+    };
+    return estados[estado] || estado;
+};
+
+// Función para obtener el severity del estado de conclusión
+const getEstadoConclusionSeverity = (estado) => {
+    switch (estado) {
+        case 'approved':
+            return 'success';
+        case 'rejected':
+            return 'danger';
+        case 'observed':
+            return 'warn';
+        case 'pendiente':
+            return 'info';
+        default:
+            return 'secondary';
+    }
+};
+
+// Función para formatear el estado de aprobación
+const formatApprovalStatus = (status) => {
+    const statuses = {
+        'approved': 'Aprobado',
+        'rejected': 'Rechazado',
+        'observed': 'Observado'
+    };
+    return statuses[status] || status;
+};
+
+// Función para obtener el severity del estado de aprobación
+const getApprovalStatusSeverity = (status) => {
+    switch (status) {
+        case 'approved':
+            return 'success';
+        case 'rejected':
+            return 'danger';
+        case 'observed':
+            return 'warn';
+        default:
+            return 'secondary';
     }
 };
 
@@ -399,15 +456,16 @@ const formatCronograma = (cronograma) => {
 
 // Función para obtener los items del menú
 const getMenuItems = (data) => {
-    console.log('Generando menú para:', data); // Debug
     return [
         {
-            label: 'Ver Detalle',
-            icon: 'pi pi-eye',
-            command: () => {
-                console.log('Ver detalle clickeado para:', data); // Debug
-                verDetalle(data);
-            }
+            label: 'Ver Detalle (PDF)',
+            icon: 'pi pi-file-pdf',
+            command: () => verDetalle(data)
+        },
+        {
+            label: 'Aprobar/Revisar',
+            icon: 'pi pi-check-circle',
+            command: () => abrirAprobarRevisar(data)
         },
         {
             separator: true
@@ -447,12 +505,9 @@ const getMenuItems = (data) => {
     ];
 };
 
-// CORRECCIÓN: Función corregida para mostrar/ocultar el menú usando las referencias correctas
+// Función para mostrar/ocultar el menú
 const toggleMenu = (event, data) => {
-    console.log('Toggle menu para:', data); // Debug
     currentData.value = data;
-    
-    // Obtener la referencia del menú específico para esta fila usando el objeto menuRefs
     const menuKey = `menu_${data.id}`;
     const menuComponent = menuRefs.value[menuKey];
     
@@ -465,7 +520,6 @@ const toggleMenu = (event, data) => {
 
 // Función para abrir el dialog de email
 const abrirEmailDialog = (data) => {
-    console.log('Abrir email para:', data); // Debug
     currentData.value = data;
     emailAddress.value = '';
     emailMessage.value = 'Estimado/a inversionista,\n\nEsperamos que se encuentre bien. Le escribimos para solicitar que complete algunos datos faltantes en su perfil de inversionista.\n\nPara completar su información, por favor haga clic en el siguiente botón:\n\n[BOTÓN DE ACCESO]\n\nGracias por su tiempo y confianza.\n\nSaludos cordiales,\nEquipo ZUMA';
@@ -535,7 +589,6 @@ const sendByEmail = async () => {
 
 // Función para descargar PDF
 const descargarPDF = (data) => {
-    console.log('Descargar PDF para:', data); // Debug
     toast.add({ 
         severity: 'info', 
         summary: 'Descarga', 
@@ -559,31 +612,13 @@ const openDetailDialog = (title, content, data) => {
 // Función principal para obtener datos del API
 const getData = async () => {
     try {
-        console.log('Iniciando petición a la API...');
         const response = await axios.get('/property-loan-details');
         
-        console.log('Respuesta completa del servidor:', response);
-        console.log('Datos de respuesta:', response.data);
-        
-        // Verificar que la respuesta tenga la estructura esperada
         if (response.data && Array.isArray(response.data.data)) {
             products.value = response.data.data;
-            console.log('Datos cargados correctamente:', products.value);
-            console.log('Número de registros:', products.value.length);
-            
-            // Verificar la estructura del primer elemento si existe
-            if (products.value.length > 0) {
-                console.log('Primer registro:', products.value[0]);
-            }
         } else if (response.data && Array.isArray(response.data)) {
-            // Por si acaso la respuesta viene directamente como array
             products.value = response.data;
-            console.log('Datos cargados directamente como array:', products.value);
         } else {
-            console.error('Estructura de respuesta inesperada:', response.data);
-            console.error('Tipo de data:', typeof response.data.data);
-            console.error('Es array data?', Array.isArray(response.data.data));
-            
             toast.add({ 
                 severity: 'warn', 
                 summary: 'Advertencia', 
@@ -592,11 +627,6 @@ const getData = async () => {
             products.value = [];
         }
     } catch (error) {
-        console.error('Error completo:', error);
-        console.error('Respuesta del error:', error.response);
-        console.error('Status del error:', error.response?.status);
-        console.error('Datos del error:', error.response?.data);
-        
         let errorMessage = 'No se pudo cargar los datos';
         
         if (error.response?.status === 404) {
@@ -617,37 +647,55 @@ const getData = async () => {
     }
 };
 
+// FUNCIÓN - Ver Detalle abre el PDF (A4)
+const verDetalle = (prestamo) => {
+    console.log('Ver detalle PDF para:', prestamo);
+    prestamosId.value = prestamo.id;
+    showPrintDialog.value = true;
+};
+
+// FUNCIÓN - Aprobar/Revisar abre ShowPropertyVer
+const abrirAprobarRevisar = (prestamo) => {
+    console.log('Aprobar/Revisar para:', prestamo);
+    prestamosId.value = prestamo.id;
+    showPropertyVerDialog.value = true;
+};
+
+// Manejar el cierre del dialog A4
 const handleClosePrestamo = () => {
     showPrintDialog.value = false;
     prestamosId.value = null;
 };
 
-// Función para ver detalle
-const verDetalle = (prestamo) => {
-    console.log('Ver detalle ejecutado con:', prestamo); // Debug
-    prestamosId.value = prestamo.id;
-    showPrintDialog.value = true;
+// Manejar el cierre del dialog ShowPropertyVer
+const handleClosePropertyVer = () => {
+    showPropertyVerDialog.value = false;
+    prestamosId.value = null;
+};
+
+// Manejar cuando se aprueba/rechaza/observa una solicitud
+const handleApproved = () => {
+    // Recargar los datos de la tabla
+    getData();
     toast.add({ 
-        severity: 'info', 
-        summary: 'Ver Detalle', 
-        detail: `Mostrando detalle del préstamo ID: ${prestamo.id} - Cliente: ${prestamo.cliente}` 
+        severity: 'success',
+        summary: 'Actualizado',
+        detail: 'La tabla se ha actualizado con los últimos cambios',
+        life: 3000
     });
 };
 
 const abrirConfiguracion = (data) => {
-    console.log('Abrir configuración para:', data); // Debug
     prestamosId.value = data.solicitud_id;
     showModal.value = true;
 };
 
 const editarPrestamo = (data) => {
-    console.log('Editar préstamo:', data); // Debug
     toast.add({ severity: 'info', summary: 'Editar', detail: `Editar préstamo ${data.id}` });
     // Implementar lógica para editar
 };
 
 const eliminarPrestamo = (data) => {
-    console.log('Eliminar préstamo:', data); // Debug
     toast.add({ severity: 'warn', summary: 'Eliminar', detail: `Eliminar préstamo ${data.id}` });
     // Implementar lógica para eliminar con confirmación
 };

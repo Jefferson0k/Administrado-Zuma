@@ -3,13 +3,6 @@
         :style="{ width: '600px' }">
         <form @submit.prevent="submitForm" class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="col-span-1">
-                <label for="monto_inicial" class="block font-bold mb-2">Rango mínimo para la subasta <span
-                        class="text-red-500">*</span></label>
-                <InputNumber id="monto_inicial" v-model="formData.monto_inicial" mode="currency" currency="PEN" :min="0"
-                    :required="true" placeholder="Ingrese el monto inicial" class="w-full" />
-            </div>
-
-            <div class="col-span-1">
                 <label for="dia_subasta" class="block font-bold mb-2">Día <span class="text-red-500">*</span></label>
                 <Calendar id="dia_subasta" v-model="formData.dia_subasta" :minDate="new Date()" dateFormat="dd/mm/yy"
                     :required="true" class="w-full" placeholder="Seleccione el día" />
@@ -33,7 +26,7 @@
                 <p class="text-gray-800">{{ duracionCalculada || ' ' }}</p>
             </div>
 
-            <div class="col-span-1">
+            <div class="col-span-2">
                 <label class="block font-bold mb-2">Autocompletado</label>
                 <p class="text-gray-800">{{ fechaFinalizacionFormateada || ' ' }}</p>
             </div>
@@ -57,7 +50,6 @@ import axios from 'axios';
 import { useToast } from 'primevue/usetoast';
 import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
-import InputNumber from "primevue/inputnumber";
 import Calendar from "primevue/calendar";
 
 const props = defineProps({
@@ -74,7 +66,7 @@ const mensajeValidacion = ref('');
 
 const formData = ref({
     estado: 'programada',
-    monto_inicial: null,
+    monto_inicial: 0,
     valor_subasta: null,
     dia_subasta: null,
     hora_inicio: null,
@@ -99,7 +91,7 @@ const cargarDatosPropiedad = async () => {
         const data = response.data;
 
         formData.value.estado = data.estado || 'programada';
-        formData.value.monto_inicial = data.monto_inicial || null;
+        formData.value.monto_inicial = 0;
         formData.value.valor_subasta = data.valor_subasta || null;
 
         formData.value.dia_subasta = data.dia_subasta ? new Date(data.dia_subasta) : null;
@@ -151,9 +143,7 @@ const fechaFinalizacionFormateada = computed(() => {
 });
 
 const formularioValido = computed(() => {
-    return formData.value.monto_inicial &&
-        formData.value.monto_inicial > 0 &&
-        formData.value.dia_subasta &&
+    return formData.value.dia_subasta &&
         formData.value.hora_inicio &&
         formData.value.hora_fin &&
         duracionCalculada.value !== '' &&
@@ -168,7 +158,7 @@ const cancelar = () => {
 const resetForm = () => {
     formData.value = {
         estado: 'programada',
-        monto_inicial: null,
+        monto_inicial: 0,
         valor_subasta: null,
         dia_subasta: null,
         hora_inicio: null,

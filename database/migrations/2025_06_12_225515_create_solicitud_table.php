@@ -15,14 +15,19 @@ return new class extends Migration {
             $table->foreignId('currency_id')->constrained('currencies');
             $table->enum('estado', [
                 'en_subasta', 'subastada', 'programada', 'desactivada',
-                'activa', 'adquirido', 'pendiente', 'completo', 'espera'
+                'activa', 'adquirido', 'pendiente', 'completo', 'espera','rejected','observed'
             ])->default('pendiente');
             $table->unsignedTinyInteger('config_total')->default(0);
 
             $table->string('fuente_ingreso', 150)->nullable();
             $table->string('profesion_ocupacion', 150)->nullable();
             $table->decimal('ingreso_promedio', 12, 2)->nullable();
-
+            
+            $table->enum('approval1_status', ['approved', 'rejected', 'observed'])->nullable();
+            $table->foreignId('approval1_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->text('approval1_comment')->nullable();
+            $table->timestamp('approval1_at')->nullable();
+            
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();

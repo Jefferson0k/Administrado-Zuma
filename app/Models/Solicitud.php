@@ -29,7 +29,11 @@ class Solicitud extends Model
         'config_total',
         'fuente_ingreso',
         'profesion_ocupacion',
-        'ingreso_promedio'
+        'ingreso_promedio',
+        'approval1_status',
+        'approval1_by',
+        'approval1_comment',
+        'approval1_at'
     ];
 
     // -------------------------
@@ -114,5 +118,16 @@ class Solicitud extends Model
         return $this->hasOne(PropertyConfiguracion::class, 'solicitud_id')
             ->where('estado', 1);
     }
-
+    public function approvals()
+    {
+        return $this->hasMany(SolicitudApproval::class, 'solicitud_id');
+    }
+    public function approvedBy()
+    {
+        return $this->belongsTo(User::class, 'approval1_by', 'id');
+    }
+    public function property()
+    {
+        return $this->hasOne(Property::class, 'solicitud_id', 'id');
+    }
 }

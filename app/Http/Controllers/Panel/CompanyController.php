@@ -6,7 +6,7 @@ use App\Exports\CompaniesExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\StoreCompanyRequest;
 use App\Http\Requests\Company\UpdateCompanyRequest;
-use App\Http\Requests\CompanyFinance\StoreCompanyFinanceRequest;
+use App\Http\Requests\Company\StoreCompanyFinanceRequest;
 use App\Http\Resources\Factoring\Company\CompanyFinanceResource;
 use App\Http\Resources\Factoring\Company\CompanyResource;
 use App\Models\Company;

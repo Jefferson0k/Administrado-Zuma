@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Subastas\Solicitud;
 
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -18,6 +19,15 @@ class SolicitudResource extends JsonResource
         return [
             'id'                => $this->id,
             'codigo'            => $this->codigo,
+            'approval1_status'  => $this->approval1_status,
+            'approval1_by' => $this->approvedBy
+                ? trim("{$this->approvedBy->name} {$this->approvedBy->apellidos}")
+                : null,
+
+            'approval1_at' => $this->approval1_at 
+                ? Carbon::parse($this->approval1_at)->format('d-m-Y H:i:s') 
+                : null,
+
             'valor_general'     => $this->valor_general 
                                     ? $this->valor_general->getAmount() / 100 
                                     : null,
@@ -31,18 +41,16 @@ class SolicitudResource extends JsonResource
             'document'          => $this->investor?->document,
             'estado_nombre'     => $this->estado,
             'propiedades_count' => $this->properties()->count(),
-
-            // ✅ Configuración en estado 2 (subasta)
             'configuracion_subasta' => $config ? [
                 'id'              => $config->id,
                 'riesgo'          => $config->riesgo,
-                'tem'             => $config->tem, // ya viene procesado en el modelo
+                'tem'             => $config->tem,
                 'tea'             => $config->tea,
                 'tipo_cronograma' => $config->tipo_cronograma,
                 'meses'           => $config->plazo?->duracion_meses,
             ] : null,
 
-            'created_at'        => $this->created_at?->format('Y-m-d H:i:s A'),
+            'created_at'        => $this->created_at?->format('d-m-Y H:i:s A'),
             'updated_at'        => $this->updated_at?->format('Y-m-d H:i:s A'),
         ];
     }

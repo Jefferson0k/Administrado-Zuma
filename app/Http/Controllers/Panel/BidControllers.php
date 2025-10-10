@@ -9,28 +9,27 @@ use Illuminate\Http\Request;
 
 class BidControllers extends Controller{
     public function index(Request $request){
+        $type = $request->get('type', 'solicitud');
+        $perPage = (int) $request->get('per_page', 10);
+        $currentPage = (int) $request->get('page', 1);
         $bids = Bid::with([
-            'subasta' => function($query) {
-                $query->with(['ganador', 'property']);
-            },
-            'investor'
-        ])
-            ->get()
-            ->groupBy('subasta_id')
-            ->map(function ($groupedBids) {
-                return $groupedBids->sortByDesc('monto')->values()->map(function ($bid, $index) {
-                    $bid->puesto = $index + 1;
-                    $bid->es_ganador = $index === 0 && $bid->subasta && $bid->subasta->ganador_id;
+            'investor',
+            'subasta.ganador',
+            'subasta.solicitud',
+            'solicitudBid.solicitud',
+        ])->where('type', $type)->get();
+        if ($type === 'subasta') {
+            $bids = $bids->filter(fn($b) => $b->subasta)
+                ->map(function ($bid) {
+                    $bid->puesto = null;
+                    $bid->es_ganador = $bid->subasta->ganador_id === $bid->investors_id;
                     return $bid;
                 });
-            })
-            ->flatten()
-            ->sortByDesc('created_at');
-        $perPage = $request->get('per_page', 10);
-        $currentPage = $request->get('page', 1);
+        }
+        $bids = $bids->values();
         $total = $bids->count();
-        $paginatedBids = $bids->forPage($currentPage, $perPage)->values();
-        $response = BidResource::collection($paginatedBids);
+        $paginated = $bids->forPage($currentPage, $perPage)->values();
+        $response = BidResource::collection($paginated);
         $response->additional([
             'meta' => [
                 'current_page' => $currentPage,
@@ -39,7 +38,6 @@ class BidControllers extends Controller{
                 'last_page' => ceil($total / $perPage),
             ]
         ]);
-
         return $response;
     }
 }

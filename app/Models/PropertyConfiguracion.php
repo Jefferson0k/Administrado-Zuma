@@ -25,6 +25,11 @@ class PropertyConfiguracion extends Model implements AuditableContract
         'created_by',
         'updated_by',
         'deleted_by',
+        'estado_conclusion',
+        'approval1_status',
+        'approval1_by',
+        'approval1_comment',
+        'approval1_at'
     ];
 
     // -------------------------
@@ -71,8 +76,17 @@ class PropertyConfiguracion extends Model implements AuditableContract
 
     public function subasta()
     {
-        // Relación indirecta: la subasta se asocia por solicitud_id
         return $this->hasOne(Auction::class, 'solicitud_id', 'solicitud_id');
+    }
+    public function approvals(){
+        return $this->hasMany(
+        PropertyConfiguracionApproval::class,
+        'configuracion_id'
+        );
+    }
+    public function approval1User()
+    {
+        return $this->belongsTo(User::class, 'approval1_by');
     }
 
 }
