@@ -12,6 +12,7 @@ use App\Models\Investor;
 use App\Models\PropertyInvestor;
 use App\Models\PropertyLoanDetailApproval;
 use App\Models\Solicitud;
+use App\Models\SolicitudBid;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -82,8 +83,17 @@ class PropertyLoanDetailController extends Controller{
                 'approved_at'    => now(),
             ]);
             if ($validated['status'] === 'approved') {
-                Solicitud::where('id', $loanDetail->solicitud_id)
-                    ->update(['estado' => 'activa']);
+                $solicitud = Solicitud::findOrFail($loanDetail->solicitud_id);
+                $solicitud->update(['estado' => 'activa']);
+                $existeBid = SolicitudBid::where('solicitud_id', $loanDetail->solicitud_id)->exists();
+                if (!$existeBid) {
+                    SolicitudBid::create([
+                        'solicitud_id' => $loanDetail->solicitud_id,
+                        'investor_id'  => $solicitud->investor_id,
+                        'estado'       => 'pendiente',
+                        'created_by'   => $userId,
+                    ]);
+                }
             }
             DB::commit();
             return response()->json([
@@ -93,7 +103,6 @@ class PropertyLoanDetailController extends Controller{
             ]);
         } catch (Throwable $e) {
             DB::rollBack();
-
             return response()->json([
                 'success' => false,
                 'message' => 'Error al registrar la aprobación.',
@@ -189,5 +198,4 @@ class PropertyLoanDetailController extends Controller{
             ], 500);
         }
     }
-    
 }

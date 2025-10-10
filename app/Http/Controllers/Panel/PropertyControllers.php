@@ -13,6 +13,7 @@ use App\Http\Resources\Subastas\Property\PropertyReglaResource;
 use App\Http\Resources\Subastas\Property\PropertyResource;
 use App\Http\Resources\Subastas\Property\PropertyShowResource;
 use App\Http\Resources\Subastas\Property\PropertyUpdateResource;
+use App\Http\Resources\Subastas\SolicitudDetalle\SolicitudDetalleResource;
 use App\Mail\MasiveEmail;
 use App\Models\Auction;
 use App\Models\Currency;
@@ -194,127 +195,138 @@ class PropertyControllers extends Controller{
             'message' => 'Propiedad eliminada correctamente.'
         ], 200);
     }
-public function updateProperty(UpdatePropertyRequest $request, string $solicitudId)
-{
-    $solicitud = Solicitud::with('properties.images')->findOrFail($solicitudId);    
+    public function updateProperty(UpdatePropertyRequest $request, string $solicitudId){
+        $solicitud = Solicitud::with('properties.images')->findOrFail($solicitudId);
+        
+        return DB::transaction(function () use ($request, $solicitud) {
+            $data = $request->validated();
+            
+            // 1. Procesar valor_requerido (lo que el usuario quiere - NO cambia con propiedades)
+            $valorRequerido = $this->convertToCents($data['valor_requerido']);
+            
+            // 2. Calcular el nuevo valor_general (suma de todos los valores estimados)
+            $totalValorEstimado = 0;
+            $updatedProperties = [];
+            
+            foreach ($data['properties'] as $propData) {
+                $valorEstimado = $this->convertToCents($propData['valor_estimado']);
+                $totalValorEstimado += $valorEstimado;
+            }
+            
+            // 3. Actualizar la solicitud
+            $solicitud->update([
+                'valor_requerido' => $valorRequerido,  // Lo que el usuario quiere (fijo)
+                'valor_general' => $totalValorEstimado, // Suma de valores estimados (cambia)
+                'currency_id' => $data['currency_id'],
+            ]);
 
-    return DB::transaction(function () use ($request, $solicitud) {
-        $data = $request->validated();
+            // 4. Obtener IDs de propiedades enviadas para eliminar las que no están
+            $propiedadesEnviadas = collect($data['properties'])
+                ->pluck('id')
+                ->filter()
+                ->toArray();
 
-        // --- Normalizar valor_requerido a entero ---
-        $valorRequerido = preg_replace('/[^\d]/', '', $data['valor_requerido']);
-        $valorRequerido = (int) $valorRequerido;
-
-        // Actualizar solicitud
-        $solicitud->update([
-            'valor_requerido' => $valorRequerido,
-            'currency_id'     => $data['currency_id'],
-        ]);
-
-        // IDs de propiedades que vienen en el request
-        $propiedadesEnviadas = collect($data['properties'])
-            ->pluck('id')
-            ->filter()
-            ->toArray();
-
-        // Eliminar propiedades que ya no están en el request
-        $solicitud->properties()
-            ->whereNotIn('id', $propiedadesEnviadas)
-            ->each(function ($property) {
-                // Eliminar imágenes de S3
-                $property->images->each(function ($image) {
-                    if ($image->path && Storage::disk('s3')->exists($image->path)) {
-                        Storage::disk('s3')->delete($image->path);
-                    }
-                    $image->delete();
+            // 5. Eliminar propiedades que no están en el request
+            $solicitud->properties()
+                ->whereNotIn('id', $propiedadesEnviadas)
+                ->each(function ($property) {
+                    // Eliminar imágenes de S3
+                    $property->images->each(function ($image) {
+                        if ($image->path && Storage::disk('s3')->exists($image->path)) {
+                            Storage::disk('s3')->delete($image->path);
+                        }
+                        $image->delete();
+                    });
+                    $property->delete();
                 });
 
-                $property->delete();
-            });
+            // 6. Actualizar o crear propiedades
+            foreach ($data['properties'] as $propData) {
+                $valorEstimado = $this->convertToCents($propData['valor_estimado']);
+                
+                if (!empty($propData['id'])) {
+                    // Actualizar propiedad existente
+                    $property = Property::findOrFail($propData['id']);
+                    Gate::authorize('update', $property);
+                    
+                    $property->update([
+                        'nombre' => $propData['nombre'],
+                        'direccion' => $propData['direccion'],
+                        'departamento' => $propData['departamento'],
+                        'provincia' => $propData['provincia'],
+                        'distrito' => $propData['distrito'],
+                        'descripcion' => $propData['descripcion'] ?? null,
+                        'pertenece' => $propData['pertenece'] ?? null,
+                        'id_tipo_inmueble' => $propData['id_tipo_inmueble'],
+                        'valor_estimado' => $valorEstimado, // Solo valor_estimado
+                    ]);
+                } else {
+                    // Crear nueva propiedad
+                    $property = Property::create([
+                        'solicitud_id' => $solicitud->id,
+                        'nombre' => $propData['nombre'],
+                        'direccion' => $propData['direccion'],
+                        'departamento' => $propData['departamento'],
+                        'provincia' => $propData['provincia'],
+                        'distrito' => $propData['distrito'],
+                        'descripcion' => $propData['descripcion'] ?? null,
+                        'pertenece' => $propData['pertenece'] ?? null,
+                        'id_tipo_inmueble' => $propData['id_tipo_inmueble'],
+                        'valor_estimado' => $valorEstimado, // Solo valor_estimado
+                        'estado' => 'pendiente',
+                        'created_by' => Auth::id(),
+                    ]);
+                }
 
-        $updatedProperties = [];
-
-        foreach ($data['properties'] as $propData) {
-            // --- Normalizar valor_estimado a entero ---
-            $valorEstimado = preg_replace('/[^\d]/', '', $propData['valor_estimado']);
-            $valorEstimado = (int) $valorEstimado;
-
-            if (!empty($propData['id'])) {
-                // Actualizar propiedad existente
-                $property = Property::findOrFail($propData['id']);
-                Gate::authorize('update', $property);
-
-                $property->update([
-                    'nombre'           => $propData['nombre'],
-                    'direccion'        => $propData['direccion'],
-                    'departamento'     => $propData['departamento'],
-                    'provincia'        => $propData['provincia'],
-                    'distrito'         => $propData['distrito'],
-                    'descripcion'      => $propData['descripcion'] ?? null,
-                    'pertenece'        => $propData['pertenece'] ?? null,
-                    'id_tipo_inmueble' => $propData['id_tipo_inmueble'],
-                    'valor_estimado'   => $valorEstimado,
-                ]);
-            } else {
-                // Crear nueva propiedad
-                $property = Property::create([
-                    'solicitud_id'     => $solicitud->id,
-                    'nombre'           => $propData['nombre'],
-                    'direccion'        => $propData['direccion'],
-                    'departamento'     => $propData['departamento'],
-                    'provincia'        => $propData['provincia'],
-                    'distrito'         => $propData['distrito'],
-                    'descripcion'      => $propData['descripcion'] ?? null,
-                    'pertenece'        => $propData['pertenece'] ?? null,
-                    'id_tipo_inmueble' => $propData['id_tipo_inmueble'],
-                    'valor_estimado'   => $valorEstimado,
-                    'estado'           => 'pendiente',
-                    'created_by'       => Auth::id(),
-                ]);
-            }
-
-            // Eliminar imágenes marcadas para eliminar
-            if (!empty($propData['imagenes_eliminar'])) {
-                $disk = Storage::disk('s3');
-
-                foreach ($propData['imagenes_eliminar'] as $url) {
-                    $filename = basename($url);
-                    $image = $property->images()->where('imagen', $filename)->first();
-
-                    if ($image) {
-                        if ($image->path && $disk->exists($image->path)) {
-                            $disk->delete($image->path);
+                // 7. Manejar imágenes a eliminar
+                if (!empty($propData['imagenes_eliminar'])) {
+                    $disk = Storage::disk('s3');
+                    foreach ($propData['imagenes_eliminar'] as $url) {
+                        $filename = basename($url);
+                        $image = $property->images()->where('imagen', $filename)->first();
+                        if ($image) {
+                            if ($image->path && $disk->exists($image->path)) {
+                                $disk->delete($image->path);
+                            }
+                            $image->deleted_by = Auth::id();
+                            $image->save();
+                            $image->delete();
                         }
-
-                        $image->deleted_by = Auth::id();
-                        $image->save();
-                        $image->delete();
                     }
                 }
+
+                // 8. Procesar nuevas imágenes
+                if (!empty($propData['imagenes'])) {
+                    $this->processPropertyImages(
+                        $propData['imagenes'],
+                        $property,
+                        $propData['descriptions'] ?? []
+                    );
+                }
+
+                $updatedProperties[] = $property->load('images');
             }
 
-            // Subir nuevas imágenes
-            if (!empty($propData['imagenes'])) {
-                $this->processPropertyImages(
-                    $propData['imagenes'],
-                    $property,
-                    $propData['descriptions'] ?? []
-                );
-            }
-
-            $updatedProperties[] = $property->load('images');
+            return response()->json([
+                'success' => true,
+                'message' => 'Solicitud y propiedades actualizadas correctamente.',
+                'solicitud' => $solicitud->fresh()->load(['properties.images', 'currency']),
+                'properties' => $updatedProperties,
+                'resumen_valores' => [
+                    'total_valor_estimado' => $totalValorEstimado, // Suma de propiedades
+                    'valor_requerido_solicitud' => $valorRequerido, // Lo que el usuario quiere
+                    'moneda' => $solicitud->currency->codigo ?? 'PEN'
+                ]
+            ], 200);
+        });
+    }
+    private function convertToCents($value): int{
+        if (is_numeric($value)) {
+            return (int) round($value * 100);
         }
-
-        return response()->json([
-            'success'    => true,
-            'message'    => 'Solicitud y propiedades actualizadas correctamente.',
-            'solicitud'  => $solicitud->fresh()->load(['properties.images', 'currency']),
-            'properties' => $updatedProperties,
-        ], 200);
-    });
-}
-
-
+        $cleaned = preg_replace('/[^\d.]/', '', $value);
+        return (int) round((float) $cleaned * 100);
+    }
     public function index(Request $request){
         Gate::authorize('viewAny', Property::class);
         $perPage = (int) $request->input('per_page', 10);
@@ -678,48 +690,60 @@ public function updateProperty(UpdatePropertyRequest $request, string $solicitud
     }
     public function subastadas(Request $request){
         try {
-            $perPage = $request->input('per_page', 15);
+            $perPage = (int) $request->input('per_page', 15);
             $search = $request->input('search', '');
-            $ordenMonto = $request->input('orden_monto', 'desc');
+            $orden = $request->input('orden', 'desc');
             $ahora = now();
-            $solicitudIdsConSubastasActivas = Auction::where('estado', 'en_subasta')
-                ->where(function ($query) use ($ahora) {
-                    $query->where('dia_subasta', '>', $ahora->toDateString())
-                        ->orWhere(function ($q) use ($ahora) {
-                            $q->where('dia_subasta', '=', $ahora->toDateString())
+            $query = Solicitud::with([
+                'currency',
+                'investor',
+                'properties.images',
+                'properties.tipoInmueble',
+                'configuracionSubasta.plazo',
+                'configuracionSubasta.subasta' => function ($q) use ($ahora) {
+                    $q->where('estado', 'en_subasta')
+                    ->where(function ($q2) use ($ahora) {
+                        $q2->where('dia_subasta', '>', $ahora->toDateString())
+                            ->orWhere(function ($q3) use ($ahora) {
+                                $q3->where('dia_subasta', '=', $ahora->toDateString())
+                                    ->where('hora_fin', '>', $ahora->toTimeString());
+                            });
+                    });
+                },
+                'configuracionSubasta.propertyInvestor',
+                'configuracionSubasta.detalleInversionistaHipoteca',
+                'propertyInvestors.paymentSchedules',
+                'propertyInvestors.configuracion'
+            ])->whereHas('configuracionSubasta.subasta', function ($q) use ($ahora) {
+                $q->where('estado', 'en_subasta')
+                ->where(function ($q2) use ($ahora) {
+                    $q2->where('dia_subasta', '>', $ahora->toDateString())
+                        ->orWhere(function ($q3) use ($ahora) {
+                            $q3->where('dia_subasta', '=', $ahora->toDateString())
                                 ->where('hora_fin', '>', $ahora->toTimeString());
                         });
-                })
-                ->pluck('solicitud_id');
-            $query = PropertyConfiguracion::where('estado', 1)
-                ->whereIn('solicitud_id', $solicitudIdsConSubastasActivas)
-                ->whereHas('solicitud', function ($q) {
-                    $q->where('estado', 'en_subasta');
-                })
-                ->with([
-                    'solicitud.currency',
-                    'solicitud.subasta',
-                    'solicitud.investor',
-                    'plazo'
-                ]);
+                });
+            });
             if (!empty($search)) {
-                $query->whereHas('solicitud', function ($q) use ($search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('codigo', 'like', "%{$search}%")
                     ->orWhereHas('investor', function ($iq) use ($search) {
                         $iq->where('nombre', 'like', "%{$search}%");
                     });
                 });
             }
-            $result = $query->orderBy('id', $ordenMonto)->paginate($perPage);
-            return PropertyConfiguracionSubastaResource::collection($result)->additional([
+            $result = $query->orderBy('id', $orden)->paginate($perPage);
+            return SolicitudDetalleResource::collection($result)->additional([
                 'success' => true,
-                'orden_monto' => $ordenMonto,
+                'message' => 'Solicitudes en subasta obtenidas correctamente.',
+                'orden' => $orden,
             ]);
         } catch (Throwable $th) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al cargar solicitudes en subasta',
+                'message' => 'Error al obtener solicitudes en subasta',
                 'error' => $th->getMessage(),
+                'line' => $th->getLine(),
             ], 500);
         }
     }

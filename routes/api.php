@@ -34,6 +34,7 @@ use App\Http\Controllers\Panel\PropertyInvestorController;
 use App\Http\Controllers\Panel\VisitaProductoController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\Panel\DetalleInversionistaHipotecaController;
+use App\Http\Controllers\Panel\SolicitudBidController;
 use App\Http\Controllers\Panel\SolicitudController;
 use App\Http\Controllers\Panel\TwilioWebhookController;
 use App\Http\Controllers\TipoDocumentoController;
@@ -113,7 +114,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::put('/{id}/estado', [PropertyControllers::class, 'update'])->name('estado.update');
     });
 
-    Route::get('/subastadas', [PropertyControllers::class, 'subastadas'])->name('property.subastadas');
     Route::post('/xd/property', [InvestmentControllers::class, 'store'])->name('bids.index');
     Route::get('/inversiones/usuario', [InvestmentControllers::class, 'indexUser']);
     Route::get('/currencies', [CurrencyControllers::class, 'index']);
@@ -240,12 +240,17 @@ Route::middleware(['auth:sanctum'])->group(function () {
             return back()->with('error', 'Error al reenviar: ' . $result['error']);
         }
     })->name('investors.resend-whatsapp-verification');
+    Route::post('/bids', [SolicitudBidController::class, 'store']);
+    Route::post('/bids/subasta', [SolicitudBidController::class, 'storeSubasta']);
+    Route::get('/bids/solicitud-bid/{solicitudBidId}', [SolicitudBidController::class, 'getBySolicitudBid']);
+    
+
+});
+    Route::get('/subastadas', [PropertyControllers::class, 'subastadas'])->name('property.subastadas');
 
     Route::prefix('solicitud')->group(function () {
         Route::get('/{id}', [SolicitudController::class, 'show']);
     });
-});
-
 Route::prefix('investments')->group(function () {
     Route::post('/simulation/generate', [InvestmentController::class, 'generate']);
 });

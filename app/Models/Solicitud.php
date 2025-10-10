@@ -126,5 +126,8 @@ class Solicitud extends Model
     {
         return $this->belongsTo(User::class, 'approval1_by', 'id');
     }
-
+    public function property()
+    {
+        return $this->hasOne(Property::class, 'solicitud_id', 'id');
+    }
 }
