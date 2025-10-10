@@ -115,7 +115,8 @@
             </div>
             <div class="w-1/2">
               <label class="font-bold mb-2">Pertenece a</label>
-              <InputText v-model="propiedadActual.pertenece" class="w-full" placeholder="Ej: Familia, Personal" />
+              <Select v-model="propiedadActual.pertenece" :options="tiposPertenencia" option-label="label"
+                option-value="value" placeholder="Selecciona a quién pertenece" class="w-full" />
             </div>
           </div>
 
@@ -359,6 +360,15 @@ const departamentos = ref([])
 const monedas = ref([])
 
 const propiedadActual = computed(() => properties.value[propiedadActiva.value])
+
+const tiposPertenencia = [
+  { label: 'Personal', value: 'Personal' },
+  { label: 'Familiar', value: 'Familiar' },
+  { label: 'Conyugal', value: 'Conyugal' },
+  { label: 'Herencia', value: 'Herencia' },
+  { label: 'Sociedad', value: 'Sociedad' },
+  { label: 'Empresa', value: 'Empresa' }
+]
 
 // Cargar catálogos
 const cargarCatalogos = async () => {

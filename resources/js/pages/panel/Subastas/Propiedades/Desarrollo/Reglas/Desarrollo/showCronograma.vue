@@ -176,6 +176,8 @@
                     Cronograma generado: {{ new Date().toLocaleDateString('es-ES') }}
                 </div>
                 <div class="flex gap-3">
+                    <Button label="Exportar CSV" icon="pi pi-file" severity="success" 
+                            outlined @click="exportarCSV" :disabled="!cronograma" />
                     <Button label="Cerrar" icon="pi pi-times" severity="secondary" @click="cerrarDialog" />
                 </div>
             </div>
@@ -278,7 +280,7 @@ const generarCronograma = async () => {
             tem: props.parametros.tem,
             tea: props.parametros.tea,
             plazo: props.parametros.duracion_meses,
-            moneda_id: currencyId // ← Usar la moneda de la propiedad
+            moneda_id: currencyId
         }
 
         console.log('Payload enviado:', payload)
@@ -317,6 +319,92 @@ const formatCurrency = (value: string | number, symbol: string = 'S/') => {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     })}`
+}
+
+const exportarCSV = () => {
+    if (!cronograma.value?.cronograma_final?.pagos) return
+
+    try {
+        // Encabezados del CSV
+        const headers = [
+            'Cuota N°',
+            'Fecha Vencimiento',
+            'Saldo Inicial',
+            'Cuota Total',
+            'Interés',
+            'Capital',
+            'Saldo Final'
+        ]
+
+        // Preparar filas de datos
+        const rows = cronograma.value.cronograma_final.pagos.map(pago => [
+            pago.cuota,
+            pago.vcmto,
+            parseFloat(pago.saldo_inicial || 0).toFixed(2),
+            parseFloat(pago.cuota_neta || 0).toFixed(2),
+            parseFloat(pago.interes || 0).toFixed(2),
+            parseFloat(pago.capital || 0).toFixed(2),
+            parseFloat(pago.saldo_final || 0).toFixed(2)
+        ])
+
+        // Agregar línea vacía y totales
+        rows.push(['', '', '', '', '', '', ''])
+        rows.push([
+            '',
+            'TOTALES',
+            '',
+            totalPagar.value.toFixed(2),
+            totalIntereses.value.toFixed(2),
+            totalCapital.value.toFixed(2),
+            ''
+        ])
+
+        // Construir el contenido CSV
+        let csvContent = headers.join(',') + '\n'
+        rows.forEach(row => {
+            csvContent += row.map(cell => {
+                // Escapar comas y comillas en los datos
+                const cellStr = String(cell)
+                if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+                    return `"${cellStr.replace(/"/g, '""')}"`
+                }
+                return cellStr
+            }).join(',') + '\n'
+        })
+
+        // Crear blob y descargar
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+        const link = document.createElement('a')
+        
+        // Generar nombre del archivo
+        const tipoCronograma = props.parametros.cronograma === 'frances' ? 'Frances' : 'Americano'
+        const nombrePropiedad = props.propiedadData?.nombre?.replace(/\s+/g, '_') || 'Propiedad'
+        const fecha = new Date().toISOString().split('T')[0]
+        const nombreArchivo = `Cronograma_${tipoCronograma}_${nombrePropiedad}_${fecha}.csv`
+
+        link.href = URL.createObjectURL(blob)
+        link.download = nombreArchivo
+        link.style.display = 'none'
+        
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+
+        toast.add({
+            severity: 'success',
+            summary: 'Exportado',
+            detail: 'Cronograma exportado a CSV exitosamente',
+            life: 3000
+        })
+    } catch (err) {
+        console.error('Error al exportar CSV:', err)
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'No se pudo exportar el cronograma a CSV',
+            life: 4000
+        })
+    }
 }
 
 const cerrarDialog = () => {

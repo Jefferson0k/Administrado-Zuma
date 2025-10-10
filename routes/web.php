@@ -69,6 +69,7 @@ use App\Models\TipoDocumento;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\Panel\DetalleInversionistaHipotecaController;
+use App\Http\Controllers\Panel\SolicitudController;
 use App\Http\Controllers\Web\SubastaHipotecas\TipoInmuebleController;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
@@ -409,8 +410,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('adelantar-pago');
     });
 
-
-    #PROPERTY => BACKEND (SOLO ADMINISTRADOR MAS NO CLIENTE)
+    # PROPERTY => BACKEND (SOLO ADMINISTRADOR MAS NO CLIENTE)
     Route::prefix('property')->group(function () {
         Route::get('/', [PropertyControllers::class, 'index'])->name('property.index');
         Route::get('/reglas', [PropertyControllers::class, 'listReglas'])->name('property.listReglas');
@@ -422,6 +422,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/{id}', [PropertyControllers::class, 'delete'])->name('property.delete');
         Route::get('/reglas/{id}/show', [PropertyControllers::class, 'showReglas']);
         Route::post('/enviar-emails', [PropertyControllers::class, 'enviar']);
+        Route::post('/{id}/approve-config', [PropertyControllers::class, 'approveConfig'])->name('property.approveConfig');
     });
 
     Route::get('/propiedad/{id}/cronograma', [PaymentScheduleController::class, 'getCronogramaPorPropiedad']);
@@ -485,10 +486,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('property-loan-details')->group(function () {
         Route::get('/', [PropertyLoanDetailController::class, 'index']);
         Route::post('/', [PropertyLoanDetailController::class, 'store']);
-        Route::get('/{id}', [PropertyLoanDetailController::class, 'show']); // Cliente
+        Route::get('/{id}', [PropertyLoanDetailController::class, 'show']);
         Route::put('/{id}', [PropertyLoanDetailController::class, 'update']);
         Route::delete('/{id}', [PropertyLoanDetailController::class, 'destroy']);
+
+        // 🟩 Nueva ruta para aprobar / rechazar / observar
+        Route::post('/{id}/approve', [PropertyLoanDetailController::class, 'approve'])
+            ->name('property-loan-details.approve');
     });
+
 
     Route::post('/properties/{id}/activacion', [PropertyLoanDetailController::class, 'activacion']);
 
@@ -573,16 +579,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/invoices/{invoiceId}/anular', [PaymentsController::class, 'anular'])
         ->name('invoices.anular');
 
-
+    Route::prefix('solicitud-activacion')->group(function () {
+        Route::put('/{id}', [SolicitudController::class, 'update']);
+    });
+    Route::get('/solicitud-activacion/{id}/historial', [SolicitudController::class, 'showlist'])
+        ->name('solicitud.historial');
     Route::patch('/invoices/{invoice}/cerrar', [InvoiceController::class, 'cerrar']);
     Route::patch('/invoices/{invoice}/abrir', [InvoiceController::class, 'abrir'])
     ->name('invoices.abrir');
-
-});
-
-
-Route::get('/currencies', [CurrencyControllers::class, 'index']);
-Route::get('/s3/{path}', function ($path) {
+    Route::get('/currencies', [CurrencyControllers::class, 'index']);
+    Route::get('/s3/{path}', function ($path) {
     if (!Storage::disk('s3')->exists($path)) {
         abort(404, 'Archivo no encontrado');
     }

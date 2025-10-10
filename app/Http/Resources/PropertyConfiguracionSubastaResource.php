@@ -8,33 +8,39 @@ use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Collection;
 use Exception;
 
 class PropertyConfiguracionSubastaResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $solicitud = $this->solicitud; // ✅ relación belongsTo
+        // ✅ Cargar relaciones necesarias si no están cargadas
+        $this->loadMissing([
+            'solicitud.property.images',
+            'solicitud.subasta',
+            'solicitud.investor', 
+            'solicitud.currency'
+        ]);
+
+        $solicitud = $this->solicitud;
         $subasta = $solicitud?->subasta;
-        $inversionistas = collect(); // ✅ usamos colección
+        $property = $solicitud?->property; // 🔹 Ahora sí: config → solicitud → property
+        
+        $inversionistas = collect();
 
         if ($subasta) {
             $inversionistas = Bid::where('auction_id', $subasta->id)
                 ->with('investor')
                 ->select(
                     'investors_id',
-                    DB::raw('MAX(monto) as monto_maximo'),
                     DB::raw('MAX(created_at) as fecha_ultima_puja')
                 )
                 ->groupBy('investors_id')
-                ->orderBy('monto_maximo', 'desc')
                 ->get()
                 ->map(function ($puja) {
                     return [
                         'nombre' => optional($puja->investor)->name ?? '-',
                         'fecha_inversion' => $puja->fecha_ultima_puja,
-                        'monto' => $puja->monto_maximo,
                     ];
                 });
         }
@@ -59,12 +65,12 @@ class PropertyConfiguracionSubastaResource extends JsonResource
                 'estado' => $subasta->estado,
             ] : null,
 
-            // ✅ Inversionistas pujando
+            // ✅ Inversionistas que han participado
             'inversionistas_pujando' => $inversionistas,
             'total_inversionistas' => $inversionistas->count(),
-            'monto_actual_mayor' => $inversionistas->isNotEmpty()
-                ? $inversionistas->first()['monto']
-                : ($subasta->monto_inicial ?? 0),
+
+            // 🔹 Ya no hay monto, así que usamos solo el monto inicial como referencia
+            'monto_actual_mayor' => $subasta->monto_inicial ?? 0,
 
             // ✅ Campos financieros
             'tea' => $this->tea,
@@ -76,8 +82,8 @@ class PropertyConfiguracionSubastaResource extends JsonResource
             'valor_requerido' => $this->formatMoneyValue($solicitud?->valor_requerido),
             'valor_general' => $this->formatMoneyValue($solicitud?->valor_general),
 
-            // ✅ Imagenes
-            'foto' => $this->getImagenesCorregido($solicitud),
+            // ✅ Imágenes - CORREGIDO
+            'foto' => $this->getImagenesCorregido($property),
         ];
     }
 
@@ -116,16 +122,14 @@ class PropertyConfiguracionSubastaResource extends JsonResource
     }
 
     /**
-     * ✅ Obtener imágenes asociadas
+     * ✅ Obtener imágenes asociadas - CORREGIDO
      */
-    private function getImagenesCorregido($solicitud): array
+    private function getImagenesCorregido($property): array
     {
         $imagenes = [];
 
         try {
-            // Si existe una relación con propiedad dentro de solicitud
-            $property = $solicitud?->property ?? null;
-
+            // 🔹 Usar directamente la propiedad que viene de: config → solicitud → property
             if ($property && method_exists($property, 'getImagenes')) {
                 $imagenesModelo = $property->getImagenes();
                 if (!empty($imagenesModelo)) {
@@ -133,7 +137,7 @@ class PropertyConfiguracionSubastaResource extends JsonResource
                 }
             }
 
-            // Fallback: buscar imágenes en carpeta pública
+            // 🔹 Si no hay imágenes desde el modelo, buscar en archivos
             if ($property && $property->id) {
                 $rutaCarpeta = public_path("Propiedades/{$property->id}");
 
@@ -159,7 +163,7 @@ class PropertyConfiguracionSubastaResource extends JsonResource
 
             return $imagenes;
         } catch (Exception $e) {
-            Log::error("Error obteniendo imágenes para solicitud {$solicitud?->id}", [
+            Log::error("Error obteniendo imágenes para propiedad {$property?->id}", [
                 'error' => $e->getMessage()
             ]);
 

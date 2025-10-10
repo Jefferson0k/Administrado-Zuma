@@ -2,44 +2,20 @@
   <div>
     <Tabs value="1" class="mb-4">
       <TabList>
-        <Tab
-          v-for="tab in tabs"
-          :key="tab.value"
-          :value="tab.value"
-          @click="cambiarTab(tab.value)"
-        >
+        <Tab v-for="tab in tabs" :key="tab.value" :value="tab.value" @click="cambiarTab(tab.value)">
           <i :class="tab.icon" class="mr-2" />
           {{ tab.title }}
         </Tab>
       </TabList>
 
       <TabPanels>
-        <TabPanel
-          v-for="tab in tabs"
-          :key="tab.value"
-          :value="tab.value"
-        >
-          <DataTable
-            ref="dt"
-            :value="products"
-            :paginator="true"
-            :rows="perPage"
-            :rowsPerPageOptions="[5, 10, 25]"
-            :totalRecords="totalRecords"
-            :loading="loading"
-            lazy
-            dataKey="id"
-            :first="(currentPage - 1) * perPage"
+        <TabPanel v-for="tab in tabs" :key="tab.value" :value="tab.value">
+          <DataTable ref="dt" :value="products" :paginator="true" :rows="perPage" :rowsPerPageOptions="[5, 10, 25]"
+            :totalRecords="totalRecords" :loading="loading" lazy dataKey="id" :first="(currentPage - 1) * perPage"
             @page="onPage"
             paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-            currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} reglas"
-            class="p-datatable-sm"
-
-            :sortField="sortField"
-            :sortOrder="sortOrder"
-            sortMode="single"
-            @sort="onSort"
-          >
+            currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} reglas" class="p-datatable-sm"
+            :sortField="sortField" :sortOrder="sortOrder" sortMode="single" @sort="onSort">
             <template #header>
               <div class="flex flex-wrap gap-2 items-center justify-between">
                 <h4 class="m-0">
@@ -47,35 +23,32 @@
                 </h4>
                 <IconField>
                   <template #icon><i class="pi pi-search" /></template>
-                  <InputText
-                    v-model="searchText"
-                    placeholder="Buscar por nombre, cronograma o riesgo..."
-                    @input="buscarReglas"
-                  />
+                  <InputText v-model="searchText" placeholder="Buscar por nombre, cronograma o riesgo..."
+                    @input="buscarReglas" />
                 </IconField>
               </div>
             </template>
 
             <Column selectionMode="multiple" style="width: 3rem" :exportable="false" />
-            <Column field="nombre" header="Solicitud" sortable style="width: 15rem" />
+            <Column field="nombre" header="Solicitud" sortable style="width: 50rem" />
             <Column field="Moneda" header="Moneda" sortable style="width: 5rem" />
-            <Column field="valor_estimado" header="Monto Estimado" sortable style="width: 15rem">
+            <Column field="valor_estimado" header="Monto Estimado" sortable style="width: 100rem">
               <template #body="{ data }">{{ formatMoney(data.valor_estimado) }}</template>
             </Column>
-            <Column field="requerido" header="Monto Requerido" sortable style="width: 14rem">
+            <Column field="requerido" header="Monto Requerido" sortable style="width: 100rem">
               <template #body="{ data }">{{ formatMoney(data.requerido) }}</template>
             </Column>
             <Column field="tea" header="TEA" sortable style="width: 8rem">
-  <template #body="{ data }">
-    {{ formatPercent(data.tea) }}
-  </template>
-</Column>
+              <template #body="{ data }">
+                {{ formatPercent(data.tea) }}
+              </template>
+            </Column>
 
-<Column field="tem" header="TEM" sortable style="width: 8rem">
-  <template #body="{ data }">
-    {{ formatPercent(data.tem) }}
-  </template>
-</Column>
+            <Column field="tem" header="TEM" sortable style="width: 8rem">
+              <template #body="{ data }">
+                {{ formatPercent(data.tem) }}
+              </template>
+            </Column>
 
             <Column field="tipo_cronograma" header="Cronograma" sortable style="width: 10rem">
               <template #body="{ data }">{{ formatCronograma(data.tipo_cronograma) }}</template>
@@ -93,19 +66,23 @@
                 <Tag :value="data.estado_nombre" :severity="getEstadoSeverity(data.estado_nombre)" />
               </template>
             </Column>
-            <Column field="estadoProperty" header="Estado" sortable style="width: 8rem" />
+
+            <Column field="approval1_status" header="1ª Aprobador" sortable style="width: 20rem" />
+            <Column field="approval1_by" header="1ª Usuario" sortable style="width: 30rem" />
+            <Column field="approval1_at" header="T. 1ª Aprobación" sortable style="width: 11rem" />
+
+            <Column field="estado_conclusion" header="Estado Conclusion" sortable style="width: 10rem">
+              <template #body="{ data }">
+                <Tag v-if="data.estado_conclusion" 
+                  :value="formatEstadoConclusion(data.estado_conclusion)" 
+                  :severity="getEstadoConclusionSeverity(data.estado_conclusion)" />
+                <span v-else class="text-gray-400">Pendiente</span>
+              </template>
+            </Column>
             <Column header="" style="width: 1rem">
               <template #body="{ data }">
-                <Button 
-                  icon="pi pi-ellipsis-v" 
-                  text 
-                  rounded 
-                  severity="secondary" 
-                  @click="toggleMenu($event, data)" 
-                  aria-haspopup="true" 
-                  aria-controls="overlay_menu"
-                  v-tooltip.bottom="'Opciones'"
-                />
+                <Button icon="pi pi-ellipsis-v" text rounded severity="secondary" @click="toggleMenu($event, data)"
+                  aria-haspopup="true" aria-controls="overlay_menu" v-tooltip.bottom="'Opciones'" />
               </template>
             </Column>
           </DataTable>
@@ -117,16 +94,11 @@
     <Menu ref="menu" id="overlay_menu" :model="menuItems" :popup="true" />
 
     <!-- Diálogos -->
-    <UpdateReglas
-      v-model="dialogVisible"
-      :regla="reglaSeleccionada"
-      @updated="cargarPropiedades(currentPage, searchText)"
-    />
-    <VerCronograma
-      v-model="dialogCronograma"
-      :propiedad="reglaSeleccionada"
-      @cerrar="dialogCronograma = false"
-    />
+    <UpdateReglas v-model="dialogVisible" :regla="reglaSeleccionada"
+      @updated="cargarPropiedades(currentPage, searchText)" />
+    <VerCronograma v-model="dialogCronograma" :propiedad="reglaSeleccionada" @cerrar="dialogCronograma = false" />
+    <VerDetalleAprobacion v-model="dialogAprobacion" :configuracionId="configuracionIdSeleccionada" 
+      @aprobado="onAprobado" />
   </div>
 </template>
 
@@ -151,6 +123,7 @@ import TabPanel from 'primevue/tabpanel'
 
 import UpdateReglas from './UpdateReglas.vue'
 import VerCronograma from './VerCronograma.vue'
+import VerDetalleAprobacion from './VerDetalleAprobacion.vue'
 
 const dt = ref()
 const menu = ref()
@@ -159,19 +132,21 @@ const toast = useToast()
 const products = ref([])
 const totalRecords = ref(0)
 const currentPage = ref(1)
-const perPage = ref(10)           // ◂ server page size
+const perPage = ref(10)
 const loading = ref(false)
 const searchText = ref('')
 const reglaSeleccionada = ref(null)
 const dialogVisible = ref(false)
 const dialogCronograma = ref(false)
+const dialogAprobacion = ref(false)
+const configuracionIdSeleccionada = ref(null)
 
 // estado activo (1 = Inversionista, 2 = Cliente)
 const estadoSeleccionado = ref('1')
 
 // server-side sorting state
-const sortField = ref(null)       // e.g. 'nombre', 'Moneda', 'tea', ...
-const sortOrder = ref(1)          // 1 asc | -1 desc
+const sortField = ref(null)
+const sortOrder = ref(1)
 
 const tabs = ref([
   { title: 'Inversionista', value: '1', icon: 'pi pi-user' },
@@ -179,9 +154,11 @@ const tabs = ref([
 ])
 
 const menuItems = ref([
-  { label: 'Copiar ID', icon: 'pi pi-copy',     command: () => copiarId() },
-  { label: 'Editar',    icon: 'pi pi-pencil',   command: () => editarRegla() },
-  { label: 'Ver Cronograma', icon: 'pi pi-calendar', command: () => verCronograma() }
+  { label: 'Copiar ID', icon: 'pi pi-copy', command: () => copiarId() },
+  { label: 'Editar', icon: 'pi pi-pencil', command: () => editarRegla() },
+  { label: 'Ver Cronograma', icon: 'pi pi-calendar', command: () => verCronograma() },
+  { separator: true },
+  { label: 'Aprobar/Rechazar', icon: 'pi pi-check-circle', command: () => abrirAprobacion() }
 ])
 
 // dinero pretty
@@ -231,9 +208,9 @@ const cargarPropiedades = async (page = 1, search = '') => {
 
     const { data } = await axios.get('/property/reglas', { params })
 
-    products.value     = data.data || []
+    products.value = data.data || []
     totalRecords.value = data.meta?.total || 0
-    currentPage.value  = data.meta?.current_page || 1
+    currentPage.value = data.meta?.current_page || 1
   } catch (error) {
     toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar las reglas', life: 3000 })
   } finally {
@@ -257,6 +234,24 @@ const getRiesgoSeverity = (riesgo) => {
   }
 }
 
+const formatEstadoConclusion = (estado) => {
+  const estados = {
+    'approved': 'Aprobado',
+    'rejected': 'Rechazado',
+    'observed': 'Observado'
+  }
+  return estados[estado] || estado
+}
+
+const getEstadoConclusionSeverity = (estado) => {
+  switch (estado) {
+    case 'approved': return 'success'
+    case 'rejected': return 'danger'
+    case 'observed': return 'warn'
+    default: return 'secondary'
+  }
+}
+
 const onPage = (event) => {
   currentPage.value = event.page + 1
   perPage.value = event.rows
@@ -265,7 +260,6 @@ const onPage = (event) => {
 
 // PrimeVue sort event (lazy)
 const onSort = (event) => {
-  // event.sortField (string) | event.sortOrder (1|-1)
   sortField.value = event.sortField || null
   sortOrder.value = typeof event.sortOrder === 'number' ? event.sortOrder : 1
   currentPage.value = 1
@@ -274,6 +268,15 @@ const onSort = (event) => {
 
 const editarRegla = () => { dialogVisible.value = true }
 const verCronograma = () => { dialogCronograma.value = true }
+
+const abrirAprobacion = () => {
+  configuracionIdSeleccionada.value = reglaSeleccionada.value.id
+  dialogAprobacion.value = true
+}
+
+const onAprobado = () => {
+  cargarPropiedades(currentPage.value, searchText.value)
+}
 
 const copiarId = async () => {
   try {

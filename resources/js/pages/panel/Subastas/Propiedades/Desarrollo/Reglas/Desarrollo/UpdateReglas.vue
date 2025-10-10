@@ -1,53 +1,27 @@
 <template>
     <Dialog v-model:visible="visible" modal header="Actualizar Regla" :style="{ width: '950px' }">
         <div class="flex flex-col gap-4">
-            <!-- Propiedad (fila completa) -->
-            <div>
-                <label class="block font-semibold mb-2">Propiedad <span class="text-red-500">*</span></label>
-                <Select v-model="propiedadSeleccionada" :options="propiedades" :style="{ width: '100%' }" editable 
-                    optionLabel="label" optionValue="value" showClear placeholder="Buscar propiedad..."
-                    @update:modelValue="onInputChange">
-                    <template #value="{ value }">
-                        <span>{{ getPropiedadLabel(value) }}</span>
-                    </template>
-                    <template #option="{ option }">
-                        <div class="flex justify-between items-center py-2">
-                            <div>
-                                <strong>{{ option.label }}</strong>
-                                <div class="text-sm">{{ option.sublabel }}</div>
-                            </div>
-                            <Tag v-if="option.estado" :value="option.estado"
-                                :severity="getEstadoSeverity(option.estado)" class="ml-3" />
-                        </div>
-                    </template>
-                    <template #empty>
-                        <div class="text-center py-2">Propiedad no encontrada</div>
-                    </template>
-                </Select>
-            </div>
-
-            <!-- Estado (fila completa) -->
-            <div>
-                <label class="block font-semibold mb-2">
-                    Estado <span class="text-red-500">*</span>
-                </label>
-                <Select v-model="estado" :options="estadoOpciones" optionLabel="label" optionValue="value"
-                    placeholder="Seleccionar estado..." class="w-full">
-                    <template #value="{ value }">
-                        <div class="flex items-center gap-2">
-                            <i :class="getEstadoIcon(value)" 
-                               :style="{ color: getEstadoColor(value) }"></i>
-                            <span>{{ getEstadoLabel(value) }}</span>
-                        </div>
-                    </template>
-                    <template #option="{ option }">
-                        <div class="flex items-center gap-2">
-                            <i :class="getEstadoIcon(option.value)" 
-                               :style="{ color: getEstadoColor(option.value) }"></i>
-                            <span>{{ option.label }}</span>
-                        </div>
-                    </template>
-                </Select>
+            <!-- Información de la Solicitud (solo lectura) -->
+            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h3 class="font-semibold text-blue-800 mb-2">Información de la Solicitud</h3>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <span class="font-medium text-blue-700">Solicitud:</span>
+                        <span class="ml-2 text-blue-900">{{ solicitudData.nombreSolicitud || 'N/A' }}</span>
+                    </div>
+                    <div>
+                        <span class="font-medium text-blue-700">Valor General:</span>
+                        <span class="ml-2 text-blue-900">{{ solicitudData.valor_general || 'N/A' }} {{ solicitudData.currency || '' }}</span>
+                    </div>
+                    <div>
+                        <span class="font-medium text-blue-700">Valor Requerido:</span>
+                        <span class="ml-2 text-blue-900">{{ solicitudData.valor_requerido || 'N/A' }} {{ solicitudData.currency || '' }}</span>
+                    </div>
+                    <div>
+                        <span class="font-medium text-blue-700">Moneda:</span>
+                        <span class="ml-2 text-blue-900">{{ solicitudData.currency || 'N/A' }}</span>
+                    </div>
+                </div>
             </div>
 
             <!-- Primera fila de 3 columnas -->
@@ -103,7 +77,7 @@
                         Tipo de usuario <span class="text-red-500">*</span>
                     </label>
                     <Select v-model="tipoUsuario" :options="tipoUsuarioOpciones" optionLabel="label" optionValue="value"
-                        placeholder="Seleccione un tipo..." class="w-full" disabled/>
+                        placeholder="Seleccione un tipo..." class="w-full" />
                 </div>
                 <div>
                     <label class="block font-semibold mb-2">
@@ -133,13 +107,12 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, computed } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import axios from 'axios'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
-import { debounce } from 'lodash'
 import { useToast } from 'primevue/usetoast'
 
 const toast = useToast()
@@ -154,17 +127,15 @@ const emit = defineEmits(['update:modelValue', 'updated'])
 // Reactive data
 const visible = ref(props.modelValue)
 const loading = ref(false)
-const propiedades = ref([])
 const plazos = ref([])
+const solicitudData = ref({})
 
 // Form data
-const propiedadSeleccionada = ref(null)
 const tea = ref('')
 const tem = ref('')
 const cronograma = ref('')
 const deadlines_id = ref(null)
 const riesgo = ref('')
-const estado = ref('')
 const tipoUsuario = ref(null)
 
 // Options
@@ -181,71 +152,12 @@ const riesgos = [
     { label: 'D', value: 'D' }
 ]
 
-const estadoOpciones = [
-    { label: 'Activo', value: 'activa' },
-    { label: 'Desactivo', value: 'desactivada' }
-]
-
 const tipoUsuarioOpciones = [
     { label: 'Inversionista', value: 1 },
     { label: 'Cliente', value: 2 }
 ]
 
-// Computed properties
-const getPropiedadLabel = (id) => {
-    const prop = propiedades.value.find(p => p.value === id)
-    return prop ? prop.label : id
-}
-
 // Utility functions
-const getEstadoSeverity = (estado) => {
-    switch (estado) {
-        case 'pendiente':
-            return 'warn'
-        case 'activa':
-        case 'activo':
-            return 'success'
-        case 'desactivada':
-        case 'desactivo':
-            return 'danger'
-        case 'rechazado':
-            return 'danger'
-        default:
-            return 'info'
-    }
-}
-
-const getEstadoIcon = (estado) => {
-    switch (estado) {
-        case 'activa':
-        case 'activo':
-            return 'pi pi-check-circle'
-        case 'desactivada':
-        case 'desactivo':
-            return 'pi pi-times-circle'
-        default:
-            return 'pi pi-circle'
-    }
-}
-
-const getEstadoColor = (estado) => {
-    switch (estado) {
-        case 'activa':
-        case 'activo':
-            return '#10b981' // Verde
-        case 'desactivada':
-        case 'desactivo':
-            return '#ef4444' // Rojo
-        default:
-            return '#6b7280' // Gris
-    }
-}
-
-const getEstadoLabel = (estado) => {
-    const opcion = estadoOpciones.find(opt => opt.value === estado)
-    return opcion ? opcion.label : estado
-}
-
 const getRiesgoSeverity = (riesgo) => {
     switch (riesgo) {
         case 'A+':
@@ -263,34 +175,6 @@ const getRiesgoSeverity = (riesgo) => {
 }
 
 // Methods
-const buscarPropiedades = debounce(async (texto) => {
-    if (!texto) {
-        propiedades.value = []
-        return
-    }
-
-    try {
-        const response = await axios.get("/propiedades/pendientes", {
-            params: { search: texto },
-        })
-
-        propiedades.value = response.data.data.map((propiedad) => ({
-            label: `${propiedad.nombre} - ${propiedad.departamento}, ${propiedad.provincia}`,
-            sublabel: `${propiedad.distrito} | ${propiedad.direccion}`,
-            value: propiedad.id,
-            estado: propiedad.estado,
-            valor_requerido: propiedad.valor_requerido
-        }))
-    } catch (error) {
-        toast.add({
-            severity: "error",
-            summary: "Error",
-            detail: "Error al buscar propiedades",
-            life: 3000,
-        })
-    }
-}, 500)
-
 const cargarPlazos = async () => {
     try {
         const response = await axios.get('/deadlines')
@@ -312,24 +196,17 @@ const cargarDatosRegla = async () => {
         const response = await axios.get(`/property/reglas/${props.regla.id}/show`)
         const reglaData = response.data.data
 
+        // Guardar todos los datos de la solicitud
+        solicitudData.value = reglaData
+
         // Llenar los campos del formulario
-        propiedadSeleccionada.value = reglaData.idProperty  // Usar idProperty del response
         tea.value = reglaData.tea
         tem.value = reglaData.tem
         cronograma.value = reglaData.tipo_cronograma
         deadlines_id.value = reglaData.deadlines_id
         riesgo.value = reglaData.riesgo
-        estado.value = reglaData.estado
         tipoUsuario.value = reglaData.estado_configuracion
 
-        // Cargar la propiedad actual en el select para que aparezca el nombre
-        propiedades.value = [{
-            label: reglaData.nombreProperty, // Usar nombreProperty del response
-            sublabel: `${props.regla.distrito || ''} | ${props.regla.direccion || ''}`,
-            value: reglaData.idProperty, // Usar idProperty como value (debe coincidir con propiedadSeleccionada)
-            estado: reglaData.estado,
-            valor_requerido: props.regla.valor_requerido || 0
-        }]
     } catch (error) {
         toast.add({
             severity: "error",
@@ -341,15 +218,13 @@ const cargarDatosRegla = async () => {
 }
 
 const resetForm = () => {
-    propiedadSeleccionada.value = null
     tea.value = ''
     tem.value = ''
     cronograma.value = ''
     deadlines_id.value = null
     riesgo.value = ''
-    estado.value = ''
     tipoUsuario.value = null
-    propiedades.value = []
+    solicitudData.value = {}
 }
 
 const cerrarModal = () => {
@@ -357,15 +232,9 @@ const cerrarModal = () => {
     resetForm()
 }
 
-const onInputChange = (value) => {
-    if (value && typeof value === 'string') {
-        buscarPropiedades(value)
-    }
-}
-
 const saveProperty = async () => {
     // Validar que todos los campos requeridos estén llenos
-    if (!estado.value || !tea.value || !tem.value || !deadlines_id.value || !riesgo.value || !cronograma.value || !tipoUsuario.value) {
+    if (!tea.value || !tem.value || !deadlines_id.value || !riesgo.value || !cronograma.value || !tipoUsuario.value) {
         toast.add({ 
             severity: 'warn', 
             summary: 'Validación', 
@@ -375,26 +244,15 @@ const saveProperty = async () => {
         return
     }
 
-    if (!propiedadSeleccionada.value) {
-        toast.add({
-            severity: 'warn',
-            summary: 'Falta propiedad',
-            detail: 'Seleccione una propiedad válida',
-            life: 3000
-        })
-        return
-    }
-
     loading.value = true
     try {
-        const response = await axios.put(`/property/${propiedadSeleccionada.value}/estado`, {
+        const response = await axios.put(`/property/reglas/${props.regla.id}/update`, {
             tea: tea.value,
             tem: tem.value,
             deadlines_id: deadlines_id.value,
             riesgo: riesgo.value,
             tipo_cronograma: cronograma.value,
-            estado_property: estado.value, // Para la tabla Property ('activa' o 'desactiva')
-            estado_configuracion: tipoUsuario.value, // Para la tabla PropertyConfiguracion (1 o 2)
+            estado_configuracion: tipoUsuario.value,
         })
 
         toast.add({

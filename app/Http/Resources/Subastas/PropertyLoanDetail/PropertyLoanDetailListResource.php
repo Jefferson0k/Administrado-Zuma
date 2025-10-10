@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Subastas\PropertyLoanDetail;
 
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Money\Money;
@@ -25,6 +26,15 @@ class PropertyLoanDetailListResource extends JsonResource
 
         return [
             'id' => $this->id,
+            'estado_conclusion' => $this->estado_conclusion,
+            'approval1_status'   => $this->approval1_status,
+            'approval1_by' => $this->approval1User
+                ? ($this->approval1User->name . ' ' . $this->approval1User->apellidos)
+                : null,
+            'approval1_at' => $this->approval1_at 
+                ? Carbon::parse($this->approval1_at)->format('d/m/Y H:i:s A')
+                : null,
+
             'solicitud_id' => $this->solicitud_id,
             'codigo_solicitud' => $solicitud?->codigo ?? 'Sin código', // Código de la solicitud
             'investor_id' => $this->investor_id,
