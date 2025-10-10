@@ -77,6 +77,7 @@ use Illuminate\Support\Facades\Storage;
 Route::get('/', function () {
     return Inertia::render('Welcome');
 })->name('home');
+
 Route::get('/investors/{id}', [InvestorController::class, 'show']);
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -97,11 +98,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/ban/{id}/attachments/{attachment}', [BankAccountsController::class, 'destroyAttachment'])
         ->name('bank-accounts.attachments.destroy');
 
-
-
     Route::get('/ban/{bankAccount}/history', [BankAccountsController::class, 'history']);
-
-
 
     #PARA QUE CUANDO SE CREA UN USUARIO O MODIFICA SU PASSWORD LO REDIRECCIONE PARA QUE PUEDA ACTUALIZAR
     Route::get('/dashboard', function () {
@@ -133,7 +130,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/blog/lista', [BlogController::class, 'lista']);
 
-
     #RUTAS DE API
     Route::prefix('api')->group(function () {
         Route::get('/consultar-ruc/{ruc?}', [ConsultasRucController::class, 'consultar'])->name('consultar.ruc');
@@ -145,7 +141,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     #RUTAS DE WEB EN LA PARTE DE FACTORING
-
     Route::prefix('factoring')->group(function () {
         Route::get('/empresas', [CompanyWeb::class, 'views'])->name('empresas.views');
         Route::get('/sectores', [SectorWeb::class, 'views'])->name('sectores.views');
@@ -186,7 +181,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/cliente/pagos', [ClienteWebController::class, 'views']);
     });
 
-    #TIPO DE CAMBIP => BACKEND
+    #TIPO DE CAMBIO => BACKEND
     Route::prefix('exchange')->group(function () {
         Route::get('/', [ExchangeController::class, 'index'])->name('exchange.index');
         Route::get('/list', [ExchangeController::class, 'indexList']);
@@ -211,7 +206,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{id}/approve-step-one', [WithdrawController::class, 'approveStepOne'])->name('withdraws.approveStepOne');
         Route::post('/{id}/approve-step-two', [WithdrawController::class, 'approveStepTwo'])->name('withdraws.approveStepTwo');
 
-
         // NUEVAS: observar / rechazar por etapa
         Route::post('/{id}/observe-step-one', [WithdrawController::class, 'observeStepOne'])->name('withdraws.observeStepOne');
         Route::post('/{id}/reject-step-one',  [WithdrawController::class, 'rejectStepOne'])->name('withdraws.rejectStepOne');
@@ -223,8 +217,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // routes/web.php (o routes/api.php si llamas /api/...)
     Route::post('/withdraws/{withdraw}/pay', [WithdrawController::class, 'pay'])->name('withdraws.pay');
-
-
 
     Route::prefix('investment')->group(function () {
         Route::get('/all', [InvestmentControllers::class, 'indexAll']);
@@ -256,10 +248,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/{id}', [DepositController::class, 'show'])->name('show');
         Route::get('/{id}/approval-history', [DepositController::class, 'approvalHistory']);
     });
-
-
-
-
 
     Route::prefix('ban')->group(function () {
         Route::get('/', [BankAccountsController::class, 'index'])->name('bankaccounts.index');
@@ -328,8 +316,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->whereNumber('evidenceId');
     });
 
-
     Route::get('/investor/{id}/approval-history', [InvestorController::class, 'approvalHistory']);
+    
     # COMPANIA -> BACKEND
     Route::prefix('companies')->group(function () {
         Route::get('/',        [CompanyController::class, 'index'])->name('companies.index');
@@ -353,7 +341,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/search/{sector_id}', [SubSectorController::class, 'searchSubSector'])
             ->name('subsectors.search');
     });
-
 
     #SECTOR -> BACKEND
     Route::prefix('sectors')->group(function () {
@@ -427,6 +414,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/propiedad/{id}/cronograma', [PaymentScheduleController::class, 'getCronogramaPorPropiedad']);
     Route::get('/cronograma/{property_investor_id}', [PaymentScheduleController::class, 'getCronograma']);
+    
     #Seccion de apis x mientas
     Route::prefix('api')->group(function () {
         #Route::post('/bids', [BidControllers::class, 'index'])->name(name: 'bids.index');
@@ -473,7 +461,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/fixed-term-matrix/{empresaId}', [FixedTermRateController::class, 'matrix']);
 
-    #BUSCADPRES
+    #BUSCADORES
     Route::get('/propiedades/pendientes', [PropertyControllers::class, 'listProperties']);
     Route::get('/propiedades/activas', [PropertyControllers::class, 'listPropertiesActivas']);
     Route::get('/clientes/activos', [CustomerController::class, 'listCustomersActivos']);
@@ -494,7 +482,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{id}/approve', [PropertyLoanDetailController::class, 'approve'])
             ->name('property-loan-details.approve');
     });
-
 
     Route::post('/properties/{id}/activacion', [PropertyLoanDetailController::class, 'activacion']);
 
@@ -582,38 +569,47 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('solicitud-activacion')->group(function () {
         Route::put('/{id}', [SolicitudController::class, 'update']);
     });
+    
     Route::get('/solicitud-activacion/{id}/historial', [SolicitudController::class, 'showlist'])
         ->name('solicitud.historial');
+        
     Route::patch('/invoices/{invoice}/cerrar', [InvoiceController::class, 'cerrar']);
     Route::patch('/invoices/{invoice}/abrir', [InvoiceController::class, 'abrir'])
-    ->name('invoices.abrir');
+        ->name('invoices.abrir');
+        
     Route::get('/currencies', [CurrencyControllers::class, 'index']);
+    
     Route::get('/s3/{path}', function ($path) {
-    if (!Storage::disk('s3')->exists($path)) {
-        abort(404, 'Archivo no encontrado');
-    }
+        if (!Storage::disk('s3')->exists($path)) {
+            abort(404, 'Archivo no encontrado');
+        }
 
-    $file = Storage::disk('s3')->get($path);
-    $extension = pathinfo($path, PATHINFO_EXTENSION);
-    $mimeType = match ($extension) {
-        'png' => 'image/png',
-        'jpg', 'jpeg' => 'image/jpeg',
-        'gif' => 'image/gif',
-        'webp' => 'image/webp',
-        'pdf' => 'application/pdf',
-        default => 'application/octet-stream'
-    };
+        $file = Storage::disk('s3')->get($path);
+        $extension = pathinfo($path, PATHINFO_EXTENSION);
+        $mimeType = match ($extension) {
+            'png' => 'image/png',
+            'jpg', 'jpeg' => 'image/jpeg',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'pdf' => 'application/pdf',
+            default => 'application/octet-stream'
+        };
 
-    return response($file)
-        ->header('Content-Type', $mimeType)
-        ->header('Cache-Control', 'public, max-age=86400') // Cache por 24 horas
-        ->header('ETag', md5($file))
-        ->header('Last-Modified', Storage::disk('s3')->lastModified($path))
-        ->header('Content-Length', Storage::disk('s3')->size($path));
-})->where('path', '.*');
+        return response($file)
+            ->header('Content-Type', $mimeType)
+            ->header('Cache-Control', 'public, max-age=86400') // Cache por 24 horas
+            ->header('ETag', md5($file))
+            ->header('Last-Modified', Storage::disk('s3')->lastModified($path))
+            ->header('Content-Length', Storage::disk('s3')->size($path));
+    })->where('path', '.*');
 
-Route::get('/tipo-documentos', [TipoDocumento::class, 'index']);
+    Route::get('/tipo-documentos', function () {
+        return TipoDocumento::all();
+    });
+    
+    Route::post('/detalle-inversionista', [DetalleInversionistaHipotecaController::class, 'store']);
+    Route::get('/tipo-inmueble', [TipoInmuebleController::class, 'index']);
+});
+
 require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';
-Route::post('/detalle-inversionista', [DetalleInversionistaHipotecaController::class, 'store']);
-Route::get('/tipo-inmueble', [TipoInmuebleController::class, 'index']);
