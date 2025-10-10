@@ -1,5 +1,5 @@
 <template>
-    <Dialog v-model:visible="dialogVisible" :style="{ width: '40vw' }" :header="headerTitle" :modal="true" maximizable>
+    <div class="rounded-lg bg-white border border-gray-200 p-2">
 
 
         <div class="flex flex-col h-full">
@@ -22,7 +22,8 @@
             </div>
 
             <!-- Tabs para Ingresos vs Egresos -->
-            <div v-else-if="movements.length > 0" class="flex flex-col h-full">
+            <div v-else-if="Array.isArray(movements) && movements.length > 0" class="flex flex-col h-full">
+
                 <TabView class="h-full">
                     <!-- Tab de Ingresos -->
                     <TabPanel header="Ingresos">
@@ -245,14 +246,12 @@
             </div>
         </div>
 
-        <template #footer>
-            <Button label="Cerrar" severity="secondary" text icon="pi pi-times" @click="closeDialog" />
-        </template>
-    </Dialog>
+        
+    </div>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import Dialog from 'primevue/dialog';
 import DataTable from 'primevue/datatable';
@@ -432,49 +431,87 @@ watch(() => props.investorId, (newValue) => {
     }
 });
 
+
 // Methods
 const loadInvestorMovements = async () => {
-    if (!props.investorId) return;
+  if (!props.investorId) return;
+  loading.value = true;
 
-    loading.value = true;
+  // Intenta varias rutas posibles hasta encontrar una que devuelva array de movimientos
+  const candidateUrls = [
+    `/withdraws/investor/${props.investorId}`,    // recomendado (movimientos por inversionista)
+    `/investors/${props.investorId}/movements`,   // alternativa
+    `/withdraws/${props.investorId}`              // tu ruta actual, pero la validamos
+  ];
 
-    try {
-        console.log('Cargando movimientos para investor_id:', props.investorId);
+  try {
+    let ok = false;
+    for (const url of candidateUrls) {
+      try {
+        const { data } = await axios.get(url);
 
-        const response = await axios.get(`/withdraws/${props.investorId}`);
-        const data = response.data;
+        // Normalización: acepta { data: [] } o { movements: [] }, y opcionalmente { investor: {...} }
+        const arr =
+          Array.isArray(data?.data) ? data.data :
+          Array.isArray(data?.movements) ? data.movements :
+          null;
 
-        movements.value = data.data || [];
-        investorInfo.value = data.investor || null;
+        const inv =
+          data?.investor ??
+          (data?.meta?.investor ?? null);
 
-        console.log('Movimientos cargados:', movements.value.length);
-        console.log('Ingresos:', incomeMovements.value.length);
-        console.log('Egresos:', expenseMovements.value.length);
-
-    } catch (error) {
-        console.error('Error al cargar movimientos del inversionista:', error);
-
-        let errorMessage = 'Error al cargar los movimientos del inversionista';
-
-        if (error.response) {
-            errorMessage = error.response.data?.message || `Error ${error.response.status}`;
-        } else if (error.request) {
-            errorMessage = 'Error de conexión con el servidor';
+        if (Array.isArray(arr)) {
+          movements.value = arr;
+          investorInfo.value = inv || investorInfo.value; // conserva si no viene
+          ok = true;
+          break;
         }
+      } catch (e) {
+        // probar siguiente url
+      }
+    }
 
-        toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: errorMessage,
-            life: 5000
-        });
+    if (!ok) {
+      // si ninguna ruta devolvió array, asegura array vacío
+      movements.value = [];
+      investorInfo.value = null;
+    }
+  } catch (error) {
+    movements.value = [];
+    investorInfo.value = null;
 
-        movements.value = [];
-        investorInfo.value = null;
-    } finally {
-        loading.value = false;
+    let errorMessage = 'Error al cargar los movimientos del inversionista';
+    if (error.response) {
+      errorMessage = error.response.data?.message || `Error ${error.response.status}`;
+    } else if (error.request) {
+      errorMessage = 'Error de conexión con el servidor';
+    }
+    toast.add({ severity: 'error', summary: 'Error', detail: errorMessage, life: 5000 });
+  } finally {
+    loading.value = false;
+  }
+};
+
+// Load when mounted (if already visible) and whenever visible/investorId change
+const tryLoad = () => {
+    if (props.visible && props.investorId) {
+        loadInvestorMovements();
     }
 };
+
+onMounted(tryLoad);
+
+watch(
+    [() => props.visible, () => props.investorId],
+    ([vis, id], [oldVis, oldId]) => {
+        if (vis && id && (vis !== oldVis || id !== oldId)) {
+            loadInvestorMovements();
+        }
+    },
+    { immediate: true }
+);
+
+
 
 const closeDialog = () => {
     emit('close');
@@ -516,7 +553,7 @@ const getTypeLabel = (type) => {
 };
 
 const formatCurrency = (value, currency = 'PEN') => {
-    if (!value) return '';
+    if (!value) return 0;
     const numValue = parseFloat(value);
     const currencyMap = {
         'PEN': { locale: 'es-PE', currency: 'PEN' },

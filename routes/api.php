@@ -211,6 +211,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::prefix('movements')->group(function () {
         Route::get('/', [MovementController::class, 'index']);
+        Route::get('/datailMovementDeposit/{id}', [MovementController::class, 'detalleMovimientoDeposito']);
         Route::post('/deposits/create', [MovementController::class, 'createDeposit']);
         Route::post('/withdraw/create', [MovementController::class, 'createWithdraw']);
         Route::post('/deposits/tasas-fijas', [MovementController::class, 'createFixedRateDeposit']);

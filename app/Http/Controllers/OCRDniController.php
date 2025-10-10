@@ -28,12 +28,15 @@ class OCRDniController extends Controller
         $fullPath = $destinationPath . '/' . $fileName;
         $file->move($destinationPath, $fileName);
 
+        //$url_api = 'https://api.ocr.space/parse/image';
+        $url_api = 'http://api.ocr.space/parse/image';
+        
         // Enviar a OCR
         $response = Http::attach(
             'file',
             file_get_contents($fullPath),
             $fileName
-        )->post('https://api.ocr.space/parse/image', [
+        )->post($url_api, [
             'apikey' => 'K88534373188957',
             'language' => 'spa',
         ]);

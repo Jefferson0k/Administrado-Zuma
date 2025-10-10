@@ -466,7 +466,7 @@ class MovementController extends Controller
                 $deposit->save();
 
                 // Notificación
-                $investor->sendDepositPendingEmailNotification($deposit);
+                //$investor->sendDepositPendingEmailNotification($deposit);
 
                 DB::commit();
 
@@ -693,4 +693,27 @@ class MovementController extends Controller
             'data'    => $movement
         ], 200);
     }
+    
+    
+    //detalle de movimiento
+    public function detalleMovimientoDeposito($id){
+        try {
+            $token = PersonalAccessToken::findToken(request()->bearerToken());
+            $investor = $token->tokenable;
+            
+            $deposito = Deposit::where('movement_id',$id)->where('investor_id',$investor->id)->with('bankAccount.bank')->first();
+            
+            return response()->json([
+                'success' => true,
+                'data' => $deposito->toArray(),
+                'message' => null,
+            ]);
+        } catch (Throwable $th) {
+            return response()->json([
+                'success' => false,
+                'message' => $th->getMessage(),
+            ], in_array((int)$th->getCode(), range(100,599)) ? (int)$th->getCode() : 500);
+        }   
+    }
+    
 }

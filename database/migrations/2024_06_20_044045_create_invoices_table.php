@@ -57,7 +57,9 @@ return new class extends Migration
             $table->text('approval2_comment')->nullable();
             $table->timestamp('approval2_at')->nullable();
 
-            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            //Condición de oportunidad
+            $table->enum('condicion_oportunidad', ['abierta', 'cerrada'])->default('cerrada');
+            $table->foreignId('created_by')->nullable()->constrained( 'users')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();

@@ -2,3 +2,4 @@
 * * * * * cd /var/www && php artisan subastas:revisar >> /var/log/cron.log 2>&1
 * * * * * cd /var/www && php artisan subastas:activar >> /var/log/cron.log 2>&1
 * * * * * cd /var/www && php artisan posts:publish-scheduled >> /var/log/cron.log 2>&1
+* * * * * cd /var/www && php artisan posts:invoices:close-expired >> /var/log/cron.log 2>&1

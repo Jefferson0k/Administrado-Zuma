@@ -31,10 +31,10 @@ class ConsultasRucController extends Controller
         }
 
         $token = env('CONSULTA_RUC_API_TOKEN');
-
+        $url = 'https://api.apis.net.pe/v2/sunat/ruc/full'; //prod: https://api.apis.net.pe/v2/sunat/ruc/full
         try {
             $response = Http::withToken($token)
-                ->get('https://api.apis.net.pe/v2/sunat/ruc/full', [
+                ->get($url, [
                     'numero' => $ruc,
                 ]);
 

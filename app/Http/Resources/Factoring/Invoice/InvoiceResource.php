@@ -81,7 +81,7 @@ class InvoiceResource extends JsonResource{
             'tasa'                       => $this->rate,
             'estado'                     => $this->status,
             'statusPago'                 => $this->statusPago,
-            'situacion'                  => $situacion,
+            'situacion'                  => $this->condicion_oportunidad,
             'invoice_number'             => $this->invoice_number,
             'loan_number'                => $this->loan_number,
             'RUC_client'                 => $this->RUC_client,
@@ -94,7 +94,7 @@ class InvoiceResource extends JsonResource{
                                              : '-',
             'SegundaStado'               => $this->approval2_status,
             'tipo'                       => !in_array($this->status, $ocultarEstados) ? $this->type : null,
-            'condicionOportunidadInversion'=> $condicionOportunidadInversion,
+            'condicionOportunidadInversion'=> $this->condicion_oportunidad,
             'fechaHoraCierreInversion'   => $fechaHoraCierreInversion,
             'porcentajeZuma'             => $porcentajeZuma !== null ? $porcentajeZuma.'%' : null,
             'porcentajeMetaTerceros'     => $porcentajeMetaTerceros !== null ? $porcentajeMetaTerceros.'%' : null,
@@ -105,6 +105,7 @@ class InvoiceResource extends JsonResource{
             'userdosNombre'              => $this->aprovacionuserdos?->name
                                              ? $this->aprovacionuserdos->name.' '.$this->aprovacionuserdos->apellidos
                                              : '-',
+            'created_by_name'                 => $this->creator?->name ?? '',
             'tiempoUno'                  => $this->approval1_at
                                              ? $this->approval1_at->format('d-m-Y H:i:s A')
                                              : null,

@@ -30,6 +30,10 @@
             <p class="text-sm">{{ investor.relacionPolitica ? 'Sí' : 'No' }}</p>
           </div>
         </div>
+
+
+
+
       </Message>
 
       <!-- Documentos DNI -->
@@ -66,9 +70,7 @@
 
                 <Button label="Ver completo" icon="pi pi-eye" size="small" outlined class="w-full mt-2"
                   data-export="ignore" @click="viewDocument(toViewUrl(editableInvestor.document_front))" />
-                <Button v-if="!isValidated" label="Observar" icon="pi pi-exclamation-triangle" size="small"
-                  data-export="ignore" severity="warn" class="w-full mt-2" @click="showObserveDialog('dni_front')"
-                  :disabled="isAnyRejected" />
+
               </div>
 
               <div v-else class="text-center py-6 bg-gray-50 border-2 border-dashed border-gray-300 rounded">
@@ -104,9 +106,7 @@
 
                 <Button label="Ver completo" icon="pi pi-eye" size="small" outlined class="w-full mt-2"
                   data-export="ignore" @click="viewDocument(toViewUrl(editableInvestor.document_back))" />
-                <Button v-if="!isValidated" label="Observar" icon="pi pi-exclamation-triangle" size="small"
-                  data-export="ignore" severity="warn" class="w-full mt-2" @click="showObserveDialog('dni_back')"
-                  :disabled="isAnyRejected" />
+              
               </div>
 
               <div v-else class="text-center py-6 bg-gray-50 border-2 border-dashed border-gray-300 rounded">
@@ -143,9 +143,7 @@
 
                 <Button label="Ver completo" icon="pi pi-eye" size="small" outlined class="w-full mt-2"
                   data-export="ignore" @click="viewDocument(toViewUrl(editableInvestor.investor_photo_path))" />
-                <Button v-if="!isValidated" label="Observar" icon="pi pi-exclamation-triangle" size="small"
-                  data-export="ignore" severity="warn" class="w-full mt-2" @click="showObserveDialog('investor_photo')"
-                  :disabled="isAnyRejected" />
+         
               </div>
 
               <div v-else class="text-center py-6 bg-gray-50 border-2 border-dashed border-gray-300 rounded">
@@ -400,8 +398,7 @@
               <div class="flex gap-2">
                 <Button label="Guardar Comentario" icon="pi pi-save" size="small" severity="info" @click="saveComment"
                   :loading="loading" :disabled="isAnyRejected || !commentText.trim()" />
-                <Button label="Observar" icon="pi pi-exclamation-triangle" size="small" severity="warn"
-                  @click="showObserveDialog()" :disabled="loading || isAnyRejected" />
+              
 
               </div>
             </div>
@@ -423,26 +420,37 @@
       </div>
     </div>
 
+    <!-- Footer -->
     <template #footer>
       <div class="flex flex-wrap gap-2 justify-end">
+
         <template v-if="!isValidated">
+          <!-- PRIMERA VALIDACIÓN -->
           <template v-if="!hasFirstValidationComplete || editableInvestor.approval1_status === 'observed'">
             <Button label="Aprobar" icon="pi pi-check" size="small" severity="success"
               @click="showConfirmDialog('approve')" :disabled="loading || isAnyRejected || !hasFirstSavedComment" />
+
             <Button label="Rechazar" icon="pi pi-times" size="small" severity="danger"
               @click="showConfirmDialog('reject')" :disabled="loading || isAnyRejected || !hasFirstSavedComment" />
 
-
+            <!-- NUEVO: Observar Primera -->
+            <Button label="Observar" icon="pi pi-exclamation-triangle" size="small" severity="warn"
+              @click="showObserveDialog(1)"
+              :disabled="loading || isAnyRejected || !(commentText?.trim() || editableInvestor.approval1_comment?.trim())" />
 
           </template>
 
+          <!-- SEGUNDA VALIDACIÓN -->
           <template v-if="canShowSecondValidation">
             <Button label="Aprobar Final" icon="pi pi-check" size="small" severity="success"
               @click="showConfirmDialog('approve2')" :disabled="loading || isAnyRejected || !hasSecondSavedComment" />
             <Button label="Rechazar Final" icon="pi pi-times" size="small" severity="danger"
               @click="showConfirmDialog('reject2')" :disabled="loading || isAnyRejected || !hasSecondSavedComment" />
 
-
+            <!-- NUEVO: Observar Segunda -->
+            <Button label="Observar Final" icon="pi pi-exclamation-triangle" size="small" severity="warn"
+              @click="showObserveDialog(2)"
+              :disabled="loading || isAnyRejected || !(comment2Text?.trim() || editableInvestor.approval2_comment?.trim())" />
 
           </template>
 
@@ -462,9 +470,9 @@
         <Button label="Exportar PDF" icon="pi pi-download" size="small" severity="secondary" outlined
           :loading="exporting" :disabled="loading || exporting" @click="exportPdf" />
         <Button label="Cerrar" size="small" severity="secondary" text @click="closeDialog" :disabled="loading" />
-
       </div>
     </template>
+
   </Dialog>
 
   <!-- Dialog de Confirmación -->
@@ -490,7 +498,7 @@
     </template>
   </Dialog>
 
-  <!-- Dialog de Observación (sin textarea para todos los casos) -->
+  <!-- Dialog de Observación -->
   <Dialog v-model:visible="showObservationDialog" :style="{ width: '440px' }" :header="observeTitle" :modal="true">
     <div class="mb-2">
       <p class="text-gray-700 text-sm mb-3">
@@ -503,12 +511,32 @@
       </Message>
     </div>
 
+    <!-- Checkboxes de correos (viven aquí) -->
+    <div class="mt-3">
+      <label class="block text-xs font-medium mb-2 text-gray-900">Correos a enviar</label>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+        <div v-for="opt in notifyEmailOptions" :key="opt.key" class="flex items-start gap-2">
+          <Checkbox v-model="selectedNotifyKeys" :inputId="`opt-${opt.key}`" :value="opt.key" />
+          <label :for="`opt-${opt.key}`" class="text-sm">{{ opt.label }}</label>
+        </div>
+      </div>
+
+      <div class="mt-2 flex gap-2">
+
+        <Button size="small" text severity="secondary" @click="selectedNotifyKeys = []" label="Limpiar selección" />
+      </div>
+    </div>
+
     <template #footer>
       <Button label="Cancelar" size="small" severity="secondary" text @click="closeObserveDialog" :disabled="loading" />
       <Button label="Observar y Notificar" size="small" severity="warn" icon="pi pi-send" @click="executeObservation"
-        :loading="loading" :disabled="loading" />
+        :loading="loading"
+        :disabled="loading || ((observeStep === 1 || observeStep === 2) && selectedNotifyKeys.length === 0)" />
     </template>
   </Dialog>
+
+
 
 
   <Toast />
@@ -526,6 +554,32 @@ import Toast from 'primevue/toast';
 import Badge from 'primevue/badge';
 import axios from 'axios';
 import { useToast } from 'primevue/usetoast';
+
+import Checkbox from 'primevue/checkbox';
+
+const notifyEmailOptions = ref([
+  { key: 'general_observation', label: 'Observación general al inversionista' },
+  { key: 'dni', label: 'Pedir re-subir DNI imágenes' },
+  { key: 'investor_photo', label: 'Pedir re-subir foto del inversionista' },
+  { key: 'evidencia_pep', label: 'Pedir re-subir evidencia PEP' },
+]);
+
+const selectedNotifyKeys = ref<string[]>(['general_observation']);
+
+// helper
+const ensureKey = (k: string) => {
+  if (!selectedNotifyKeys.value.includes(k)) selectedNotifyKeys.value.push(k);
+};
+
+// Defaults al cambiar de step (1ª/2ª)
+
+
+
+
+
+
+
+
 
 
 // === Ubigeo name resolvers (code -> name) ===
@@ -628,6 +682,10 @@ interface Evidence {
   download_url: string;
   created_at?: string;
 }
+
+
+
+
 
 const props = defineProps<{
   investor: Investor;
@@ -747,10 +805,10 @@ const isValidated = computed(() => {
 });
 
 const hasFirstValidationComplete = computed(() => {
+  // "observed" is NOT complete; we want to show the 1ª comment box again
   return (
     editableInvestor.value.approval1_status === 'approved' ||
-    editableInvestor.value.approval1_status === 'rejected' ||
-    editableInvestor.value.approval1_status === 'observed'
+    editableInvestor.value.approval1_status === 'rejected'
   );
 });
 
@@ -870,9 +928,18 @@ const formatSize = (bytes: number) => {
 
 // ======== Observación contextual ========
 type ObserveTarget = 'dni_front' | 'dni_back' | 'investor_photo' | null;
+
 const observeTarget = ref<ObserveTarget>(null);
+const observeStep = ref<0 | 1 | 2>(0); // 0 = por documento, 1 = primera, 2 = segunda
+
+// Defaults al cambiar de step (1ª/2ª)
+watch(observeStep, () => {
+  selectedNotifyKeys.value = ['general_observation'];
+});
 
 const observeTitle = computed(() => {
+  if (observeStep.value === 1) return 'Observar — Primera Validación';
+  if (observeStep.value === 2) return 'Observar — Segunda Validación';
   switch (observeTarget.value) {
     case 'dni_front': return 'Observar — DNI - Parte Frontal';
     case 'dni_back': return 'Observar — DNI - Parte Posterior';
@@ -881,6 +948,7 @@ const observeTitle = computed(() => {
   }
 });
 
+
 // Dialog open/close helpers
 const showConfirmDialog = (action: 'approve' | 'reject' | 'approve2' | 'reject2') => {
   actionType.value = action;
@@ -888,11 +956,32 @@ const showConfirmDialog = (action: 'approve' | 'reject' | 'approve2' | 'reject2'
   showConfirmationDialog.value = true;
 };
 
-const showObserveDialog = (target?: ObserveTarget) => {
-  observeTarget.value = target ?? null;
+const showObserveDialog = (targetOrStep?: ObserveTarget | 1 | 2) => {
   observationComment.value = '';
+
+  if (targetOrStep === 1 || targetOrStep === 2) {
+    observeStep.value = targetOrStep;
+    observeTarget.value = null;
+  } else {
+    observeStep.value = 0;
+    observeTarget.value = targetOrStep ?? null;
+  }
+
+  // base por defecto
+  selectedNotifyKeys.value = ['general_observation'];
+
+  // sugerencias según target
+  if (observeTarget.value === 'dni_front' || observeTarget.value === 'dni_back') {
+    ensureKey('dni');
+  }
+  if (observeTarget.value === 'investor_photo') {
+    ensureKey('investor_photo');
+  }
+
   showObservationDialog.value = true;
 };
+
+
 
 // File handling
 const onFileSelect = (event: any) => {
@@ -985,31 +1074,56 @@ const executeObservation = async () => {
   try {
     const base = `/investor/${editableInvestor.value.id}`;
 
-    const labelByTarget: Record<NonNullable<ObserveTarget>, string> = {
-      dni_front: '"DNI PARTE FRONTAL" OBSERVADA, ',
-      dni_back: '"DNI PARTE POSTERIOR" OBSERVADA, ',
-      investor_photo: '"FOTO" OBSERVADA, ',
-    };
-
     let endpoint = `${base}/observaciones`;
-    let finalComment = observationComment.value?.trim() ?? '';
+    let payload: any = {};
 
-    if (observeTarget.value) {
+    if (observeStep.value === 1) {
+      // OBSERVAR PRIMERA VALIDACIÓN -> enviar comentario de primera
+      endpoint = `${base}/observar-primera`;
+      payload = {
+        approval1_comment: (commentText.value?.trim() || editableInvestor.value.approval1_comment || '')
+      };
+    } else if (observeStep.value === 2) {
+      // OBSERVAR SEGUNDA VALIDACIÓN -> enviar comentario de segunda
+      endpoint = `${base}/observar-segunda`;
+      payload = {
+        approval2_comment: (comment2Text.value?.trim() || editableInvestor.value.approval2_comment || '')
+      };
+    } else if (observeTarget.value) {
+      // OBSERVACIÓN POR DOCUMENTO (se mantiene como estaba; sin comentario forzado)
       if (observeTarget.value === 'dni_front') endpoint = `${base}/observar-dni-frontal`;
       if (observeTarget.value === 'dni_back') endpoint = `${base}/observar-dni-posterior`;
       if (observeTarget.value === 'investor_photo') endpoint = `${base}/observar-foto`;
-      finalComment = `${labelByTarget[observeTarget.value]}${finalComment}`;
+      // Si tu backend requiere un campo para saber el target, puedes enviar:
+      // payload = { target: observeTarget.value }
+    } else {
+      // Sin step ni target: salir silenciosamente
+      loading.value = false;
+      showObservationDialog.value = false;
+      return;
     }
 
-    const response = await axios.put(endpoint, {
-      approval1_comment: finalComment,
-    });
+    // Adjunta plantillas seleccionadas (checkboxes)
+    payload.notify_templates = selectedNotifyKeys.value;
+    const { data } = await axios.put(endpoint, payload);
 
-    toast.add({ severity: 'success', summary: 'Éxito', detail: response.data.message, life: 3000 });
-    editableInvestor.value = { ...response.data.data };
+
+    toast.add({ severity: 'success', summary: 'Éxito', detail: data?.message || 'Observación registrada.', life: 3000 });
+    // Refresca el investor con lo devuelto por el backend
+    editableInvestor.value = { ...data?.data };
+
+    // Sincroniza comentarios locales si los mandaste desde inputs
+    if (observeStep.value === 1 && commentText.value?.trim()) {
+      editableInvestor.value.approval1_comment = commentText.value.trim();
+    }
+    if (observeStep.value === 2 && comment2Text.value?.trim()) {
+      editableInvestor.value.approval2_comment = comment2Text.value.trim();
+    }
+
     showObservationDialog.value = false;
     observationComment.value = '';
     observeTarget.value = null;
+    observeStep.value = 0;
   } catch (error: any) {
     toast.add({
       severity: 'error',
@@ -1021,6 +1135,9 @@ const executeObservation = async () => {
     loading.value = false;
   }
 };
+
+
+
 
 
 // ====== Evidence lists (load/refresh/delete) ======
@@ -1388,4 +1505,48 @@ const saveComment2 = async () => {
 
 
 const viewDocument = (url: string) => window.open(url, '_blank');
+
+
+// Keep this with your other refs
+// Keep this with your other refs
+const GENERAL_KEY = 'general_observation';
+
+// Regla:
+// 1) Si se selecciona cualquier otra opción junto con "general", se desmarca "general".
+// 2) Máximo 2 opciones: si el usuario intenta seleccionar una tercera, se ignora y
+//    se vuelve al estado anterior (o se mantiene la última adición junto a la previa).
+watch(selectedNotifyKeys, (keys, prev) => {
+  let next = [...keys];
+
+  // 1) Quitar "general" si hay otra seleccionada
+  if (next.includes(GENERAL_KEY) && next.some(k => k !== GENERAL_KEY)) {
+    next = next.filter(k => k !== GENERAL_KEY);
+  }
+
+  // 2) Máximo 2 opciones
+  if (next.length > 2) {
+    // Detecta cuál fue la recién agregada
+    const added = next.find(k => !prev.includes(k)) ?? next[next.length - 1];
+
+    if (prev.length >= 2) {
+      // Ya habían 2 antes: revertir a las 2 anteriores
+      next = prev.slice(0, 2);
+    } else {
+      // Había 1 antes: conservar la anterior y la recién agregada
+      next = [prev[0], added].filter(Boolean);
+    }
+  }
+
+  // Solo actualiza si cambió algo
+  if (next.length !== keys.length || next.some((k, i) => k !== keys[i])) {
+    selectedNotifyKeys.value = next;
+  }
+}, { deep: true });
+
+
+// (Optional) If you want "general" to re-select itself when all others are cleared:
+// watch(selectedNotifyKeys, (keys) => {
+//   if (keys.length === 0) selectedNotifyKeys.value = [GENERAL_KEY];
+// }, { deep: true });
+
 </script>

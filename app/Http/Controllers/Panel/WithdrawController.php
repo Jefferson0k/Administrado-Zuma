@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Throwable;
+use App\Models\HistoryAprobadorWithdraw;
 
 class WithdrawController extends Controller
 {
@@ -122,8 +123,8 @@ class WithdrawController extends Controller
         $withdraw = Withdraw::findOrFail($id);
         Gate::authorize('approve1', $withdraw);
         $request->validate([
-            'nro_operation'    => 'required|string|max:50',
-            'deposit_pay_date' => 'required|date',
+            'nro_operation'    => 'nullable|string|max:50',
+            'deposit_pay_date' => 'nullable|date',
             'description'      => 'nullable|string',
         ]);
         try {
@@ -133,6 +134,7 @@ class WithdrawController extends Controller
                 'deposit_pay_date' => $request->deposit_pay_date,
                 'description'      => $request->description,
                 'approval1_status' => 'approved',
+                'approval2_status' => null,
                 'approval1_by'     => Auth::id(),
                 'approval1_comment' => $request->input('approval1_comment'),
                 'approval1_at'     => now(),
@@ -142,7 +144,24 @@ class WithdrawController extends Controller
                 'status' => 'valid',
             ]);
 
+
+            HistoryAprobadorWithdraw::create([
+                'withdraw_id' => $withdraw->id,
+                'approval1_status' => 'approved',
+                'approval1_by' => Auth::id(),
+                'approval1_comment' => $request->input('approval1_comment'),
+                'approval1_at' => now(),
+            ]);
+
+
+
+
+
             DB::commit();
+
+
+
+
             return response()->json([
                 'message' => 'Primera validación realizada correctamente',
                 'data'    => new WithdrawResource($withdraw->fresh()),
@@ -175,6 +194,19 @@ class WithdrawController extends Controller
             $movement->confirm_status = MovementStatus::VALID->value;
             $movement->save();
             $withdraw->investor->sendWithdrawApprovedEmailNotification($withdraw);
+
+
+
+            $history = HistoryAprobadorWithdraw::where('withdraw_id', $withdraw->id)
+                ->latest()
+                ->first();
+
+            $history?->update([
+                'approval2_status' => 'approved',
+                'approval2_by' => Auth::id(),
+                'approval2_comment' => $request->input('approval2_comment'),
+                'approval2_at' => now(),
+            ]);
             DB::commit();
             return response()->json([
                 'message' => 'Retiro aprobado en segunda validación correctamente',
@@ -213,6 +245,17 @@ class WithdrawController extends Controller
             // Si manejas estado en Movement, podrías marcarlo como "observed" aquí (opcional)
             // $withdraw->movement?->update(['status' => 'observed']);
 
+
+            HistoryAprobadorWithdraw::create([
+                'withdraw_id' => $withdraw->id,
+                'approval1_status' => 'observed',
+                'approval1_by' => Auth::id(),
+                'approval1_comment' => $request->input('approval1_comment'),
+                'approval1_at' => now(),
+            ]);
+
+
+
             DB::commit();
 
             return response()->json([
@@ -223,45 +266,6 @@ class WithdrawController extends Controller
             DB::rollBack();
             return response()->json([
                 'message' => 'Error al observar en primera validación',
-                'error'   => $th->getMessage(),
-            ], 500);
-        }
-    }
-
-    public function rejectStepOne(Request $request, $id)
-    {
-        $withdraw = Withdraw::findOrFail($id);
-        Gate::authorize('approve1', $withdraw);
-
-        $validated = $request->validate([
-            'comment' => 'required|string|max:1000',
-        ]);
-
-        try {
-            DB::beginTransaction();
-
-            $withdraw->update([
-                'approval1_status'  => 'rejected',
-                'approval1_by'      => Auth::id(),
-                'approval1_comment' => $validated['comment'],
-                'approval1_at'      => now(),
-                // estado global del retiro (si lo usas)
-                'status'            => 'rejected',
-            ]);
-
-            // Si manejas MovementStatus de rechazo, actualízalo (opcional)
-            // $withdraw->movement?->update(['status' => 'rejected']);
-
-            DB::commit();
-
-            return response()->json([
-                'message' => 'Retiro rechazado en primera validación',
-                'data'    => new WithdrawResource($withdraw->fresh()),
-            ]);
-        } catch (Throwable $th) {
-            DB::rollBack();
-            return response()->json([
-                'message' => 'Error al rechazar en primera validación',
                 'error'   => $th->getMessage(),
             ], 500);
         }
@@ -289,6 +293,17 @@ class WithdrawController extends Controller
 
             // $withdraw->movement?->update(['status' => 'observed']); // opcional
 
+            $history = HistoryAprobadorWithdraw::where('withdraw_id', $withdraw->id)
+                ->latest()
+                ->first();
+
+            $history?->update([
+                'approval2_status' => 'observed',
+                'approval2_by' => Auth::id(),
+                'approval2_comment' => $request->input('approval2_comment'),
+                'approval2_at' => now(),
+            ]);
+
             DB::commit();
 
             return response()->json([
@@ -303,6 +318,58 @@ class WithdrawController extends Controller
             ], 500);
         }
     }
+
+
+    public function rejectStepOne(Request $request, $id)
+    {
+        $withdraw = Withdraw::findOrFail($id);
+        Gate::authorize('approve1', $withdraw);
+
+        $validated = $request->validate([
+            'comment' => 'required|string|max:1000',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $withdraw->update([
+                'approval1_status'  => 'rejected',
+                'approval1_by'      => Auth::id(),
+                'approval1_comment' => $validated['comment'],
+                'approval1_at'      => now(),
+                // estado global del retiro (si lo usas)
+                'status'            => 'rejected',
+            ]);
+
+            // Si manejas MovementStatus de rechazo, actualízalo (opcional)
+            // $withdraw->movement?->update(['status' => 'rejected']);
+
+            HistoryAprobadorWithdraw::create([
+                'withdraw_id' => $withdraw->id,
+                'approval1_status' => 'rejected',
+                'approval1_by' => Auth::id(),
+                'approval1_comment' => $request->input('approval1_comment'),
+                'approval1_at' => now(),
+            ]);
+
+
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Retiro rechazado en primera validación',
+                'data'    => new WithdrawResource($withdraw->fresh()),
+            ]);
+        } catch (Throwable $th) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error al rechazar en primera validación',
+                'error'   => $th->getMessage(),
+            ], 500);
+        }
+    }
+
+
 
     public function rejectStepTwo(Request $request, $id)
     {
@@ -330,6 +397,18 @@ class WithdrawController extends Controller
             //     $movement->confirm_status = MovementStatus::REJECTED->value;
             //     $movement->save();
             // }
+
+
+            $history = HistoryAprobadorWithdraw::where('withdraw_id', $withdraw->id)
+                ->latest()
+                ->first();
+
+            $history?->update([
+                'approval2_status' => 'rejected',
+                'approval2_by' => Auth::id(),
+                'approval2_comment' => $request->input('approval2_comment'),
+                'approval2_at' => now(),
+            ]);
 
             DB::commit();
 
@@ -394,5 +473,25 @@ class WithdrawController extends Controller
                 'error'   => $th->getMessage(),
             ], 500);
         }
+    }
+
+
+
+
+    public function approvalHistory($id)
+    {
+        $rows = HistoryAprobadorWithdraw::query()
+            ->where('withdraw_id', $id) // <- corregido: withdraw_id
+            ->with([
+                'approval1By:id,name',
+                'approval2By:id,name',
+            ])
+            ->orderByDesc('id')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $rows,
+        ]);
     }
 }

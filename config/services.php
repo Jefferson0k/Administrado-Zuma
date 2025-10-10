@@ -50,4 +50,9 @@ return [
             'verification_expiry_minutes' => 30,
         ],
     ],
+
+     'ruc' => [
+        'endpoint' => env('RUC_API_URL'),   // p.ej. https://api.midominio.com/ruc
+        'token'    => env('RUC_API_TOKEN'), // si tu API necesita token
+    ],
 ];

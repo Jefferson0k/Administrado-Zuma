@@ -27,6 +27,7 @@ class InvoiceController extends Controller{
             )
             ->join('companies', 'invoices.company_id', '=', 'companies.id')
             ->whereIn('invoices.status', ['active', 'daStandby'])
+            ->where('invoices.condicion_oportunidad', 'abierta')
             ->where('invoices.due_date', '>=', Carbon::now())
             ->where('invoices.financed_amount', '>', 0); // 🔥 Excluir facturas sin saldo disponible
 

@@ -11,6 +11,7 @@ use App\Models\Investor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Alias;
+use AWS\CRT\Log;
 use Illuminate\Support\Str;
 
 /**
@@ -19,7 +20,8 @@ use Illuminate\Support\Str;
  *     description="Endpoints para gestionar cuentas bancarias de inversores"
  * )
  */
-class BankAccountController extends Controller{
+class BankAccountController extends Controller
+{
     public function index(Request $request)
     {
         try {
@@ -39,7 +41,8 @@ class BankAccountController extends Controller{
             return $th->getMessage();
         }
     }
-    public function store(StoreBankAccountRequest $request){
+    public function store(StoreBankAccountRequest $request)
+    {
         try {
             $validatedData = $request->validated();
 
@@ -133,7 +136,8 @@ class BankAccountController extends Controller{
             ], 500);
         }
     }
-    public function destroy(string $bankAccountID){
+    public function destroy(string $bankAccountID)
+    {
         try {
             $bank_account = BankAccount::find($bankAccountID);
             if (!$bank_account) {
@@ -151,10 +155,12 @@ class BankAccountController extends Controller{
                 'data' => null,
             ], 201);
         } catch (\Throwable $th) {
+            Log::error('Error al eliminar cuenta bancaria: ' . $th->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error interno del servidor',
             ], 500);
         }
     }
+
 }

@@ -88,108 +88,98 @@
                 </template>
             </template>
         </Column>
-        <Column header="" style="min-width: 22rem">
+        <Column header="Acciones" style="width: 6rem; text-align: center">
             <template #body="slotProps">
-                <div class="flex gap-2 flex-wrap">
-                    <!-- 1ª Validación -->
-                    <Button v-if="!slotProps.data.approval1_status" label="1ª Valid." icon="pi pi-check-circle"
-                        size="small" severity="warning" @click="openFirstApprovalDialog(slotProps.data)" />
-
-                    <!-- 2ª Validación -->
-                    <Button
-                        v-else-if="slotProps.data.approval1_status === 'approved' && !slotProps.data.approval2_status"
-                        label="2ª Valid." icon="pi pi-shield" size="small" severity="success"
-                        @click="openSecondApprovalDialog(slotProps.data)" />
-
-                    <!-- Cuando ya no hay botones de validación, mostrar 'Validaciones' -->
-                    <Button v-else label="Validaciones" icon="pi pi-list-check" size="small" severity="help" outlined
-                        @click="openValidationDetails(slotProps.data)" />
-
-                    <!-- Mostrar Pagar SOLO si NO hay comprobante ni comentario -->
-                    <Button v-if="!slotProps.data.resource_path && !slotProps.data.payment_comment" label="Pagar"
-                        icon="pi pi-credit-card" size="small" severity="secondary" outlined
-                        @click="openPayDialog(slotProps.data)" />
-
-                    <!-- Si ya existe pago, mostrar detalle -->
-                    <Button v-else label="Pago" icon="pi pi-paperclip" size="small" severity="secondary" outlined
-                        @click="openPaymentDetails(slotProps.data)" />
-
-
-
-
-                    <!-- Detalles del retiro / inversionista que ya tienes -->
-                    <Button label="Detalles" icon="pi pi-eye" size="small" severity="info" outlined
-                        @click="openDetailsDialog(slotProps.data)" />
-                </div>
+                <Menu :ref="el => actionMenus[slotProps.data.id] = el" :model="getActionMenu(slotProps.data)" popup />
+                <Button icon="pi pi-ellipsis-v" rounded outlined
+                    @click="actionMenus[slotProps.data.id]?.toggle($event)" />
             </template>
         </Column>
+
+
 
     </DataTable>
 
 
 
     <!-- Dialog para primera validación -->
-    <Dialog v-model:visible="firstApprovalDialog" :style="{ width: '600px' }" :header="selectedWithdraw
+    <!-- Dialog para primera validación (unificada con detalles del inversionista) -->
+    <Dialog v-model:visible="firstApprovalDialog" :style="{ width: '920px', maxWidth: '95vw' }" :header="selectedWithdraw
         ? `Primera Validación — ${formatCurrency(selectedWithdraw.amount, selectedWithdraw.currency)}`
         : 'Primera Validación'" :modal="true">
 
-        <div class="flex flex-col gap-6">
-            <!-- Información del retiro -->
-            <div class="flex items-center gap-4 p-4 bg-orange-50 rounded-lg border border-orange-200">
-                <i class="pi pi-check-circle text-3xl text-orange-500" />
-                <div class="flex-1">
-                    <p class="font-semibold text-lg">{{ selectedWithdraw?.invesrionista }}</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <!-- Columna izquierda: datos generales del inversionista -->
+            <div class="space-y-4">
+                <div class="p-4 border rounded-lg bg-orange-50 border-orange-200">
+                    <h4 class="text-lg font-semibold text-gray-800 mb-2">
+                        {{ selectedWithdraw?.invesrionista }}
+                    </h4>
                     <p class="text-sm text-gray-600">
-                        Documento: {{ selectedWithdraw?.documento }}
+                        Documento: {{ selectedWithdraw?.documento || '—' }}
                     </p>
                     <p class="text-sm text-gray-600">
-                        Monto: {{ formatCurrency(selectedWithdraw?.amount, selectedWithdraw?.currency) }}
+                        Monto solicitado: {{ formatCurrency(selectedWithdraw?.amount, selectedWithdraw?.currency) }}
                     </p>
                     <p class="text-sm text-gray-600">
-                        Cuenta: {{ selectedWithdraw?.cc }} | CCI: {{ selectedWithdraw?.cci }}
+                        Fecha de creación: {{ selectedWithdraw?.created_at || '—' }}
                     </p>
+                </div>
+
+                <!-- Cuenta destino -->
+                <div class="p-4 border rounded-lg bg-white">
+                    <p class="text-sm font-semibold text-gray-700 mb-2">Cuenta destino</p>
+                    <div class="text-sm space-y-1">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Alias:</span>
+                            <span class="font-medium">{{ selectedWithdraw?.alias || '—' }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Cuenta corriente (CC):</span>
+                            <span class="font-medium">{{ selectedWithdraw?.cc || '—' }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Cuenta interbancaria (CCI):</span>
+                            <span class="font-medium">{{ selectedWithdraw?.cci || '—' }}</span>
+                        </div>
+
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Banco:</span>
+                            <span class="font-medium">{{ selectedWithdraw?.banco_cuenta || '—' }}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-
-            <!-- Formulario de validación -->
-            <form @submit.prevent="confirmFirstApproval" class="grid grid-cols-1 gap-4">
-                <div class="flex flex-col gap-1">
-                    <label for="nro_operation" class="font-medium">
-                        Número de Operación <span class="text-red-500">*</span>
-                    </label>
-                    <InputText id="nro_operation" v-model="firstApprovalForm.nro_operation"
-                        placeholder="Ej: OP123456789" maxlength="50"
-                        :class="{ 'p-invalid': firstApprovalSubmitted && !firstApprovalForm.nro_operation }" />
-                    <small v-if="firstApprovalSubmitted && !firstApprovalForm.nro_operation" class="p-error">
-                        El número de operación es requerido
-                    </small>
+            <!-- Columna derecha: datos de solicitud + campo comentario -->
+            <div class="space-y-4">
+                <div class="p-4 border rounded-lg bg-gray-50">
+                    <p class="text-sm font-semibold text-gray-700 mb-2">Estado actual</p>
+                    <div class="text-sm space-y-1">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">1ª Validación:</span>
+                            <Tag :value="getStatusLabel(selectedWithdraw?.approval1_status)"
+                                :severity="getStatusSeverity(selectedWithdraw?.approval1_status)" />
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">2ª Validación:</span>
+                            <Tag :value="getStatusLabel(selectedWithdraw?.approval2_status)"
+                                :severity="getStatusSeverity(selectedWithdraw?.approval2_status)" />
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Estado final:</span>
+                            <Tag :value="getStatusLabel(selectedWithdraw?.status)"
+                                :severity="getStatusSeverity(selectedWithdraw?.status)" />
+                        </div>
+                    </div>
                 </div>
 
-                <div class="flex flex-col gap-1">
-                    <label for="deposit_pay_date" class="font-medium">
-                        Fecha de Pago <span class="text-red-500">*</span>
-                    </label>
-                    <DatePicker id="deposit_pay_date" v-model="firstApprovalForm.deposit_pay_date" dateFormat="dd/mm/yy"
-                        showIcon placeholder="Seleccionar fecha"
-                        :class="{ 'p-invalid': firstApprovalSubmitted && !firstApprovalForm.deposit_pay_date }" />
-                    <small v-if="firstApprovalSubmitted && !firstApprovalForm.deposit_pay_date" class="p-error">
-                        La fecha de pago es requerida
-                    </small>
+                <div>
+                    <label for="approval1_comment" class="font-medium text-sm">Comentario de Validación</label>
+                    <Textarea id="approval1_comment" v-model="firstApprovalForm.approval1_comment" rows="5"
+                        placeholder="Escribe un comentario para aprobar, observar o rechazar..." class="w-full" />
                 </div>
-
-                <div class="flex flex-col gap-1">
-                    <label for="description" class="font-medium">Descripción</label>
-                    <Textarea id="description" v-model="firstApprovalForm.description" rows="3"
-                        placeholder="Descripción del pago..." />
-                </div>
-
-                <div class="flex flex-col gap-1">
-                    <label for="approval1_comment" class="font-medium">Comentario de Validación (Opcional)</label>
-                    <Textarea id="approval1_comment" v-model="firstApprovalForm.approval1_comment" rows="2"
-                        placeholder="Comentarios sobre la validación..." />
-                </div>
-            </form>
+            </div>
         </div>
 
         <template #footer>
@@ -210,10 +200,17 @@
             </div>
         </template>
 
+        <div class="mt-6 border-t pt-4">
+            <h3 class="text-lg font-semibold mb-2 text-gray-700">Movimientos del Inversionista</h3>
+            <AddWithdraw :investor-id="selectedWithdraw?.investor_id" :current-withdraw="selectedWithdraw"
+                :visible="firstApprovalDialog" @close="() => { }" />
+        </div>
     </Dialog>
 
-    <!-- Dialog para segunda validación -->
-    <Dialog v-model:visible="secondApprovalDialog" :style="{ width: '520px' }" :header="selectedWithdraw
+
+
+    <!-- Dialog para segunda validación (unificada con detalles del inversionista) -->
+    <Dialog v-model:visible="secondApprovalDialog" :style="{ width: '920px', maxWidth: '95vw' }" :header="selectedWithdraw
         ? `Segunda Validación — ${formatCurrency(selectedWithdraw.amount, selectedWithdraw.currency)}`
         : 'Segunda Validación'" :modal="true">
 
@@ -222,90 +219,87 @@
             <span>Cargando datos de la 1ª validación…</span>
         </div>
 
-        <div v-else class="flex flex-col gap-4">
-            <!-- Bloque de resumen -->
-            <div class="p-4 rounded border border-green-200 bg-green-50">
-                <div class="flex items-start gap-3">
-                    <i class="pi pi-shield text-2xl text-green-500"></i>
-                    <div class="flex-1">
-                        <p class="font-semibold text-base">{{ selectedWithdraw?.invesrionista }}</p>
-                        <p class="text-sm text-gray-700">
-                            Monto: {{ formatCurrency(selectedWithdraw?.amount, selectedWithdraw?.currency) }}
-                        </p>
-                        <p class="text-xs text-gray-500 mt-1">
-                            ID Retiro: {{ selectedWithdraw?.id }} · Creado: {{ selectedWithdraw?.created_at }}
-                        </p>
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <!-- Columna izquierda -->
+            <div class="space-y-4">
+                <div class="p-4 border rounded-lg bg-green-50 border-green-200">
+                    <h4 class="text-lg font-semibold text-gray-800 mb-2">
+                        {{ selectedWithdraw?.invesrionista }}
+                    </h4>
+                    <p class="text-sm text-gray-600">
+                        Documento: {{ selectedWithdraw?.documento || '—' }}
+                    </p>
+                    <p class="text-sm text-gray-600">
+                        Monto solicitado: {{ formatCurrency(selectedWithdraw?.amount, selectedWithdraw?.currency) }}
+                    </p>
+                    <p class="text-sm text-gray-600">
+                        Fecha de creación: {{ selectedWithdraw?.created_at || '—' }}
+                    </p>
+                </div>
+
+                <!-- Cuenta destino -->
+                <div class="p-4 border rounded-lg bg-white">
+                    <p class="text-sm font-semibold text-gray-700 mb-2">Cuenta destino</p>
+                    <div class="text-sm space-y-1">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Alias:</span>
+                            <span class="font-medium">{{ selectedWithdraw?.alias || '—' }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Cuenta corriente (CC):</span>
+                            <span class="font-medium">{{ selectedWithdraw?.cc || '—' }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Cuenta interbancaria (CCI):</span>
+                            <span class="font-medium">{{ selectedWithdraw?.cci || '—' }}</span>
+                        </div>
+
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Banco:</span>
+                            <span class="font-medium">{{ selectedWithdraw?.banco_cuenta || '—' }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Datos provenientes de la 1ª validación -->
-            <div class="p-4 rounded border border-orange-200 bg-orange-50">
-                <p class="text-xs font-semibold uppercase text-orange-700 tracking-wide">Datos de la 1ª validación</p>
-
-                <div class="mt-3 grid grid-cols-1 gap-2 text-sm">
-                    <div class="flex justify-between gap-3">
-                        <span class="text-gray-600">N° Operación:</span>
-                        <span class="font-medium">{{ selectedWithdraw?.nro_operation || '—' }}</span>
-                    </div>
-
-                    <div class="flex justify-between gap-3">
-                        <span class="text-gray-600">Fecha de pago:</span>
-                        <span class="font-medium">
-                            {{ selectedWithdraw?.deposit_pay_date ? formatDateTime(selectedWithdraw?.deposit_pay_date) :
-                                '—'
-                            }}
-                        </span>
-                    </div>
-
-                    <div class="flex justify-between gap-3">
-                        <span class="text-gray-600">Descripción:</span>
-                        <span class="font-medium text-right whitespace-pre-line">
-                            {{ selectedWithdraw?.description || '—' }}
-                        </span>
-                    </div>
-
-                    <div class="flex justify-between gap-3">
-                        <span class="text-gray-600">Comentario 1ª valid.:</span>
-                        <span class="font-medium text-right whitespace-pre-line">
-                            {{ selectedWithdraw?.approval1_comment || '—' }}
-                        </span>
-                    </div>
-
-                    <div class="flex justify-between gap-3">
-                        <span class="text-gray-600">1º Usuario:</span>
-                        <span class="font-medium">
-                            {{ selectedWithdraw?.approval1_by || '—' }}
-                        </span>
-                    </div>
-
-                    <div class="flex justify-between gap-3">
-                        <span class="text-gray-600">T. 1ª Aprobación:</span>
-                        <span class="font-medium">
-                            {{ selectedWithdraw?.approval1_at ? selectedWithdraw.approval1_at : '—' }}
-                        </span>
-                    </div>
+            <!-- Columna derecha -->
+            <div class="space-y-4">
+                <div class="p-4 border rounded-lg bg-orange-50 border-orange-200">
+                    <p class="text-sm font-semibold text-orange-700 mb-2">Datos de la 1ª validación</p>
+                    <!-- <div class="text-sm space-y-1">
+                        <div class="flex justify-between"><span>N° Operación:</span><span class="font-medium">{{
+                            selectedWithdraw?.nro_operation || '—' }}</span></div>
+                        <div class="flex justify-between"><span>Fecha de pago:</span><span class="font-medium">{{
+                            selectedWithdraw?.deposit_pay_date ? formatDateTime(selectedWithdraw?.deposit_pay_date)
+                                :
+                                '—' }}</span></div>
+                        <div><span class="block">Descripción:</span>
+                            <p class="font-medium whitespace-pre-line">{{ selectedWithdraw?.description || '—' }}</p>
+                        </div>
+                        <div><span class="block">Comentario 1ª valid.:</span>
+                            <p class="font-medium whitespace-pre-line">{{ selectedWithdraw?.approval1_comment || '—' }}
+                            </p>
+                        </div>
+                    </div> -->
                 </div>
-            </div>
 
-            <!-- Comentario de segunda validación -->
-            <div class="flex flex-col gap-1">
-                <label for="approval2_comment" class="font-medium">Comentario de Segunda Validación</label>
-                <Textarea id="approval2_comment" v-model="secondApprovalForm.approval2_comment" rows="3"
-                    placeholder="Comentarios finales de validación..." />
-            </div>
-
-            <div class="p-4 bg-yellow-50 border-l-4 border-yellow-400">
-                <p class="text-sm">
-                    <strong>⚠️ Importante:</strong> Esta acción aprobará definitivamente el retiro y marcará el
-                    movimiento
-                    como válido. Se enviará notificación al inversionista.
-                </p>
+                <div>
+                    <label for="approval2_comment" class="font-medium text-sm">Comentario de Segunda Validación</label>
+                    <Textarea id="approval2_comment" v-model="secondApprovalForm.approval2_comment" rows="5"
+                        placeholder="Escribe un comentario para aprobar, observar o rechazar..." class="w-full" />
+                </div>
             </div>
         </div>
 
+
+        <div class="mt-6 border-t pt-4">
+            <h3 class="text-lg font-semibold mb-2 text-gray-700">Movimientos del Inversionista</h3>
+            <AddWithdraw :investor-id="selectedWithdraw?.investor_id" :current-withdraw="selectedWithdraw"
+                :visible="secondApprovalDialog" @close="() => { }" />
+        </div>
+
+
         <template #footer>
-            <!-- tu footer actual sin cambios -->
             <div class="flex flex-wrap justify-between w-full gap-2">
                 <div class="flex gap-2">
                     <Button label="Observar" icon="pi pi-eye-slash" severity="help" outlined
@@ -326,6 +320,8 @@
         </template>
     </Dialog>
 
+
+
     <!-- Dialog: Detalle de Validaciones -->
     <Dialog v-model:visible="validationDetailsDialog" :style="{ width: '560px' }" header="Detalle de Validaciones"
         :modal="true">
@@ -333,9 +329,10 @@
             <div class="p-4 rounded border bg-slate-50">
                 <p class="font-semibold text-sm text-slate-700">Resumen del Retiro</p>
 
-                <div v-if="selectedWithdraw && !canPay(selectedWithdraw)"
+                <div v-if="selectedValidationWithdraw && !canPay(selectedValidationWithdraw)"
                     class="p-3 rounded border-l-4 bg-amber-50 border-amber-400 text-sm text-amber-800">
-                    Este retiro aún no está listo para pago. Requiere 2ª validación aprobada y estado final "Aprobado".
+                    Este retiro aún no está listo para pago. Requiere 2ª validación aprobada y estado final
+                    "Aprobado".
                 </div>
 
                 <div class="mt-2 text-sm">
@@ -346,13 +343,39 @@
                     <div class="flex justify-between">
                         <span class="text-slate-600">Monto:</span>
                         <span class="font-medium">
-                            {{ formatCurrency(selectedValidationWithdraw?.amount, selectedValidationWithdraw?.currency)
+                            {{ formatCurrency(selectedValidationWithdraw?.amount,
+                                selectedValidationWithdraw?.currency)
                             }}
                         </span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-slate-600">Creado:</span>
                         <span class="font-medium">{{ selectedValidationWithdraw?.created_at || '—' }}</span>
+                    </div>
+                </div>
+
+
+                <!-- Cuenta destino -->
+                <div class="p-4 border rounded-lg bg-white">
+                    <p class="text-sm font-semibold text-gray-700 mb-2">Cuenta destino</p>
+                    <div class="text-sm space-y-1">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Alias:</span>
+                            <span class="font-medium">{{ selectedValidationWithdraw?.alias || '—' }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Cuenta corriente (CC):</span>
+                            <span class="font-medium">{{ selectedValidationWithdraw?.cc || '—' }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Cuenta interbancaria (CCI):</span>
+                            <span class="font-medium">{{ selectedValidationWithdraw?.cci || '—' }}</span>
+                        </div>
+
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Banco:</span>
+                            <span class="font-medium">{{ selectedValidationWithdraw?.banco_cuenta || '—' }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -369,22 +392,24 @@
                         <div class="flex justify-between"><span>Fecha/Hora:</span><span class="font-medium">{{
                             selectedValidationWithdraw?.approval1_at || '—' }}</span></div>
                         <div><span class="block">Comentario:</span>
-                            <p class="font-medium whitespace-pre-line">{{ selectedValidationWithdraw?.approval1_comment
+                            <p class="font-medium whitespace-pre-line">{{
+                                selectedValidationWithdraw?.approval1_comment
                                 ||
                                 '—' }}</p>
                         </div>
                         <hr class="my-2" />
-                        <div class="flex justify-between"><span>N° Operación:</span><span class="font-medium">{{
+                        <!-- <div class="flex justify-between"><span>N° Operación:</span><span class="font-medium">{{
                             selectedValidationWithdraw?.nro_operation || '—' }}</span></div>
                         <div class="flex justify-between"><span>Fecha de pago:</span><span class="font-medium">
                                 {{ selectedValidationWithdraw?.deposit_pay_date ?
                                     formatDateTime(selectedValidationWithdraw?.deposit_pay_date) : '—' }}
                             </span></div>
                         <div><span class="block">Descripción:</span>
-                            <p class="font-medium whitespace-pre-line">{{ selectedValidationWithdraw?.description || '—'
+                            <p class="font-medium whitespace-pre-line">{{ selectedValidationWithdraw?.description ||
+                                '—'
                             }}
                             </p>
-                        </div>
+                        </div> -->
                     </div>
                 </div>
 
@@ -399,13 +424,24 @@
                         <div class="flex justify-between"><span>Fecha/Hora:</span><span class="font-medium">{{
                             selectedValidationWithdraw?.approval2_at || '—' }}</span></div>
                         <div><span class="block">Comentario:</span>
-                            <p class="font-medium whitespace-pre-line">{{ selectedValidationWithdraw?.approval2_comment
+                            <p class="font-medium whitespace-pre-line">{{
+                                selectedValidationWithdraw?.approval2_comment
                                 ||
                                 '—' }}</p>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div class="mt-6 border-t pt-4">
+            <h3 class="text-lg font-semibold mb-2 text-gray-700">Movimientos del Inversionista</h3>
+            <AddWithdraw :key="selectedValidationWithdraw?.id || 0"
+                :investor-id="selectedValidationWithdraw?.investor_id" :current-withdraw="selectedValidationWithdraw"
+                :visible="validationDetailsDialog" @close="() => { }" />
+
+
+
         </div>
 
         <template #footer>
@@ -485,7 +521,8 @@
 
                     <div v-if="!payForm.file" class="space-y-2">
                         <i class="pi pi-upload text-3xl"></i>
-                        <p class="text-sm">Arrastra y suelta el archivo aquí, o <span class="underline">haz clic para
+                        <p class="text-sm">Arrastra y suelta el archivo aquí, o <span class="underline">haz clic
+                                para
                                 seleccionar</span>.</p>
                         <p class="text-xs text-slate-500">Tamaño máximo: 4&nbsp;MB · Tipos: PDF, JPG, JPEG, PNG</p>
                         <small v-if="paySubmitted && !payForm.file" class="p-error block mt-1">El comprobante es
@@ -501,7 +538,8 @@
                                 <i v-else class="pi pi-file-pdf text-xl"></i>
                             </div>
                             <div class="min-w-0">
-                                <p class="font-medium truncate" :title="payForm.file.name">{{ payForm.file.name }}</p>
+                                <p class="font-medium truncate" :title="payForm.file.name">{{ payForm.file.name }}
+                                </p>
                                 <p class="text-xs text-slate-500">{{ formatBytes(payForm.file.size) }}</p>
                             </div>
                         </div>
@@ -549,7 +587,7 @@
             <div class="flex justify-between">
                 <span class="text-slate-600">Monto:</span>
                 <span class="font-medium">{{ formatCurrency(selectedPayment?.amount, selectedPayment?.currency)
-                    }}</span>
+                }}</span>
             </div>
 
             <div class="mt-2 p-3 rounded bg-slate-50">
@@ -579,11 +617,100 @@
 
 
 
+    <Dialog v-model:visible="historyVisible" :style="{ width: '900px', maxWidth: '95vw' }"
+        header="Historial de Aprobaciones" :modal="true" :closable="true" @hide="cerrarHistorial">
+        <div v-if="historyLoading" class="p-4 text-center">
+            <i class="pi pi-spin pi-spinner text-2xl"></i>
+            <p class="mt-2">Cargando historial...</p>
+        </div>
+
+        <div v-else>
+            <div v-if="historyRows.length === 0" class="p-4 text-center text-sm text-gray-500">
+                Sin registros de historial.
+            </div>
+
+            <DataTable v-else :value="historyRows" dataKey="id" class="p-datatable-sm">
+                <Column field="id" header="#" style="width: 5rem" />
+
+                <Column header="1º Aprobación" style="min-width: 10rem">
+                    <template #body="{ data }">
+                        <div class="space-y-1">
+                            <Tag :value="getStatusLabel(data.approval1_status)"
+                                :severity="getStatusSeverity(data.approval1_status)" />
 
 
+                        </div>
+                    </template>
+                </Column>
 
-    <AddWithdraw v-model:visible="detailsDialog" :investor-id="selectedInvestorId"
-        :current-withdraw="selectedWithdrawForDetails" @close="closeDetailsDialog" />
+                <Column header="1º Usuario" style="min-width: 10rem">
+                    <template #body="{ data }">
+                        <div class="space-y-1">
+                            <div>{{ data?.approval1_by?.name ?? data?.approval1_by ?? '—' }}</div>
+
+                        </div>
+                    </template>
+                </Column>
+
+                <Column header="1º T Aprobación" style="min-width: 10rem">
+                    <template #body="{ data }">
+                        <div class="space-y-1">
+                            <div>{{ data.approval1_at ? formatDateTime(data.approval1_at) : '—' }}</div>
+
+                        </div>
+                    </template>
+                </Column>
+
+                <Column header="1º Comentario" style="min-width: 10rem">
+                    <template #body="{ data }">
+                        <div class="space-y-1">
+                            <div>{{ data.approval1_comment || '—' }}</div>
+
+                        </div>
+                    </template>
+                </Column>
+
+                <Column header="2º Aprobación" style="min-width: 10rem">
+                    <template #body="{ data }">
+                        <div class="space-y-1">
+                            <Tag :value="getStatusLabel(data.approval2_status)"
+                                :severity="getStatusSeverity(data.approval2_status)" />
+
+                        </div>
+                    </template>
+                </Column>
+
+                <Column header="2º Usuario" style="min-width: 10rem">
+                    <template #body="{ data }">
+                        <div class="space-y-1">
+                            <div>{{ data?.approval2_by?.name ?? data?.approval2_by ?? '—' }}</div>
+
+                        </div>
+                    </template>
+                </Column>
+
+                <Column header="2º T Aprobación" style="min-width: 10rem">
+                    <template #body="{ data }">
+                        <div class="space-y-1">
+                            <div>{{ data.approval2_at ? formatDateTime(data.approval2_at) : '—' }}</div>
+
+                        </div>
+                    </template>
+                </Column>
+
+                <Column header="2º Comentario" style="min-width: 10rem">
+                    <template #body="{ data }">
+                        <div class="space-y-1">
+                            <div>{{ data.approval2_comment || '—' }}</div>
+
+                        </div>
+                    </template>
+                </Column>
+            </DataTable>
+        </div>
+    </Dialog>
+
+
 
 </template>
 
@@ -603,6 +730,8 @@ import DatePicker from 'primevue/datepicker';
 import Tag from 'primevue/tag';
 import axios from 'axios';
 import AddWithdraw from './AddWithdraw.vue';
+import Menu from 'primevue/menu';
+
 // Configuración de Axios
 
 
@@ -616,50 +745,53 @@ const previewUrl = ref('');
 const onDragOver = () => { isDragging.value = true; };
 const onDragLeave = () => { isDragging.value = false; };
 
+const actionMenus = ref({});
+
+
 const isImage = (file) => !!file && /^image\//i.test(file.type);
 const formatBytes = (bytes) => {
-  if (!bytes && bytes !== 0) return '';
-  const units = ['B','KB','MB','GB'];
-  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  const val = bytes / Math.pow(1024, i);
-  return `${val.toFixed(val >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+    if (!bytes && bytes !== 0) return '';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+    const val = bytes / Math.pow(1024, i);
+    return `${val.toFixed(val >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
 };
 
 const cleanupPreview = () => {
-  if (previewUrl.value && previewUrl.value.startsWith('blob:')) {
-    URL.revokeObjectURL(previewUrl.value);
-  }
-  previewUrl.value = '';
+    if (previewUrl.value && previewUrl.value.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl.value);
+    }
+    previewUrl.value = '';
 };
 
 const assignFile = (file) => {
-  // client-side cap 4MB just to hint early (backend also validates)
-  const MAX = 4 * 1024 * 1024;
-  if (file && file.size > MAX) {
-    toast.add({ severity: 'warn', summary: 'Archivo demasiado grande', detail: 'Máximo 4 MB.', life: 3000 });
-    return;
-  }
-  payForm.value.file = file || null;
-  cleanupPreview();
-  if (file && isImage(file)) {
-    previewUrl.value = URL.createObjectURL(file);
-  }
+    // client-side cap 4MB just to hint early (backend also validates)
+    const MAX = 4 * 1024 * 1024;
+    if (file && file.size > MAX) {
+        toast.add({ severity: 'warn', summary: 'Archivo demasiado grande', detail: 'Máximo 4 MB.', life: 3000 });
+        return;
+    }
+    payForm.value.file = file || null;
+    cleanupPreview();
+    if (file && isImage(file)) {
+        previewUrl.value = URL.createObjectURL(file);
+    }
 };
 
 const onDrop = (e) => {
-  isDragging.value = false;
-  const file = e.dataTransfer?.files?.[0];
-  if (file) assignFile(file);
+    isDragging.value = false;
+    const file = e.dataTransfer?.files?.[0];
+    if (file) assignFile(file);
 };
 
 const onPayFileChange = (e) => {
-  const f = e?.target?.files?.[0] ?? null;
-  assignFile(f);
+    const f = e?.target?.files?.[0] ?? null;
+    assignFile(f);
 };
 
 const removeFile = () => {
-  assignFile(null);
-  if (fileInput.value) fileInput.value.value = '';
+    assignFile(null);
+    if (fileInput.value) fileInput.value.value = '';
 };
 
 onBeforeUnmount(cleanupPreview);
@@ -975,15 +1107,7 @@ const resetFirstApprovalForm = () => {
 const confirmFirstApproval = async () => {
     firstApprovalSubmitted.value = true;
 
-    if (!firstApprovalForm.value.nro_operation || !firstApprovalForm.value.deposit_pay_date) {
-        toast.add({
-            severity: 'warn',
-            summary: 'Validación',
-            detail: 'Complete todos los campos requeridos',
-            life: 3000
-        });
-        return;
-    }
+
 
     firstApprovalProcessing.value = true;
 
@@ -1011,7 +1135,13 @@ const confirmFirstApproval = async () => {
             life: 3000
         });
 
+        // cerrar 1ª y abrir 2ª automáticamente con el registro actualizado
         closeFirstApprovalDialog();
+        const updatedRow = withdraws.value[withdrawIndex] || response.data.data;
+        if (updatedRow) {
+            openSecondApprovalDialog(updatedRow);
+        }
+
 
     } catch (error) {
         console.error('Error en primera validación:', error?.response ?? error);
@@ -1242,6 +1372,96 @@ const formatDateForBackend = (date) => {
     return new Date(date).toISOString().split('T')[0];
 };
 
+
+// --- Historial de aprobaciones (lazy via API) ---
+// Mantén estos nombres: son los que usa el <Dialog> del template
+const historyVisible = ref(false);
+const historyLoading = ref(false);
+const historyError = ref('');
+const historyRows = ref([]);
+
+const openHistory = async (row) => {
+    historyVisible.value = true;
+    historyLoading.value = true;
+    historyError.value = '';
+    selectedWithdraw.value = row; // opcional para mostrar resumen
+
+    try {
+        const { data } = await axios.get(`/withdraws/${row.id}/approval-history`);
+        historyRows.value = Array.isArray(data?.data) ? data.data : [];
+    } catch (e) {
+        historyError.value = extractErrorMessage(e, 'No se pudo cargar el historial');
+        historyRows.value = [];
+    } finally {
+        historyLoading.value = false;
+    }
+};
+
+const cerrarHistorial = () => {
+    historyVisible.value = false;
+    historyRows.value = [];
+    historyError.value = '';
+};
+
+
+const isEmptyOrPending = (v) =>
+    v === null || v === undefined || v === '' || v === 'pending';
+
+
+const getActionMenu = (row) => {
+    const items = [];
+
+    // Primera validación
+    if (!row.approval1_status || row.approval2_status === 'observed') {
+        items.push({
+            label: '1ª Validación',
+            icon: 'pi pi-check-circle',
+            command: () => openFirstApprovalDialog(row)
+        });
+    }
+    // Segunda validación
+    else if (row.approval1_status === 'approved' && isEmptyOrPending(row.approval2_status)) {
+        items.push({
+            label: '2ª Validación',
+            icon: 'pi pi-shield',
+            command: () => openSecondApprovalDialog(row)
+        });
+    }
+    // Detalle de validaciones
+    else {
+        items.push({
+            label: 'Validaciones',
+            icon: 'pi pi-list-check',
+            command: () => openValidationDetails(row)
+        });
+    }
+
+    // Pago
+    if (!row.resource_path && !row.payment_comment) {
+        items.push({
+            label: 'Registrar Pago',
+            icon: 'pi pi-credit-card',
+            command: () => openPayDialog(row)
+        });
+    } else {
+        items.push({
+            label: 'Ver Pago',
+            icon: 'pi pi-paperclip',
+            command: () => openPaymentDetails(row)
+        });
+    }
+
+
+
+    // Historial
+    items.push({
+        label: 'Historial de Aprobaciones',
+        icon: 'pi pi-history',
+        command: () => openHistory(row)
+    });
+
+    return items;
+};
 
 
 

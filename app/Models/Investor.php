@@ -31,6 +31,10 @@ use Money\Money;
 // App\Models\Investor.php
 use Illuminate\Support\Facades\Storage;
 
+use App\Notifications\InvestorAccountObservedDNIEmailNotification; 
+use App\Notifications\InvestorAccountObservedPepEvidenceNotification;
+
+
 class Investor extends Authenticatable implements MustVerifyEmail, AuditableContract
 {
     use HasApiTokens, HasFactory, Notifiable, HasUlids, Auditable;
@@ -276,10 +280,20 @@ class Investor extends Authenticatable implements MustVerifyEmail, AuditableCont
         $this->notify(new InvestorAccountObservedNotification());
     }
 
+    public function sendAccountObservedDNIEmailNotification()
+    {
+        $this->notify(new InvestorAccountObservedDNIEmailNotification());
+    }
+
 
        public function sendAccountObservedFotoNotification()
     {
         $this->notify(new InvestorAccountObservedFotoNotification());
+    }
+
+    public function sendAccountObservedPepEvidenceNotification()
+    {
+        $this->notify(new InvestorAccountObservedPepEvidenceNotification());
     }
 
 
@@ -425,5 +439,11 @@ class Investor extends Authenticatable implements MustVerifyEmail, AuditableCont
 
     return $investor;
 }
+
+
+
+
+
+
 
 }

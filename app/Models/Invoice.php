@@ -35,6 +35,7 @@ class Invoice extends Model implements AuditableContract{
         'RUC_client',
         'type',
         'statusPago',
+        'condicion_oportunidad',
 
         // --- Aprobaciones ---
         'approval1_status',
@@ -57,6 +58,7 @@ class Invoice extends Model implements AuditableContract{
         'approval2_at' => 'datetime',
         'estimated_pay_date' => 'date',
         'created_at' => 'datetime',
+        
     ];
 
 
@@ -242,4 +244,8 @@ class Invoice extends Model implements AuditableContract{
         }
         return $this->save();
     }
+
+
+   
+
 }
