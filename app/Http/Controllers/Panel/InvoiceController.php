@@ -282,12 +282,17 @@ class InvoiceController extends Controller
 
             $invoice->update([
                 'approval1_status'  => 'approved',
-                'approval2_status'  => null,
                 'approval1_by'      => $userId,
                 'approval1_at'      => now(),
                 'approval1_comment' => $request->input('comment'),
                 'updated_by'        => $userId,
+                
             ]);
+
+            if ($invoice->approval2_status === 'observed'){
+                $invoice->approval2_status = 'pending';
+                $invoice->save();
+            }
 
 
 
@@ -328,12 +333,7 @@ class InvoiceController extends Controller
                 'comment.min'      => 'El comentario debe tener al menos 3 caracteres.'
             ]);
 
-            if ($invoice->approval1_status === 'observed') {
-                return response()->json([
-                    'message' => 'La factura ya fue observada.',
-                    'data'    => $invoice
-                ], 400);
-            }
+            
 
             $invoice->update([
                 'approval1_status'  => 'observed',
@@ -365,46 +365,46 @@ class InvoiceController extends Controller
             ], 500);
         }
     }
-    public function rechazar(Request $request, $id)
-    {
-        try {
-            $invoice = Invoice::findOrFail($id);
-            Gate::authorize('update', $invoice);
+    // public function rechazar(Request $request, $id)
+    // {
+    //     try {
+    //         $invoice = Invoice::findOrFail($id);
+    //         Gate::authorize('update', $invoice);
 
-            $userId = Auth::id();
+    //         $userId = Auth::id();
 
-            // Primera aprobación
+    //         // Primera aprobación
 
-            $invoice->update([
-                'approval1_status'  => 'rejected',
-                'approval1_by'      => $userId,
-                'approval1_at'      => now(),
-                'approval1_comment' => $request->input('comment'),
-                'updated_by'        => $userId,
-            ]);
+    //         $invoice->update([
+    //             'approval1_status'  => 'rejected',
+    //             'approval1_by'      => $userId,
+    //             'approval1_at'      => now(),
+    //             'approval1_comment' => $request->input('comment'),
+    //             'updated_by'        => $userId,
+    //         ]);
 
 
-            HistoryAprobadorInvoice::create([
-                'invoice_id'       => $invoice->id,
-                'approval1_status' => 'rejected',
-                'approval1_by'     => $userId,
-                'approval1_at'     => now(),
-                'approval1_comment' => $request->input('comment'),
-            ]);
+    //         HistoryAprobadorInvoice::create([
+    //             'invoice_id'       => $invoice->id,
+    //             'approval1_status' => 'rejected',
+    //             'approval1_by'     => $userId,
+    //             'approval1_at'     => now(),
+    //             'approval1_comment' => $request->input('comment'),
+    //         ]);
 
-            return response()->json([
-                'message' => "Primera aprobación rechazada.",
-                'data'    => $invoice
-            ], 200);
-        } catch (AuthorizationException $e) {
-            return response()->json(['message' => 'No tienes permiso.'], 403);
-        } catch (Throwable $e) {
-            return response()->json([
-                'message' => 'Error al rechazar la factura.',
-                'error'   => $e->getMessage()
-            ], 500);
-        }
-    }
+    //         return response()->json([
+    //             'message' => "Primera aprobación rechazada.",
+    //             'data'    => $invoice
+    //         ], 200);
+    //     } catch (AuthorizationException $e) {
+    //         return response()->json(['message' => 'No tienes permiso.'], 403);
+    //     } catch (Throwable $e) {
+    //         return response()->json([
+    //             'message' => 'Error al rechazar la factura.',
+    //             'error'   => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
 
 
 
@@ -434,12 +434,24 @@ class InvoiceController extends Controller
                 ->latest()
                 ->first();
 
-            $history?->update([
-                'approval2_status'  => 'approved',
-                'approval2_by'      => $userId,
-                'approval2_at'      => now(),
-                'approval2_comment' => $request->input('comment'),
-            ]);
+
+            if ($history && $history->approval2_status == null) {
+
+                $history?->update([
+                    'approval2_status'  => 'approved',
+                    'approval2_by'      => $userId,
+                    'approval2_at'      => now(),
+                    'approval2_comment' => $request->input('comment'),
+                ]);
+            } else {
+                HistoryAprobadorInvoice::create([
+                    'invoice_id'       => $invoice->id,
+                    'approval2_status' => 'approved',
+                    'approval2_by'     => $userId,
+                    'approval2_at'     => now(),
+                    'approval2_comment' => $request->input('comment'),
+                ]);
+            }
 
             return response()->json([
                 'message' => 'Factura aprobada correctamente en nivel 2.',
@@ -470,15 +482,18 @@ class InvoiceController extends Controller
                 'comment.min'      => 'El comentario debe tener al menos 3 caracteres.'
             ]);
 
-            if ($invoice->approval2_status === 'observed') {
-                return response()->json([
-                    'message' => 'La factura ya fue observada.',
-                    'data'    => $invoice
-                ], 400);
-            }
+
+
+
+            
+           
 
             $invoice->update([
                 'approval2_status'  => 'observed',
+                'approval1_status'  => 'pending',
+                'approval1_by'      => null,
+                'approval1_at'      => null,
+                'approval1_comment' => null,
                 'approval2_by'      => $userId,
                 'approval2_at'      => now(),
                 'approval2_comment' => $request->input('comment'),
@@ -493,75 +508,90 @@ class InvoiceController extends Controller
                 ->latest()
                 ->first();
 
-            $history?->update([
-                'approval2_status'  => 'observed',
-                'approval2_by'      => $userId,
-                'approval2_at'      => now(),
-                'approval2_comment' => $request->input('comment'),
-            ]);
+
+
+            if ($history && $history->approval2_status == null) {
+
+                $history?->update([
+                    'approval2_status'  => 'observed',
+                    'approval2_by'      => $userId,
+                    'approval2_at'      => now(),
+                    'approval2_comment' => $request->input('comment'),
+                ]);
+            } else {
+                HistoryAprobadorInvoice::create([
+                    'invoice_id'       => $invoice->id,
+                    'approval2_status' => 'observed',
+                    'approval2_by'     => $userId,
+                    'approval2_at'     => now(),
+                    'approval2_comment' => $request->input('comment'),
+                ]);
+            }
 
             return response()->json([
                 'message' => 'Factura observada correctamente.',
                 'data'    => $invoice
             ], 200);
         } catch (AuthorizationException $e) {
+            Log::error('Error de autorización en observacion2: ' . $e->getMessage());
             return response()->json(['message' => 'No tienes permiso.'], 403);
         } catch (Throwable $e) {
+            Log::error('Error al observar la factura en observacion2: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Error al observar la factura.',
                 'error'   => $e->getMessage()
             ], 500);
         }
     }
-    public function rechazar2(Request $request, $id)
-    {
-        try {
-            $invoice = Invoice::findOrFail($id);
-            Gate::authorize('update', $invoice);
+    // public function rechazar2(Request $request, $id)
+    // {
+    //     try {
+    //         $invoice = Invoice::findOrFail($id);
+    //         Gate::authorize('update', $invoice);
 
-            $userId = Auth::id();
-
-
+    //         $userId = Auth::id();
 
 
-            if ($invoice->approval1_status !== 'approved') {
-                return response()->json([
-                    'message' => 'No puedes rechazar en la segunda activación hasta que la primera esté resuelta.'
-                ], 400);
-            }
 
-            $invoice->update([
-                'approval2_status'  => 'rejected',
-                'approval2_by'      => $userId,
-                'approval2_at'      => now(),
-                'approval2_comment' => $request->input('comment'),
-                'status'            => 'inactive',
-                'updated_by'        => $userId,
-            ]);
-            $history = HistoryAprobadorInvoice::where('invoice_id', $invoice->id)
-                ->latest()
-                ->first();
 
-            $history?->update([
-                'approval2_status'  => 'rejected',
-                'approval2_by'      => $userId,
-                'approval2_at'      => now(),
-                'approval2_comment' => $request->input('comment'),
-            ]);
+    //         if ($invoice->approval1_status !== 'approved') {
+    //             return response()->json([
+    //                 'message' => 'No puedes rechazar en la segunda activación hasta que la primera esté resuelta.'
+    //             ], 400);
+    //         }
 
-            return response()->json([
-                'message' => "Segunda aprobación rechazada.",
-                'data'    => $invoice
-            ], 200);
-        } catch (AuthorizationException $e) {
-            return response()->json(['message' => 'No tienes permiso.'], 403);
-        } catch (Throwable $e) {
-            return response()->json([
-                'message' => 'Error al rechazar la factura.',
-                'error'   => $e->getMessage()
-            ], 500);
-        }
-    }
+    //         $invoice->update([
+    //             'approval2_status'  => 'rejected',
+    //             'approval2_by'      => $userId,
+    //             'approval2_at'      => now(),
+    //             'approval2_comment' => $request->input('comment'),
+    //             'status'            => 'inactive',
+    //             'updated_by'        => $userId,
+    //         ]);
+    //         $history = HistoryAprobadorInvoice::where('invoice_id', $invoice->id)
+    //             ->latest()
+    //             ->first();
+
+    //         $history?->update([
+    //             'approval2_status'  => 'rejected',
+    //             'approval2_by'      => $userId,
+    //             'approval2_at'      => now(),
+    //             'approval2_comment' => $request->input('comment'),
+    //         ]);
+
+    //         return response()->json([
+    //             'message' => "Segunda aprobación rechazada.",
+    //             'data'    => $invoice
+    //         ], 200);
+    //     } catch (AuthorizationException $e) {
+    //         return response()->json(['message' => 'No tienes permiso.'], 403);
+    //     } catch (Throwable $e) {
+    //         return response()->json([
+    //             'message' => 'Error al rechazar la factura.',
+    //             'error'   => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
 
     //SOLO PRIMER VALIDADOR
 
@@ -673,9 +703,6 @@ class InvoiceController extends Controller
         }
     }
 
-
-
-
     public function approvalHistory($id)
     {
         $rows = HistoryAprobadorInvoice::query()
@@ -695,7 +722,6 @@ class InvoiceController extends Controller
             'data' => $rows,
         ]);
     }
-
 
     public function adelantarPago(Request $request, Invoice $invoice)
     {
@@ -782,7 +808,6 @@ class InvoiceController extends Controller
         }
     }
 
-
     public function cerrar(Request $request, Invoice $invoice)
 
     {
@@ -829,13 +854,12 @@ class InvoiceController extends Controller
 
 
     public function abrir(Request $request, Invoice $invoice)
-
     {
 
 
 
 
-        
+
 
 
 
@@ -844,21 +868,21 @@ class InvoiceController extends Controller
         ]);
 
 
-        if($invoice->financed_amount <= 0){
+        if ($invoice->financed_amount <= 0) {
             return response()->json([
                 'message' => 'No se puede abrir la factura. Ya tiene monto financiado.'
             ], 400);
         }
 
-         $today = Carbon::today();
+        $today = Carbon::today();
         $limitDate = $today->subDays(25);
-        if($invoice->estimated_pay_date < $limitDate){
+        if ($invoice->estimated_pay_date < $limitDate) {
             return response()->json([
                 'message' => 'No se puede abrir la factura. La fecha estimada de pago es menor a 25 días desde hoy.'
             ], 400);
         }
-        
-       
+
+
 
         if ($invoice->approval1_status !== 'approved' || $invoice->approval2_status !== 'approved') {
             return response()->json([

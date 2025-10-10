@@ -59,7 +59,7 @@ class ProcessExcelComparison implements ShouldQueue
             $headers = array_map('strval', $sheet[0]);
             
             // Validar columnas requeridas
-            $requiredColumns = ['document', 'RUC_client', 'invoice_number', 'loan_number', 
+            $requiredColumns = ['document', 'ruc_proveedor', 'invoice_number', 'loan_number', 
                                'estimated_pay_date', 'currency', 'amount', 'status', 'saldo'];
             
             $missingColumns = array_diff($requiredColumns, $headers);
@@ -72,7 +72,7 @@ class ProcessExcelComparison implements ShouldQueue
             $excelDocuments = array_filter(array_map('trim', $excelDocuments));
             
             $companies = Company::with(['invoices' => function($query) {
-                $query->select(['id', 'company_id', 'RUC_client', 'invoice_number', 'loan_number', 
+                $query->select(['id', 'company_id', 'ruc_proveedor', 'invoice_number', 'loan_number', 
                                'amount', 'estimated_pay_date', 'currency', 'status']);
             }])
             ->whereIn('document', $excelDocuments)
@@ -92,7 +92,7 @@ class ProcessExcelComparison implements ShouldQueue
                 
                 // Normalizar datos
                 $documentExcel = trim(strval($rowData['document'] ?? ''));
-                $rucClientExcel = trim(strval($rowData['RUC_client'] ?? ''));
+                $rucClientExcel = trim(strval($rowData['ruc_proveedor'] ?? ''));
                 $invoiceNumberExcel = trim(strval($rowData['invoice_number'] ?? ''));
                 $loanNumberExcel = trim(strval($rowData['loan_number'] ?? ''));
                 $estimatedPayDateExcel = strval($rowData['estimated_pay_date'] ?? '');
@@ -114,7 +114,7 @@ class ProcessExcelComparison implements ShouldQueue
                     $company = $companies[$documentExcel];
                     
                     $invoice = $company->invoices->first(function($inv) use ($rucClientExcel, $invoiceNumberExcel, $loanNumberExcel) {
-                        return $inv->RUC_client === $rucClientExcel 
+                        return $inv->ruc_proveedor === $rucClientExcel 
                             && $inv->invoice_number === $invoiceNumberExcel 
                             && $inv->loan_number === $loanNumberExcel;
                     });
@@ -141,7 +141,7 @@ class ProcessExcelComparison implements ShouldQueue
 
                 $jsonData[] = [
                     'document' => $documentExcel,
-                    'RUC_client' => $rucClientExcel,
+                    'ruc_proveedor' => $rucClientExcel,
                     'invoice_number' => $invoiceNumberExcel,
                     'loan_number' => $loanNumberExcel,
                     'amount' => $amountExcel,
@@ -205,7 +205,7 @@ class ProcessExcelComparison implements ShouldQueue
     {
         $comparisons = [
             'Documento empresa' => [$company->document, $docExcel],
-            'RUC Cliente' => [$invoice->RUC_client, $rucExcel],
+            'RUC Cliente' => [$invoice->ruc_proveedor, $rucExcel],
             'Nro Factura' => [$invoice->invoice_number, $invExcel],
             'Loan Number' => [$invoice->loan_number, $loanExcel],
         ];

@@ -11,8 +11,8 @@ class Kernel extends ConsoleKernel
     {
         $schedule->command('subastas:activar')->everyMinute();
         $schedule->command('posts:publish-scheduled')->everyMinute();
-        $schedule->command('invoices:close-expired')->everyTwoHours();
-
+        $schedule->command('invoices:close-expired')->everyFiveMinutes();
+        $schedule->command('app:update-invoice-situacion')->everyFiveMinutes();
     }
     protected function commands(): void
     {

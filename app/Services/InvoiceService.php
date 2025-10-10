@@ -30,7 +30,7 @@ class InvoiceService{
             'status'                   => $status,
             'company_id'               => $company->id,
             'loan_number'              => $data['loan_number'] ?? null,
-            'RUC_client'               => $data['RUC_client'] ?? null,
+            'ruc_proveedor'               => $data['ruc_proveedor'] ?? null,
             'invoice_number'           => $data['invoice_number'] ?? null,
             'paid_amount'              => $data['paid_amount'] ?? 0,
             'client_business_name'     => $data['client_business_name'] ?? null,
@@ -58,7 +58,7 @@ class InvoiceService{
 
             'company_id'                   => $company->id,
             'loan_number'                  => $data['loan_number'] ?? null,
-            'RUC_client'                   => $data['RUC_client'] ?? null,
+            'ruc_proveedor'                   => $data['ruc_proveedor'] ?? null,
             'invoice_number'               => $data['invoice_number'] ?? null,
             'paid_amount'                  => $data['paid_amount'] ?? 0,
             'client_business_name'         => $data['client_business_name'] ?? null,
@@ -68,6 +68,15 @@ class InvoiceService{
             'client_distrito'              => $data['client_distrito'] ?? null,
             'updated_by'                   => $data['updated_by'],
             // resetear aprobación
+            'approval1_status'             => 'pending',
+            'approval1_by'                 => null,
+            'approval1_at'                 => null,
+            'approval1_comment'            => null,
+            'approval2_status'             => 'pending',
+            'approval2_by'                 => null,
+            'approval2_at'                 => null,
+            'approval2_comment'            => null,
+            // 'status'                       => $data['status'] ?? $invoice->status,
           
         ]);
         return $invoice;

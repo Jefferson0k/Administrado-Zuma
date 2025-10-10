@@ -30,17 +30,25 @@ use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Excel as ExcelType;
 use Illuminate\Support\Str;
 
-class PaymentsController extends Controller{
-    public function comparacion(Request $request){
+
+
+class PaymentsController extends Controller
+{
+    public function comparacion(Request $request)
+    {
         $request->validate([
             'excel_file' => 'required|file|mimetypes:application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/plain,application/octet-stream',
         ]);
 
         $file = $request->file('excel_file');
+        Log::info('✅ Archivo recibido', ['name' => $file->getClientOriginalName()]);
         $data = Excel::toArray([], $file, null, \Maatwebsite\Excel\Excel::XLSX);
+        Log::info('✅ Datos leídos', ['sheet_count' => count($data)]);
+
         $sheet = $data[0] ?? [];
 
         if (empty($sheet)) {
+            Log::warning('⚠️ El archivo está vacío');
             return response()->json([
                 'success' => false,
                 'data' => [],
@@ -48,15 +56,27 @@ class PaymentsController extends Controller{
             ]);
         }
 
-        $headers = array_map(function($header) {
+        $headers = array_map(function ($header) {
             return trim(strval($header));
         }, $sheet[0]);
-        
+        Log::info('✅ Encabezados detectados', ['headers' => $headers]);
+
+
+
         // Encabezados requeridos
-        $requiredColumns = ['NRO PRESTAMO', 'RUC PROVEEDOR', 'NRO FACTURA', 'RUC ACEPTANTE', 
-                        'MONEDA', 'MONTO DOCUMENTO', 'FECHA PAGO', 'MONTO PAGADO', 
-                        'ESTADO', 'SITUACION'];
-        
+        $requiredColumns = [
+            'NRO PRESTAMO',
+            'RUC PROVEEDOR',
+            'NRO FACTURA',
+            'RUC ACEPTANTE',
+            'MONEDA',
+            'MONTO DOCUMENTO',
+            'FECHA PAGO',
+            'MONTO PAGADO',
+            'ESTADO',
+            'SITUACION'
+        ];
+
         $missingColumns = array_diff($requiredColumns, $headers);
         if (!empty($missingColumns)) {
             return response()->json([
@@ -91,7 +111,18 @@ class PaymentsController extends Controller{
 
         $jsonData = [];
 
-        foreach (array_slice($sheet, 1) as $row) {
+        $rows = array_slice($sheet, 1);
+
+        // Filter out empty rows
+        $rows = array_filter($rows, function ($row) {
+            // Keep row if at least one cell has non-empty value
+            return count(array_filter($row, fn($cell) => trim((string)$cell) !== '')) > 0;
+        });
+
+        foreach ($rows as $row) {
+
+            Log::info('📄 Procesando fila', ['row' => $row]);
+
             $rowData = array_combine($headers, $row);
 
             // Extraer datos del Excel
@@ -122,11 +153,19 @@ class PaymentsController extends Controller{
             }
 
             // Buscar factura - ESTRATEGIA ESTRICTA
-            $invoice = Invoice::where('RUC_client', $rucAceptanteExcel)
-                ->where('loan_number', $loanNumberExcel)
+            $invoice = Invoice::where('ruc_proveedor', $rucProveedorExcel) //RUC ACEPTANTE
+                ->where('loan_number', $loanNumberExcel) //NRO
                 ->where('invoice_number', $invoiceNumberExcel)
                 ->first();
-            
+
+            Log::info('🔎 Buscando factura', [
+                'ruc' => $rucAceptanteExcel,
+                'prestamo' => $loanNumberExcel,
+                'factura' => $invoiceNumberExcel,
+                'found' => $invoice ? true : false
+            ]);
+
+
             $invoiceId = null;
             $detalle = [];
             $estado = 'Coincide';
@@ -134,10 +173,10 @@ class PaymentsController extends Controller{
 
             if (!$invoice) {
                 // Si no encuentra con los 3 campos, buscar solo por RUC + Factura
-                $invoice = Invoice::where('RUC_client', $rucAceptanteExcel)
+                $invoice = Invoice::where('ruc_proveedor', $rucProveedorExcel)
                     ->where('invoice_number', $invoiceNumberExcel)
                     ->first();
-                
+
                 if ($invoice) {
                     $criterioBusqueda = 'RUC + Factura (Prestamo diferente)';
                     $estado = 'No coincide'; // Porque el prestamo no coincide
@@ -150,14 +189,13 @@ class PaymentsController extends Controller{
                 $detalle[] = "FACTURA YA PAGADA - No se requiere validación adicional";
                 $detalle[] = "ID Factura: {$invoice->id}";
                 $detalle[] = "Estado en BD: {$invoice->statusPago}";
-                
             } elseif (!$invoice) {
                 $estado = 'No coincide';
                 $detalle[] = "Factura no encontrada (RUC: '{$rucAceptanteExcel}', Prestamo: '{$loanNumberExcel}', Factura: '{$invoiceNumberExcel}')";
             } else {
                 $invoiceId = $invoice->id;
                 $amountInvoiceDecimal = floatval($invoice->amount);
-                
+
                 $detalle[] = "Criterio busqueda: {$criterioBusqueda}";
                 $detalle[] = "Loan BD: '{$invoice->loan_number}', Invoice BD: '{$invoice->invoice_number}'";
                 $detalle[] = "Status Pago BD: {$invoice->statusPago}";
@@ -168,13 +206,27 @@ class PaymentsController extends Controller{
                     $detalle[] = "FACTURA REPROGRAMADA - Validación limitada";
                 }
 
-                // Comparar RUC Aceptante (RUC_client)
-                if ($invoice->RUC_client === $rucAceptanteExcel) {
+                // Comparar RUC Aceptante (RUC_CLIENTE)
+                if ($invoice?->company?->document === $rucAceptanteExcel) {
                     $detalle[] = "RUC Aceptante: OK";
                 } else {
-                    $detalle[] = "RUC Aceptante: Diferente (BD: {$invoice->RUC_client} vs Excel: {$rucAceptanteExcel})";
+                    $detalle[] = "RUC Aceptante: Diferente (BD: {$invoice?->company?->document} vs Excel: {$rucAceptanteExcel})";
                     if ($estado !== 'Reprogramada') $estado = 'No coincide';
                 }
+
+
+
+                //OPCIONAL
+                // Comparar RUC PROVEEDOR 
+                if ($invoice?->ruc_proveedor === $rucProveedorExcel) {
+                    $detalle[] = "RUC Proveedor: OK";
+                } else {
+                    $detalle[] = "RUC Proveedor: Diferente (BD: {$invoice?->ruc_proveedor} vs Excel: {$rucProveedorExcel})";
+                    if ($estado !== 'Reprogramada') $estado = 'No coincide';
+                }
+
+
+
 
                 // Comparar loan_number - AHORA ES OBLIGATORIO
                 if ($invoice->loan_number === $loanNumberExcel) {
@@ -204,8 +256,13 @@ class PaymentsController extends Controller{
 
                     // Comparar fecha estimada
                     if ($invoice->estimated_pay_date && $fechaExcelFormatted) {
+
                         $fechaBD = Carbon::parse($invoice->estimated_pay_date)->format('Y-m-d');
                         $fechaExcel = Carbon::parse($fechaExcelFormatted)->format('Y-m-d');
+                        Log::info('🗓️ Comparando fechas', [
+                            'fecha_bd' => $fechaBD,
+                            'fecha_excel' => $fechaExcel
+                        ]);
 
                         if ($fechaBD === $fechaExcel) {
                             $detalle[] = 'Fecha estimada: OK';
@@ -230,7 +287,7 @@ class PaymentsController extends Controller{
                 // Comparar type (situacion)
                 $typeInvoice = strtolower($invoice->type ?? '');
                 $typeInvoiceEspanol = $typeMapping[$typeInvoice] ?? $typeInvoice;
-                
+
                 if ($typeInvoiceEspanol === $situacionExcel) {
                     $detalle[] = "Situación: OK";
                 } else {
@@ -263,6 +320,12 @@ class PaymentsController extends Controller{
             $rowData['detalle'] = implode(' | ', $detalle);
 
             $jsonData[] = $rowData;
+
+            Log::info('✅ Resultado comparación', [
+                'invoice_number' => $invoiceNumberExcel,
+                'estado' => $estado,
+                'detalle' => $detalle
+            ]);
         }
 
         return response()->json([
@@ -458,7 +521,7 @@ class PaymentsController extends Controller{
             ], 500);
         }
     }*/
-    
+
     public function store(Request $request, $invoiceId)
     {
         $request->validate([
@@ -497,10 +560,10 @@ class PaymentsController extends Controller{
                 foreach ($evidenceFiles as $evidenceFile) {
                     $filename = Str::uuid() . '.' . $evidenceFile->getClientOriginalExtension();
                     $path = "pagos/evidencias/{$invoice->id}/{$filename}";
-                    
+
                     try {
                         $disk->putFileAs("pagos/evidencias/{$invoice->id}", $evidenceFile, $filename);
-                        
+
                         $attachmentsData[] = [
                             'filename' => $filename,
                             'path' => $path,
@@ -509,7 +572,6 @@ class PaymentsController extends Controller{
                             'mime_type' => $evidenceFile->getMimeType(),
                             'uploaded_at' => now()->toDateTimeString()
                         ];
-                        
                     } catch (Exception $e) {
                         DB::rollBack();
                         return response()->json([
@@ -556,7 +618,7 @@ class PaymentsController extends Controller{
                 'invoice_id' => $invoiceId,
                 'request_data' => $request->except(['payment_attachments'])
             ]);
-            
+
             return response()->json([
                 "error" => "Error interno del servidor al registrar el pago",
                 "details" => config('app.debug') ? $th->getMessage() : null
@@ -642,9 +704,9 @@ class PaymentsController extends Controller{
                     $wallet->save();
 
                     SendInvestmentPartialEmail::dispatch(
-                        $investor, 
-                        $payment, 
-                        $investment, 
+                        $investor,
+                        $payment,
+                        $investment,
                         MoneyConverter::getValue($amountToPay->money)
                     )->delay(now()->addSeconds($index * 2));
                 }
@@ -693,7 +755,7 @@ class PaymentsController extends Controller{
                 'trace' => $th->getTraceAsString(),
                 'payment_id' => $paymentId
             ]);
-            
+
             return response()->json([
                 "error" => "Error interno del servidor al aprobar el pago",
                 "details" => config('app.debug') ? $th->getMessage() : null
@@ -702,106 +764,106 @@ class PaymentsController extends Controller{
     }
 
     public function storeReembloso(Request $request)
-{
-    $request->validate([
-        'invoice_id' => 'required|exists:invoices,id',
-        'pay_type' => 'required|in:reembloso',
-        'pay_date' => 'required|date',
-        'amount' => 'required|numeric|min:1',
-        'comment' => 'nullable|string',
-        'nro_operation' => 'required|string',
-        'currency' => 'required|string|size:3',
-        'investor_id' => 'required|exists:investors,id',
-        'resource_path' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
-        'bank_account_id' => 'required|exists:bank_accounts,id',
-    ]);
-
-    $invoice = Invoice::findOrFail($request->invoice_id);
-
-    // Obtener la inversión original para este inversionista y factura
-    $investment = Investment::where('invoice_id', $invoice->id)
-        ->where('investor_id', $request->investor_id)
-        ->firstOrFail();
-
-    DB::beginTransaction();
-
-    try {
-        // Crear el Payment
-        $payment = Payment::create([
-            'invoice_id' => $invoice->id,
-            'pay_type' => $request->pay_type,
-            'amount_to_be_paid' => $request->amount,
-            'pay_date' => $request->pay_date,
-            'approval1_status' => 'approved',
-            'approval1_by' => Auth::id(),
-            'approval1_comment' => $request->comment,
-            'approval1_at' => now(),
-            'approval2_status' => 'pending',
+    {
+        $request->validate([
+            'invoice_id' => 'required|exists:invoices,id',
+            'pay_type' => 'required|in:reembloso',
+            'pay_date' => 'required|date',
+            'amount' => 'required|numeric|min:1',
+            'comment' => 'nullable|string',
+            'nro_operation' => 'required|string',
+            'currency' => 'required|string|size:3',
+            'investor_id' => 'required|exists:investors,id',
+            'resource_path' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'bank_account_id' => 'required|exists:bank_accounts,id',
         ]);
 
-        // Manejo del archivo
-        $path = null;
-        if ($request->hasFile('resource_path')) {
-            $path = $request->file('resource_path')->store('refunds', 'public');
+        $invoice = Invoice::findOrFail($request->invoice_id);
+
+        // Obtener la inversión original para este inversionista y factura
+        $investment = Investment::where('invoice_id', $invoice->id)
+            ->where('investor_id', $request->investor_id)
+            ->firstOrFail();
+
+        DB::beginTransaction();
+
+        try {
+            // Crear el Payment
+            $payment = Payment::create([
+                'invoice_id' => $invoice->id,
+                'pay_type' => $request->pay_type,
+                'amount_to_be_paid' => $request->amount,
+                'pay_date' => $request->pay_date,
+                'approval1_status' => 'approved',
+                'approval1_by' => Auth::id(),
+                'approval1_comment' => $request->comment,
+                'approval1_at' => now(),
+                'approval2_status' => 'pending',
+            ]);
+
+            // Manejo del archivo
+            $path = null;
+            if ($request->hasFile('resource_path')) {
+                $path = $request->file('resource_path')->store('refunds', 'public');
+            }
+
+            // Crear el Movement para el reembolso
+            $movement = Movement::create([
+                'currency' => $request->currency,
+                'amount' => $request->amount,
+                'type' => 'withdraw', // Reembolso
+                'status' => MovementStatus::PENDING->value,
+                'confirm_status' => MovementStatus::PENDING->value,
+                'description' => "Reembolso de factura {$invoice->codigo} - Operación: {$request->nro_operation}",
+                'origin' => 'inversionista',
+                'investor_id' => $request->investor_id,
+                'aprobacion_1' => now(),
+                'aprobado_por_1' => Auth::user()->name ?? 'Sistema',
+            ]);
+
+            // Vincular el movimiento de reembolso con el movimiento original de la inversión
+            $movement->update([
+                'related_movement_id' => $investment->movement_id
+            ]);
+
+            // Crear el Deposit vinculado al movimiento de reembolso
+            $deposit = Deposit::create([
+                'nro_operation' => $request->nro_operation,
+                'currency' => $request->currency,
+                'amount' => $request->amount,
+                'resource_path' => $path,
+                'description' => "Solicitud de reembolso factura {$invoice->codigo}",
+                'investor_id' => $request->investor_id,
+                'bank_account_id' => $request->bank_account_id,
+                'movement_id' => $movement->id,
+                'payment_source' => 'reembloso',
+                'type' => 'reembloso',
+                'created_by' => Auth::id(),
+                'updated_by' => Auth::id(),
+            ]);
+
+            // Actualizar el estado de la inversión y asignar el movimiento de reembolso
+            $investment->update([
+                'status' => 'pending', // o 'pending', según tu lógica
+                'movement_reembloso' => $movement->id,
+                'updated_at' => now(),
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Reembolso registrado, pendiente de confirmación.',
+                'payment' => $payment,
+                'deposit' => $deposit,
+                'movement' => $movement,
+            ], 201);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['error' => $e->getMessage()], 500);
         }
-
-        // Crear el Movement para el reembolso
-        $movement = Movement::create([
-            'currency' => $request->currency,
-            'amount' => $request->amount,
-            'type' => 'withdraw', // Reembolso
-            'status' => MovementStatus::PENDING->value,
-            'confirm_status' => MovementStatus::PENDING->value,
-            'description' => "Reembolso de factura {$invoice->codigo} - Operación: {$request->nro_operation}",
-            'origin' => 'inversionista',
-            'investor_id' => $request->investor_id,
-            'aprobacion_1' => now(),
-            'aprobado_por_1' => Auth::user()->name ?? 'Sistema',
-        ]);
-
-        // Vincular el movimiento de reembolso con el movimiento original de la inversión
-        $movement->update([
-            'related_movement_id' => $investment->movement_id
-        ]);
-
-        // Crear el Deposit vinculado al movimiento de reembolso
-        $deposit = Deposit::create([
-            'nro_operation' => $request->nro_operation,
-            'currency' => $request->currency,
-            'amount' => $request->amount,
-            'resource_path' => $path,
-            'description' => "Solicitud de reembolso factura {$invoice->codigo}",
-            'investor_id' => $request->investor_id,
-            'bank_account_id' => $request->bank_account_id,
-            'movement_id' => $movement->id,
-            'payment_source' => 'reembloso',
-            'type' => 'reembloso',
-            'created_by' => Auth::id(),
-            'updated_by' => Auth::id(),
-        ]);
-
-        // Actualizar el estado de la inversión y asignar el movimiento de reembolso
-        $investment->update([
-            'status' => 'pending', // o 'pending', según tu lógica
-            'movement_reembloso' => $movement->id,
-            'updated_at' => now(),
-        ]);
-
-        DB::commit();
-
-        return response()->json([
-            'message' => 'Reembolso registrado, pendiente de confirmación.',
-            'payment' => $payment,
-            'deposit' => $deposit,
-            'movement' => $movement,
-        ], 201);
-
-    } catch (\Throwable $e) {
-        DB::rollBack();
-        return response()->json(['error' => $e->getMessage()], 500);
     }
-}
-    public function approvePayment(Request $request, $id){
+    public function approvePayment(Request $request, $id)
+    {
         $request->validate([
             'status'  => 'required|in:approved,rejected',
             'comment' => 'nullable|string',
@@ -822,8 +884,8 @@ class PaymentsController extends Controller{
             ]);
             if ($request->status === 'approved') {
                 $deposit = Deposit::where('description', "Solicitud de reembolso factura {$payment->invoice->codigo}")
-                            ->whereNull('movement_id')
-                            ->first();
+                    ->whereNull('movement_id')
+                    ->first();
                 $movement = Movement::create([
                     'amount'      => $payment->amount_to_be_paid,
                     'type'        => 'withdraw',
@@ -832,9 +894,9 @@ class PaymentsController extends Controller{
                     'confirm_status' => 'confirmed',
                     'description' => 'Reembolso aprobado para la factura ' . $payment->invoice->codigo,
                     'origin'      => 'zuma',
-                    'aprobacion_1'=> $payment->approval1_at,
+                    'aprobacion_1' => $payment->approval1_at,
                     'aprobado_por_1' => $payment->approval1_by,
-                    'aprobacion_2'=> $payment->approval2_at,
+                    'aprobacion_2' => $payment->approval2_at,
                     'aprobado_por_2' => $payment->approval2_by,
                 ]);
                 if ($deposit) {
@@ -872,14 +934,15 @@ class PaymentsController extends Controller{
 
         return new InvestmentResource($investment);
     }
-    public function anular(Request $request, $id){
+    public function anular(Request $request, $id)
+    {
         $request->validate([
             'comment' => 'nullable|string|max:500',
         ]);
 
         $invoice = Invoice::findOrFail($id);
         $ok = $invoice->anularFactura(Auth::id(), $request->comment);
-        
+
         if (!$ok) {
             return response()->json([
                 'error' => 'La factura no puede ser anulada (ya pagada o ya anulada).'
@@ -892,14 +955,14 @@ class PaymentsController extends Controller{
         $invoice->save();
 
         $investments = Investment::where('invoice_id', $invoice->id)->get();
-        
+
         foreach ($investments as $investment) {
             $investor = $investment->investor;
-            
+
             $balance = Balance::where('investor_id', $investor->id)
                 ->where('currency', $investment->currency)
                 ->first();
-            
+
             if ($balance) {
                 $balance->subtractInvestedAmount(MoneyConverter::fromDecimal($investment->amount, $investment->currency));
                 $balance->subtractExpectedAmount(MoneyConverter::fromDecimal($investment->return, $investment->currency));

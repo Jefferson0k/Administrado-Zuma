@@ -1,7 +1,7 @@
 <template>
-    <DataTable ref="dt" :value="paginatedInvoices" v-model:selection="selectedInvoices" dataKey="id" :paginator="true" :rows="rowsPerPage"
-        :totalRecords="filteredInvoices.length" :first="(currentPage - 1) * rowsPerPage" :loading="loading"
-        @page="onPage" :rowsPerPageOptions="[5, 10, 20]" scrollable scrollHeight="574px"
+    <DataTable ref="dt" :value="paginatedInvoices" v-model:selection="selectedInvoices" dataKey="id" :paginator="true"
+        :rows="rowsPerPage" :totalRecords="filteredInvoices.length" :first="(currentPage - 1) * rowsPerPage"
+        :loading="loading" @page="onPage" :rowsPerPageOptions="[5, 10, 20]" scrollable scrollHeight="574px"
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} facturas" class="p-datatable-sm">
         <template #header>
@@ -23,15 +23,29 @@
         </template>
         <Column selectionMode="multiple" style="width: 1rem" :exportable="false" />
         <Column field="codigo" header="Código" sortable style="min-width: 8rem" />
-        <Column 
-                field="razonSocial" 
-                header="Razón Social" 
-                sortable
-            >
+
+        <Column style="min-width: 8rem" field="ruc_cliente" header="Ruc Cliente" sortable>
             <template #body="slotProps">
-                <span v-tooltip.top="slotProps.data.razonSocial" 
+                <span v-tooltip.top="slotProps.data.ruc_cliente"
                     style="display:inline-block; max-width:15rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                {{ slotProps.data.razonSocial }}
+                    {{ slotProps.data.ruc_cliente }}
+                </span>
+            </template>
+        </Column>
+        <Column style="min-width: 8rem" field="razonSocial" header="Razón Social" sortable>
+            <template #body="slotProps">
+                <span v-tooltip.top="slotProps.data.razonSocial"
+                    style="display:inline-block; max-width:15rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                    {{ slotProps.data.razonSocial }}
+                </span>
+            </template>
+        </Column>
+
+        <Column field="ruc_proveedor" header="Ruc Proveedor" sortable style="min-width: 8rem">
+            <template #body="slotProps">
+                <span v-tooltip.top="slotProps.data.ruc_proveedor"
+                    style="display:inline-block; max-width:15rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                    {{ slotProps.data.ruc_proveedor }}
                 </span>
             </template>
         </Column>
@@ -41,6 +55,8 @@
                 {{ slotProps.data.moneda }} {{ slotProps.data.montoFactura }}
             </template>
         </Column>
+
+
         <Column field="montoAsumidoZuma" header="Monto Asumido Zuma" sortable style="min-width: 13rem">
             <template #body="slotProps">
                 {{ slotProps.data.moneda }} {{ slotProps.data.montoAsumidoZuma }}
@@ -60,14 +76,40 @@
         <Column field="fechaPago" header="Fecha Pago" sortable style="min-width: 8rem" />
         <Column field="approval1_status" header="1ª Aprobador" sortable style="min-width: 9rem">
             <template #body="slotProps">
-                <Tag 
-                    v-if="slotProps.data.approval1_status" 
-                    :value="getApprovalLabel(slotProps.data.approval1_status)" 
-                    :severity="getApprovalSeverity(slotProps.data.approval1_status)" 
-                />
+                <Tag v-if="slotProps.data.approval1_status" :value="getApprovalLabel(slotProps.data.approval1_status)"
+                    :severity="getApprovalSeverity(slotProps.data.approval1_status)" />
                 <span v-else>-</span>
             </template>
         </Column>
+
+
+        <Column field="porcentajeMetaTerceros" header="% Obj Terceros" sortable style="min-width: 10rem">
+        <template #body="slotProps">
+          <span :class="!slotProps.data.porcentajeMetaTerceros ? 'italic' : ''">
+            {{ slotProps.data.porcentajeMetaTerceros || '-' }}
+          </span>
+        </template>
+      </Column>
+
+      <Column field="porcentajeInversionTerceros" header="% Invertido Terceros" sortable style="min-width: 12rem">
+        <template #body="slotProps">
+          <span :class="!slotProps.data.porcentajeInversionTerceros ? 'italic' : ''">
+            {{ slotProps.data.porcentajeInversionTerceros || '-' }}
+          </span>
+        </template>
+      </Column>
+
+
+      <Column field="fechaPago" header="Fecha de Pago" sortable style="min-width: 18rem">
+        <template #body="slotProps">
+          <span :class="!slotProps.data.fechaPago ? 'italic' : ''">
+            {{ slotProps.data.fechaPago || '-' }}
+          </span>
+        </template>
+      </Column>
+
+      <Column field="fechaCreacion" header="Fecha Creación" sortable style="min-width: 13rem" />
+
 
         <Column field="approval1_by" header="1ª Usuario" sortable style="min-width: 16rem">
             <template #body="slotProps">
@@ -83,11 +125,8 @@
 
         <Column field="approval2_status" header="2ª Aprobador" sortable style="min-width: 9rem">
             <template #body="slotProps">
-                <Tag 
-                    v-if="slotProps.data.approval2_status" 
-                    :value="getApprovalLabel(slotProps.data.approval2_status)" 
-                    :severity="getApprovalSeverity(slotProps.data.approval2_status)" 
-                />
+                <Tag v-if="slotProps.data.approval2_status" :value="getApprovalLabel(slotProps.data.approval2_status)"
+                    :severity="getApprovalSeverity(slotProps.data.approval2_status)" />
                 <span v-else>-</span>
             </template>
         </Column>
@@ -103,31 +142,27 @@
                 {{ slotProps.data.approval2_at || '-' }}
             </template>
         </Column>
-        
+
         <Column field="estado" header="Estado Conclusion" sortable style="min-width: 12rem">
             <template #body="slotProps">
-                <Tag :value="getStatusLabel(slotProps.data.estado)" :severity="getStatusSeverity(slotProps.data.estado)" />
+                <Tag :value="getStatusLabel(slotProps.data.estado)"
+                    :severity="getStatusSeverity(slotProps.data.estado)" />
             </template>
         </Column>
 
         <Column field="fechaCreacion" header="Fecha Creación" sortable style="min-width: 15rem" />
-        
+
         <Column header="Acciones" :exportable="false" style="min-width: 8rem">
             <template #body="slotProps">
-                <Button 
-                    icon="pi pi-eye" 
-                    outlined 
-                    rounded 
-                    severity="info" 
-                    @click="abrirDialog(slotProps.data.id)" 
-                    aria-label="Ver detalles" 
-                />
+                <Button icon="pi pi-eye" outlined rounded severity="info" @click="abrirDialog(slotProps.data.id)"
+                    aria-label="Ver detalles" />
             </template>
         </Column>
     </DataTable>
 
     <!-- Dialog -->
-    <Dialog v-model:visible="dialogVisible" modal header="Detalles de Factura" :style="{ width: '90vw' }" :maximizable="true">
+    <Dialog v-model:visible="dialogVisible" modal header="Detalles de Factura" :style="{ width: '90vw' }"
+        :maximizable="true">
         <ShowPayment v-if="selectedInvoiceId" :invoice-id="selectedInvoiceId" @pago-confirmado="onPagoConfirmado" />
         <template #footer>
             <Button label="Cerrar" icon="pi pi-times" text @click="dialogVisible = false" />

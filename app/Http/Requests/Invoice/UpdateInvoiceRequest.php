@@ -35,7 +35,7 @@ class UpdateInvoiceRequest extends FormRequest{
                     ->where('company_id', $companyId)
                     ->ignore($invoiceId)
             ],
-            'RUC_client' => ['nullable', 'regex:/^[0-9]{11}$/'],
+            'ruc_proveedor' => ['nullable', 'regex:/^[0-9]{11}$/'],
         ];
     }
     public function messages(): array{
@@ -51,7 +51,7 @@ class UpdateInvoiceRequest extends FormRequest{
             'rate.required' => 'La tasa es obligatoria.',
             'rate.lte' => 'La tasa no puede superar el 6%.',
             'estimated_pay_date.required' => 'La fecha estimada de pago es obligatoria.',
-            'RUC_client.regex' => 'El RUC del cliente debe tener 11 dígitos.',
+            'ruc_proveedor.regex' => 'El RUC del proveedor debe tener 11 dígitos.',
             'loan_number.unique' => 'El número de préstamo ya existe para esta empresa.',
             'invoice_number.unique' => 'El número de factura ya existe para esta empresa.',
         ];

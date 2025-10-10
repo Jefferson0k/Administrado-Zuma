@@ -173,13 +173,31 @@ function computeSemaforoColors(row) {
     return [RED, WHITE];
   }
 
+  if (a1 === 'observed' && a2 === 'pending') {
+    return [RED, AMBER];
+  }
+
+  if (a1 === 'observed' && a2 === 'observed') {
+    return [RED, RED];
+  }
+
+  
+
   // 🚫 Si el segundo aprobador observó → detener también (no pasa de ahí)
   if (a2 === 'observed') {
     return [AMBER, RED];
   }
 
   if (a1 === 'approved' && empty2) {
+    return [GREEN, WHITE];
+  }
+
+  if (a1 === 'approved' && a2 === 'pending') {
     return [GREEN, AMBER];
+  }
+
+  if(a1 ==='pending' && a2 === 'pending') {
+    return [AMBER, AMBER];
   }
 
   // Si la oportunidad está cerrada → ambos rojos
@@ -378,6 +396,7 @@ function getStatusSeverity(status) {
     case 'canceled': return 'danger';
     case 'daStandby': return 'warn';
     case 'observed': return 'info';
+    case 'pending': return 'warning';
     case 'annulled': return 'danger'; // 👈 mismo estilo que canceled
     default: return 'secondary';
   }
@@ -785,7 +804,8 @@ async function confirmarPagoAdelantado() {
           </div>
         </template>
       </Column>
-      <Column field="ruc" header="Ruc" sortable style="min-width: 7rem" />
+      <Column field="ruc_cliente" header="Ruc Cliente" sortable style="min-width: 7rem" />
+      <Column field="ruc_proveedor" header="Ruc Proveedor" sortable style="min-width: 7rem" />
       <Column field="codigo" header="Código" sortable style="min-width: 15rem" />
       <Column field="moneda" header="Moneda" sortable style="min-width: 5rem" />
       <Column field="montoFactura" header="M. Factura" sortable style="min-width: 8rem">

@@ -32,10 +32,11 @@ class Invoice extends Model implements AuditableContract{
         'company_id',
         'loan_number',
         'invoice_number',
-        'RUC_client',
+        'ruc_proveedor',
         'type',
         'statusPago',
         'condicion_oportunidad',
+        'situacion',
 
         // --- Aprobaciones ---
         'approval1_status',

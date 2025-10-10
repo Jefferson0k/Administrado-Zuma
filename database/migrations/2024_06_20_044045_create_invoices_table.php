@@ -44,21 +44,22 @@ return new class extends Migration
 
             $table->string('loan_number')->nullable();
             $table->string('invoice_number')->nullable();
-            $table->char('RUC_client', 20)->nullable();
+            $table->char('ruc_proveedor', 20)->nullable();
 
             // --- Aprobaciones ---
-            $table->enum('approval1_status', ['approved', 'rejected', 'observed'])->nullable();
+            $table->enum('approval1_status', ['approved', 'pending', 'observed'])->nullable();
             $table->foreignId('approval1_by')->nullable()->constrained('users')->nullOnDelete();
             $table->text('approval1_comment')->nullable();
             $table->timestamp('approval1_at')->nullable();
             
-            $table->enum('approval2_status', ['approved', 'rejected', 'observed'])->nullable();
+            $table->enum('approval2_status', ['approved', 'pending', 'observed'])->nullable();
             $table->foreignId('approval2_by')->nullable()->constrained('users')->nullOnDelete();
             $table->text('approval2_comment')->nullable();
             $table->timestamp('approval2_at')->nullable();
 
             //Condición de oportunidad
             $table->enum('condicion_oportunidad', ['abierta', 'cerrada'])->default('cerrada');
+            $table->enum('situacion', ['vigente', 'vigente_8_dias', 'cobrada', 'adjudicada'])->nullable();
             $table->foreignId('created_by')->nullable()->constrained( 'users')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();

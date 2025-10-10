@@ -14,7 +14,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Aceptante</label>
-                        <span class="font-mono text-sm font-semibold">{{ paymentData.RUC_client || 'No especificado' }}</span>
+                        <span class="font-mono text-sm font-semibold">{{ paymentData.ruc_proveedor || 'No especificado' }}</span>
                     </div>
                 </div>
 

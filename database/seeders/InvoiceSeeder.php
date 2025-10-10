@@ -61,7 +61,7 @@ class InvoiceSeeder extends Seeder
                 )),
                 'company_id' => $faker->randomElement($companiesIDs),
                 'loan_number' => $faker_locale->unique()->numerify('LOAN-' . date('Y') . '-#######'),
-                'RUC_client' => $faker_locale->numerify('###########'), // 11 digits RUC
+                'ruc_proveedor' => $faker_locale->numerify('###########'), // 11 digits RUC
                 'invoice_number' => $faker_locale->unique()->numerify('F' . date('Y') . '-##########'),
                 'created_by' => 1, // Assuming admin user with ID 1
                 'updated_by' => 1,

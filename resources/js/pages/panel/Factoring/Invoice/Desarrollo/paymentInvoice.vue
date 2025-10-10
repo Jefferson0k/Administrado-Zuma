@@ -26,7 +26,7 @@
                     </div>
                     <div>
                         <label class="text-sm font-medium text-gray-600">RUC</label>
-                        <p class="text-sm text-gray-800">{{ facturaData.RUC_client }}</p>
+                        <p class="text-sm text-gray-800">{{ facturaData.ruc_proveedor }}</p>
                     </div>
                     <div>
                         <label class="text-sm font-medium text-gray-600">Monto Factura</label>

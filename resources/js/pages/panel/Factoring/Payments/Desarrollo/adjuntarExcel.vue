@@ -774,7 +774,7 @@ function realizarPago(record) {
     invoice_number: record['NRO FACTURA'],
     loan_number: record['NRO PRESTAMO'],
     document: record.document || 'Proveedor',
-    RUC_client: record['RUC ACEPTANTE'],
+    ruc_proveedor: record['RUC ACEPTANTE'],
     amount: record['MONTO DOCUMENTO'],
     saldo: record['MONTO PAGADO'],
     currency: record['MONEDA'],

@@ -162,23 +162,23 @@
           </small>
         </div>
 
-        <!-- RUC del Cliente con botón de consulta -->
+        <!-- RUC del Proveedor con botón de consulta -->
         <div>
-          <label for="RUC_client" class="block font-bold mb-2">
+          <label for="ruc_proveedor" class="block font-bold mb-2">
             RUC del Proveedor <span class="text-red-500">*</span>
           </label>
           <div class="flex gap-2">
-            <InputText id="RUC_client" v-model.trim="factura.RUC_client" maxlength="11" placeholder="11 dígitos"
+            <InputText id="ruc_proveedor" v-model.trim="factura.ruc_proveedor" maxlength="11" placeholder="11 dígitos"
               class="flex-1"
-              :class="{ 'p-invalid': submitted && (!factura.RUC_client || errors.RUC_client || (factura.RUC_client && !/^[0-9]{11}$/.test(factura.RUC_client))) }"
+              :class="{ 'p-invalid': submitted && (!factura.ruc_proveedor || errors.ruc_proveedor || (factura.ruc_proveedor && !/^[0-9]{11}$/.test(factura.ruc_proveedor))) }"
               @input="onRucChange" />
             <Button icon="pi pi-search" severity="secondary" :disabled="!isValidRuc || consultingRuc" 
               :loading="consultingRuc" @click="consultarRuc" />
           </div>
-          <small v-if="submitted && (!factura.RUC_client || errors.RUC_client)" class="text-red-500">
-            {{ errors.RUC_client || 'El RUC del cliente es obligatorio.' }}
+          <small v-if="submitted && (!factura.ruc_proveedor || errors.ruc_proveedor)" class="text-red-500">
+            {{ errors.ruc_proveedor || 'El RUC del proveedor es obligatorio.' }}
           </small>
-          <small v-else-if="submitted && factura.RUC_client && !/^[0-9]{11}$/.test(factura.RUC_client)"
+          <small v-else-if="submitted && factura.ruc_proveedor && !/^[0-9]{11}$/.test(factura.ruc_proveedor)"
             class="text-red-500">
             El RUC del cliente debe tener exactamente 11 dígitos.
           </small>
@@ -270,12 +270,12 @@ const factura = ref({
   estimated_pay_date: null,
   loan_number: '',
   invoice_number: '',
-  RUC_client: ''
+  ruc_proveedor: ''
 });
 
 // Computed para validar RUC
 const isValidRuc = computed(() => {
-  return factura.value.RUC_client && /^[0-9]{11}$/.test(factura.value.RUC_client);
+  return factura.value.ruc_proveedor && /^[0-9]{11}$/.test(factura.value.ruc_proveedor);
 });
 
 // Computed para el locale de moneda
@@ -305,7 +305,7 @@ function resetFactura() {
     estimated_pay_date: null,
     loan_number: '',
     invoice_number: '',
-    RUC_client: ''
+    ruc_proveedor: ''
   };
   empresas.value = [];
   submitted.value = false;
@@ -371,7 +371,7 @@ function isFormValid() {
     'estimated_pay_date',
     'loan_number',
     'invoice_number',
-    'RUC_client'
+    'ruc_proveedor'
   ];
 
   // Verificar campos requeridos
@@ -389,7 +389,7 @@ function isFormValid() {
   if (!['PEN', 'USD'].includes(factura.value.currency)) return false;
 
   // Validar RUC (ahora es obligatorio)
-  if (!factura.value.RUC_client || !/^[0-9]{11}$/.test(factura.value.RUC_client)) {
+  if (!factura.value.ruc_proveedor || !/^[0-9]{11}$/.test(factura.value.ruc_proveedor)) {
     return false;
   }
 
@@ -422,7 +422,7 @@ async function guardarFactura() {
       // Asegurar que los campos opcionales no sean strings vacías
       loan_number: factura.value.loan_number || null,
       invoice_number: factura.value.invoice_number || null,
-      RUC_client: factura.value.RUC_client || null
+      ruc_proveedor: factura.value.ruc_proveedor || null
     };
 
     // Llamada a la API
@@ -579,7 +579,7 @@ const consultarRuc = async () => {
   rucData.value = {};
   
   try {
-    const response = await axios.get(`/api/consultar-ruc/${factura.value.RUC_client}`);
+    const response = await axios.get(`/api/consultar-ruc/${factura.value.ruc_proveedor}`);
     
     if (response.data) {
       rucData.value = {
