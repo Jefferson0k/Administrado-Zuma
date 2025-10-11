@@ -14,6 +14,7 @@ use App\Http\Requests\Withdraw\StoreWithdrawRequest;
 use App\Http\Resources\Tasas\Movement\MovementResource;
 use App\Models\Deposit;
 use App\Models\Movement;
+use App\Models\Investment;
 use Illuminate\Support\Str;
 use App\Models\PaymentSchedule;
 use App\Models\Property;
@@ -702,6 +703,92 @@ class MovementController extends Controller
             $investor = $token->tokenable;
             
             $deposito = Deposit::where('movement_id',$id)->where('investor_id',$investor->id)->with('bankAccount.bank')->first();
+            
+            return response()->json([
+                'success' => true,
+                'data' => $deposito->toArray(),
+                'message' => null,
+            ]);
+        } catch (Throwable $th) {
+            return response()->json([
+                'success' => false,
+                'message' => $th->getMessage(),
+            ], in_array((int)$th->getCode(), range(100,599)) ? (int)$th->getCode() : 500);
+        }   
+    }
+    
+    public function detalleMovimientoRetiro($id){
+        try {
+            $token = PersonalAccessToken::findToken(request()->bearerToken());
+            $investor = $token->tokenable;
+            
+            $deposito = Withdraw::where('movement_id',$id)->where('investor_id',$investor->id)->with('bank_account.bank')->first();
+            
+            return response()->json([
+                'success' => true,
+                'data' => $deposito->toArray(),
+                'message' => null,
+            ]);
+        } catch (Throwable $th) {
+            return response()->json([
+                'success' => false,
+                'message' => $th->getMessage(),
+            ], in_array((int)$th->getCode(), range(100,599)) ? (int)$th->getCode() : 500);
+        }   
+    }
+    
+    public function detalleMovimientoExchangeUP($id){
+        try {
+            $token = PersonalAccessToken::findToken(request()->bearerToken());
+            $investor = $token->tokenable;
+            $investor_id = $investor->id;
+            
+            $data  = Movement::find($id);
+            
+            
+            return response()->json([
+                'success' => true,
+                'data' => $data->toArray(),
+                'message' => null,
+            ]);
+        } catch (Throwable $th) {
+            return response()->json([
+                'success' => false,
+                'message' => $th->getMessage(),
+            ], in_array((int)$th->getCode(), range(100,599)) ? (int)$th->getCode() : 500);
+        }   
+    }
+    
+    public function detalleMovimientoExchangeDown($id){
+        try {
+            $token = PersonalAccessToken::findToken(request()->bearerToken());
+            $investor = $token->tokenable;
+            
+            $deposito = Withdraw::where('movement_id',$id)->where('investor_id',$investor->id)->with('bank_account.bank')->first();
+            
+            return response()->json([
+                'success' => true,
+                'data' => $deposito->toArray(),
+                'message' => null,
+            ]);
+        } catch (Throwable $th) {
+            return response()->json([
+                'success' => false,
+                'message' => $th->getMessage(),
+            ], in_array((int)$th->getCode(), range(100,599)) ? (int)$th->getCode() : 500);
+        }   
+    }
+    
+    public function detalleMovimientoInversion($id){
+        try {
+            $token = PersonalAccessToken::findToken(request()->bearerToken());
+            $investor = $token->tokenable;
+            
+            $deposito = Investment::with('invoice.company')
+            ->where('movement_id', $id)
+            ->where('investor_id', $investor->id)
+            ->first();
+            
             
             return response()->json([
                 'success' => true,
