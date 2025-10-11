@@ -216,6 +216,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/top', [FixedTermInvestmentControllers::class, 'top']);
         Route::get('/fixed-term-investments/pendientes', [FixedTermInvestmentControllers::class, 'pendingInvestments']);
     });
+    
+    
 
 
     Route::get('/fixed-term-schedules/{id}/cronograma', [FixedTermScheduleController::class, 'showCronograma']);
@@ -246,11 +248,25 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::prefix('reports')->group(function () {
         Route::get('/balances', [BalanceController::class, 'index']);
-
+        
         Route::prefix('investments')->group(function () {
             Route::get('/', [InvestmentController::class, 'reportTimeline']);
             Route::get('/group-by-company', [InvestmentController::class, 'reportGroupByCompany']);
             Route::get('/group-by-sector', [InvestmentController::class, 'reportGroupByCompanySector']);
+            
+            Route::get('/investment-return',[InvestorDashboardController::class,'investment'])->name('dashboard.invesment');
+            
+            Route::get('/investment-empresa',[InvestorDashboardController::class,'investmentByEmpresa'])->name('dashboard.investmentByEmpresa');
+            Route::get('/investment-sector',[InvestorDashboardController::class,'investmentBySector'])->name('dashboard.investmentBySector');
+            Route::get('/investment-riesgo',[InvestorDashboardController::class,'investmentByRiesgo'])->name('dashboard.investmentByRiesgo');
+            
+            Route::get('/investment-empresa-return',[InvestorDashboardController::class,'investmentByEmpresaReturn'])->name('dashboard.investmentByEmpresaReturn');
+            Route::get('/investment-sector-return',[InvestorDashboardController::class,'investmentBySectorReturn'])->name('dashboard.investmentBySectorReturn');
+            Route::get('/investment-riesgo-return',[InvestorDashboardController::class,'investmentByRiesgoReturn'])->name('dashboard.investmentByRiesgoReturn');
+            
+            Route::get('/investment-totaL',[InvestorDashboardController::class,'investmentTotal'])->name('dashboard.investmentTotal');
+            Route::get('/investment-cartera',[InvestorDashboardController::class,'investmentCartera'])->name('dashboard.investmentCartera');
+            Route::get('/investment-diversificacion',[InvestorDashboardController::class,'investmentDiversificacion'])->name('dashboard.investmentDiversificacion');
         });
 
         Route::prefix('cumulative-returns')->group(function () {
@@ -275,6 +291,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::prefix('movements')->group(function () {
         Route::get('/', [MovementController::class, 'index']);
         Route::get('/datailMovementDeposit/{id}', [MovementController::class, 'detalleMovimientoDeposito']);
+        Route::get('/datailMovementWithdraw/{id}', [MovementController::class, 'detalleMovimientoRetiro']);
+        Route::get('/datailMovementExchangeUP/{id}', [MovementController::class, 'detalleMovimientoExchangeUP']);
+        Route::get('/datailMovementExchangeDown/{id}', [MovementController::class, 'detalleMovimientoExchangeDown']);
         Route::post('/deposits/create', [MovementController::class, 'createDeposit']);
         Route::post('/withdraw/create', [MovementController::class, 'createWithdraw']);
         Route::post('/deposits/tasas-fijas', [MovementController::class, 'createFixedRateDeposit']);
