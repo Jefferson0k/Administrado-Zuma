@@ -15,6 +15,8 @@ return new class extends Migration
             $table->id();
             $table->bigInteger('amount')->default(0);
             $table->bigInteger('return')->default(0);
+            $table->bigInteger('return_efectivizado')->default(0); // 🆕 Retorno efectivizado
+            $table->bigInteger('recaudacion')->default(5); // 🆕 Recaudación (por defecto 5%)
             $table->decimal('rate', 5, 2)->default(0);
             $table->char('currency', 3);
             $table->date('due_date');
@@ -23,7 +25,7 @@ return new class extends Migration
             $table->foreignUlid('movement_id')->constrained();
             $table->ulid('previous_investment_id')->nullable();
             $table->ulid('original_investment_id')->nullable();
-            $table->enum('status', ['inactive', 'active', 'paid', 'reprogramed', 'reembloso','pending'])->default('inactive');
+            $table->enum('status', ['inactive', 'active', 'paid', 'reprogramed', 'reembloso', 'pending', 'intereses'])->default('inactive');
             $table->foreignUlid('movement_reembloso')->nullable()->constrained('movements');
             $table->string('operation_number')->nullable();
             $table->string('receipt_path')->nullable();     
@@ -34,6 +36,7 @@ return new class extends Migration
             $table->timestamps();
         });
     }
+
     /**
      * Reverse the migrations.
      */
