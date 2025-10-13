@@ -12,8 +12,8 @@ use App\Models\Investor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Alias;
-use AWS\CRT\Log;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 /**
  * @OA\Tag(
@@ -45,25 +45,25 @@ class BankAccountController extends Controller
 
 
 
- public function indexdestinos(Request $request)
-{
-    try {
-        $bank_accounts = BankAccountDestino::query()
-            ->selectRaw('bank_account_destinos.*, banks.name as bank')
-            ->join('banks', 'bank_account_destinos.bank_id', '=', 'banks.id')
-            ->get(); // ✅ use get() instead of lazy()
+    public function indexdestinos(Request $request)
+    {
+        try {
+            $bank_accounts = BankAccountDestino::query()
+                ->selectRaw('bank_account_destinos.*, banks.name as bank')
+                ->join('banks', 'bank_account_destinos.bank_id', '=', 'banks.id')
+                ->get(); // ✅ use get() instead of lazy()
 
-        return response()->json([
-            'success' => true,
-            'data' => $bank_accounts,
-        ]);
-    } catch (\Throwable $th) {
-        return response()->json([
-            'success' => false,
-            'message' => $th->getMessage(),
-        ], 500);
+            return response()->json([
+                'success' => true,
+                'data' => $bank_accounts,
+            ]);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'success' => false,
+                'message' => $th->getMessage(),
+            ], 500);
+        }
     }
-}
 
     public function store(StoreBankAccountRequest $request)
     {
@@ -171,7 +171,18 @@ class BankAccountController extends Controller
                 ], 404);
             }
 
-            $bank_account->delete();
+            $bank_account = BankAccount::find($bankAccountID);
+            $bank_account->update([
+                'status0' => 'deleted',
+                'status' => 'deleted',
+                'status_conclusion' => 'deleted',
+            ]);
+
+
+            Log::info('🔎 Rows updated: ' . $bank_account);
+
+
+            Log::info('Cuenta bancaria marcada como eliminada: ' . $bank_account->id . ' ' . $bank_account->alias . ' ' . $bank_account->cc);
 
             return response()->json([
                 'success' => true,
@@ -186,5 +197,4 @@ class BankAccountController extends Controller
             ], 500);
         }
     }
-
 }
