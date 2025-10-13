@@ -54,8 +54,8 @@
               </p>
 
               <!-- Icono simple y seguro-->
-              <img src="{{ asset('imagenes/personitareloj.png') }}" width="64" height="80" alt="Aviso" style="display:block;margin:0 auto 10px auto;">
-
+              {{-- <img src="{{ asset('imagenes/personitareloj.png') }}" width="64" height="80" alt="Aviso" style="display:block;margin:0 auto 10px auto;">
+ --}}
 
               <p style="margin:0 0 6px 0;">
                 Gracias nuevamente por confiar en nosotros,<br>

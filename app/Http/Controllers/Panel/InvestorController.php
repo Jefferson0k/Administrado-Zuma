@@ -33,6 +33,8 @@ use App\Models\InvestorPepEvidence;
 use Illuminate\Support\Facades\Log;
 use App\Models\HistoryAprobadorInvestor;
 use Throwable;
+use Illuminate\Auth\Events\Registered;
+
 
 class InvestorController extends Controller
 {
@@ -271,8 +273,11 @@ class InvestorController extends Controller
             $investorCode->save();
             $investor->codigo = $codigo;
             $investor->save();
-            //$investor->sendEmailVerificationNotification();
+            Log::info("Nuevo código de inversor generado: {$codigo} para el inversor ID: {$investor->id}");
+            
             DB::commit();
+
+            $investor->sendEmailVerificationNotification();
             return response()->json([
                 'success' => true,
                 'message' => 'Te has registrado con éxito, te enviaremos un correo para confirmar tu cuenta.',

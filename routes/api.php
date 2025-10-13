@@ -49,7 +49,6 @@ use App\Http\Controllers\Api\InvestorDashboardController;
 
 Route::post('register', [InvestorController::class, 'register']);
 Route::post('register/cliente', [InvestorController::class, 'registerCustomer']);
-
 /*
 |--------------------------------------------------------------------------
 | RUTA PARA EL SERVICIO DE SMS X WHTS
@@ -75,7 +74,7 @@ Route::get('/investors/{id}', [InvestorController::class, 'show']);
 Route::put('/investors/{id}', [InvestorController::class, 'update']);
 Route::get('/visitas-producto', [VisitaProductoController::class, 'visitasPorProducto']);
 Route::post('/producto/{id}/click', [VisitaProductoController::class, 'registrar'])->name('producto.click');
-Route::post('register', [InvestorController::class, 'register']);
+
 Route::get('/investors/{id}', [InvestorController::class, 'showcliente']);
 Route::put('/investors/{id}', [InvestorController::class, 'updatecliente']);
 Route::post('reset-password', [InvestorController::class, 'resetPassword']);

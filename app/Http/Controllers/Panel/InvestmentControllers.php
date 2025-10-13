@@ -28,8 +28,10 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
 
-class InvestmentControllers extends Controller{
-    public function store(Request $request){
+class InvestmentControllers extends Controller
+{
+    public function store(Request $request)
+    {
         $request->validate([
             'auction_id' => 'required|exists:auctions,id',
         ]);
@@ -65,7 +67,8 @@ class InvestmentControllers extends Controller{
         ], 201);
     }
 
-    public function index($property_id){
+    public function index($property_id)
+    {
         $inversiones = Investment::with('investors')
             ->where('property_id', $property_id)
             ->orderByDesc('monto_invertido')
@@ -114,14 +117,17 @@ class InvestmentControllers extends Controller{
             return response()->json(['message' => 'Error al mostrar las inversiones.'], 500);
         }
     }
-    public function indexAll(Request $request){
+    public function indexAll(Request $request)
+    {
         try {
             Gate::authorize('viewAny', Investment::class);
-            $perPage     = $request->input('per_page', 15);
-            $search      = $request->input('razon_social', '');
-            $currency    = $request->input('currency');
-            $status      = $request->input('status');
-            $codigo      = $request->input('codigo', '');
+
+            $perPage  = $request->input('per_page', 15);
+            $search   = $request->input('razon_social', '');
+            $currency = $request->input('currency');
+            $status   = $request->input('status');
+            $codigo   = $request->input('codigo', '');
+
             $query = app(Pipeline::class)
                 ->send(Investment::query()->with(['invoice.company', 'investor']))
                 ->through([
@@ -130,15 +136,31 @@ class InvestmentControllers extends Controller{
                     new StatusFilter($status),
                 ])
                 ->thenReturn();
-            $investments = $query->orderByDesc('created_at')->paginate($perPage);
-            return InvestmentListResource::collection($investments)
-                ->additional([
-                    'total' => $investments->total(),
-                ]);
-        } catch (AuthorizationException $e) {
+
+            $investments = $query
+                ->orderByDesc('created_at')
+                ->paginate($perPage, ['*'], 'page', $request->input('page', 1))
+                ->appends($request->query());
+
+            // ✅ include meta and links to match Laravel paginator format
+            // ✅ include meta and links to match Laravel paginator format
             return response()->json([
-                'message' => 'No tienes permiso para ver las inversiones.'
-            ], 403);
+                'data' => InvestmentListResource::collection($investments->items())->resolve(), // <-- plain array
+                'meta' => [
+                    'current_page' => $investments->currentPage(),
+                    'last_page'    => $investments->lastPage(),
+                    'per_page'     => $investments->perPage(),
+                    'total'        => $investments->total(),
+                ],
+                'links' => [
+                    'first' => $investments->url(1),
+                    'last'  => $investments->url($investments->lastPage()),
+                    'prev'  => $investments->previousPageUrl(),
+                    'next'  => $investments->nextPageUrl(),
+                ],
+            ]);
+        } catch (AuthorizationException $e) {
+            return response()->json(['message' => 'No tienes permiso para ver las inversiones.'], 403);
         } catch (Throwable $e) {
             return response()->json([
                 'message' => 'Error al listar las inversiones.',
