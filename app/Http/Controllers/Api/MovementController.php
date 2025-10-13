@@ -12,6 +12,7 @@ use App\Http\Requests\FixedRateDeposit\StoreZumaDepositRequest;
 use App\Http\Requests\Payments\StorePaymentsRequest;
 use App\Http\Requests\Withdraw\StoreWithdrawRequest;
 use App\Http\Resources\Tasas\Movement\MovementResource;
+use App\Models\Bank;
 use App\Models\Deposit;
 use App\Models\Movement;
 use Illuminate\Support\Str;
@@ -20,6 +21,7 @@ use App\Models\Property;
 use App\Models\PropertyInvestor;
 use App\Models\PropertyReservation;
 use App\Models\Withdraw;
+use App\Models\BankAccountDestino;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -218,7 +220,11 @@ class MovementController extends Controller
                 ->with([
                     'investment',
                     'investment.invoice',
-                    'investment.invoice.company' // Agregamos la relación con company
+                    'investment.invoice.company', // Agregamos la relación con company
+                    'deposit.bankAccount.bank',
+                    'deposit.bankAccountDestino.bank',
+                    
+
                 ])
                 ->when(
                     $request->filled('currency'),
@@ -261,6 +267,7 @@ class MovementController extends Controller
             'user_id' => $investor?->id,
             'payload' => [
                 'bank'          => $validatedData['bank'] ?? null,
+                'bank_destino'  => $validatedData['bank_destino'] ?? null,
                 'amount'        => $validatedData['amount'] ?? null,
                 'nro_operation' => $validatedData['nro_operation'] ?? null,
                 // No logeamos el archivo completo, sólo tipo/tamaño más abajo
@@ -270,12 +277,14 @@ class MovementController extends Controller
         try {
             // Valores del body
             $bankID          = $validatedData['bank'];
+            $bankDestinoID   = $validatedData['bank_destino'];
             $amount          = $validatedData['amount'];
             $operationNumber = $validatedData['nro_operation'];
             $voucher         = $validatedData['voucher']; // UploadedFile
 
             // Buscar la cuenta bancaria del inversor
             $bank_account = $investor->bankAccounts()->where('id', $bankID)->first();
+            $bank_account_destino = BankAccountDestino::where('id', $bankDestinoID)->first();
 
             if (!$bank_account) {
                 Log::warning('Deposit@createDeposit - bank account not found for user', [
@@ -453,6 +462,7 @@ class MovementController extends Controller
                 $deposit->updated_by      = $investor->id;
                 $deposit->investor_id     = $investor->id;
                 $deposit->bank_account_id = $bank_account->id;
+                $deposit->bank_account_destino_id = $bank_account_destino->id;
 
                 $movement = new Movement();
                 $movement->currency    = $bank_account->currency;

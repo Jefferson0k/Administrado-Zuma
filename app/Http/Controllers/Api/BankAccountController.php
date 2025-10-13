@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\BankAccount\StoreBankAccountRequest;
 use App\Http\Requests\BankAccount\UpdateBankAccountRequest;
 use App\Models\BankAccount;
+use App\Models\BankAccountDestino;
 use App\Models\Balance;
 use App\Models\Investor;
 use Illuminate\Http\Request;
@@ -41,6 +42,29 @@ class BankAccountController extends Controller
             return $th->getMessage();
         }
     }
+
+
+
+ public function indexdestinos(Request $request)
+{
+    try {
+        $bank_accounts = BankAccountDestino::query()
+            ->selectRaw('bank_account_destinos.*, banks.name as bank')
+            ->join('banks', 'bank_account_destinos.bank_id', '=', 'banks.id')
+            ->get(); // ✅ use get() instead of lazy()
+
+        return response()->json([
+            'success' => true,
+            'data' => $bank_accounts,
+        ]);
+    } catch (\Throwable $th) {
+        return response()->json([
+            'success' => false,
+            'message' => $th->getMessage(),
+        ], 500);
+    }
+}
+
     public function store(StoreBankAccountRequest $request)
     {
         try {
