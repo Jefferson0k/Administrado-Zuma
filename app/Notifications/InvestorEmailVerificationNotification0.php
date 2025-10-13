@@ -69,26 +69,25 @@ class InvestorEmailVerificationNotification extends VerifyEmail
      */
     public function toMail($notifiable)
     {
-        $verificationUrl = $this->verificationUrl($notifiable);
+        // $verificationUrl = $this->verificationUrl($notifiable);
 
-        // Extraer solo la parte de la ruta (sin el dominio)
-        $path = parse_url($verificationUrl, PHP_URL_PATH);
-        $query = parse_url($verificationUrl, PHP_URL_QUERY);
+        // // Extraer solo la parte de la ruta (sin el dominio)
+        // $path = parse_url($verificationUrl, PHP_URL_PATH);
+        // $query = parse_url($verificationUrl, PHP_URL_QUERY);
 
-        // Construir la URL del frontend
-        $frontendUrl = env('CLIENT_APP_URL', 'http://localhost:5173') . $path;
-        if ($query) {
-            $frontendUrl .= '?' . $query;
-        }
+        // // Construir la URL del frontend
+        // $frontendUrl = env('CLIENT_APP_URL', 'http://localhost:5173') . $path;
+        // if ($query) {
+        //     $frontendUrl .= '?' . $query;
+        // }
 
-        return (new \Illuminate\Notifications\Messages\MailMessage)
-            ->subject('Confirma tu correo en ZUMA')
-            ->view(
-                'emails.investor-verify',
-                [
-                    'url' => $frontendUrl,
-                    'investor' => $notifiable,
-                ]
-            );
+        return (new MailMessage)
+            ->subject('Gracias por tu interés en ZUMA | Estamos casi listos para ti')
+            ->view('emails.investor-verify', [
+                'investor'         => $notifiable,
+                'appName'          => config('app.name', 'ZUMA'),
+                // Si quieres usar el enlace de verificación dentro del Blade:
+                'verificationUrl'  => $this->verificationUrl($notifiable),
+            ]);
     }
 }
