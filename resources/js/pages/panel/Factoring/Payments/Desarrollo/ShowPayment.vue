@@ -26,7 +26,7 @@
                         </div>
                         <div class="flex justify-between border-b pb-2">
                             <span class="font-semibold">RUC:</span>
-                            <span>{{ invoice.ruc }}</span>
+                            <span>{{ invoice.ruc_cliente }}</span>
                         </div>
                         <div class="flex justify-between border-b pb-2">
                             <span class="font-semibold">Estado:</span>
@@ -78,14 +78,14 @@
                 
                 <div class="space-y-4">
                     <div v-for="pago in invoice.pagos" :key="pago.id" class="border rounded-lg p-4 hover:shadow-md transition-shadow bg-gray-50">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                             <!-- Columna 1: Información del Pago -->
                             <div class="space-y-2">
                                 <div class="flex items-center gap-2 mb-2">
                                     <i class="pi pi-hashtag text-gray-500"></i>
                                     <span class="font-bold text-lg">Pago #{{ pago.id }}</span>
-                                    <Tag :value="pago.pay_type === 'total' ? 'Total' : 'Parcial'" 
-                                         :severity="pago.pay_type === 'total' ? 'success' : 'info'" />
+                                    <Tag :value="getTipoPagoLabel(pago.pay_type)" 
+                                         :severity="getTipoPagoSeverity(pago.pay_type)" />
                                 </div>
                                 
                                 <div class="flex items-center gap-2">
@@ -93,7 +93,7 @@
                                     <div>
                                         <span class="text-xs text-gray-500 block">Monto</span>
                                         <span class="font-bold text-lg text-green-600">
-                                            {{ pago.amount_to_be_paid_money.currency }} {{ pago.amount_to_be_paid }}
+                                            {{ pago.amount_to_be_paid_money.currency }} {{ formatAmount(pago.amount_to_be_paid) }}
                                         </span>
                                     </div>
                                 </div>
@@ -107,32 +107,31 @@
                                 </div>
                             </div>
 
-                            <!-- Columna 2: Evidencias y Estado -->
-                            <div class="space-y-3">
-                                <div class="bg-white rounded p-3 border">
-                                    <div class="flex items-center justify-between mb-2">
-                                        <span class="text-sm font-semibold text-gray-700">Evidencias</span>
-                                        <Tag :value="`${pago.evidencia_count}`" severity="info" rounded />
-                                    </div>
-                                    <Button 
-                                        label="Ver Documentos" 
-                                        icon="pi pi-file-pdf" 
-                                        severity="info"
-                                        size="small"
-                                        outlined
-                                        class="w-full"
-                                        @click="verEvidencia(pago)"
-                                    />
-                                </div>
-
-                                <div class="text-xs text-gray-500">
-                                    <i class="pi pi-clock"></i>
-                                    Creado: {{ pago.created_at }}
+                            <!-- Columna 2: Recaudación (5%) -->
+                            <div class="bg-orange-50 rounded-lg p-3 border border-orange-200">
+                                <div class="text-center">
+                                    <i class="pi pi-percentage text-orange-600 text-xl mb-2"></i>
+                                    <label class="text-xs font-semibold text-gray-700 block mb-1">Recaudación (5%)</label>
+                                    <p class="text-xl font-bold text-orange-700">
+                                        {{ pago.amount_to_be_paid_money.currency }} {{ calculateRecaudacion(pago.amount_to_be_paid) }}
+                                    </p>
                                 </div>
                             </div>
 
-                            <!-- Columna 3: Aprobaciones y Acciones -->
-                            <div class="space-y-3">
+                            <!-- Columna 3: Monto Efectivizado -->
+                            <div class="bg-purple-50 rounded-lg p-3 border border-purple-200">
+                                <div class="text-center">
+                                    <i class="pi pi-money-bill text-purple-600 text-xl mb-2"></i>
+                                    <label class="text-xs font-semibold text-gray-700 block mb-1">Monto Efectivizado</label>
+                                    <p class="text-xl font-bold text-purple-700">
+                                        {{ pago.amount_to_be_paid_money.currency }} {{ calculateMontoEfectivizado(pago.amount_to_be_paid) }}
+                                    </p>
+                                    <span class="text-xs text-gray-600">A pagar</span>
+                                </div>
+                            </div>
+
+                            <!-- Columna 4 y 5: Aprobaciones y Acciones -->
+                            <div class="space-y-3 md:col-span-2">
                                 <div class="bg-white rounded p-3 border">
                                     <div class="space-y-2">
                                         <div class="flex justify-between items-center">
@@ -217,18 +216,36 @@
                         </template>
                     </Column>
 
+                    <!-- Nueva Columna: Recaudación (5%) -->
+                    <Column header="Recaudación (5%)" sortable style="min-width: 11rem">
+                        <template #body="slotProps">
+                            <div class="text-center">
+                                <i class="pi pi-percentage text-orange-600 text-sm mr-1"></i>
+                                <span class="font-bold text-orange-700">
+                                    {{ slotProps.data.currency }} {{ calculateRecaudacionInversion(slotProps.data.return) }}
+                                </span>
+                            </div>
+                        </template>
+                    </Column>
+
+                    <!-- Nueva Columna: Monto Efectivizado -->
+                    <Column header="Monto Efectivizado" sortable style="min-width: 12rem">
+                        <template #body="slotProps">
+                            <div class="text-center">
+                                <i class="pi pi-money-bill text-purple-600 text-sm mr-1"></i>
+                                <span class="font-bold text-purple-700">
+                                    {{ slotProps.data.currency }} {{ calculateMontoEfectivizadoInversion(slotProps.data.return) }}
+                                </span>
+                                <div class="text-xs text-gray-600 mt-1">Neto a recibir</div>
+                            </div>
+                        </template>
+                    </Column>
+
                     <Column field="rate" header="Tasa" sortable style="min-width: 8rem">
                         <template #body="slotProps">
                             {{ slotProps.data.rate }}%
                         </template>
                     </Column>
-
-                    <Column field="status" header="Estado" sortable style="min-width: 10rem">
-                        <template #body="slotProps">
-                            <Tag :value="slotProps.data.status" :severity="getInvestmentStatusSeverity(slotProps.data.status)" />
-                        </template>
-                    </Column>
-
                     <Column field="due_date" header="Fecha Vencimiento" sortable style="min-width: 12rem" />
 
                     <template #empty>
@@ -264,59 +281,9 @@
             </template>
         </Dialog>
 
-        <!-- Dialog de Evidencia -->
-        <Dialog v-model:visible="dialogEvidencia" modal header="Evidencias de Pago" :style="{ width: '600px' }">
-            <div v-if="pagoSeleccionado" class="space-y-4">
-                <div class="bg-gray-50 p-3 rounded">
-                    <div class="grid grid-cols-2 gap-2 text-sm">
-                        <div><strong>ID Pago:</strong> {{ pagoSeleccionado.id }}</div>
-                        <div><strong>Monto:</strong> {{ pagoSeleccionado.amount_to_be_paid_money.currency }} {{ pagoSeleccionado.amount_to_be_paid }}</div>
-                        <div><strong>Fecha:</strong> {{ pagoSeleccionado.pay_date }}</div>
-                        <div><strong>Tipo:</strong> {{ pagoSeleccionado.pay_type === 'total' ? 'Total' : 'Parcial' }}</div>
-                    </div>
-                </div>
-
-                <div v-if="pagoSeleccionado.evidencia_data && pagoSeleccionado.evidencia_data.length > 0">
-                    <h6 class="font-semibold mb-2">Archivos adjuntos:</h6>
-                    <div class="space-y-2">
-                        <div v-for="(evidencia, index) in pagoSeleccionado.evidencia_data" :key="index" 
-                             class="border rounded p-3 flex items-center justify-between hover:bg-gray-50">
-                            <div class="flex items-center gap-3">
-                                <i class="pi pi-file-pdf text-red-500 text-2xl"></i>
-                                <div>
-                                    <div class="font-semibold text-sm">{{ evidencia.original_name }}</div>
-                                    <div class="text-xs text-gray-500">
-                                        {{ formatFileSize(evidencia.size) }} • {{ evidencia.uploaded_at }}
-                                    </div>
-                                </div>
-                            </div>
-                            <Button 
-                                icon="pi pi-download" 
-                                severity="secondary" 
-                                size="small"
-                                outlined
-                                @click="descargarEvidencia(evidencia.url)"
-                            />
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <template #footer>
-                <Button label="Cerrar" icon="pi pi-times" @click="dialogEvidencia = false" />
-            </template>
-        </Dialog>
-
         <!-- Dialog de Aprobación -->
         <Dialog v-model:visible="dialogAprobar" modal header="Aprobar Pago" :style="{ width: '500px' }">
             <div v-if="pagoSeleccionado" class="space-y-4">
-                <div class="bg-blue-50 p-3 rounded">
-                    <div class="text-sm space-y-1">
-                        <div><strong>ID Pago:</strong> {{ pagoSeleccionado.id }}</div>
-                        <div><strong>Monto:</strong> {{ pagoSeleccionado.amount_to_be_paid_money.currency }} {{ pagoSeleccionado.amount_to_be_paid }}</div>
-                        <div><strong>Fecha:</strong> {{ pagoSeleccionado.pay_date }}</div>
-                    </div>
-                </div>
-
                 <div>
                     <label class="block font-semibold mb-2">Comentario de aprobación (opcional):</label>
                     <textarea 
@@ -366,7 +333,6 @@ const invoice = ref<any>(null);
 const loading = ref(false);
 const dialogConfirmar = ref(false);
 const confirmando = ref(false);
-const dialogEvidencia = ref(false);
 const dialogAprobar = ref(false);
 const pagoSeleccionado = ref<any>(null);
 const comentarioAprobacion = ref('');
@@ -383,7 +349,6 @@ const loadInvoiceDetails = async () => {
         loading.value = false;
     }
 };
-
 
 const confirmarPago = async () => {
     confirmando.value = true;
@@ -447,11 +412,6 @@ const getApprovalSeverity = (status: string) => {
     return severities[status] || 'info';
 };
 
-const verEvidencia = (pago: any) => {
-    pagoSeleccionado.value = pago;
-    dialogEvidencia.value = true;
-};
-
 const aprobarPago = (pago: any) => {
     pagoSeleccionado.value = pago;
     comentarioAprobacion.value = '';
@@ -495,14 +455,47 @@ const confirmarAprobacion = async () => {
     }
 };
 
-const descargarEvidencia = (url: string) => {
-    window.open(url, '_blank');
+const formatAmount = (amount: number) => {
+    return (amount / 100).toFixed(2);
 };
 
-const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1048576) return (bytes / 1024).toFixed(2) + ' KB';
-    return (bytes / 1048576).toFixed(2) + ' MB';
+const calculateRecaudacion = (amount: number) => {
+    const amountDivided = amount / 100;
+    return (amountDivided * 0.05).toFixed(2);
+};
+
+const calculateMontoEfectivizado = (amount: number) => {
+    const amountDivided = amount / 100;
+    const recaudacion = amountDivided * 0.05;
+    return (amountDivided - recaudacion).toFixed(2);
+};
+
+// Nuevas funciones para inversiones
+const calculateRecaudacionInversion = (returnAmount: number) => {
+    return (returnAmount * 0.05).toFixed(2);
+};
+
+const calculateMontoEfectivizadoInversion = (returnAmount: number) => {
+    const recaudacion = returnAmount * 0.05;
+    return (returnAmount - recaudacion).toFixed(2);
+};
+
+const getTipoPagoLabel = (payType: string) => {
+    const labels: Record<string, string> = {
+        'intereses': 'Intereses',
+        'partial': 'Parcial',
+        'total': 'Total'
+    };
+    return labels[payType] || payType;
+};
+
+const getTipoPagoSeverity = (payType: string) => {
+    const severities: Record<string, string> = {
+        'intereses': 'info',
+        'partial': 'warn',
+        'total': 'success'
+    };
+    return severities[payType] || 'info';
 };
 
 onMounted(() => {

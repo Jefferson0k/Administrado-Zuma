@@ -18,6 +18,7 @@ use App\Models\Investment;
 use App\Models\Invoice;
 use App\Models\Movement;
 use App\Models\Payment;
+use App\Models\PaymentDetail;
 use App\Notifications\InvoiceAnnulledRefundNotification;
 use Carbon\Carbon;
 use Exception;
@@ -29,22 +30,19 @@ use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Excel as ExcelType;
 use Illuminate\Support\Str;
+use Throwable;
 
-
-
-class PaymentsController extends Controller
-{
-    public function comparacion(Request $request)
-    {
+class PaymentsController extends Controller{
+    public function comparacion(Request $request){
         $request->validate([
             'excel_file' => 'required|file|mimetypes:application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/plain,application/octet-stream',
         ]);
-
         $file = $request->file('excel_file');
         Log::info('✅ Archivo recibido', ['name' => $file->getClientOriginalName()]);
+        
+        // Cambiar la forma de leer el Excel para manejar formatos de fecha
         $data = Excel::toArray([], $file, null, \Maatwebsite\Excel\Excel::XLSX);
         Log::info('✅ Datos leídos', ['sheet_count' => count($data)]);
-
         $sheet = $data[0] ?? [];
 
         if (empty($sheet)) {
@@ -60,8 +58,6 @@ class PaymentsController extends Controller
             return trim(strval($header));
         }, $sheet[0]);
         Log::info('✅ Encabezados detectados', ['headers' => $headers]);
-
-
 
         // Encabezados requeridos
         $requiredColumns = [
@@ -85,22 +81,19 @@ class PaymentsController extends Controller
                 'message' => 'Faltan las siguientes columnas en el archivo: ' . implode(', ', $missingColumns),
             ]);
         }
-
-        // Mapeo de situaciones (type) de inglés a español
+        
         $typeMapping = [
             'normal' => 'normal',
             'annulled' => 'anulado',
             'reprogramed' => 'reprogramado'
         ];
 
-        // Mapeo de estados
         $estadoMapping = [
             0 => 'Pago de intereses',
             1 => 'Pago parcial',
             2 => 'Paga toda la factura'
         ];
 
-        // Mapeo de monedas
         $currencyMapping = [
             'S/' => 'PEN',
             'S' => 'PEN',
@@ -113,14 +106,11 @@ class PaymentsController extends Controller
 
         $rows = array_slice($sheet, 1);
 
-        // Filter out empty rows
         $rows = array_filter($rows, function ($row) {
-            // Keep row if at least one cell has non-empty value
             return count(array_filter($row, fn($cell) => trim((string)$cell) !== '')) > 0;
         });
 
         foreach ($rows as $row) {
-
             Log::info('📄 Procesando fila', ['row' => $row]);
 
             $rowData = array_combine($headers, $row);
@@ -132,7 +122,6 @@ class PaymentsController extends Controller
             $rucAceptanteExcel      = trim(strval($rowData['RUC ACEPTANTE'] ?? ''));
             $currencyExcel          = trim(strval($rowData['MONEDA'] ?? ''));
             $montoDocumentoExcel    = floatval($rowData['MONTO DOCUMENTO'] ?? 0);
-            $estimatedPayDateExcel  = strval($rowData['FECHA PAGO'] ?? '');
             $montoPagadoExcel       = floatval($rowData['MONTO PAGADO'] ?? 0);
             $estadoExcel            = intval($rowData['ESTADO'] ?? -1);
             $situacionExcel         = strtolower(trim(strval($rowData['SITUACION'] ?? '')));
@@ -141,20 +130,8 @@ class PaymentsController extends Controller
             $currencyExcelNormalized = $currencyMapping[$currencyExcel] ?? $currencyExcel;
             $currencyExcelNormalized = strtoupper($currencyExcelNormalized);
 
-            // Formatear fecha
-            $fechaExcelFormatted = null;
-            if (!empty($estimatedPayDateExcel)) {
-                $fechaParts = explode('/', $estimatedPayDateExcel);
-                if (count($fechaParts) === 3) {
-                    $fechaExcelFormatted = $fechaParts[2] . '-' .
-                        str_pad($fechaParts[1], 2, '0', STR_PAD_LEFT) . '-' .
-                        str_pad($fechaParts[0], 2, '0', STR_PAD_LEFT);
-                }
-            }
-
-            // Buscar factura - ESTRATEGIA ESTRICTA
-            $invoice = Invoice::where('ruc_proveedor', $rucProveedorExcel) //RUC ACEPTANTE
-                ->where('loan_number', $loanNumberExcel) //NRO
+            $invoice = Invoice::where('ruc_proveedor', $rucProveedorExcel)
+                ->where('loan_number', $loanNumberExcel)
                 ->where('invoice_number', $invoiceNumberExcel)
                 ->first();
 
@@ -165,88 +142,135 @@ class PaymentsController extends Controller
                 'found' => $invoice ? true : false
             ]);
 
-
             $invoiceId = null;
             $detalle = [];
             $estado = 'Coincide';
             $criterioBusqueda = 'Exacto (RUC + Prestamo + Factura)';
+            $puedeProcesar = false;
+            $tipoPago = 'Sin determinar';
 
             if (!$invoice) {
-                // Si no encuentra con los 3 campos, buscar solo por RUC + Factura
                 $invoice = Invoice::where('ruc_proveedor', $rucProveedorExcel)
                     ->where('invoice_number', $invoiceNumberExcel)
                     ->first();
 
                 if ($invoice) {
                     $criterioBusqueda = 'RUC + Factura (Prestamo diferente)';
-                    $estado = 'No coincide'; // Porque el prestamo no coincide
+                    $estado = 'No coincide';
                 }
             }
 
-            // VERIFICAR SI LA FACTURA YA FUE PAGADA
-            if ($invoice && $invoice->statusPago === 'paid') {
-                $estado = 'Ya pagada';
-                $detalle[] = "FACTURA YA PAGADA - No se requiere validación adicional";
-                $detalle[] = "ID Factura: {$invoice->id}";
-                $detalle[] = "Estado en BD: {$invoice->statusPago}";
-            } elseif (!$invoice) {
+            // ============================================================
+            // VALIDACIÓN DE ESTADO DE PAGO Y PROCESAMIENTO POR FASES
+            // ============================================================
+            if (!$invoice) {
                 $estado = 'No coincide';
-                $detalle[] = "Factura no encontrada (RUC: '{$rucAceptanteExcel}', Prestamo: '{$loanNumberExcel}', Factura: '{$invoiceNumberExcel}')";
+                $puedeProcesar = false;
+                $detalle[] = "❌ Factura no encontrada (RUC: '{$rucAceptanteExcel}', Prestamo: '{$loanNumberExcel}', Factura: '{$invoiceNumberExcel}')";
             } else {
                 $invoiceId = $invoice->id;
+                $statusPagoActual = $invoice->statusPago;
                 $amountInvoiceDecimal = floatval($invoice->amount);
 
                 $detalle[] = "Criterio busqueda: {$criterioBusqueda}";
                 $detalle[] = "Loan BD: '{$invoice->loan_number}', Invoice BD: '{$invoice->invoice_number}'";
-                $detalle[] = "Status Pago BD: {$invoice->statusPago}";
+                $detalle[] = "Status Pago BD: " . ($statusPagoActual ?: 'vacío');
 
-                // Si la factura está reprogramada, marcamos como estado especial
-                if ($invoice->statusPago === 'reprogramed') {
-                    $estado = 'Reprogramada';
-                    $detalle[] = "FACTURA REPROGRAMADA - Validación limitada";
-                }
-
-                // Comparar RUC Aceptante (RUC_CLIENTE)
-                if ($invoice?->company?->document === $rucAceptanteExcel) {
-                    $detalle[] = "RUC Aceptante: OK";
+                // Determinar tipo de pago del Excel
+                if (array_key_exists($estadoExcel, $estadoMapping)) {
+                    $tipoPago = $estadoMapping[$estadoExcel];
                 } else {
-                    $detalle[] = "RUC Aceptante: Diferente (BD: {$invoice?->company?->document} vs Excel: {$rucAceptanteExcel})";
-                    if ($estado !== 'Reprogramada') $estado = 'No coincide';
+                    $tipoPago = "Estado inválido ({$estadoExcel})";
+                    $puedeProcesar = false;
+                    $estado = 'Error';
+                    $detalle[] = "❌ Estado de pago inválido en Excel: {$estadoExcel}";
                 }
 
-
-
-                //OPCIONAL
-                // Comparar RUC PROVEEDOR 
-                if ($invoice?->ruc_proveedor === $rucProveedorExcel) {
-                    $detalle[] = "RUC Proveedor: OK";
-                } else {
-                    $detalle[] = "RUC Proveedor: Diferente (BD: {$invoice?->ruc_proveedor} vs Excel: {$rucProveedorExcel})";
-                    if ($estado !== 'Reprogramada') $estado = 'No coincide';
+                // LÓGICA DE VALIDACIÓN POR FASES
+                if ($estadoExcel >= 0 && $estadoExcel <= 2) {
+                    // Caso 1: Factura ya pagada completamente
+                    if ($statusPagoActual === 'paid') {
+                        $puedeProcesar = false;
+                        $estado = 'Ya pagada';
+                        $detalle[] = "⛔ FACTURA YA PAGADA COMPLETAMENTE - No se puede procesar";
+                        $detalle[] = "Tipo pago solicitado: {$tipoPago}";
+                        $detalle[] = "ID Factura: {$invoice->id}";
+                    }
+                    // Caso 2: Factura con pago de intereses previo
+                    elseif ($statusPagoActual === 'intereses') {
+                        if ($estadoExcel === 0) {
+                            // Intentando pagar intereses nuevamente
+                            $puedeProcesar = false;
+                            $estado = 'Duplicado';
+                            $detalle[] = "⛔ INTERESES YA PAGADOS PREVIAMENTE";
+                            $detalle[] = "No se puede volver a pagar intereses";
+                            $detalle[] = "Tipo pago solicitado: {$tipoPago}";
+                        } else {
+                            // Estado 1 (parcial) o 2 (total) después de intereses es válido
+                            $puedeProcesar = true;
+                            $detalle[] = "✅ Pago válido después de intereses";
+                            $detalle[] = "Tipo pago: {$tipoPago}";
+                            $detalle[] = "Pago previo: Intereses";
+                        }
+                    }
+                    // Caso 3: Factura reprogramada
+                    elseif ($statusPagoActual === 'reprogramed') {
+                        $estado = 'Reprogramada';
+                        $puedeProcesar = true;
+                        $detalle[] = "⚠️ FACTURA REPROGRAMADA - Validación limitada";
+                        $detalle[] = "Tipo pago: {$tipoPago}";
+                    }
+                    // Caso 4: Primera vez (statusPago vacío o null)
+                    else {
+                        $puedeProcesar = true;
+                        $detalle[] = "✅ Primer pago de la factura";
+                        $detalle[] = "Tipo pago: {$tipoPago}";
+                        
+                        if ($estadoExcel === 0) {
+                            $detalle[] = "Se registrará como: Pago de intereses";
+                        } elseif ($estadoExcel === 1) {
+                            $detalle[] = "Se registrará como: Pago parcial";
+                        } elseif ($estadoExcel === 2) {
+                            $detalle[] = "Se registrará como: Pago total";
+                        }
+                    }
                 }
 
+                // VALIDACIONES ADICIONALES (solo si puede procesar)
+                if ($puedeProcesar && $estado !== 'Reprogramada') {
+                    // Validar RUC Aceptante
+                    if ($invoice?->company?->document === $rucAceptanteExcel) {
+                        $detalle[] = "RUC Aceptante: OK";
+                    } else {
+                        $detalle[] = "RUC Aceptante: Diferente (BD: {$invoice?->company?->document} vs Excel: {$rucAceptanteExcel})";
+                        $estado = 'No coincide';
+                    }
 
+                    // Validar RUC Proveedor
+                    if ($invoice?->ruc_proveedor === $rucProveedorExcel) {
+                        $detalle[] = "RUC Proveedor: OK";
+                    } else {
+                        $detalle[] = "RUC Proveedor: Diferente (BD: {$invoice?->ruc_proveedor} vs Excel: {$rucProveedorExcel})";
+                        $estado = 'No coincide';
+                    }
 
+                    // Validar Nro Prestamo
+                    if ($invoice->loan_number === $loanNumberExcel) {
+                        $detalle[] = "Nro Prestamo: OK";
+                    } else {
+                        $detalle[] = "Nro Prestamo: Diferente (BD: '{$invoice->loan_number}' vs Excel: '{$loanNumberExcel}')";
+                        $estado = 'No coincide';
+                    }
 
-                // Comparar loan_number - AHORA ES OBLIGATORIO
-                if ($invoice->loan_number === $loanNumberExcel) {
-                    $detalle[] = "Nro Prestamo: OK";
-                } else {
-                    $detalle[] = "Nro Prestamo: Diferente (BD: '{$invoice->loan_number}' vs Excel: '{$loanNumberExcel}')";
-                    if ($estado !== 'Reprogramada') $estado = 'No coincide';
-                }
+                    // Validar Nro Factura
+                    if ($invoice->invoice_number === $invoiceNumberExcel) {
+                        $detalle[] = "Nro Factura: OK";
+                    } else {
+                        $detalle[] = "Nro Factura: Diferente (BD: {$invoice->invoice_number} vs Excel: {$invoiceNumberExcel})";
+                        $estado = 'No coincide';
+                    }
 
-                // Comparar invoice_number
-                if ($invoice->invoice_number === $invoiceNumberExcel) {
-                    $detalle[] = "Nro Factura: OK";
-                } else {
-                    $detalle[] = "Nro Factura: Diferente (BD: {$invoice->invoice_number} vs Excel: {$invoiceNumberExcel})";
-                    if ($estado !== 'Reprogramada') $estado = 'No coincide';
-                }
-
-                // Solo validar montos y fechas si no está reprogramada
-                if ($estado !== 'Reprogramada') {
-                    // Comparar monto total de la factura
+                    // Validar Monto Documento
                     if (abs($amountInvoiceDecimal - $montoDocumentoExcel) < 0.01) {
                         $detalle[] = 'Monto documento: OK';
                     } else {
@@ -254,69 +278,45 @@ class PaymentsController extends Controller
                         $estado = 'No coincide';
                     }
 
-                    // Comparar fecha estimada
-                    if ($invoice->estimated_pay_date && $fechaExcelFormatted) {
-
-                        $fechaBD = Carbon::parse($invoice->estimated_pay_date)->format('Y-m-d');
-                        $fechaExcel = Carbon::parse($fechaExcelFormatted)->format('Y-m-d');
-                        Log::info('🗓️ Comparando fechas', [
-                            'fecha_bd' => $fechaBD,
-                            'fecha_excel' => $fechaExcel
-                        ]);
-
-                        if ($fechaBD === $fechaExcel) {
-                            $detalle[] = 'Fecha estimada: OK';
-                        } else {
-                            $detalle[] = "Fecha estimada: Diferente (BD: {$fechaBD} vs Excel: {$fechaExcel})";
-                            $estado = 'No coincide';
-                        }
+                    // Validar Moneda
+                    $currencyInvoice = strtoupper($invoice->currency);
+                    if ($currencyInvoice === $currencyExcelNormalized) {
+                        $detalle[] = 'Moneda: OK';
                     } else {
-                        $detalle[] = 'Fecha estimada: No se puede comparar (datos faltantes)';
+                        $detalle[] = "Moneda: Diferente (BD: {$currencyInvoice} vs Excel: {$currencyExcel} -> {$currencyExcelNormalized})";
+                        $estado = 'No coincide';
                     }
-                }
 
-                // Comparar currency
-                $currencyInvoice = strtoupper($invoice->currency);
-                if ($currencyInvoice === $currencyExcelNormalized) {
-                    $detalle[] = 'Moneda: OK';
-                } else {
-                    $detalle[] = "Moneda: Diferente (BD: {$currencyInvoice} vs Excel: {$currencyExcel} -> {$currencyExcelNormalized})";
-                    if ($estado !== 'Reprogramada') $estado = 'No coincide';
-                }
+                    // Validar Situación
+                    $typeInvoice = strtolower($invoice->type ?? '');
+                    $typeInvoiceEspanol = $typeMapping[$typeInvoice] ?? $typeInvoice;
 
-                // Comparar type (situacion)
-                $typeInvoice = strtolower($invoice->type ?? '');
-                $typeInvoiceEspanol = $typeMapping[$typeInvoice] ?? $typeInvoice;
+                    if ($typeInvoiceEspanol === $situacionExcel) {
+                        $detalle[] = "Situación: OK";
+                    } else {
+                        $detalle[] = "Situación: Diferente (BD: {$typeInvoiceEspanol} vs Excel: {$situacionExcel})";
+                        $estado = 'No coincide';
+                    }
 
-                if ($typeInvoiceEspanol === $situacionExcel) {
-                    $detalle[] = "Situación: OK";
-                } else {
-                    $detalle[] = "Situación: Diferente (BD: {$typeInvoiceEspanol} vs Excel: {$situacionExcel})";
-                    if ($estado !== 'Reprogramada') $estado = 'No coincide';
+                    // Si alguna validación falló, no se puede procesar
+                    if ($estado === 'No coincide') {
+                        $puedeProcesar = false;
+                    }
+                } elseif ($puedeProcesar && $estado === 'Reprogramada') {
+                    // Para facturas reprogramadas, solo validaciones básicas
+                    $detalle[] = "Validaciones completas omitidas por estado de reprogramación";
                 }
 
                 $detalle[] = "ID Factura: {$invoice->id}";
             }
 
-            // Determinar tipo de pago basado en ESTADO (solo si no está pagada)
-            $tipoPago = 'Sin determinar';
-            if ($estado !== 'Ya pagada') {
-                if (array_key_exists($estadoExcel, $estadoMapping)) {
-                    $tipoPago = $estadoMapping[$estadoExcel];
-                    $detalle[] = "Tipo pago: {$tipoPago}";
-                } else {
-                    $detalle[] = "Tipo pago: Estado inválido ({$estadoExcel})";
-                }
-            } else {
-                $detalle[] = "Tipo pago: No aplica (factura ya pagada)";
-            }
-
-            // Preparar datos de salida
+            // Agregar información adicional al resultado
             $rowData['monto_documento'] = $montoDocumentoExcel;
             $rowData['monto_pagado'] = $montoPagadoExcel;
             $rowData['estado'] = $estado;
             $rowData['tipo_pago'] = $tipoPago;
             $rowData['id_pago'] = $invoiceId;
+            $rowData['puede_procesar'] = $puedeProcesar;
             $rowData['detalle'] = implode(' | ', $detalle);
 
             $jsonData[] = $rowData;
@@ -324,443 +324,646 @@ class PaymentsController extends Controller
             Log::info('✅ Resultado comparación', [
                 'invoice_number' => $invoiceNumberExcel,
                 'estado' => $estado,
+                'puede_procesar' => $puedeProcesar,
+                'tipo_pago' => $tipoPago,
                 'detalle' => $detalle
             ]);
         }
-
+        
         return response()->json([
             'success' => true,
             'data' => $jsonData,
         ]);
     }
-    /*public function store(Request $request, $invoiceId){
-        $request->validate([
-            "amount_to_be_paid" => "required|numeric",
-            "pay_date" => "required|date",
-            "pay_type" => "required|in:total,partial",
-            "reprogramation_date" => "nullable|date|required_if:pay_type,partial",
-            "reprogramation_rate" => "nullable|numeric|required_if:pay_type,partial",
-            "payment_attachments" => "required|array|min:1",
-            "payment_attachments.*" => "file|mimes:pdf,jpg,jpeg,png,gif,doc,docx|max:10240",
-        ]);
-
-        try {
-            $invoice = Invoice::findOrFail($invoiceId);
-            $company = $invoice->company()->first();
-            $amountToBePaidMoney = MoneyConverter::fromDecimal(
-                $request->amount_to_be_paid,
-                $invoice->currency
-            );
-            
-            DB::beginTransaction();
-            $payment = new Payment();
-            $payment->invoice_id = $invoice->id;
-            $payment->pay_type = $request->pay_type;
-            $payment->pay_date = $request->pay_date;
-            $payment->amount_to_be_paid = MoneyConverter::getValue($amountToBePaidMoney);
-            $payment->reprogramation_date = $request->reprogramation_date;
-            $payment->reprogramation_rate = $request->reprogramation_rate;
-
-            // Manejar múltiples archivos
-            $attachmentsData = [];
-            if ($request->hasFile('payment_attachments')) {
-                $disk = Storage::disk('s3');
-                $evidenceFiles = $request->file('payment_attachments');
-
-                foreach ($evidenceFiles as $evidenceFile) {
-                    $filename = Str::uuid() . '.' . $evidenceFile->getClientOriginalExtension();
-                    $path = "pagos/evidencias/{$invoice->id}/{$filename}";
-                    
-                    try {
-                        $disk->putFileAs("pagos/evidencias/{$invoice->id}", $evidenceFile, $filename);
-                        
-                        $attachmentsData[] = [
-                            'filename' => $filename,
-                            'path' => $path,
-                            'original_name' => $evidenceFile->getClientOriginalName(),
-                            'size' => $evidenceFile->getSize(),
-                            'mime_type' => $evidenceFile->getMimeType(),
-                            'uploaded_at' => now()->toDateTimeString()
-                        ];
-                        
-                    } catch (Exception $e) {
-                        DB::rollBack();
-                        return response()->json([
-                            "error" => "No se pudo subir la evidencia de pago. Intente nuevamente."
-                        ], 422);
-                    }
-                }
-                
-                // Guardar información de archivos
-                $payment->evidencia = json_encode(array_column($attachmentsData, 'filename'));
-                $payment->evidencia_data = json_encode($attachmentsData);
-                $payment->evidencia_count = count($attachmentsData);
-                
-                // Mantener compatibilidad con el campo original para el primer archivo
-                if (!empty($attachmentsData)) {
-                    $firstFile = $attachmentsData[0];
-                    $payment->evidencia_path = $firstFile['path'];
-                    $payment->evidencia_original_name = $firstFile['original_name'];
-                    $payment->evidencia_size = $firstFile['size'];
-                    $payment->evidencia_mime_type = $firstFile['mime_type'];
-                }
-            }
-
-            $invoicePaidAmountMoney = MoneyConverter::fromDecimal($invoice->paid_amount, $invoice->currency);
-            $invoice->paid_amount = $invoicePaidAmountMoney->add($amountToBePaidMoney);
-            
-            if ($request->pay_type == "partial") {
-                $invoice->status = "reprogramed";
-                [$error, $partialPayment] = $payment->createPartialPayments(
-                    $invoice,
-                    $invoice->convertToDecimalPercent($request->input("apportioment_percentage", 0)),
-                    $invoice->convertToDecimalPercent($request->reprogramation_rate)
-                );
-
-                if ($error) {
-                    DB::rollBack();
-                    return response()->json(["error" => $error->getMessage()], 422);
-                }
-
-                foreach ($partialPayment["items"] as $index => $item) {
-                    $investment = $item["investment"];
-                    $investor = $item["investor"];
-                    $amountToPay = new MoneyCast($item["amountToPay"]);
-                    $newExpectedReturn = new MoneyCast($item["newExpectedReturn"]);
-                    $newInvestmentAmount = new MoneyCast($item["newInvestmentAmount"]);
-
-                    $investment->status = "reprogramed";
-                    $investment->save();
-
-                    $movement = new Movement();
-                    $movement->currency = $invoice->currency;
-                    $movement->amount = $amountToPay->money;
-                    $movement->type = MovementType::PAYMENT;
-                    $movement->status = MovementStatus::VALID;
-                    $movement->confirm_status = MovementStatus::VALID;
-                    $movement->investor_id = $investor->id;
-                    $movement->description = "Pago parcial - Factura #{$invoice->invoice_number}";
-                    $movement->save();
-
-                    $reprogramedInvestment = new Investment();
-                    $reprogramedInvestment->currency = $invoice->currency;
-                    $reprogramedInvestment->amount = $newInvestmentAmount->money;
-                    $reprogramedInvestment->return = $newExpectedReturn->money;
-                    $reprogramedInvestment->rate = $request->reprogramation_rate;
-                    $reprogramedInvestment->due_date = $request->reprogramation_date;
-                    $reprogramedInvestment->status = "active";
-                    $reprogramedInvestment->investor_id = $investor->id;
-                    $reprogramedInvestment->invoice_id = $invoice->id;
-                    $reprogramedInvestment->previous_investment_id = $investment->id;
-                    $reprogramedInvestment->original_investment_id = $investment->original_investment_id ?? $investment->id;
-                    $reprogramedInvestment->movement_id = $movement->id;
-                    $reprogramedInvestment->save();
-
-                    $wallet = $investor->getBalance($invoice->currency);
-                    $walletAmountMoney = MoneyConverter::fromDecimal($wallet->amount, $invoice->currency);
-                    $walletInvestedAmountMoney = MoneyConverter::fromDecimal($wallet->invested_amount, $invoice->currency);
-                    $wallet->amount = $walletAmountMoney->add($amountToPay->money);
-                    $wallet->invested_amount = $walletInvestedAmountMoney->subtract($amountToPay->money);
-                    $wallet->save();
-
-                    // REEMPLAZADO: Envío de email directo por Job
-                    SendInvestmentPartialEmail::dispatch(
-                        $investor, 
-                        $payment, 
-                        $investment, 
-                        MoneyConverter::getValue($amountToPay->money)
-                    )->delay(now()->addSeconds($index * 2)); // Espaciar emails cada 2 segundos
-                }
-            } else {
-                $invoice->statusPago = "paid";
-
-                [$_, $items] = $payment->createTotalPayments($invoice);
-
-                foreach ($items["items"] as $index => $item) {
-                    $investor = $item["investor"];
-                    $investment = $item["investment"];
-                    $netExpectedReturn = $item["net_expected_return"];
-                    $itfAmount = $item["itf_amount"];
-
-                    // REEMPLAZADO: Envío de email directo por Job
-                    SendInvestmentFullyPaidEmail::dispatch(
-                        $investor,
-                        $payment,
-                        $investment,
-                        MoneyConverter::getValue($netExpectedReturn),
-                        MoneyConverter::getValue($itfAmount)
-                    )->delay(now()->addSeconds($index * 2)); // Espaciar emails cada 2 segundos
-                }
-            }
-
-            $invoice->save();
-            $payment->save();
-
-            DB::commit();
-
-            return response()->json([
-                "message" => $request->pay_type === "partial" ? "Pago parcial creado exitosamente." : "Pago total creado exitosamente.",
-                "payment" => $payment,
-                "invoice" => $invoice,
-                "attachments_info" => $attachmentsData,
-                "email_status" => "Los emails de notificación se están enviando en segundo plano"
-            ]);
-            
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            Log::error('Error en el procesamiento de pago', [
-                'error' => $th->getMessage(),
-                'trace' => $th->getTraceAsString(),
-                'invoice_id' => $invoiceId,
-                'request_data' => $request->except(['payment_attachments'])
-            ]);
-            
-            return response()->json([
-                "error" => "Error interno del servidor al procesar el pago",
-                "details" => config('app.debug') ? $th->getMessage() : null
-            ], 500);
-        }
-    }*/
-
-    public function store(Request $request, $invoiceId)
+        public function store(Request $request, $invoiceId)
     {
         $request->validate([
             "amount_to_be_paid" => "required|numeric",
-            "pay_date" => "required|date",
-            "pay_type" => "required|in:total,partial",
-            "reprogramation_date" => "nullable|date|required_if:pay_type,partial",
-            "reprogramation_rate" => "nullable|numeric|required_if:pay_type,partial",
-            "payment_attachments" => "required|array|min:1",
-            "payment_attachments.*" => "file|mimes:pdf,jpg,jpeg,png,gif,doc,docx|max:10240",
+            "pay_date" => "required|string",
+            "pay_type" => "required|in:total,partial,intereses,reprogramacion",
+            "reprogramation_date" => "nullable|string",
+            "reprogramation_rate" => "nullable|numeric",
         ]);
-
+        
         DB::beginTransaction();
         try {
-            $invoice = Invoice::findOrFail($invoiceId);
+            $payDate = Carbon::createFromFormat('d/m/Y', $request->pay_date)->format('Y-m-d');
+            $reprogramationDate = $request->reprogramation_date 
+                ? Carbon::createFromFormat('d/m/Y', $request->reprogramation_date)->format('Y-m-d')
+                : null;
+                
+            $invoice = Invoice::with(['investments' => function($query) {
+                $query->whereNotIn('status', ['paid', 'reprogramed']);
+            }])->findOrFail($invoiceId);
+            
+            $amountToProcess = (float) $request->amount_to_be_paid;
+            
+            if ($invoice->investments->isEmpty()) {
+                throw new Exception('No hay inversiones activas asociadas a esta factura');
+            }
 
-            $amountToBePaidMoney = MoneyConverter::fromDecimal(
-                $request->amount_to_be_paid,
-                $invoice->currency
-            );
+            // Calcular total pendiente para validación
+            $totales = $this->calcularTotalesDistribucion($invoice->investments, $request->pay_type);
+            $totalPendiente = $totales['total'];
+            
+            Log::info('Validación de montos', [
+                'monto_a_pagar' => $amountToProcess,
+                'total_pendiente' => $totalPendiente,
+                'pay_type' => $request->pay_type
+            ]);
+
+            if ($amountToProcess > $totalPendiente) {
+                throw new Exception("Monto a pagar ({$amountToProcess}) excede el total pendiente ({$totalPendiente})");
+            }
 
             $payment = new Payment();
             $payment->invoice_id = $invoice->id;
             $payment->pay_type = $request->pay_type;
-            $payment->pay_date = $request->pay_date;
-            $payment->amount_to_be_paid = MoneyConverter::getValue($amountToBePaidMoney);
-            $payment->reprogramation_date = $request->reprogramation_date;
-            $payment->reprogramation_rate = $request->reprogramation_rate;
-
-            // Manejar múltiples archivos
-            $attachmentsData = [];
-            if ($request->hasFile('payment_attachments')) {
-                $disk = Storage::disk('s3');
-                $evidenceFiles = $request->file('payment_attachments');
-
-                foreach ($evidenceFiles as $evidenceFile) {
-                    $filename = Str::uuid() . '.' . $evidenceFile->getClientOriginalExtension();
-                    $path = "pagos/evidencias/{$invoice->id}/{$filename}";
-
-                    try {
-                        $disk->putFileAs("pagos/evidencias/{$invoice->id}", $evidenceFile, $filename);
-
-                        $attachmentsData[] = [
-                            'filename' => $filename,
-                            'path' => $path,
-                            'original_name' => $evidenceFile->getClientOriginalName(),
-                            'size' => $evidenceFile->getSize(),
-                            'mime_type' => $evidenceFile->getMimeType(),
-                            'uploaded_at' => now()->toDateTimeString()
-                        ];
-                    } catch (Exception $e) {
-                        DB::rollBack();
-                        return response()->json([
-                            "error" => "No se pudo subir la evidencia de pago. Intente nuevamente."
-                        ], 422);
-                    }
-                }
-
-                // Guardar información de archivos
-                $payment->evidencia = json_encode(array_column($attachmentsData, 'filename'));
-                $payment->evidencia_data = json_encode($attachmentsData);
-                $payment->evidencia_count = count($attachmentsData);
-
-                // Mantener compatibilidad con el campo original para el primer archivo
-                if (!empty($attachmentsData)) {
-                    $firstFile = $attachmentsData[0];
-                    $payment->evidencia_path = $firstFile['path'];
-                    $payment->evidencia_original_name = $firstFile['original_name'];
-                    $payment->evidencia_size = $firstFile['size'];
-                    $payment->evidencia_mime_type = $firstFile['mime_type'];
-                }
-            }
-
-            // Nivel 1 aprobado automáticamente al guardar evidencia
+            $payment->amount_to_be_paid = (int) round($amountToProcess * 100);
+            $payment->pay_date = $payDate;
+            $payment->reprogramation_date = $reprogramationDate;
+            $payment->reprogramation_rate = $request->reprogramation_rate ?? 0;
             $payment->approval1_status = 'approved';
             $payment->approval1_by = Auth::id();
             $payment->approval1_at = now();
-            $payment->approval1_comment = "Evidencia registrada";
+            $payment->approval1_comment = 'Aprobado automáticamente por instancia 1';
+            
+            // Arrays para almacenar el historial
+            $investmentDetails = [];
+            $recaudacionDetails = [];
+            $movementsCreated = [];
 
+            $dueDate = Carbon::parse($invoice->due_date);
+            $paymentDate = Carbon::parse($payDate);
+            $isAdelantado = $paymentDate->lt($dueDate);
+            
+            if ($isAdelantado) {
+                $invoice->fecha_pagoadelantado = $payDate;
+                $this->handlePagoAdelantado($invoice, $payDate);
+            }
+
+            if ($request->pay_type === 'reprogramacion') {
+                $this->handleReprogramacion($invoice, $payDate, $reprogramationDate, $request->reprogramation_rate);
+                $payment->save();
+                DB::commit();
+                return response()->json([
+                    "message" => "Reprogramación procesada correctamente",
+                    "payment" => $payment,
+                    "invoice" => $invoice,
+                ]);
+            }
+
+            // Procesar distribución y capturar historial
+            $this->distribuirPago($invoice, $payment, $amountToProcess, $request->pay_type, $investmentDetails, $recaudacionDetails, $movementsCreated);
+            
+            // Guardar el pago
             $payment->save();
 
+            $this->actualizarEstadoFactura($invoice, $request->pay_type);
+            
             DB::commit();
-
+            
             return response()->json([
-                "message" => "Pago registrado con éxito. Pendiente de aprobación final (nivel 2).",
+                "message" => "Pago procesado correctamente",
                 "payment" => $payment,
-                "attachments_info" => $attachmentsData
+                "distribucion" => $investmentDetails,
+                "recaudacion" => $recaudacionDetails,
+                "movements" => $movementsCreated,
+                "invoice" => $invoice,
             ]);
-        } catch (\Throwable $th) {
+            
+        } catch (Throwable $th) {
             DB::rollBack();
-            Log::error('Error en registro de pago', [
+            Log::error('Error al procesar pago', [
                 'error' => $th->getMessage(),
                 'trace' => $th->getTraceAsString(),
                 'invoice_id' => $invoiceId,
-                'request_data' => $request->except(['payment_attachments'])
+                'request_data' => $request->all()
             ]);
-
             return response()->json([
-                "error" => "Error interno del servidor al registrar el pago",
-                "details" => config('app.debug') ? $th->getMessage() : null
+                "error" => "Error al procesar el pago: " . $th->getMessage()
             ], 500);
         }
     }
 
-    /**
-     * Paso 2: Aprobación final del pago (Aprobación Nivel 2)
-     */
-    public function approveLevel2($paymentId)
+    private function distribuirPago($invoice, $payment, $amountToProcess, $payType, &$investmentDetails, &$recaudacionDetails, &$movementsCreated)
     {
-        DB::beginTransaction();
-        try {
-            $payment = Payment::findOrFail($paymentId);
-            $invoice = $payment->invoice;
+        $montoRestante = $amountToProcess;
+        $investments = $invoice->investments;
+        
+        $totales = $this->calcularTotalesDistribucion($investments, $payType);
+        $totalToDistribute = $totales['total'];
+        $basesCalculo = $totales['bases'];
 
-            if ($payment->approval1_status !== 'approved') {
-                return response()->json(["error" => "No puede aprobarse sin aprobación nivel 1"], 422);
+        foreach ($investments as $index => $investment) {
+            if ($montoRestante <= 0) break;
+
+            $baseCalculo = $basesCalculo[$investment->id] ?? 0;
+            
+            if ($baseCalculo <= 0) {
+                continue;
             }
 
-            $amountToBePaidMoney = MoneyConverter::fromDecimal(
-                $payment->amount_to_be_paid,
-                $invoice->currency
+            $proporcion = $totalToDistribute > 0 ? $baseCalculo / $totalToDistribute : 0;
+            
+            $montoAsignado = $index === count($investments) - 1 
+                ? $montoRestante 
+                : round($amountToProcess * $proporcion, 2);
+                
+            $montoAsignado = min($montoAsignado, $baseCalculo);
+            
+            if ($montoAsignado <= 0) continue;
+
+            // Procesar pago y capturar detalles
+            $detalleInversion = $this->procesarPagoInversion($investment, $montoAsignado, $payType, $payment);
+            
+            // CREAR MOVIMIENTO Y ACTUALIZAR BALANCE - CORREGIDO
+            $movement = $this->crearMovimientoYBalance($investment, $montoAsignado, $payType, $payment);
+            if ($movement) {
+                $movementsCreated[] = $movement->id;
+            }
+            
+            // Guardar en historial
+            $investmentDetails[] = [
+                'investment_id' => $investment->id,
+                'investor_id' => $investment->investor_id,
+                'investor_name' => $investment->inversionista ?? 'Inversionista',
+                'monto_asignado' => $montoAsignado,
+                'tipo_pago' => $payType,
+                'capital_antes' => $detalleInversion['capital_antes'] ?? 0,
+                'capital_despues' => $detalleInversion['capital_despues'] ?? 0,
+                'intereses_antes' => $detalleInversion['intereses_antes'] ?? 0,
+                'intereses_despues' => $detalleInversion['intereses_despues'] ?? 0,
+                'estado_antes' => $detalleInversion['estado_antes'] ?? 'active',
+                'estado_despues' => $detalleInversion['estado_despues'] ?? 'active',
+                'recaudacion_aplicada' => $detalleInversion['recaudacion_aplicada'] ?? 0,
+                'movement_id' => $movement ? $movement->id : null,
+                'timestamp' => now()->toISOString()
+            ];
+
+            // Guardar recaudación si existe
+            if (($detalleInversion['monto_recaudacion'] ?? 0) > 0) {
+                $recaudacionDetails[] = [
+                    'investment_id' => $investment->id,
+                    'investor_id' => $investment->investor_id,
+                    'monto_recaudacion' => $detalleInversion['monto_recaudacion'] ?? 0,
+                    'porcentaje_recaudacion' => $detalleInversion['porcentaje_recaudacion'] ?? 0,
+                    'timestamp' => now()->toISOString()
+                ];
+            }
+
+            $montoRestante -= $montoAsignado;
+        }
+
+        if ($montoRestante > 0) {
+            $this->redistribuirMontoRestante($invoice, $payment, $montoRestante, $payType, $investmentDetails, $recaudacionDetails, $movementsCreated);
+        }
+
+        $invoice->paid_amount += (int) round($amountToProcess * 100);
+        $invoice->save();
+    }
+
+    private function crearMovimientoYBalance($investment, $montoAsignado, $payType, $payment)
+    {
+        try {
+            Log::info('Creando movimiento y balance', [
+                'investment_id' => $investment->id,
+                'monto_asignado' => $montoAsignado,
+                'pay_type' => $payType
+            ]);
+
+            // Determinar el tipo de movimiento según el tipo de pago
+            $tipoMovimiento = $this->getTipoMovimiento($payType);
+            
+            // Crear el movimiento
+            $movement = new Movement();
+            $movement->id = \Illuminate\Support\Str::ulid();
+            $movement->amount = $montoAsignado;
+            $movement->type = $tipoMovimiento;
+            $movement->currency = $investment->currency;
+            $movement->status = MovementStatus::CONFIRMED;
+            $movement->confirm_status = MovementStatus::CONFIRMED;
+            $movement->description = $this->getDescripcionMovimiento($payType, $investment, $montoAsignado);
+            $movement->origin = 'inversionista';
+            $movement->investor_id = $investment->investor_id;
+            $movement->approval1_by = Auth::id();
+            $movement->aprobacion_1 = now();
+            $movement->aprobado_por_1 = Auth::user()->name ?? 'Sistema';
+            $movement->save();
+
+            Log::info('Movimiento creado', [
+                'movement_id' => $movement->id,
+                'type' => $tipoMovimiento,
+                'amount' => $montoAsignado
+            ]);
+
+            // Actualizar el balance del inversionista
+            $this->actualizarBalanceInversionista($investment->investor_id, $investment->currency, $montoAsignado, $payType);
+
+            return $movement;
+
+        } catch (Exception $e) {
+            Log::error('Error al crear movimiento y balance', [
+                'investment_id' => $investment->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return null;
+        }
+    }
+
+    private function getTipoMovimiento($payType)
+    {
+        return match($payType) {
+            'intereses' => 'fixed_rate_interest_payment',
+            'partial' => 'fixed_rate_capital_return',
+            'total' => 'fixed_rate_capital_return',
+            default => 'payment'
+        };
+    }
+
+    private function getDescripcionMovimiento($payType, $investment, $montoAsignado)
+    {
+        $descripciones = [
+            'intereses' => "Pago de intereses de inversión #{$investment->id} - Monto: {$montoAsignado}",
+            'partial' => "Devolución parcial de capital - Inversión #{$investment->id} - Monto: {$montoAsignado}",
+            'total' => "Devolución total de capital - Inversión #{$investment->id} - Monto: {$montoAsignado}"
+        ];
+
+        return $descripciones[$payType] ?? "Pago de inversión #{$investment->id} - Monto: {$montoAsignado}";
+    }
+
+    private function actualizarBalanceInversionista($investorId, $currency, $montoAsignado, $payType)
+    {
+        try {
+            Log::info('Actualizando balance', [
+                'investor_id' => $investorId,
+                'currency' => $currency,
+                'monto_asignado' => $montoAsignado,
+                'pay_type' => $payType
+            ]);
+
+            // Buscar o crear balance del inversionista
+            $balance = Balance::firstOrCreate(
+                [
+                    'investor_id' => $investorId,
+                    'currency' => $currency
+                ],
+                [
+                    'amount' => 0,
+                    'invested_amount' => 0,
+                    'expected_amount' => 0,
+                    'id' => \Illuminate\Support\Str::ulid()
+                ]
             );
 
-            // Sumar al monto pagado
-            $invoicePaidAmountMoney = MoneyConverter::fromDecimal($invoice->paid_amount, $invoice->currency);
-            $invoice->paid_amount = $invoicePaidAmountMoney->add($amountToBePaidMoney);
+            // Convertir a centavos para la actualización
+            $montoCentavos = (int) round($montoAsignado * 100);
 
-            if ($payment->pay_type == "partial") {
-                $invoice->status = "reprogramed";
-                [$error, $partialPayment] = $payment->createPartialPayments(
-                    $invoice,
-                    $invoice->convertToDecimalPercent(request("apportioment_percentage", 0)),
-                    $invoice->convertToDecimalPercent($payment->reprogramation_rate)
-                );
+            Log::info('Balance antes de actualizar', [
+                'amount_antes' => $balance->amount,
+                'invested_amount_antes' => $balance->invested_amount,
+                'expected_amount_antes' => $balance->expected_amount
+            ]);
 
-                if ($error) {
-                    DB::rollBack();
-                    return response()->json(["error" => $error->getMessage()], 422);
-                }
-
-                foreach ($partialPayment["items"] as $index => $item) {
-                    $investment = $item["investment"];
-                    $investor = $item["investor"];
-                    $amountToPay = new MoneyCast($item["amountToPay"]);
-                    $newExpectedReturn = new MoneyCast($item["newExpectedReturn"]);
-                    $newInvestmentAmount = new MoneyCast($item["newInvestmentAmount"]);
-
-                    $investment->status = "reprogramed";
-                    $investment->save();
-
-                    $movement = new Movement();
-                    $movement->currency = $invoice->currency;
-                    $movement->amount = $amountToPay->money;
-                    $movement->type = MovementType::PAYMENT;
-                    $movement->status = MovementStatus::VALID;
-                    $movement->confirm_status = MovementStatus::VALID;
-                    $movement->investor_id = $investor->id;
-                    $movement->description = "Pago parcial - Factura #{$invoice->invoice_number}";
-                    $movement->save();
-
-                    $reprogramedInvestment = new Investment();
-                    $reprogramedInvestment->currency = $invoice->currency;
-                    $reprogramedInvestment->amount = $newInvestmentAmount->money;
-                    $reprogramedInvestment->return = $newExpectedReturn->money;
-                    $reprogramedInvestment->rate = $payment->reprogramation_rate;
-                    $reprogramedInvestment->due_date = $payment->reprogramation_date;
-                    $reprogramedInvestment->status = "active";
-                    $reprogramedInvestment->investor_id = $investor->id;
-                    $reprogramedInvestment->invoice_id = $invoice->id;
-                    $reprogramedInvestment->previous_investment_id = $investment->id;
-                    $reprogramedInvestment->original_investment_id = $investment->original_investment_id ?? $investment->id;
-                    $reprogramedInvestment->movement_id = $movement->id;
-                    $reprogramedInvestment->save();
-
-                    $wallet = $investor->getBalance($invoice->currency);
-                    $walletAmountMoney = MoneyConverter::fromDecimal($wallet->amount, $invoice->currency);
-                    $walletInvestedAmountMoney = MoneyConverter::fromDecimal($wallet->invested_amount, $invoice->currency);
-                    $wallet->amount = $walletAmountMoney->add($amountToPay->money);
-                    $wallet->invested_amount = $walletInvestedAmountMoney->subtract($amountToPay->money);
-                    $wallet->save();
-
-                    SendInvestmentPartialEmail::dispatch(
-                        $investor,
-                        $payment,
-                        $investment,
-                        MoneyConverter::getValue($amountToPay->money)
-                    )->delay(now()->addSeconds($index * 2));
-                }
+            // Actualizar balances según el tipo de pago
+            if ($payType === 'intereses') {
+                // Para intereses: aumentar el amount disponible
+                $balance->amount += $montoCentavos;
             } else {
-                $invoice->statusPago = "paid";
-
-                [$_, $items] = $payment->createTotalPayments($invoice);
-
-                foreach ($items["items"] as $index => $item) {
-                    $investor = $item["investor"];
-                    $investment = $item["investment"];
-                    $netExpectedReturn = $item["net_expected_return"];
-                    $itfAmount = $item["itf_amount"];
-
-                    SendInvestmentFullyPaidEmail::dispatch(
-                        $investor,
-                        $payment,
-                        $investment,
-                        MoneyConverter::getValue($netExpectedReturn),
-                        MoneyConverter::getValue($itfAmount)
-                    )->delay(now()->addSeconds($index * 2));
-                }
+                // Para capital: aumentar amount y disminuir invested_amount
+                $balance->amount += $montoCentavos;
+                $balance->invested_amount = max(0, $balance->invested_amount - $montoCentavos);
             }
 
-            $invoice->save();
+            $balance->save();
 
-            // Nivel 2 aprobado
-            $payment->approval2_status = 'approved';
-            $payment->approval2_by = Auth::id();
-            $payment->approval2_at = now();
-            $payment->approval2_comment = "Pago aplicado y aprobado nivel 2";
-            $payment->save();
-
-            DB::commit();
-
-            return response()->json([
-                "message" => $payment->pay_type === "partial" ? "Pago parcial aprobado y aplicado exitosamente." : "Pago total aprobado y aplicado exitosamente.",
-                "payment" => $payment,
-                "invoice" => $invoice,
-                "email_status" => "Los emails de notificación se están enviando en segundo plano"
-            ]);
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            Log::error('Error en aprobación final del pago', [
-                'error' => $th->getMessage(),
-                'trace' => $th->getTraceAsString(),
-                'payment_id' => $paymentId
+            Log::info('Balance actualizado correctamente', [
+                'investor_id' => $investorId,
+                'currency' => $currency,
+                'monto_agregado' => $montoCentavos,
+                'pay_type' => $payType,
+                'nuevo_amount' => $balance->amount,
+                'nuevo_invested_amount' => $balance->invested_amount,
+                'nuevo_expected_amount' => $balance->expected_amount
             ]);
 
-            return response()->json([
-                "error" => "Error interno del servidor al aprobar el pago",
-                "details" => config('app.debug') ? $th->getMessage() : null
-            ], 500);
+        } catch (Exception $e) {
+            Log::error('Error al actualizar balance', [
+                'investor_id' => $investorId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
         }
+    }
+
+    // Los demás métodos se mantienen igual...
+    private function procesarPagoInversion($investment, $montoAsignado, $payType, $payment)
+    {
+        $returnEfectivizadoActual = ((int)($investment->return_efectivizado ?? 0)) / 100;
+        $returnTotal = ((int)($investment->return ?? 0)) / 100;
+        $amountTotal = ((int)($investment->amount ?? 0)) / 100;
+        $recaudacionPorcentaje = ((int)($investment->recaudacion ?? 5)) / 100;
+
+        // Capturar estado antes del pago
+        $estadoAntes = $investment->status;
+        $capitalAntes = $amountTotal;
+        $interesesAntes = $returnEfectivizadoActual;
+
+        $montoRecaudacion = 0;
+
+        switch ($payType) {
+            case 'intereses':
+                $montoRecaudacion = $this->pagarIntereses($investment, $montoAsignado, $recaudacionPorcentaje);
+                break;
+                
+            case 'partial':
+                $montoRecaudacion = $this->pagarParcial($investment, $montoAsignado, $recaudacionPorcentaje);
+                break;
+                
+            case 'total':
+                $montoRecaudacion = $this->pagarTotal($investment, $recaudacionPorcentaje);
+                break;
+        }
+
+        $investment->save();
+
+        // Retornar detalles para el historial
+        return [
+            'capital_antes' => $capitalAntes,
+            'capital_despues' => ((int)($investment->amount ?? 0)) / 100,
+            'intereses_antes' => $interesesAntes,
+            'intereses_despues' => ((int)($investment->return_efectivizado ?? 0)) / 100,
+            'estado_antes' => $estadoAntes,
+            'estado_despues' => $investment->status,
+            'recaudacion_aplicada' => $recaudacionPorcentaje * 100,
+            'monto_recaudacion' => $montoRecaudacion,
+            'porcentaje_recaudacion' => $recaudacionPorcentaje * 100
+        ];
+    }
+
+    private function pagarIntereses($investment, $monto, $recaudacionPorcentaje)
+    {
+        $returnEfectivizadoDecimal = ((int)($investment->return_efectivizado ?? 0)) / 100;
+        $returnTotal = ((int)($investment->return ?? 0)) / 100;
+        
+        $montoEfectivo = $monto * (1 - $recaudacionPorcentaje);
+        $montoRecaudacion = $monto * $recaudacionPorcentaje;
+        
+        $nuevoReturnEfectivizado = $returnEfectivizadoDecimal + $montoEfectivo;
+        
+        $investment->return_efectivizado = (int) round($nuevoReturnEfectivizado * 100);
+        
+        if ($nuevoReturnEfectivizado >= $returnTotal) {
+            $investment->status = 'intereses';
+        } else {
+            $investment->status = 'active';
+        }
+
+        return $montoRecaudacion;
+    }
+
+    private function pagarParcial($investment, $monto, $recaudacionPorcentaje)
+    {
+        $returnEfectivizadoDecimal = ((int)($investment->return_efectivizado ?? 0)) / 100;
+        $returnTotal = ((int)($investment->return ?? 0)) / 100;
+        $returnPendiente = max(0, $returnTotal - $returnEfectivizadoDecimal);
+        $amountTotal = ((int)($investment->amount ?? 0)) / 100;
+
+        $montoRecaudacion = 0;
+
+        if ($monto <= $returnPendiente) {
+            $montoEfectivo = $monto * (1 - $recaudacionPorcentaje);
+            $montoRecaudacion = $monto * $recaudacionPorcentaje;
+            
+            $investment->return_efectivizado = (int) round(($returnEfectivizadoDecimal + $montoEfectivo) * 100);
+            
+            $investment->status = 'active';
+        } else {
+            $montoRetorno = $returnPendiente;
+            $montoCapital = $monto - $returnPendiente;
+            
+            $montoEfectivoRetorno = $montoRetorno * (1 - $recaudacionPorcentaje);
+            $montoRecaudacion = $montoRetorno * $recaudacionPorcentaje;
+            
+            $investment->return_efectivizado = (int) round(($returnEfectivizadoDecimal + $montoEfectivoRetorno) * 100);
+            
+            $nuevoCapital = max(0, $amountTotal - $montoCapital);
+            $investment->amount = (int) round($nuevoCapital * 100);
+            
+            if ($investment->amount <= 0 && $investment->return_efectivizado >= (int) round($returnTotal * 100)) {
+                $investment->status = 'paid';
+            } else {
+                $investment->status = 'active';
+            }
+        }
+
+        return $montoRecaudacion;
+    }
+
+    private function pagarTotal($investment, $recaudacionPorcentaje)
+    {
+        $returnTotal = ((int)($investment->return ?? 0)) / 100;
+        
+        $returnEfectivo = $returnTotal * (1 - $recaudacionPorcentaje);
+        $montoRecaudacion = $returnTotal * $recaudacionPorcentaje;
+        
+        $investment->return_efectivizado = (int) round($returnEfectivo * 100);
+        $investment->amount = 0;
+        $investment->status = 'paid';
+
+        return $montoRecaudacion;
+    }
+
+    private function calcularTotalesDistribucion($investments, $payType)
+    {
+        $total = 0;
+        $basesCalculo = [];
+        
+        foreach ($investments as $investment) {
+            $returnDecimal = ((int)($investment->return ?? 0)) / 100;
+            $returnEfectivizadoDecimal = ((int)($investment->return_efectivizado ?? 0)) / 100;
+            $amountDecimal = ((int)($investment->amount ?? 0)) / 100;
+            
+            switch ($payType) {
+                case 'intereses':
+                    $base = max(0, $returnDecimal - $returnEfectivizadoDecimal);
+                    break;
+                case 'partial':
+                case 'total':
+                    $returnPendiente = max(0, $returnDecimal - $returnEfectivizadoDecimal);
+                    $base = $amountDecimal + $returnPendiente;
+                    break;
+                default:
+                    $base = 0;
+            }
+            
+            $basesCalculo[$investment->id] = $base;
+            $total += $base;
+        }
+        
+        return ['total' => $total, 'bases' => $basesCalculo];
+    }
+
+    private function redistribuirMontoRestante($invoice, $payment, $montoRestante, $payType, &$investmentDetails, &$recaudacionDetails, &$movementsCreated)
+    {
+        $investments = $invoice->investments;
+        
+        foreach ($investments as $investment) {
+            if ($montoRestante <= 0) break;
+            
+            $returnDecimal = ((int)($investment->return ?? 0)) / 100;
+            $returnEfectivizadoDecimal = ((int)($investment->return_efectivizado ?? 0)) / 100;
+            $amountDecimal = ((int)($investment->amount ?? 0)) / 100;
+            
+            $returnPendiente = max(0, $returnDecimal - $returnEfectivizadoDecimal);
+            $capitalPendiente = $amountDecimal;
+            
+            $maximoAsignable = 0;
+            switch ($payType) {
+                case 'intereses':
+                    $maximoAsignable = $returnPendiente;
+                    break;
+                case 'partial':
+                case 'total':
+                    $maximoAsignable = $capitalPendiente + $returnPendiente;
+                    break;
+            }
+            
+            if ($maximoAsignable > 0) {
+                $montoAsignar = min($montoRestante, $maximoAsignable);
+                $detalleInversion = $this->procesarPagoInversion($investment, $montoAsignar, $payType, $payment);
+                
+                // CREAR MOVIMIENTO Y ACTUALIZAR BALANCE - CORREGIDO
+                $movement = $this->crearMovimientoYBalance($investment, $montoAsignar, $payType, $payment);
+                if ($movement) {
+                    $movementsCreated[] = $movement->id;
+                }
+                
+                // Guardar en historial
+                $investmentDetails[] = [
+                    'investment_id' => $investment->id,
+                    'investor_id' => $investment->investor_id,
+                    'investor_name' => $investment->inversionista ?? 'Inversionista',
+                    'monto_asignado' => $montoAsignar,
+                    'tipo_pago' => $payType,
+                    'capital_antes' => $detalleInversion['capital_antes'] ?? 0,
+                    'capital_despues' => $detalleInversion['capital_despues'] ?? 0,
+                    'intereses_antes' => $detalleInversion['intereses_antes'] ?? 0,
+                    'intereses_despues' => $detalleInversion['intereses_despues'] ?? 0,
+                    'estado_antes' => $detalleInversion['estado_antes'] ?? 'active',
+                    'estado_despues' => $detalleInversion['estado_despues'] ?? 'active',
+                    'recaudacion_aplicada' => $detalleInversion['recaudacion_aplicada'] ?? 0,
+                    'movement_id' => $movement ? $movement->id : null,
+                    'timestamp' => now()->toISOString()
+                ];
+
+                if (($detalleInversion['monto_recaudacion'] ?? 0) > 0) {
+                    $recaudacionDetails[] = [
+                        'investment_id' => $investment->id,
+                        'investor_id' => $investment->investor_id,
+                        'monto_recaudacion' => $detalleInversion['monto_recaudacion'] ?? 0,
+                        'porcentaje_recaudacion' => $detalleInversion['porcentaje_recaudacion'] ?? 0,
+                        'timestamp' => now()->toISOString()
+                    ];
+                }
+
+                $montoRestante -= $montoAsignar;
+            }
+        }
+    }
+
+    private function actualizarEstadoFactura($invoice, $payType)
+    {
+        $totalAdeudadoCents = 0;
+        $todosPagados = true;
+        $todosIntereses = true;
+        
+        foreach ($invoice->investments as $investment) {
+            $amountCents = (int)($investment->amount ?? 0);
+            $returnCents = (int)($investment->return ?? 0);
+            $returnEfectivizadoCents = (int)($investment->return_efectivizado ?? 0);
+            
+            $capitalPendiente = $amountCents;
+            $retornoPendiente = max(0, $returnCents - $returnEfectivizadoCents);
+            
+            $totalAdeudadoCents += $capitalPendiente + $retornoPendiente;
+            
+            if ($investment->status !== 'paid') {
+                $todosPagados = false;
+            }
+            if ($investment->status !== 'intereses' && $investment->status !== 'paid') {
+                $todosIntereses = false;
+            }
+        }
+
+        // LÓGICA CORREGIDA - Si es pago parcial, siempre poner como reprogramed
+        if ($payType === 'partial') {
+            $invoice->statusPago = 'reprogramed';
+        } else if ($todosPagados) {
+            $invoice->statusPago = 'paid';
+        } else if ($todosIntereses || $invoice->paid_amount > 0) {
+            $invoice->statusPago = 'intereses';
+        } else {
+            $invoice->statusPago = 'reprogramed';
+        }
+        
+        $invoice->save();
+    }
+
+    private function handlePagoAdelantado($invoice, $payDate)
+    {
+        Log::info('Manejando pago adelantado', [
+            'invoice_id' => $invoice->id,
+            'pay_date' => $payDate,
+            'due_date' => $invoice->due_date
+        ]);
+        
+        foreach ($invoice->investments as $investment) {
+            $diasAdelanto = Carbon::parse($invoice->due_date)->diffInDays($payDate);
+            
+            if ($diasAdelanto > 0) {
+                $investment->comment = ($investment->comment ? $investment->comment . " | " : "") . 
+                                     "Pago adelantado con {$diasAdelanto} días de anticipación";
+                $investment->save();
+            }
+        }
+    }
+
+    private function handleReprogramacion($invoice, $payDate, $reprogramationDate, $rate)
+    {
+        if (!$reprogramationDate) {
+            throw new Exception("Fecha de reprogramación es requerida para este tipo de pago");
+        }
+
+        foreach ($invoice->investments as $investment) {
+            $existeReprogramacion = DB::table('investments')
+                ->where('previous_investment_id', $investment->id)
+                ->where('status', 'reprogramed')
+                ->exists();
+
+            if ($existeReprogramacion) {
+                continue;
+            }
+
+            $nuevaInversion = $investment->replicate();
+            $nuevaInversion->status = 'reprogramed';
+            $nuevaInversion->due_date = $reprogramationDate;
+            $nuevaInversion->rate = $rate ?? $investment->rate;
+            $nuevaInversion->previous_investment_id = $investment->id;
+            $nuevaInversion->original_investment_id = $investment->original_investment_id ?? $investment->id;
+            $nuevaInversion->created_at = now();
+            $nuevaInversion->updated_at = now();
+            $nuevaInversion->save();
+
+            $investment->comment = "Reprogramado el " . now()->format('d/m/Y') . " para " . Carbon::parse($reprogramationDate)->format('d/m/Y');
+            $investment->status = 'reprogramed';
+            $investment->save();
+        }
+
+        $invoice->statusPago = 'reprogramed';
+        $invoice->save();
     }
 
     public function storeReembloso(Request $request)

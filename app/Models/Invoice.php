@@ -37,8 +37,12 @@ class Invoice extends Model implements AuditableContract{
         'statusPago',
         'condicion_oportunidad',
         'situacion',
-
+        
+        //----- fecha de adelanto---------
+        'fecha_pagoadelantado',
+        
         // --- Aprobaciones ---
+        
         'approval1_status',
         'approval1_by',
         'approval1_comment',

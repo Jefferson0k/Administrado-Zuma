@@ -778,7 +778,8 @@ function realizarPago(record) {
     amount: record['MONTO DOCUMENTO'],
     saldo: record['MONTO PAGADO'],
     currency: record['MONEDA'],
-    estimated_pay_date: record['FECHA PAGO']
+    estimated_pay_date: record['FECHA PAGO'],
+    tipo_pago: record.tipo_pago // ← AÑADIR ESTA LÍNEA
   };
 
   console.log('Datos preparados para pago:', selectedPaymentData.value);
