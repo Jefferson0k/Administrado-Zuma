@@ -12,6 +12,8 @@ use App\Models\Movement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Models\ExchangeType;
+use App\Models\ExchangeTypeMovement;
 
 class ExchangeControllerFonted extends Controller
 {
@@ -251,7 +253,7 @@ class ExchangeControllerFonted extends Controller
              * Si ocurre un error, se revierte la transacción
              */
             DB::beginTransaction();
-
+            
             /**
              * @var \App\Models\Balance $walletUsd
              * En este bloque se resta el monto de la billetera de USD
@@ -264,15 +266,16 @@ class ExchangeControllerFonted extends Controller
              * @var \App\Models\Movement $movement
              * Se crea el movimiento de la billetera de USD
              */
-            $movement = new Movement();
-            $movement->currency = Currency::USD;
-            $movement->amount = $amount;
-            $movement->type = MovementType::EXCHANGE_DOWN;
-            $movement->status = MovementStatus::VALID;
-            $movement->confirm_status = MovementStatus::VALID;
-            $movement->investor_id = $investor->id;
-            $movement->save();
-            $movement = null;
+            $movementUsd = new Movement();
+            $movementUsd->currency = Currency::USD;
+            $movementUsd->amount = $amount;
+            $movementUsd->type = MovementType::EXCHANGE_DOWN;
+            $movementUsd->status = MovementStatus::VALID;
+            $movementUsd->confirm_status = MovementStatus::VALID;
+            $movementUsd->investor_id = $investor->id;
+            $movementUsd->save();
+            
+            //$movement = null;
 
             /**
              * @var \App\Models\Balance $walletPen
@@ -287,15 +290,18 @@ class ExchangeControllerFonted extends Controller
              * @var \App\Models\Movement $movement
              * Se crea el movimiento de la billetera de PEN
              */
-            $movement = new Movement();
-            $movement->currency = Currency::PEN;
-            $movement->amount = $result;
-            $movement->type = MovementType::EXCHANGE_UP;
-            $movement->status = MovementStatus::VALID;
-            $movement->confirm_status = MovementStatus::VALID;
-            $movement->investor_id = $investor->id;
-            $movement->save();
-
+            $movementPen = new Movement();
+            $movementPen->currency = Currency::PEN;
+            $movementPen->amount = $result;
+            $movementPen->type = MovementType::EXCHANGE_UP;
+            $movementPen->status = MovementStatus::VALID;
+            $movementPen->confirm_status = MovementStatus::VALID;
+            $movementPen->investor_id = $investor->id;
+            $movementPen->save();
+            
+            
+         
+            
             // in the next line, we are sending a notification to the investor
             DB::commit();
             return response()->json([
@@ -310,7 +316,7 @@ class ExchangeControllerFonted extends Controller
             DB::rollBack();
             return response()->json([
                 'success' => false,
-                'message' => "Error interno del servidor",
+                'message' => $th->getMessage(),
             ], 500);
         }
     }

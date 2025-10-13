@@ -20,6 +20,7 @@ return new class extends Migration
             $table->decimal('rate', 5, 2)->default(0);
             $table->date('due_date');
             $table->date('estimated_pay_date')->nullable();
+            $table->date('fecha_pagoadelantado')->nullable();
             $table->enum('status', [
                 'inactive',
                 'active',
@@ -30,6 +31,7 @@ return new class extends Migration
 
             $table->enum('statusPago', [
                 'paid',
+                'intereses',
                 'reprogramed',
             ])->nullable();
 

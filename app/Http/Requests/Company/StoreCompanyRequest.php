@@ -15,7 +15,12 @@ class StoreCompanyRequest extends FormRequest
     {
         return [
             'name'               => 'required|string|max:255|unique:companies,name',
-            'risk'               => 'required|numeric|min:0|max:5',
+            'risk' => [
+                'required',
+                'string',
+                'in:A,B,C,D,E',
+                'regex:/^[A-E]$/'
+            ],
             'business_name'      => 'required|string|max:255',
             'sector_id'          => 'required|exists:sectors,id',
             'subsector_id'       => 'required|exists:subsectors,id',

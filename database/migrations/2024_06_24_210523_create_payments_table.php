@@ -20,7 +20,7 @@ return new class extends Migration
                 ->constrained('invoices');
 
             // Datos del pago
-            $table->enum('pay_type', ['total', 'partial', 'reembloso'])->default('total');
+            $table->enum('pay_type', ['total', 'partial', 'reembloso', 'intereses'])->default('total');
             $table->bigInteger('amount_to_be_paid')->default(0);
             $table->datetime('pay_date');
             $table->date('reprogramation_date')->nullable();

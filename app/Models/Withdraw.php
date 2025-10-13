@@ -53,7 +53,7 @@ class Withdraw extends Model
     public function approvalUserTwo()
     {
         return $this->belongsTo(User::class, 'approval2_by');
-}
+    }
     public function bank_account(): BelongsTo
     {
         return $this->belongsTo(BankAccount::class);
