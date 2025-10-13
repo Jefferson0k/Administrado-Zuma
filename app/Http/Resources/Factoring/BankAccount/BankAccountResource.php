@@ -53,6 +53,7 @@ class BankAccountResource extends JsonResource
             'observed'      => 'Observado',
             'approved' => 'Aprobado',
             'rejected'     => 'Rechazado',
+            'deleted'     => 'Eliminado',
             default        => 'Pendiente',
         };
     }
@@ -65,6 +66,7 @@ class BankAccountResource extends JsonResource
             'observed'      => 'Observado',
             'approved' => 'Aprobado',
             'rejected'     => 'Rechazado',
+            'deleted'     => 'Eliminado',
             default        => 'Pendiente',
         };
     }
@@ -76,6 +78,7 @@ class BankAccountResource extends JsonResource
             'pending'        => 'Pendiente',
             'approved' => 'Aprobado',
             'rejected'     => 'Rechazado',
+            'deleted'     => 'Eliminado',
             default        => 'Pendiente',
         };
     }

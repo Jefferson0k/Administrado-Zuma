@@ -559,8 +559,8 @@ const onSort = (event: any) => {
 
 
 
-type Status0Api = 'approved' | 'observed' | 'rejected';
-type StatusApi = 'approved' | 'observed' | 'rejected';
+type Status0Api = 'approved' | 'observed' | 'rejected' | 'pending' | 'deleted';
+type StatusApi = 'approved' | 'observed' | 'rejected' | 'pending' | 'deleted';
 type BusyKey = 'approve' | 'observe' | 'reject' | 'approve2' | 'observe2' | 'reject2' | null;
 
 type UploadedFile = {
@@ -668,6 +668,7 @@ const getSeverityByApiStatus = (statusApi?: string) => {
     case 'observed': return 'info';
     case 'rejected': return 'danger';
     case 'pending': return 'warn';
+    case 'deleted': return 'danger';
     default: return 'secondary';
   }
 };
@@ -678,6 +679,7 @@ const mapStatusEs = (statusApi?: string) => {
     case 'observed': return 'Observado';
     case 'rejected': return 'Rechazado';
     case 'pending': return 'Pendiente';
+    case 'deleted': return 'Eliminado';
     default: return statusApi ?? '—';
   }
 };
@@ -774,6 +776,7 @@ const getStatusSeverity = (estado: string) => {
     case 'Observado': return 'info';
     case 'Rechazado': return 'danger';
     case 'Pendiente': return 'warn';
+    case 'Eliminado': return 'danger';
     default: return 'secondary';
   }
 };
@@ -783,6 +786,7 @@ const getStatus0Severity = (estado0: string) => {
     case 'Observado': return 'info';
     case 'Rechazado': return 'danger';
     case 'Pendiente': return 'warn';
+    case 'Eliminado': return 'danger';
     default: return 'secondary';
   }
 };
@@ -792,7 +796,8 @@ const getConclusionSeverity = (estado: string) => {
     case 'Aprobado': return 'success';
     case 'Rechazado': return 'danger';
     case 'Pendiente': return 'warn';
-    case 'Registro Iconcluso': return 'secondary';
+    case 'Eliminado': return 'danger';
+    case 'Registro Inconcluso': return 'secondary';
     default: return 'secondary';
   }
 };
