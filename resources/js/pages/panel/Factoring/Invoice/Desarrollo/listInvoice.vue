@@ -570,7 +570,7 @@ const toggleMenu = (event, factura) => {
   let items = [
     { label: 'Ver factura', icon: 'pi pi-file', command: () => verFactura(factura) },
     { label: 'Historial aprobadores', icon: 'pi pi-clock', command: () => verHistorialAprobadores(factura) },
-    { label: 'Pago adelantado', icon: 'pi pi-calendar-clock', command: () => abrirPagoAdelantado(factura) },
+    
   ];
 
   if (['inactive', 'observed'].includes((factura.estado || '').toLowerCase().trim())) {
@@ -1059,7 +1059,7 @@ async function confirmarPagoAdelantado() {
     </Dialog>
 
 
-    <Dialog v-model:visible="showPagoAdelantadoDialog" header="Pago adelantado" :modal="true"
+    <!-- <Dialog v-model:visible="showPagoAdelantadoDialog" header="Pago adelantado" :modal="true"
       :style="{ width: '28rem' }">
       <div class="flex flex-col gap-3">
         <div class="flex items-center gap-3">
@@ -1072,7 +1072,7 @@ async function confirmarPagoAdelantado() {
           <Button label="Confirmar" icon="pi pi-check" severity="success" @click="confirmarPagoAdelantado" />
         </div>
       </div>
-    </Dialog>
+    </Dialog> -->
 
 
 

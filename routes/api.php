@@ -267,6 +267,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::delete('/{id}', [BankAccountController::class, 'destroy']);
     });
 
+     Route::prefix('bank-accounts-destinos')->group(function () {
+        Route::get('/', [BankAccountController::class, 'indexdestinos']);
+   
+    });
+
     Route::prefix('movements')->group(function () {
         Route::get('/', [MovementController::class, 'index']);
         Route::get('/datailMovementDeposit/{id}', [MovementController::class, 'detalleMovimientoDeposito']);

@@ -34,6 +34,12 @@ class DepositResource extends JsonResource
             'type' => $this->bankAccount?->type ?? 'sin tipo',
             'status_conclusion' => $this->status_conclusion,
 
+
+            
+            'ccdest' => $this->bankAccountDestino?->cc ?? 'sin cc',
+            'ccidest' => $this->bankAccountDestino?->cci ?? 'sin cci',
+            'typedest' => $this->bankAccountDestino?->type ?? 'sin tipo',
+
             // Fechas formateadas
             'creacion' => $this->created_at
                 ? Carbon::parse($this->created_at)->format('d-m-Y H:i:s A')

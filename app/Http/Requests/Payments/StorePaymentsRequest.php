@@ -15,6 +15,7 @@ class StorePaymentsRequest extends FormRequest{
                 'string',
                 'exists:bank_accounts,id'
             ],
+            'bank_destino'  => ['nullable', 'string', 'exists:bank_account_destinos,id'],
             'amount' => 'required|numeric|min:1',
             'nro_operation' => 'required|string',
             'voucher' => 'nullable|mimes:jpeg,png,jpg,pdf',

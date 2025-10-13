@@ -173,6 +173,30 @@
             </div>
           </div>
 
+
+            <!-- Información de la cuenta destino -->
+          <div class="bg-white border border-gray-200 rounded-xl p-6">
+            <h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <i class="pi pi-credit-card text-indigo-600"></i>
+              Información de Cuenta de Destino
+            </h4>
+            <div class="space-y-3">
+              <div class="flex justify-between">
+                <span class="text-sm text-gray-600">Tipo de cuenta</span>
+                <span class="font-medium capitalize">{{ deposit.typedest }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-sm text-gray-600">Número de cuenta</span>
+                <span class="font-mono text-sm">{{ deposit.ccdest }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-sm text-gray-600">CCI</span>
+                <span class="font-mono text-xs text-gray-500">{{ deposit.ccidest }}</span>
+              </div>
+            
+            </div>
+          </div>
+
           <!-- Estados del proceso -->
           <div class="bg-white border border-gray-200 rounded-xl p-6">
             <h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
