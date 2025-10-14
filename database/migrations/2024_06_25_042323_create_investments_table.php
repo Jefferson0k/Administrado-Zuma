@@ -15,8 +15,8 @@ return new class extends Migration
             $table->id();
             $table->bigInteger('amount')->default(0);
             $table->bigInteger('return')->default(0);
-            $table->bigInteger('return_efectivizado')->default(0); // 🆕 Retorno efectivizado
-            $table->bigInteger('recaudacion')->default(5); // 🆕 Recaudación (por defecto 5%)
+            $table->bigInteger('return_efectivizado')->default(0);
+            $table->bigInteger('recaudacion')->default(0);
             $table->decimal('rate', 5, 2)->default(0);
             $table->char('currency', 3);
             $table->date('due_date');
