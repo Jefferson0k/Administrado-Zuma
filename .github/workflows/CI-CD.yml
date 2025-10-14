@@ -10,17 +10,14 @@ jobs:
   create-docker-image:
     runs-on: ubuntu-latest
     steps:
-      # 1. Checkout del código
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. Setup Node.js (para bun/npm build)
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20'
 
-      # 3. Generar .env desde secrets
       - name: Create .env file
         run: |
           cat <<EOF > .env
@@ -29,7 +26,6 @@ jobs:
           VITE_API_URL_ADMIN=${{ secrets.VITE_API_URL_ADMIN }}
           EOF
 
-      # 4. Login al GitHub Container Registry
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -37,7 +33,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.TOKEN_CI }}
 
-      # 5. Build y push de la imagen Docker
       - name: Build and push Docker image
         run: |
           docker build \
@@ -52,7 +47,7 @@ jobs:
     needs: create-docker-image
     runs-on: ubuntu-latest
     steps:
-      - name: install openssh
+      - name: Install SSH client
         run: sudo apt-get install openssh-client -y
 
       - name: Deploy via SSH
@@ -65,27 +60,19 @@ jobs:
           script: |
             cd zuma/services/zuma-admin || exit 1
 
-            # 1. Login a GHCR
             echo "${{ secrets.TOKEN_CI }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            # 2. Descargar la imagen más reciente
             docker pull ghcr.io/adm-garantiacapital/Administrado-Zuma:$DOCKER_IMAGE_TAG
 
-            # 3. Detener y eliminar el contenedor anterior
             docker compose stop zuma-adm || true
             docker compose rm -f zuma-adm || true
 
-            # 4. Eliminar la imagen antigua
             docker image rm ghcr.io/adm-garantiacapital/Administrado-Zuma:latest || true
 
-            # 5. Levantar el nuevo contenedor
             docker compose up -d --force-recreate zuma-adm
 
-            # 6. Ejecutar setup.sh
             sh setup.sh
 
-            # 7. Ejecutar build del frontend
             docker compose exec zuma-adm bun run build
 
-            # 8. Limpiar cache si es necesario
             docker compose exec zuma-adm php artisan optimize:clear
