@@ -335,118 +335,178 @@ class PaymentsController extends Controller{
             'data' => $jsonData,
         ]);
     }
-public function store(Request $request, $invoiceId)
-{
-    $validated = $request->validate([
-        'pay_type' => 'required|string|in:intereses,parcial,total',
-        'amount_to_be_paid' => 'required|numeric',
-        'pay_date' => 'required|string',
-    ]);
-
-    try {
-        DB::beginTransaction();
-
-        // 🔹 Convertir fecha
-        $payDate = Carbon::createFromFormat('d/m/Y', $validated['pay_date'])->format('Y-m-d');
-
-        // 🔹 Buscar factura e inversión asociada
-        $invoice = Invoice::findOrFail($invoiceId);
-        $investment = Investment::where('invoice_id', $invoiceId)->first();
-
-        if (!$investment) {
-            throw new \Exception("No se encontró la inversión asociada a la factura.");
-        }
-
-        $investorId = $investment->investor_id;
-
-        // 🔹 Buscar balance del inversionista
-        $balance = Balance::where('investor_id', $investorId)->first();
-        if (!$balance) {
-            throw new \Exception("No se encontró el balance del inversionista.");
-        }
-
-        // 🔹 Crear pago
-        $payment = Payment::create([
-            'invoice_id' => $invoiceId,
-            'pay_type' => $validated['pay_type'],
-            'amount_to_be_paid' => (int)($validated['amount_to_be_paid'] * 100),
-            'pay_date' => $payDate,
+    public function store(Request $request, $invoiceId)
+    {
+        $validated = $request->validate([
+            'pay_type' => 'required|string|in:intereses,parcial,total',
+            'amount_to_be_paid' => 'required|numeric',
+            'pay_date' => 'required|string',
         ]);
 
-        // Variables base
-        $bruto = $validated['amount_to_be_paid'];
-        $recaudacion = 0;
-        $returnEfectivizado = 0;
+        try {
+            DB::beginTransaction();
 
-        // 🔸 Pago de INTERESES
-        if ($validated['pay_type'] === 'intereses') {
-            $retorno = $investment->return; // Ej: 2.65
-            $recaudacion = $retorno * 0.05;
-            $returnEfectivizado = $retorno - $recaudacion;
+            // 🔹 Convertir fecha
+            $payDate = Carbon::createFromFormat('d/m/Y', $validated['pay_date'])->format('Y-m-d');
 
-            $investment->update([
-                'recaudacion' => $investment->recaudacion + $recaudacion,
-                'return_efectivizado' => $investment->return_efectivizado + $returnEfectivizado,
-                'status' => 'intereses',
+            // 🔹 Buscar factura e inversión asociada
+            $invoice = Invoice::findOrFail($invoiceId);
+            $investment = Investment::where('invoice_id', $invoiceId)->first();
+
+            if (!$investment) {
+                throw new Exception("No se encontró la inversión asociada a la factura.");
+            }
+
+            $investorId = $investment->investor_id;
+            $currency = $investment->currency; // 🔹 Obtener moneda de la inversión
+
+            // 🔹 Buscar balance del inversionista
+            $balance = Balance::where('investor_id', $investorId)->first();
+
+            if (!$balance) {
+                throw new Exception("No se encontró el balance del inversionista.");
+            }
+
+            // 🔹 Crear pago
+            $payment = Payment::create([
+                'invoice_id' => $invoiceId,
+                'pay_type' => $validated['pay_type'],
+                'amount_to_be_paid' => (int)($validated['amount_to_be_paid'] * 100),
+                'pay_date' => $payDate,
             ]);
 
-            $balance->update([
-                'expected_amount' => $balance->expected_amount - $retorno,
-                'amount' => $balance->amount + $returnEfectivizado,
+            // Variables base
+            $bruto = $validated['amount_to_be_paid'];
+            $recaudacion = 0;
+            $returnEfectivizado = 0;
+
+            // 🔹 Crear movimiento principal del pago
+            $mainMovement = null;
+
+            // 🔸 Pago de INTERESES
+            if ($validated['pay_type'] === 'intereses') {
+                $retorno = $investment->return; // Ej: 2.65
+                $recaudacion = $retorno * 0.05;
+                $returnEfectivizado = $retorno - $recaudacion;
+
+                // Movimiento principal - Pago de intereses
+                $mainMovement = Movement::create([
+                    'amount' => $returnEfectivizado,
+                    'type' => 'fixed_rate_interest_payment',
+                    'currency' => $currency, // 🔹 Usar moneda de la inversión
+                    'status' => MovementStatus::CONFIRMED->value,
+                    'confirm_status' => MovementStatus::CONFIRMED->value,
+                    'description' => 'Pago de intereses - Factura #' . $invoiceId,
+                    'origin' => 'inversionista',
+                    'investor_id' => $investorId,
+                ]);
+
+                // Movimiento de recaudación (tax)
+                if ($recaudacion > 0) {
+                    Movement::create([
+                        'amount' => $recaudacion,
+                        'type' => 'tax',
+                        'currency' => $currency, // 🔹 Usar moneda de la inversión
+                        'status' => MovementStatus::CONFIRMED->value,
+                        'confirm_status' => MovementStatus::CONFIRMED->value,
+                        'description' => 'Recaudación por intereses - Factura #' . $invoiceId,
+                        'origin' => 'inversionista',
+                        'investor_id' => $investorId,
+                        'related_movement_id' => $mainMovement->id,
+                    ]);
+                }
+
+                $investment->update([
+                    'recaudacion' => $investment->recaudacion + $recaudacion,
+                    'return_efectivizado' => $investment->return_efectivizado + $returnEfectivizado,
+                    'status' => 'intereses',
+                ]);
+
+                $balance->update([
+                    'expected_amount' => $balance->expected_amount - $retorno,
+                    'amount' => $balance->amount + $returnEfectivizado,
+                ]);
+            }
+
+            // 🔸 Pago PARCIAL
+            elseif ($validated['pay_type'] === 'parcial') {
+                $monto = $bruto;
+
+                // Movimiento de retorno de capital parcial
+                $mainMovement = Movement::create([
+                    'amount' => $monto,
+                    'type' => 'fixed_rate_capital_return',
+                    'currency' => $currency, // 🔹 Usar moneda de la inversión
+                    'status' => MovementStatus::CONFIRMED->value,
+                    'confirm_status' => MovementStatus::CONFIRMED->value,
+                    'description' => 'Retorno de capital parcial - Factura #' . $invoiceId,
+                    'origin' => 'inversionista',
+                    'investor_id' => $investorId,
+                ]);
+
+                $balance->update([
+                    'invested_amount' => $balance->invested_amount - $monto,
+                    'amount' => $balance->amount + $monto,
+                ]);
+
+                $investment->update(['status' => 'parcial']);
+            }
+
+            // 🔸 Pago TOTAL
+            elseif ($validated['pay_type'] === 'total') {
+                $monto = $bruto;
+
+                // Movimiento de retorno de capital total
+                $mainMovement = Movement::create([
+                    'amount' => $monto,
+                    'type' => 'fixed_rate_capital_return',
+                    'currency' => $currency, // 🔹 Usar moneda de la inversión
+                    'status' => MovementStatus::CONFIRMED->value,
+                    'confirm_status' => MovementStatus::CONFIRMED->value,
+                    'description' => 'Retorno de capital total - Factura #' . $invoiceId,
+                    'origin' => 'inversionista',
+                    'investor_id' => $investorId,
+                ]);
+
+                $balance->update([
+                    'invested_amount' => $balance->invested_amount - $monto,
+                    'amount' => $balance->amount + $monto,
+                ]);
+
+                $investment->update(['status' => 'paid']);
+            }
+
+            // 🔹 Actualizar el payment con el movement_id si es necesario
+            if ($mainMovement) {
+                $payment->update(['movement_id' => $mainMovement->id]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Pago procesado correctamente.',
+                'payment' => [
+                    'id' => $payment->id,
+                    'bruto' => $bruto,
+                    'recaudacion' => $recaudacion,
+                    'neto' => $returnEfectivizado ?: $bruto,
+                ],
+                'movement_id' => $mainMovement?->id,
             ]);
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Error al procesar el pago', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'error' => 'Error al procesar el pago',
+                'details' => $e->getMessage(),
+            ], 500);
         }
-
-        // 🔸 Pago PARCIAL
-        elseif ($validated['pay_type'] === 'parcial') {
-            $monto = $bruto;
-
-            $balance->update([
-                'invested_amount' => $balance->invested_amount - $monto,
-                'amount' => $balance->amount + $monto,
-            ]);
-
-            $investment->update(['status' => 'parcial']);
-        }
-
-        // 🔸 Pago TOTAL
-        elseif ($validated['pay_type'] === 'total') {
-            $monto = $bruto;
-
-            $balance->update([
-                'invested_amount' => $balance->invested_amount - $monto,
-                'amount' => $balance->amount + $monto,
-            ]);
-
-            $investment->update(['status' => 'paid']);
-        }
-
-        DB::commit();
-
-        return response()->json([
-            'message' => 'Pago procesado correctamente.',
-            'payment' => [
-                'id' => $payment->id,
-                'bruto' => $bruto,
-                'recaudacion' => $recaudacion,
-                'neto' => $returnEfectivizado ?: $bruto,
-            ],
-        ]);
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-
-        Log::error('Error al procesar el pago', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
-        ]);
-
-        return response()->json([
-            'error' => 'Error al procesar el pago',
-            'details' => $e->getMessage(),
-        ], 500);
     }
-}
-
     public function storeReembloso(Request $request)
     {
         $request->validate([
