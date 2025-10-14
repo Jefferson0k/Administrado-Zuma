@@ -19,12 +19,12 @@ return new class extends Migration
             $table->string('cc');
             $table->string('cci');
             $table->string('alias')->nullable();
-            $table->enum('status0', ['pending', 'observed', 'approved', 'rejected'])
+            $table->enum('status0', ['pending', 'observed', 'approved', 'rejected', 'deleted'])
                 ->default('pending');
-            $table->enum('status', ['pending', 'observed', 'approved', 'rejected'])
+            $table->enum('status', ['pending', 'observed', 'approved', 'rejected', 'deleted'])
                 ->default('pending');
 
-            $table->enum('status_conclusion', ['pending', 'approved', 'rejected'])
+            $table->enum('status_conclusion', ['pending', 'approved', 'rejected', 'deleted'])
                 ->default('pending');
 
 

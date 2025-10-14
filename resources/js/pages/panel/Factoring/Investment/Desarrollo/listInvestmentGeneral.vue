@@ -1,22 +1,11 @@
 <template>
-    <DataTable
-        ref="dt"
-        :value="investments"
-        dataKey="id"
-        v-model:selection="selectedInvestments"
-        :paginator="true"
-        :rows="rowsPerPage"
-        :totalRecords="totalRecords"
-        :first="(currentPage - 1) * rowsPerPage"
-        :loading="loading"
+    <DataTable ref="dt" :value="investments" lazy dataKey="id" v-model:selection="selectedInvestments" :paginator="true"
+        :rows="rowsPerPage" :totalRecords="totalRecords" :first="(currentPage - 1) * rowsPerPage" :loading="loading"
         :rowsPerPageOptions="[5, 10, 20, 50]"
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} inversiones"
-        @page="onPage"
-        scrollable
-        scrollHeight="574px"
-        class="p-datatable-sm"
-    >
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} inversiones" @page="onPage"
+        :sortField="sortField" :sortOrder="sortOrder" @sort="onSort" scrollable scrollHeight="574px"
+        class="p-datatable-sm"  >
         <!-- Header -->
         <template #header>
             <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -26,15 +15,9 @@
                 </h4>
                 <div class="flex flex-wrap gap-2">
                     <div class="flex flex-wrap items-center gap-2">
-                        <MultiSelect
-                            v-model="selectedFilters"
-                            :options="filterOptions"
-                            optionLabel="label"
-                            optionValue="value"
-                            placeholder="Selecciona filtros..."
-                            :maxSelectedLabels="3"
-                            class="md:w-20rem w-full"
-                        />
+                        <MultiSelect v-model="selectedFilters" :options="filterOptions" optionLabel="label"
+                            optionValue="value" placeholder="Selecciona filtros..." :maxSelectedLabels="3"
+                            class="md:w-20rem w-full" />
                     </div>
 
                     <div class="flex flex-wrap items-end gap-3">
@@ -43,50 +26,29 @@
                                 <InputIcon>
                                     <i class="pi pi-search" />
                                 </InputIcon>
-                                <InputText
-                                    v-model="filters.razon_social"
-                                    @input="onFilterSearch"
-                                    placeholder="Buscar por razón social..."
-                                    class="md:w-20rem w-full"
-                                />
+                                <InputText v-model="filters.razon_social" @input="onFilterSearch"
+                                    placeholder="Buscar por razón social..." class="md:w-20rem w-full" />
                             </IconField>
                         </div>
 
                         <!-- Filtro por Moneda -->
                         <div v-if="selectedFilters.includes('moneda')" class="flex-column flex gap-2">
-                            <Select
-                                v-model="filters.currency"
-                                :options="currencyOptions"
-                                optionLabel="label"
-                                optionValue="value"
-                                placeholder="Selecciona moneda"
-                                @change="onFilterSearch"
-                                class="md:w-12rem w-full"
-                            />
+                            <Select v-model="filters.currency" :options="currencyOptions" optionLabel="label"
+                                optionValue="value" placeholder="Selecciona moneda" @change="onFilterSearch"
+                                class="md:w-12rem w-full" />
                         </div>
 
                         <!-- Filtro por Estado -->
                         <div v-if="selectedFilters.includes('estado')" class="flex-column flex gap-2">
-                            <MultiSelect
-                                v-model="filters.status"
-                                :options="statusOptions"
-                                optionLabel="label"
-                                optionValue="value"
-                                placeholder="Selecciona estados"
-                                @change="onFilterSearch"
-                                :maxSelectedLabels="2"
-                                class="md:w-16rem w-full"
-                            />
+                            <MultiSelect v-model="filters.status" :options="statusOptions" optionLabel="label"
+                                optionValue="value" placeholder="Selecciona estados" @change="onFilterSearch"
+                                :maxSelectedLabels="2" class="md:w-16rem w-full" />
                         </div>
 
                         <!-- Filtro por Código -->
                         <div v-if="selectedFilters.includes('codigo')" class="flex-column flex gap-2">
-                            <InputText
-                                v-model="filters.codigo"
-                                @input="onFilterSearch"
-                                placeholder="Buscar por código..."
-                                class="md:w-20rem w-full"
-                            />
+                            <InputText v-model="filters.codigo" @input="onFilterSearch"
+                                placeholder="Buscar por código..." class="md:w-20rem w-full" />
                         </div>
 
                         <!-- Botones de acción -->
@@ -94,7 +56,8 @@
                             <Button icon="pi pi-filter-slash" severity="secondary" outlined @click="clearFilters" />
                         </div>
                     </div>
-                    <Button icon="pi pi-refresh" outlined rounded aria-label="Refresh" severity="contrast" @click="loadInvestments" />
+                    <Button icon="pi pi-refresh" outlined rounded aria-label="Refresh" severity="contrast"
+                        @click="loadInvestments" />
                 </div>
             </div>
         </template>
@@ -150,6 +113,47 @@ const totalRecords = ref(0);
 
 const rowsPerPage = ref(10);
 const currentPage = ref(1);
+
+const sortField = ref<string | null>(null)
+const sortOrder = ref<number>(1) // 1 = ASC, -1 = DESC
+
+
+function normalize(v: unknown) {
+    if (v == null) return ''
+    if (typeof v === 'number') return v
+    if (typeof v === 'string') {
+        // try number
+        const n = Number(v.replace?.(/[, ]/g, '') ?? v)
+        if (!Number.isNaN(n) && v.trim() !== '') return n
+        // try date
+        const d = Date.parse(v)
+        if (!Number.isNaN(d)) return d
+        return v.toLowerCase()
+    }
+    if (v instanceof Date) return v.getTime()
+    return String(v).toLowerCase()
+}
+
+function applySortIfNeeded() {
+  if (!sortField.value || !sortOrder.value) return
+  const field = sortField.value
+  const order = sortOrder.value
+
+  investments.value = [...investments.value].sort((a, b) => {
+    const av = normalize(a?.[field as keyof typeof a])
+    const bv = normalize(b?.[field as keyof typeof b])
+    if (av < bv) return order === 1 ? -1 : 1
+    if (av > bv) return order === 1 ? 1 : -1
+    return 0
+  })
+}
+
+function onSort(e: { sortField: string; sortOrder: number }) {
+  sortField.value = e.sortField
+  sortOrder.value = e.sortOrder
+  applySortIfNeeded()
+}
+
 
 // Filtros disponibles (removido 'monto')
 const filterOptions = ref([
@@ -233,10 +237,15 @@ const loadInvestments = async (event: any = {}) => {
 
         const response = await axios.get('/investment/all', { params });
 
-        investments.value = response.data.data;
-        totalRecords.value = response.data.total;
-        currentPage.value = page;
-        rowsPerPage.value = perPage;
+        const { data, meta } = response.data;
+
+        investments.value = data;
+        totalRecords.value = meta?.total ?? 0;
+        currentPage.value = meta?.current_page ?? page;  // Laravel es 1-based
+        rowsPerPage.value = meta?.per_page ?? perPage;
+
+        applySortIfNeeded();
+
     } catch (error) {
         console.error('Error al cargar inversiones:', error);
     } finally {
@@ -266,6 +275,11 @@ const clearFilters = () => {
     selectedFilters.value = ['razon_social'];
     loadInvestments();
 };
+
+
+
+
+
 
 // Función para obtener etiqueta del estado
 function getStatusLabel(status: string) {
@@ -319,4 +333,8 @@ function formatCurrency(amount: string | number, currency: string) {
 onMounted(() => {
     loadInvestments();
 });
+
+
+
+
 </script>

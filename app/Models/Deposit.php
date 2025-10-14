@@ -35,6 +35,7 @@ class Deposit extends Model{
         'comment0',
         'status_conclusion',
         'comment',
+        'bank_account_destino_id',
     //    'conclusion' --- IGNORE ---
 
     ];
@@ -56,6 +57,11 @@ class Deposit extends Model{
     public function bankAccount(): BelongsTo
     {
         return $this->belongsTo(BankAccount::class);
+    }
+
+    public function bankAccountDestino(): BelongsTo
+    {
+        return $this->belongsTo(BankAccountDestino::class);
     }
 
     public function createdBy(): BelongsTo
