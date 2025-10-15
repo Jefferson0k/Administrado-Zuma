@@ -305,6 +305,7 @@ const showUpdateDialog = ref(false);
 const showDeleteDialog = ref(false);
 const selectedFacturaId = ref(null);
 const selectedFacturaData = ref(null);
+const metaKey = ref(true);
 
 // Exportar a Excel (respeta filtros + orden actual)
 async function exportToExcel() {
@@ -783,7 +784,7 @@ async function confirmarPagoAdelantado() {
       :loading="loading" @page="onPage" :rowsPerPageOptions="[5, 10, 20, 50]" scrollable scrollHeight="500px" lazy
       paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
       :currentPageReportTemplate="`Mostrando ${pagination.from} a ${pagination.to} de ${pagination.total} facturas`"
-      class="p-datatable-sm" :sortField="sortField" :sortOrder="sortOrder" sortMode="single" @sort="onSort">
+      class="p-datatable-sm" :sortField="sortField" :sortOrder="sortOrder" sortMode="single" selectionMode="multiple" :metaKeySelection="metaKey" @sort="onSort">
       <template #header>
         <div class="flex flex-wrap gap-2 items-center justify-between">
           <h4 class="m-0">
@@ -840,7 +841,6 @@ async function confirmarPagoAdelantado() {
         </div>
       </template>
 
-      <Column selectionMode="multiple" style="width: 1rem" :exportable="false" />
       <Column field="razonSocial" header="Razón Social" sortable style="min-width: 9rem">
         <template #body="slotProps">
           <span class="truncate block max-w-[5rem] cursor-pointer" v-tooltip.top="slotProps.data.razonSocial">
