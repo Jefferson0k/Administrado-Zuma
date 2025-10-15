@@ -77,10 +77,9 @@ class Investor extends Authenticatable implements MustVerifyEmail, AuditableCont
         'approval2_comment',
         'approval2_at',
 
-        'whatsapp_verified',
+        'verified',
+        'status_verified',
         'whatsapp_verified_at',
-        'whatsapp_verification_code',
-        'whatsapp_verification_sent_at',
     ];
     protected $hidden = [
         'password',
@@ -91,10 +90,7 @@ class Investor extends Authenticatable implements MustVerifyEmail, AuditableCont
         'email_verified_at' => 'datetime',
         'is_pep' => 'boolean',
         'has_relationship_pep' => 'boolean',
-
-        'whatsapp_verified' => 'boolean',
-        'whatsapp_verified_at' => 'datetime',
-        'whatsapp_verification_sent_at' => 'datetime',
+        'verified' => 'boolean', // siempre devuelve true/false
     ];
     public function investments()
     {

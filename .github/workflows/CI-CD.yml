@@ -1,0 +1,75 @@
+name: CI-CD Zuma Admin
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      APP_NAME: Laravel
+      APP_ENV: production
+      APP_DEBUG: false
+      APP_URL: https://admin.zuma.com.pe
+      CLIENT_APP_URL: https://admin.zuma.com.pe
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, bcmath, pdo_mysql, zip, gd
+
+      - name: Install Node dependencies
+        run: |
+          cd services/zuma-admin
+          npm ci
+
+      - name: Build frontend
+        run: |
+          cd services/zuma-admin
+          bun run build
+
+      - name: Docker Build & Push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/zuma-admin
+          file: ./services/zuma-admin/docker/php/Dockerfile
+          push: true
+          tags: ghcr.io/adm-garantiacapital/administrado-zuma:latest
+          build-args: |
+            APP_KEY=${{ secrets.APP_KEY }}
+            RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
+            BREVO_KEY=${{ secrets.BREVO_KEY }}
+            AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+            AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            CONSULTA_DNI_API_TOKEN=${{ secrets.CONSULTA_DNI_API_TOKEN }}
+            CONSULTA_RUC_API_TOKEN=${{ secrets.CONSULTA_RUC_API_TOKEN }}
+            TWILIO_SID=${{ secrets.TWILIO_SID }}
+            TWILIO_AUTH_TOKEN=${{ secrets.TWILIO_AUTH_TOKEN }}
+            TWILIO_WHATSAPP_FROM=${{ secrets.TWILIO_WHATSAPP_FROM }}
+
+      # Opcional: Deploy remoto vía SSH
+      - name: Deploy via SSH
+        if: github.ref == 'refs/heads/main'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            cd ~/zuma/services/zuma-admin
+            docker compose pull
+            docker compose up -d

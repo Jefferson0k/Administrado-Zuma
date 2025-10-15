@@ -33,10 +33,9 @@ return new class extends Migration {
             $table->string('codigo')->unique()->nullable()->comment('Código único del inversionista');
             $table->enum('type', ['inversionista', 'cliente', 'mixto'])->default('inversionista');
 
-            $table->boolean('whatsapp_verified')->default(false);
-            $table->timestamp('whatsapp_verified_at')->nullable();
-            $table->string('whatsapp_verification_code', 10)->nullable();
-            $table->timestamp('whatsapp_verification_sent_at')->nullable();
+            $table->boolean('verified')->default(0); // 0 = no verificado, 1 = verificado
+            $table->string('status_verified')->default('pending'); // pending, verified, rejected, expired
+            $table->timestamp('whatsapp_verified_at')->nullable(); // almacena la fecha y hora exacta de verificación
 
             $table->integer('asignado')->default(0);
             $table->string('validacion_whatsapp', 255)->nullable();
