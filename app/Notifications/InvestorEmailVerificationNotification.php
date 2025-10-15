@@ -39,7 +39,7 @@ class InvestorEmailVerificationNotification extends VerifyEmail
             ->action('Verificar Email', $url)
             ->line('Este enlace de verificación expirará en ' . config('auth.verification.expire', 60) . ' minutos.')
             ->line('Si no creaste esta cuenta, puedes ignorar este email.')
-            ->salutation('Saludos, Equipo Zuma');
+            ->salutation('Saludos, Equipo Zuma');//
     }
 
     /**
