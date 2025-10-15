@@ -57,65 +57,9 @@ Route::post('register/cliente', [InvestorController::class, 'registerCustomer'])
 |--------------------------------------------------------------------------
 */
 
-Route::get('/whatsapp/health', [TwilioWebhookController::class, 'health']);
-Route::post('/whatsapp/incoming', [TwilioWebhookController::class, 'handleIncomingMessage']);
-Route::post('/whatsapp/status', [TwilioWebhookController::class, 'handleMessageStatus']);
-
-Route::post('/twilio/send-message', function (Request $request) {
-    $request->validate([
-        'phone' => 'required|string',
-        'message' => 'required|string',
-    ]);
-
-    $sid = env('TWILIO_SID');
-    $token = env('TWILIO_AUTH_TOKEN');
-    $from = env('TWILIO_WHATSAPP_FROM'); // Ya incluye "whatsapp:"
-
-    $twilio = new Client($sid, $token);
-
-    try {
-        // Limpiar el número de teléfono
-        $phone = preg_replace('/[^0-9]/', '', $request->phone);
-        
-        // Asegurar que tenga código de país
-        if (!str_starts_with($phone, '51') && strlen($phone) === 9) {
-            $phone = '51' . $phone;
-        }
-
-        Log::info('Enviando WhatsApp', [
-            'to' => "whatsapp:+{$phone}",
-            'from' => $from,
-            'message' => $request->message
-        ]);
-
-        $message = $twilio->messages->create(
-            "whatsapp:+{$phone}", // Formato correcto
-            [
-                'from' => $from,
-                'body' => $request->message
-            ]
-        );
-
-        Log::info('WhatsApp enviado exitosamente', [
-            'sid' => $message->sid,
-            'status' => $message->status
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message_sid' => $message->sid
-        ]);
-    } catch (\Exception $e) {
-        Log::error('Error enviando WhatsApp', [
-            'error' => $e->getMessage(),
-            'phone' => $request->phone
-        ]);
-
-        return response()->json([
-            'success' => false,
-            'error' => $e->getMessage()
-        ], 500);
-    }
+Route::prefix('twilio')->group(function () {
+    Route::post('/whatsapp-webhook', [TwilioWebhookController::class, 'webhook']);
+    Route::get('/check-phone/{phone}', [TwilioWebhookController::class, 'checkPhone']);
 });
 
 Route::post('login', [InvestorController::class, 'login']);

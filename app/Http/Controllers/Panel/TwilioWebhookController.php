@@ -1,233 +1,90 @@
 <?php
-
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
 use App\Models\Investor;
-use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Twilio\Security\RequestValidator;
+use Twilio\Rest\Client;
+use Twilio\TwiML\MessagingResponse;
 
 class TwilioWebhookController extends Controller
 {
-    protected $whatsappService;
-
-    public function __construct(WhatsAppService $whatsappService)
+    /**
+     * Webhook que recibe las respuestas de WhatsApp de los usuarios
+     */
+    public function webhook(Request $request)
     {
-        $this->whatsappService = $whatsappService;
+        $fromRaw = $request->input('From'); // ej: whatsapp:+51987654321
+        $body = strtoupper(trim($request->input('Body')));
         
-        // Log de diagnóstico
-        Log::info('TwilioWebhookController initialized', [
-            'twilio_sid' => config('services.twilio.sid') ? 'set' : 'null',
-            'twilio_from' => config('services.twilio.whatsapp_from') ? 'set' : 'null'
+        // Extraer solo los dígitos del número
+        $telephone = preg_replace('/\D/', '', str_replace("whatsapp:", "", $fromRaw));
+        
+        Log::info("WhatsApp webhook recibido", [
+            'from' => $fromRaw,
+            'telephone' => $telephone,
+            'body' => $body
         ]);
-    }
-
-    /**
-     * 📩 Maneja los mensajes entrantes de WhatsApp.
-     */
-    public function handleIncomingMessage(Request $request)
-    {
-        Log::info('Incoming WhatsApp message webhook', $request->all());
-
-        try {
-            if (!$this->validateTwilioSignature($request)) {
-                Log::warning('Invalid Twilio signature for incoming message', [
-                    'ip' => $request->ip(),
-                    'user_agent' => $request->userAgent()
-                ]);
-                return response('Unauthorized', 401);
-            }
-
-            $from = $request->input('From');
-            $body = trim($request->input('Body', ''));
-            $messageSid = $request->input('MessageSid');
-
-            if (!$from || !$body) {
-                Log::warning('Missing required data in WhatsApp webhook', [
-                    'from' => $from,
-                    'body' => $body,
-                    'message_sid' => $messageSid
-                ]);
-                return response('Bad Request', 400);
-            }
-
-            if (!str_starts_with($from, 'whatsapp:')) {
-                Log::info('Message not from WhatsApp channel', ['from' => $from]);
-                return response('OK', 200);
-            }
-
-            $phoneNumber = str_replace('whatsapp:', '', $from);
-            $normalized = strtolower($body);
-
-            Log::info("Processing WhatsApp message from {$phoneNumber}", ['message' => $body]);
-
-            // 🔹 Detecta si el usuario respondió Sí o No
-            if (in_array($normalized, ['si', 'sí', 'yes'])) {
-                Log::info("✅ Confirmación positiva de {$phoneNumber}");
-
-                // Opcional: buscar y actualizar el inversionista
-                $investor = Investor::where('telephone', $phoneNumber)->first();
-                if ($investor) {
-                    $investor->confirmed = true;
-                    $investor->save();
-                    Log::info("Investor {$investor->id} confirmado correctamente.");
-                }
-
-                $this->whatsappService->sendMessage($phoneNumber, "Gracias por confirmar ✅");
-            } elseif (in_array($normalized, ['no', 'nope'])) {
-                Log::info("❌ Confirmación negativa de {$phoneNumber}");
-
-                $investor = Investor::where('telephone', $phoneNumber)->first();
-                if ($investor) {
-                    $investor->confirmed = false;
-                    $investor->save();
-                    Log::info("Investor {$investor->id} rechazó la confirmación.");
-                }
-
-                $this->whatsappService->sendMessage($phoneNumber, "Hemos registrado su respuesta como negativa ❌");
-            } else {
-                Log::info("⚠️ Respuesta no válida de {$phoneNumber}", ['body' => $body]);
-                $this->whatsappService->sendMessage($phoneNumber, "Por favor responda *Sí* o *No* para continuar.");
-            }
-
-            return response('OK', 200);
-        } catch (\Exception $e) {
-            Log::error('Exception processing incoming WhatsApp message', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'request_data' => $request->all()
-            ]);
-
-            return response('OK', 200);
+        
+        // Buscar el inversor por teléfono
+        $investor = Investor::where('telephone', $telephone)
+            ->orWhere('telephone', '51' . $telephone)
+            ->orWhere('telephone', substr($telephone, 2)) // Sin código de país
+            ->first();
+        
+        $response = new MessagingResponse();
+        
+        if (!$investor) {
+            Log::warning("Inversor no encontrado para el teléfono: $telephone");
+            $response->message("❌ No encontramos tu registro. Por favor, regístrate primero en nuestra plataforma.");
+            return response($response, 200)->header('Content-Type', 'text/xml');
         }
-    }
-
-    /**
-     * 📊 Maneja actualizaciones del estado de los mensajes (enviado, entregado, leído, fallido)
-     */
-    public function handleMessageStatus(Request $request)
-    {
-        Log::info('WhatsApp message status update webhook', $request->all());
-
-        try {
-            if (!$this->validateTwilioSignature($request)) {
-                Log::warning('Invalid Twilio signature for status update');
-                return response('Unauthorized', 401);
-            }
-
-            $messageSid = $request->input('MessageSid');
-            $messageStatus = $request->input('MessageStatus');
-            $errorCode = $request->input('ErrorCode');
-            $errorMessage = $request->input('ErrorMessage');
-
-            Log::info('WhatsApp message status processed', [
-                'message_sid' => $messageSid,
-                'status' => $messageStatus,
-                'error_code' => $errorCode,
-                'error_message' => $errorMessage
+        
+        // Validar si responde "SI" o "SÍ"
+        if ($body === "SI" || $body === "SÍ") {
+            $investor->update([
+                'verified' => 1,
+                'status_verified' => 'verified',
+                'whatsapp_verified_at' => now()
             ]);
-
-            if ($messageStatus === 'failed' && $errorCode) {
-                Log::warning('WhatsApp message delivery failed', [
-                    'message_sid' => $messageSid,
-                    'error_code' => $errorCode,
-                    'error_message' => $errorMessage
-                ]);
-            }
-
-            return response('OK', 200);
-        } catch (\Exception $e) {
-            Log::error('Exception processing WhatsApp status update', [
-                'error' => $e->getMessage(),
-                'request_data' => $request->all()
-            ]);
-
-            return response('OK', 200);
+            
+            Log::info("WhatsApp verificado exitosamente para inversor ID: {$investor->id}");
+            
+            $response->message("✅ ¡Perfecto! Tu número de WhatsApp ha sido confirmado exitosamente. Ya puedes acceder a tu cuenta. 🎉");
+        } else {
+            // Si responde otra cosa, mantener como pendiente
+            Log::info("Respuesta no válida de inversor ID: {$investor->id}, respuesta: $body");
+            $response->message("⚠️ Por favor responde con *SI* para confirmar tu número de WhatsApp.");
         }
+        
+        return response($response, 200)->header('Content-Type', 'text/xml');
     }
-
+    
     /**
-     * 🔁 Reenvía mensaje de confirmación a un inversionista
+     * Endpoint para verificar el estado de verificación de un teléfono
      */
-    public function resendVerification(Request $request)
+    public function checkPhone($telephoneRaw)
     {
-        $request->validate([
-            'investor_id' => 'required|exists:investors,id'
-        ]);
-
-        try {
-            $investor = Investor::findOrFail($request->investor_id);
-
-            if (!$investor->telephone) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Investor has no telephone number'
-                ], 400);
-            }
-
-            $message = "Hola {$investor->name} 👋, ¿usted confirma que desea continuar con el proceso de inversión? Responda *Sí* o *No*.";
-
-            $result = $this->whatsappService->sendMessage($investor->telephone, $message);
-
-            if ($result['success']) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Verification message sent successfully',
-                    'data' => $result
-                ]);
-            } else {
-                return response()->json([
-                    'success' => false,
-                    'error' => $result['error']
-                ], 500);
-            }
-        } catch (\Exception $e) {
-            Log::error('Exception resending verification', [
-                'investor_id' => $request->investor_id,
-                'error' => $e->getMessage()
-            ]);
-
+        $telephone = preg_replace('/\D/', '', $telephoneRaw);
+        
+        $investor = Investor::where('telephone', $telephone)
+            ->orWhere('telephone', '51' . $telephone)
+            ->orWhere('telephone', substr($telephone, 2))
+            ->first();
+        
+        if (!$investor) {
             return response()->json([
-                'success' => false,
-                'error' => 'Internal server error'
-            ], 500);
+                'verified' => false,
+                'status_verified' => 'not_found',
+                'whatsapp_verified_at' => null
+            ]);
         }
-    }
-
-    /**
-     * 🔐 Valida la firma de Twilio (en local se salta la validación)
-     */
-    private function validateTwilioSignature(Request $request): bool
-    {
-        if (app()->environment('local', 'development')) {
-            return true;
-        }
-
-        $authToken = config('services.twilio.token');
-        $twilioSignature = $request->header('X-Twilio-Signature');
-
-        if (!$authToken || !$twilioSignature) {
-            return false;
-        }
-
-        $validator = new RequestValidator($authToken);
-        $url = $request->fullUrl();
-        $postData = $request->all();
-
-        return $validator->validate($twilioSignature, $url, $postData);
-    }
-
-    /**
-     * 🩺 Endpoint de salud del servicio
-     */
-    public function health()
-    {
+        
         return response()->json([
-            'status' => 'healthy',
-            'service' => 'WhatsApp Confirmation Webhook',
-            'timestamp' => now()->toISOString()
+            'verified' => (bool) $investor->verified,
+            'status_verified' => $investor->status_verified,
+            'whatsapp_verified_at' => $investor->whatsapp_verified_at
         ]);
     }
 }
