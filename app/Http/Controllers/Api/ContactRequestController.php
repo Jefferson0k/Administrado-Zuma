@@ -54,14 +54,17 @@ class ContactRequestController extends Controller
                 ...$request->validated(),
                 'status' => 'internal',
             ]);
+            
+            
 
+            
             Log::info('Internal contact request created successfully', ['id' => $contactRequest->id]);
 
             // Intentar enviar emails solo si el registro se creó exitosamente
-            $this->sendContactEmails($request->validated());
+            // $this->sendContactEmails($request->validated());
 
             return response()->json([
-                'message' => 'Internal contact request saved successfully.',
+                'message' => 'Su mensaje ha sido enviado',
                 'success' => true,
                 'id' => $contactRequest->id
             ], 201);

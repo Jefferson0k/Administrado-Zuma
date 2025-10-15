@@ -7,11 +7,21 @@ use Illuminate\Http\Request;
 use App\Models\Investment;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\PersonalAccessToken;
+use Illuminate\Validation\Rule;
 
 class InvestorDashboardController extends Controller {
 
     public function investment(Request $request) {
         try {
+            $validatedData = $request->validate([
+                'currency' => [
+                    'required',
+                    'string',
+                    Rule::in(['PEN', 'USD']),
+                ],
+            ]);
+
+            $currency = $validatedData['currency'];
             $token = PersonalAccessToken::findToken(request()->bearerToken());
             $investor = $token->tokenable;
             $investorId = $investor->id;
@@ -31,6 +41,7 @@ class InvestorDashboardController extends Controller {
                 ->join('investors', 'investments.investor_id', '=', 'investors.id')
                 ->leftJoin('invoices', 'investments.invoice_id', '=', 'invoices.id')
                 ->where('investors.id', $investorId)
+                ->where('investments.currency', '=', $currency)
                 ->groupBy(DB::raw("DATE_FORMAT(investments.created_at, '%b')"))
                 ->get();
             return response()->json([
@@ -50,23 +61,63 @@ class InvestorDashboardController extends Controller {
             $token = PersonalAccessToken::findToken(request()->bearerToken());
             $investor = $token->tokenable;
             $investorId = $investor->id;
+            $validatedData = $request->validate([
+                'currency' => [
+                    'required',
+                    'string',
+                    Rule::in(['PEN', 'USD']),
+                ],
+            ]);
+            $currency = $validatedData['currency'];
+            
             
             $inversiones = Investment::query()
-            ->select(
-                'companies.name',
-                DB::raw('SUM(investments.amount) as total_mes')
-            )
-            ->join('investors', 'investments.investor_id', '=', 'investors.id')
-            ->join('invoices', 'investments.invoice_id', '=', 'invoices.id')
-            ->join('companies', 'invoices.company_id', '=', 'companies.id')
-            ->where('investors.id', $investorId)
-            ->groupBy('companies.name')
-            ->get();
+                ->select(
+                    'companies.name',
+                    DB::raw('SUM(investments.amount) as total_mes')
+                )
+                ->join('investors', 'investments.investor_id', '=', 'investors.id')
+                ->join('invoices', 'investments.invoice_id', '=', 'invoices.id')
+                ->join('companies', 'invoices.company_id', '=', 'companies.id')
+                ->where('investors.id', $investorId)
+                ->where('investments.currency', '=', $currency)
+                ->groupBy('companies.name')
+                ->get();
+
+            // Calcular el total global
+            $total = $inversiones->sum('total_mes');
+
+            // Calcular el 10% del total
+            $threshold = $total * 0.10;
+
+            // Separar las empresas grandes y pequeñas
+            $grandes = $inversiones->filter(fn($inv) => $inv->total_mes >= $threshold);
+            $pequenas = $inversiones->filter(fn($inv) => $inv->total_mes < $threshold);
+
+            // ✅ Agregar las pequeñas como "Otras empresas" con detalle
+            if ($pequenas->isNotEmpty()) {
+                $otras = (object)[
+                    'name' => 'Otras empresas',
+                    'total_mes' => $pequenas->sum('total_mes'),
+                    'detalle_otras_empresas' => $pequenas->map(fn($p) => "{$p->name} ({$p->total_mes})")->implode(', '), // 👈 texto concatenado
+                    'detalle_otras_empresas_array' => $pequenas->map(fn($p) => [
+                        'name' => $p->name,
+                        'total_mes' => $p->total_mes,
+                    ])->values(), // 👈 array con nombre y monto
+                ];
+
+                $resultado = $grandes->values()->push($otras);
+            } else {
+                $resultado = $grandes->values();
+            }
+
             
             return response()->json([
                         'success' => true,
-                        'data' => $inversiones,
+                        'data' => $resultado,
             ]);
+            
+            
         } catch (Throwable $th) {
             return response()->json([
                         'success' => false,
@@ -80,6 +131,14 @@ class InvestorDashboardController extends Controller {
             $token = PersonalAccessToken::findToken(request()->bearerToken());
             $investor = $token->tokenable;
             $investorId = $investor->id;
+            $validatedData = $request->validate([
+                'currency' => [
+                    'required',
+                    'string',
+                    Rule::in(['PEN', 'USD']),
+                ],
+            ]);
+            $currency = $validatedData['currency'];
             
             $inversiones = Investment::query()
             ->select(
@@ -91,6 +150,7 @@ class InvestorDashboardController extends Controller {
             ->join('companies', 'invoices.company_id', '=', 'companies.id')
             ->join('sectors', 'companies.sector_id', '=', 'sectors.id')
             ->where('investors.id', $investorId)
+            ->where('investments.currency', '=', $currency)
             ->groupBy('sectors.name')
             ->get();
             
@@ -111,6 +171,14 @@ class InvestorDashboardController extends Controller {
             $token = PersonalAccessToken::findToken(request()->bearerToken());
             $investor = $token->tokenable;
             $investorId = $investor->id;
+            $validatedData = $request->validate([
+                'currency' => [
+                    'required',
+                    'string',
+                    Rule::in(['PEN', 'USD']),
+                ],
+            ]);
+            $currency = $validatedData['currency'];
             $inversiones = Investment::query()
                 ->select(
                     'companies.risk as name',
@@ -120,6 +188,7 @@ class InvestorDashboardController extends Controller {
                 ->join('invoices', 'investments.invoice_id', '=', 'invoices.id')
                 ->join('companies', 'invoices.company_id', '=', 'companies.id')
                 ->where('investors.id', $investorId)
+                ->where('investments.currency', '=', $currency)
                 ->groupBy('companies.risk')
                 ->get();
             return response()->json([
@@ -139,23 +208,54 @@ class InvestorDashboardController extends Controller {
             $token = PersonalAccessToken::findToken(request()->bearerToken());
             $investor = $token->tokenable;
             $investorId = $investor->id;
+            $validatedData = $request->validate([
+                'currency' => [
+                    'required',
+                    'string',
+                    Rule::in(['PEN', 'USD']),
+                ],
+            ]);
+            $currency = $validatedData['currency'];
             
             $inversiones = Investment::query()
-            ->select(
-                'companies.name',
-                DB::raw('SUM(investments.return_efectivizado) as total_mes')
-            )
-            ->join('investors', 'investments.investor_id', '=', 'investors.id')
-            ->join('invoices', 'investments.invoice_id', '=', 'invoices.id')
-            ->join('companies', 'invoices.company_id', '=', 'companies.id')
-            ->where('investors.id', $investorId)
-            ->where('invoices.statusPago', 'paid')
-            ->groupBy('companies.name')
-            ->get();
+                ->select(
+                    'companies.name',
+                    DB::raw('SUM(investments.return_efectivizado) as total_mes')
+                )
+                ->join('investors', 'investments.investor_id', '=', 'investors.id')
+                ->join('invoices', 'investments.invoice_id', '=', 'invoices.id')
+                ->join('companies', 'invoices.company_id', '=', 'companies.id')
+                ->where('investors.id', $investorId)
+                ->where('investments.currency', '=', $currency)
+                ->where('invoices.statusPago', 'paid')
+                ->groupBy('companies.name')
+                ->get();
+
+            // Calcular el total global
+            $total = $inversiones->sum('total_mes');
+
+            // Calcular el 10% del total
+            $threshold = $total * 0.10;
+
+            // Separar las empresas grandes y pequeñas
+            $grandes = $inversiones->filter(fn($inv) => $inv->total_mes >= $threshold);
+            $pequenas = $inversiones->filter(fn($inv) => $inv->total_mes < $threshold);
+
+            // ✅ Sumar las pequeñas como "Otras empresas"
+            if ($pequenas->isNotEmpty()) {
+                $otras = (object)[
+                    'name' => 'Otras empresas',
+                    'total_mes' => $pequenas->sum('total_mes'),
+                ];
+                $resultado = $grandes->values()->push($otras);
+            } else {
+                $resultado = $grandes->values();
+            }
+
             
             return response()->json([
                         'success' => true,
-                        'data' => $inversiones,
+                        'data' => $resultado,
             ]);
         } catch (Throwable $th) {
             return response()->json([
@@ -170,6 +270,14 @@ class InvestorDashboardController extends Controller {
             $token = PersonalAccessToken::findToken(request()->bearerToken());
             $investor = $token->tokenable;
             $investorId = $investor->id;
+            $validatedData = $request->validate([
+                'currency' => [
+                    'required',
+                    'string',
+                    Rule::in(['PEN', 'USD']),
+                ],
+            ]);
+            $currency = $validatedData['currency'];
             
             $inversiones = Investment::query()
             ->select(
@@ -181,6 +289,7 @@ class InvestorDashboardController extends Controller {
             ->join('companies', 'invoices.company_id', '=', 'companies.id')
             ->join('sectors', 'companies.sector_id', '=', 'sectors.id')
             ->where('investors.id', $investorId)
+            ->where('investments.currency', '=', $currency)  
             ->where('invoices.statusPago', 'paid')
             ->groupBy('sectors.name')
             ->get();
@@ -202,6 +311,15 @@ class InvestorDashboardController extends Controller {
             $token = PersonalAccessToken::findToken(request()->bearerToken());
             $investor = $token->tokenable;
             $investorId = $investor->id;
+            $validatedData = $request->validate([
+                'currency' => [
+                    'required',
+                    'string',
+                    Rule::in(['PEN', 'USD']),
+                ],
+            ]);
+            $currency = $validatedData['currency'];
+            
             $inversiones = Investment::query()
                 ->select(
                     'companies.risk as name',
@@ -211,6 +329,7 @@ class InvestorDashboardController extends Controller {
                 ->join('invoices', 'investments.invoice_id', '=', 'invoices.id')
                 ->join('companies', 'invoices.company_id', '=', 'companies.id')
                 ->where('investors.id', $investorId)
+                ->where('investments.currency', '=', $currency)  
                 ->where('invoices.statusPago', 'paid')
                 ->groupBy('companies.risk')
                 ->get();
@@ -231,6 +350,14 @@ class InvestorDashboardController extends Controller {
             $token = PersonalAccessToken::findToken(request()->bearerToken());
             $investor = $token->tokenable;
             $investorId = $investor->id;
+            $validatedData = $request->validate([
+                'currency' => [
+                    'required',
+                    'string',
+                    Rule::in(['PEN', 'USD']),
+                ],
+            ]);
+            $currency = $validatedData['currency'];
             
             $result = Investment::selectRaw("
             SUM(investments.amount) AS total_invertido,
@@ -245,6 +372,7 @@ class InvestorDashboardController extends Controller {
             ->join('invoices', 'investments.invoice_id', '=', 'invoices.id')
             ->join('companies', 'invoices.company_id', '=', 'companies.id')
             ->where('investors.id', $investorId)
+            ->where('investments.currency', '=', $currency) 
             ->first();
             return response()->json([
                         'success' => true,
@@ -263,6 +391,14 @@ class InvestorDashboardController extends Controller {
             $token = PersonalAccessToken::findToken(request()->bearerToken());
             $investor = $token->tokenable;
             $investorId = $investor->id;
+            $validatedData = $request->validate([
+                'currency' => [
+                    'required',
+                    'string',
+                    Rule::in(['PEN', 'USD']),
+                ],
+            ]);
+            $currency = $validatedData['currency'];
             
             $result = DB::table('investments as nvm')
             ->selectRaw("
@@ -291,6 +427,7 @@ class InvestorDashboardController extends Controller {
             ->join('invoices as ivs', 'nvm.invoice_id', '=', 'ivs.id')
             ->join('companies as co', 'ivs.company_id', '=', 'co.id')
             ->where('nvs.id', '=', $investorId)
+            ->where('nvm.currency', '=', $currency)
             ->first();
             
             
@@ -312,6 +449,14 @@ class InvestorDashboardController extends Controller {
             $token = PersonalAccessToken::findToken(request()->bearerToken());
             $investor = $token->tokenable;
             $investorId = $investor->id;
+            $validatedData = $request->validate([
+                'currency' => [
+                    'required',
+                    'string',
+                    Rule::in(['PEN', 'USD']),
+                ],
+            ]);
+            $currency = $validatedData['currency'];
             
             $result = DB::table('investments as nvm')
                 ->join('investors as nvs', 'nvm.investor_id', '=', 'nvs.id')
@@ -319,16 +464,17 @@ class InvestorDashboardController extends Controller {
                 ->join('companies as co', 'ivs.company_id', '=', 'co.id')
                 ->join('sectors as se', 'co.sector_id', '=', 'se.id')
                 ->where('nvs.id', $investorId)
+                ->where('nvm.currency', '=', $currency)
                 ->selectRaw('COUNT(DISTINCT se.id) as sectores')
                 ->first();
 
             // acceder al valor
-            $sectores = $result->sectores;
+            $sectores = $result;
             
             
             return response()->json([
                         'success' => true,
-                        'empresas' => $sectores,
+                        'data' => $sectores,
             ]);
         } catch (Throwable $th) {
             return response()->json([
