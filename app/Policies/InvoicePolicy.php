@@ -27,18 +27,32 @@ class InvoicePolicy
         return $user->can('editar factura');
     }
 
-    public function delete(User $user, Invoice $invoice): bool
-    {
-        return $user->can('eliminar factura');
-    }
+
 
     public function approveLevel1(User $user, Invoice $invoice): bool{
-        return $user->can('aprobar factura nivel 1');
+        return $user->can('aprobar primera validacion factura');
     }
     public function approveLevel2(User $user, Invoice $invoice): bool{
-        return $user->can('aprobar factura nivel 2') 
-            && $invoice->approval1_status === 'approved';
+        return $user->can('aprobar segunda validacion factura');
     }
+
+
+    public function close(User $user, Invoice $invoice): bool{
+        return $user->can('cerrar factura');
+    }
+
+
+      public function open(User $user, Invoice $invoice): bool{
+        return $user->can('abrir factura');
+    }
+
+
+    public function standby(User $user, Invoice $invoice): bool{
+        return $user->can('poner standby factura');
+    }
+
+
+
     public function restore(User $user, Invoice $invoice): bool
     {
         return false;

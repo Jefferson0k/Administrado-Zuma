@@ -274,7 +274,7 @@ class InvestorController extends Controller
             $investor->codigo = $codigo;
             $investor->save();
             Log::info("Nuevo código de inversor generado: {$codigo} para el inversor ID: {$investor->id}");
-            
+
             DB::commit();
 
             $investor->sendEmailVerificationNotification();
@@ -298,14 +298,32 @@ class InvestorController extends Controller
         try {
             $validatedData = $request->validated();
             $investor = Investor::where('email', $request->email)->first();
-
             if (!$investor || !Hash::check($request->password, $investor->password)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Credenciales inválidas'
                 ], 401);
             }
+            if (! $investor->hasVerifiedEmail()) {
+                // optional: trigger another verification email
+                $investor->sendEmailVerificationNotification();
 
+                return response()->json([
+                    'code' => 'email_not_verified',
+                    'message' => 'Tu email aún no ha sido verificado. Revisa tu bandeja de entrada.',
+                ], 403);
+            }
+            // if (! $investor->hasVerifiedWhatsapp()) {
+            //     // optional: trigger another verification email
+            //     //$investor->sendWhatsappVerificationNotification();
+            //     return response()->json([
+            //         'code' => 'whatsapp_not_verified',
+            //         'message' => 'Tu WhatsApp aún no ha sido verificado. Revisa tu bandeja de entrada.',
+            //     ], 403);
+            // }
+            if (! $investor->hasVerifiedWhatsapp()) {
+                return response()->json(['message' => 'WhatsApp aún no ha sido verificado.'], 403);
+            }
 
             return response()->json([
                 'success' => true,
@@ -316,6 +334,7 @@ class InvestorController extends Controller
                 'redirect_route' => $this->getRedirectRoute($investor->type)
             ]);
         } catch (Throwable $th) {
+            Log::info($th->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => $th->getMessage(),
@@ -335,9 +354,6 @@ class InvestorController extends Controller
                 return '/hipotecas';
         }
     }
-
-
-
 
 
     public function logout(Request $request)
@@ -1215,9 +1231,9 @@ class InvestorController extends Controller
                             // Usa tu método/mailable específico para DNI
                             $investor->sendAccountObservedDNIEmailNotification();
                             break;
-                            
-                                // Mail::to($investor->email)->queue(new \App\Mail\Investor\RequestDniResubmissionMail($investor));
-                            
+
+                        // Mail::to($investor->email)->queue(new \App\Mail\Investor\RequestDniResubmissionMail($investor));
+
 
                         case 'investor_photo':
                             if (method_exists($investor, 'sendAccountObservedFotoNotification')) {

@@ -342,7 +342,7 @@ class CompanyController extends Controller
     public function searchCompany(Request $request)
     {
         try {
-            Gate::authorize('viewAny', Company::class);
+           
             $perPage = $request->input('per_page', 10);
             $search  = $request->input('search');
             $query = Company::query()

@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Auth\Events\Verified;
+use Illuminate\Support\Facades\Log;
 
 class ProfileController extends Controller
 {
@@ -101,7 +102,7 @@ class ProfileController extends Controller
                 }
             }
 
-            $expectedHash = sha1($investor->getEmailForVerification());
+            $expectedHash = sha1(string: $investor->getEmailForVerification());
 
             if (!hash_equals($expectedHash, $hash)) {
                 return response()->json([
@@ -119,6 +120,8 @@ class ProfileController extends Controller
 
             $investor->markEmailAsVerified();
             event(new Verified($investor));
+
+            Log::info("El usuario con ID {$investor->id} ha verificado su correo electrónico.");
 
             return response()->json([
                 'success' => true,

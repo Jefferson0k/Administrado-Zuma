@@ -31,7 +31,7 @@ use Money\Money;
 // App\Models\Investor.php
 use Illuminate\Support\Facades\Storage;
 
-use App\Notifications\InvestorAccountObservedDNIEmailNotification; 
+use App\Notifications\InvestorAccountObservedDNIEmailNotification;
 use App\Notifications\InvestorAccountObservedPepEvidenceNotification;
 
 
@@ -286,7 +286,7 @@ class Investor extends Authenticatable implements MustVerifyEmail, AuditableCont
     }
 
 
-       public function sendAccountObservedFotoNotification()
+    public function sendAccountObservedFotoNotification()
     {
         $this->notify(new InvestorAccountObservedFotoNotification());
     }
@@ -422,28 +422,30 @@ class Investor extends Authenticatable implements MustVerifyEmail, AuditableCont
     }
 
     public static function crearOActualizarPorDni(array $data, string $nuevoType)
-{
-    $investor = self::where('document', $data['document'])->first();
+    {
+        $investor = self::where('document', $data['document'])->first();
 
-    if ($investor) {
-        // Si el tipo existente es diferente al nuevo, actualizar a mixto
-        if ($investor->type !== $nuevoType) {
-            $investor->type = 'mixto';
-            $investor->update();
+        if ($investor) {
+            // Si el tipo existente es diferente al nuevo, actualizar a mixto
+            if ($investor->type !== $nuevoType) {
+                $investor->type = 'mixto';
+                $investor->update();
+            }
+        } else {
+            // Crear nuevo investor con el tipo indicado
+            $data['type'] = $nuevoType;
+            $investor = self::create($data);
         }
-    } else {
-        // Crear nuevo investor con el tipo indicado
-        $data['type'] = $nuevoType;
-        $investor = self::create($data);
+
+
+
+        return $investor;
     }
 
-    return $investor;
-}
 
-
-
-
-
-
+    public function hasVerifiedWhatsapp(): bool
+    {
+        return (bool) $this->whatsapp_verified;
+    }
 
 }

@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\URL;
 
-class InvestorEmailVerificationNotification extends VerifyEmail
+class InvestorEmailVerificationNotification_prod extends VerifyEmail
 {
     use Queueable;
 
@@ -76,12 +76,12 @@ class InvestorEmailVerificationNotification extends VerifyEmail
         $query = parse_url($verificationUrl, PHP_URL_QUERY);
 
         // Construir la URL del frontend
-        $frontendUrl = env('CLIENT_APP_URL', 'http://localhost:5173') . $path;
+        $frontendUrl = env('CLIENT_APP_URL', 'https://zuma.com.pe') . $path;
         if ($query) {
             $frontendUrl .= '?' . $query;
-        }
+        }   
 
-        return (new \Illuminate\Notifications\Messages\MailMessage)
+        return (new MailMessage)
             ->subject('Confirma tu correo en ZUMA')
             ->view(
                 'emails.investor-verify',
