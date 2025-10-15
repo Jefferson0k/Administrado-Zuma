@@ -108,7 +108,8 @@ class ProfileController extends Controller
 
                 // Browser -> redirige al frontend
                 if (!$request->expectsJson()) {
-                    return redirect()->away("{$frontend}/email-verify?status=not_found");
+                    return redirect()->away($this->frontendUrl('/email-verify', ['status' => 'not_found']));
+
                 }
                 return response()->json(['success' => false, 'message' => 'Usuario no encontrado.'], 404);
             }
@@ -149,9 +150,8 @@ class ProfileController extends Controller
             ]);
 
             if ($investor->hasVerifiedEmail()) {
-                // Idempotente
                 if (!$request->expectsJson()) {
-                    return redirect()->away("{$frontend}/email-verify?status=already_verified&email=" . urlencode($investor->email));
+                    return redirect()->away($this->frontendUrl('/iniciar-sesion'));
                 }
                 return response()->json([
                     'success' => true,
@@ -170,7 +170,7 @@ class ProfileController extends Controller
 
             // Browser: redirige a tu frontend (página de éxito)
             if (!$request->expectsJson()) {
-                return redirect()->away("{$frontend}/email-verify?status=ok&email=" . urlencode($investor->email));
+                return redirect()->away($this->frontendUrl('/iniciar-sesion'));
             }
 
             // API: responde JSON
@@ -234,5 +234,26 @@ class ProfileController extends Controller
         $request->session()->regenerateToken();
 
         return redirect('/');
+    }
+
+
+    // Add this helper at the bottom of the class (before the closing brace)
+    private function frontendUrl(string $path = '', array $query = []): string
+    {
+        // .env
+        // FRONTEND_URL=http://localhost:5173
+        // FRONTEND_BASE=/factoring
+        $frontend = rtrim(env('CLIENT_APP_URL', env('FRONTEND_URL', 'http://localhost:5173')), '/');
+        $base     = '/' . trim(env('FRONTEND_BASE', ''), '/'); // e.g. /factoring
+        if ($base === '/') $base = '';                      // no base configured
+
+        $path = '/' . ltrim($path, '/');
+        $url  = $frontend . $base . $path;
+
+        if (!empty($query)) {
+            $url .= (str_contains($url, '?') ? '&' : '?') . http_build_query($query);
+        }
+
+        return $url;
     }
 }

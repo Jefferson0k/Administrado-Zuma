@@ -283,7 +283,7 @@ function onThumbError(e, nameOrUrl) {
   const idx = list.findIndex(u => u === current)
   // If absolute single URL (S3), there’s nothing else to try — optionally set a placeholder
   if (list.length <= 1) {
-    e.target.src = 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=200&fit=crop&crop=center'
+    e.target.src = ''
     return
   }
   e.target.src = list[Math.min(idx + 1, list.length - 1)] || list[list.length - 1]
