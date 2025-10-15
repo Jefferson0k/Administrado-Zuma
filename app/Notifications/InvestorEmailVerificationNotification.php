@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\URL;
 
-class InvestorEmailVerificationNotification_prod extends VerifyEmail
+class InvestorEmailVerificationNotification extends VerifyEmail
 {
     use Queueable;
 

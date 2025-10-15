@@ -290,15 +290,8 @@ class InvestorController extends Controller
         
         DB::commit();
 
-        // AGREGADO: Log antes de enviar verificaciones
-        Log::info("=== INICIANDO ENVÍO DE VERIFICACIONES ===", [
-            'investor_id' => $investor->id,
-            'email' => $investor->email,
-            'telephone' => $investor->telephone
-        ]);
-
+      
         // ENVÍO DE AMBAS VERIFICACIONES
-        $whatsappSent = false;
         $emailSent = false;
         
         try {
@@ -312,22 +305,22 @@ class InvestorController extends Controller
             Log::error("Stack trace: " . $e->getTraceAsString());
         }
         
-        try {
-            // 2. Verificación por WhatsApp
-            Log::info("Intentando enviar WhatsApp de verificación...", [
-                'telephone_original' => $investor->telephone
-            ]);
-            $whatsappSent = $this->sendWhatsAppVerification($investor->telephone);
-            Log::info("Resultado WhatsApp: " . ($whatsappSent ? '✅ Enviado' : '❌ No enviado'));
-        } catch (\Exception $e) {
-            Log::error("❌ Error enviando verificación por WhatsApp: " . $e->getMessage());
-            Log::error("Stack trace: " . $e->getTraceAsString());
-        }
+        // try {
+        //     // 2. Verificación por WhatsApp
+        //     Log::info("Intentando enviar WhatsApp de verificación...", [
+        //         'telephone_original' => $investor->telephone
+        //     ]);
+        //     $whatsappSent = $this->sendWhatsAppVerification($investor->telephone);
+        //     Log::info("Resultado WhatsApp: " . ($whatsappSent ? '✅ Enviado' : '❌ No enviado'));
+        // } catch (\Exception $e) {
+        //     Log::error("❌ Error enviando verificación por WhatsApp: " . $e->getMessage());
+        //     Log::error("Stack trace: " . $e->getTraceAsString());
+        // }
 
-        Log::info("=== RESUMEN VERIFICACIONES ===", [
-            'email_sent' => $emailSent,
-            'whatsapp_sent' => $whatsappSent
-        ]);
+        // Log::info("=== RESUMEN VERIFICACIONES ===", [
+        //     'email_sent' => $emailSent,
+        //     'whatsapp_sent' => $whatsappSent
+        // ]);
         
         return response()->json([
             'success' => true,
@@ -337,7 +330,6 @@ class InvestorController extends Controller
                 'codigo' => $codigo,
                 'email' => $investor->email,
                 'email_verification_sent' => $emailSent,
-                'whatsapp_verification_sent' => $whatsappSent,
             ],
         ], 201);
         
@@ -424,9 +416,9 @@ private function sendWhatsAppVerification($telephone)
             //         'message' => 'Tu WhatsApp aún no ha sido verificado. Revisa tu bandeja de entrada.',
             //     ], 403);
             // }
-            if (! $investor->hasVerifiedWhatsapp()) {
-                return response()->json(['message' => 'WhatsApp aún no ha sido verificado.'], 403);
-            }
+            // if (! $investor->hasVerifiedWhatsapp()) {
+            //     return response()->json(['message' => 'WhatsApp aún no ha sido verificado.'], 403);
+            // }
 
             return response()->json([
                 'success' => true,
