@@ -39,7 +39,7 @@ class InvestorEmailVerificationNotification extends VerifyEmail
             ->action('Verificar Email', $url)
             ->line('Este enlace de verificación expirará en ' . config('auth.verification.expire', 60) . ' minutos.')
             ->line('Si no creaste esta cuenta, puedes ignorar este email.')
-            ->salutation('Saludos, Equipo Zuma');//
+            ->salutation('Saludos, Equipo Zuma'); //
     }
 
     /**
@@ -51,15 +51,15 @@ class InvestorEmailVerificationNotification extends VerifyEmail
     protected function verificationUrl($notifiable)
     {
         return URL::temporarySignedRoute(
-            'verification.verify',
+            'investor.verification.verify',
             Carbon::now()->addMinutes(Config::get('auth.verification.expire', 60)),
             [
-                'id' => $notifiable->getKey(),
+                'id'   => $notifiable->getKey(),
                 'hash' => sha1($notifiable->getEmailForVerification()),
-            ],
-            false // No incluir el dominio actual
+            ]
         );
     }
+
 
     /**
      * Get the verification URL for the given notifiable.
@@ -71,24 +71,11 @@ class InvestorEmailVerificationNotification extends VerifyEmail
     {
         $verificationUrl = $this->verificationUrl($notifiable);
 
-        // Extraer solo la parte de la ruta (sin el dominio)
-        $path = parse_url($verificationUrl, PHP_URL_PATH);
-        $query = parse_url($verificationUrl, PHP_URL_QUERY);
-
-        // Construir la URL del frontend
-        $frontendUrl = env('CLIENT_APP_URL', 'https://zuma.com.pe') . $path;
-        if ($query) {
-            $frontendUrl .= '?' . $query;
-        }   
-
         return (new MailMessage)
             ->subject('Confirma tu correo en ZUMA')
-            ->view(
-                'emails.investor-verify',
-                [
-                    'url' => $frontendUrl,
-                    'investor' => $notifiable,
-                ]
-            );
+            ->view('emails.investor-verify', [
+                'url'      => $verificationUrl,
+                'investor' => $notifiable,
+            ]);
     }
 }

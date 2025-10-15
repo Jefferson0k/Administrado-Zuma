@@ -35,6 +35,8 @@ use App\Models\HistoryAprobadorInvestor;
 use Throwable;
 use Illuminate\Auth\Events\Registered;
 use Predis\Client;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\InvestorsExport;
 
 class InvestorController extends Controller
 {
@@ -2029,5 +2031,16 @@ private function sendWhatsAppVerification($telephone)
                 'error'   => $e->getMessage(),
             ], 500);
         }
+    }
+
+
+     public function exportExcel(Request $request)
+    {
+        // Filtro global (coincide con el frontend)
+        $search = $request->string('search')->trim()->toString();
+
+        $fileName = 'inversionistas_' . now()->format('Y-m-d') . '.xlsx';
+
+        return Excel::download(new InvestorsExport($search), $fileName);
     }
 }

@@ -16,13 +16,17 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
+use App\Notifications\InvestorEmailVerificationNotification;
+
 
 class ProfileController extends Controller
 {
     /**
      * Show the user's profile settings page.
      */
-    public function profile(Request $request){
+    public function profile(Request $request)
+    {
         try {
             $customer = Auth::guard('customer')->user();
             return response()->json([
@@ -47,9 +51,11 @@ class ProfileController extends Controller
         ]);
     }
 
-    public function resendEmailVerification(Request $request, string $id){
+    public function resendEmailVerification(Request $request, string $id)
+    {
         try {
-            $customer = Customer::find(htmlspecialchars($id));
+            $customer = Investor::find(htmlspecialchars($id));
+
 
             if (!$customer) {
                 return response()->json([
@@ -65,7 +71,8 @@ class ProfileController extends Controller
                 ], 307);
             }
 
-            $customer->sendEmailVerificationNotification();
+            $customer->notify(new InvestorEmailVerificationNotification());
+
 
             return response()->json([
                 'success' => true,
@@ -79,63 +86,119 @@ class ProfileController extends Controller
             ], 500);
         }
     }
-    public function emailVerification(UpdateCustomerEmailVerificationRequest $request, $id, $hash){
+    public function emailVerification(UpdateCustomerEmailVerificationRequest $request, $id, $hash)
+    {
         try {
+            $frontend = rtrim(env('CLIENT_APP_URL', 'https://zuma.com.pe'), '/');
+
+            Log::info('EmailVerification: inicio', [
+                'action'     => 'verify',
+                'route_id'   => $id,
+                'route_hash' => $hash,
+                'full_url'   => $request->fullUrl(),
+                'ip'         => $request->ip(),
+                'agent'      => $request->userAgent(),
+            ]);
+
             $validatedData = $request->validated();
-            
+
             $investor = Investor::find($id);
             if (!$investor) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Usuario no encontrado.',
-                ], 404);
-            }
+                Log::warning('EmailVerification: usuario no encontrado', ['route_id' => $id]);
 
-            // Verificar expiración solo si se proporciona expires
-            if (isset($validatedData['expires'])) {
-                $expires = intval($validatedData['expires']);
-                if (Carbon::now()->timestamp > $expires) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'El enlace de verificación ha expirado.'
-                    ], 400);
+                // Browser -> redirige al frontend
+                if (!$request->expectsJson()) {
+                    return redirect()->away("{$frontend}/email-verify?status=not_found");
                 }
+                return response()->json(['success' => false, 'message' => 'Usuario no encontrado.'], 404);
             }
 
-            $expectedHash = sha1(string: $investor->getEmailForVerification());
+            // Firma (relativa)
+            $signatureIsValid = URL::hasValidSignature($request) || URL::hasValidSignature($request, false);
+            Log::info('EmailVerification: check firma', ['valid_signature' => $signatureIsValid]);
 
-            if (!hash_equals($expectedHash, $hash)) {
+            if (! $signatureIsValid) {
+                Log::warning('EmailVerification: firma inválida/expirada', ['reason' => 'invalid_signature_or_expired']);
                 return response()->json([
                     'success' => false,
-                    'message' => 'Enlace de verificación inválido.'
+                    'message' => 'Enlace de verificación inválido o expirado.'
                 ], 400);
             }
 
+            // Hash
+            $expectedHash = sha1($investor->getEmailForVerification());
+            $hashMatch = hash_equals($expectedHash, $hash);
+            Log::info('EmailVerification: check hash', [
+                'expected_hash' => $expectedHash,
+                'received_hash' => $hash,
+                'match'         => $hashMatch,
+            ]);
+            if (! $hashMatch) {
+                Log::warning('EmailVerification: hash inválido');
+
+                if (!$request->expectsJson()) {
+                    return redirect()->away("{$frontend}/email-verify?status=invalid");
+                }
+                return response()->json(['success' => false, 'message' => 'Enlace de verificación inválido.'], 400);
+            }
+
+            Log::info('EmailVerification: estado previo', [
+                'already_verified'  => $investor->hasVerifiedEmail(),
+                'email_verified_at' => $investor->email_verified_at,
+                'investor_id'       => $investor->id,
+            ]);
+
             if ($investor->hasVerifiedEmail()) {
+                // Idempotente
+                if (!$request->expectsJson()) {
+                    return redirect()->away("{$frontend}/email-verify?status=already_verified&email=" . urlencode($investor->email));
+                }
                 return response()->json([
-                    'success' => false,
-                    'message' => 'Correo ya esta verificado.'
-                ], 409);
+                    'success' => true,
+                    'message' => 'Tu correo ya estaba verificado.',
+                    'data'    => $investor
+                ], 200);
             }
 
             $investor->markEmailAsVerified();
             event(new Verified($investor));
 
-            Log::info("El usuario con ID {$investor->id} ha verificado su correo electrónico.");
+            Log::info('EmailVerification: marcado como verificado', [
+                'investor_id'       => $investor->id,
+                'email_verified_at' => $investor->email_verified_at,
+            ]);
 
+            // Browser: redirige a tu frontend (página de éxito)
+            if (!$request->expectsJson()) {
+                return redirect()->away("{$frontend}/email-verify?status=ok&email=" . urlencode($investor->email));
+            }
+
+            // API: responde JSON
             return response()->json([
                 'success' => true,
                 'message' => 'Tu cuenta ha sido activada correctamente.',
-                'data' => $investor
+                'data'    => $investor
             ], 200);
-            
         } catch (\Throwable $th) {
+            Log::error('EmailVerification: excepción en verify', [
+                'error' => $th->getMessage(),
+                'trace' => $th->getTraceAsString(),
+            ]);
+
+            // Browser: redirige a error genérico del frontend
+            if (!$request->expectsJson()) {
+                $code = $th->getCode();
+                return redirect()->away(rtrim(env('CLIENT_APP_URL', 'https://zuma.com.pe'), '/') . '/email-verify?status=error');
+            }
+
             return response()->json([
                 'success' => false,
                 'message' => $th->getMessage(),
             ], 500);
         }
     }
+
+
     /**
      * Update the user's profile information.
      */

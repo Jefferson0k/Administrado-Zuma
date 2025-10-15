@@ -103,6 +103,7 @@ class PermissionSeeder extends Seeder{
         Permission::create(['name' => 'aprobar segunda validacion depositos']);
         Permission::create(['name' => 'subir archivos depositos']);
         Permission::create(['name' => 'eliminar archivos depositos']);
+        Permission::create(['name' => 'exportar depositos']);
         // Pagos
         Permission::create(['name' => 'crear pagos']);
         Permission::create(['name' => 'editar pagos']);

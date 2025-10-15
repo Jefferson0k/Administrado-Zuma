@@ -78,9 +78,10 @@ Route::get('/', function () {
     return Inertia::render('Welcome');
 })->name('home');
 
-Route::get('/investors/{id}', [InvestorController::class, 'show']);
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/investors/{id}', [InvestorController::class, 'show']);
+    Route::get('/investor/export/excel', [InvestorController::class, 'exportExcel']);
 
     Route::get('/ban/{id}/attachments', [BankAccountsController::class, 'indexAttachments'])
         ->name('bank-accounts.attachments.index');
@@ -221,6 +222,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('investment')->group(function () {
         Route::get('/all', [InvestmentControllers::class, 'indexAll']);
         Route::get('/{invoice_id}', [InvestmentControllers::class, 'show']);
+
+        Route::get('/all/export/excel', [InvestmentControllers::class, 'exportAllExcel'])
+            ->name('investment.all.export.excel');
     });
 
     Route::prefix('deposit')->name('deposits.')->group(function () {
@@ -317,7 +321,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::get('/investor/{id}/approval-history', [InvestorController::class, 'approvalHistory']);
-    
+
     # COMPANIA -> BACKEND
     Route::prefix('companies')->group(function () {
         Route::get('/',        [CompanyController::class, 'index'])->name('companies.index');
@@ -414,7 +418,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/propiedad/{id}/cronograma', [PaymentScheduleController::class, 'getCronogramaPorPropiedad']);
     Route::get('/cronograma/{property_investor_id}', [PaymentScheduleController::class, 'getCronograma']);
-    
+
     #Seccion de apis x mientas
     Route::prefix('api')->group(function () {
         #Route::post('/bids', [BidControllers::class, 'index'])->name(name: 'bids.index');
@@ -569,16 +573,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('solicitud-activacion')->group(function () {
         Route::put('/{id}', [SolicitudController::class, 'update']);
     });
-    
+
     Route::get('/solicitud-activacion/{id}/historial', [SolicitudController::class, 'showlist'])
         ->name('solicitud.historial');
-        
+
     Route::patch('/invoices/{invoice}/cerrar', [InvoiceController::class, 'cerrar']);
     Route::patch('/invoices/{invoice}/abrir', [InvoiceController::class, 'abrir'])
         ->name('invoices.abrir');
-        
+
     Route::get('/currencies', [CurrencyControllers::class, 'index']);
-    
+
     Route::get('/s3/{path}', function ($path) {
         if (!Storage::disk('s3')->exists($path)) {
             abort(404, 'Archivo no encontrado');
@@ -606,7 +610,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/tipo-documentos', function () {
         return TipoDocumento::all();
     });
-    
+
     Route::post('/detalle-inversionista', [DetalleInversionistaHipotecaController::class, 'store']);
     Route::get('/tipo-inmueble', [TipoInmuebleController::class, 'index']);
 });
