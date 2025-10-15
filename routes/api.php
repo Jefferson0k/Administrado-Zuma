@@ -39,6 +39,7 @@ use App\Http\Controllers\Panel\SolicitudController;
 use App\Http\Controllers\Panel\TwilioWebhookController;
 use App\Http\Controllers\TipoDocumentoController;
 use App\Http\Controllers\Web\SubastaHipotecas\TipoInmuebleController;
+use App\Http\Controllers\Api\InvestorDashboardController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Twilio\Rest\Client;
@@ -271,8 +272,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/bids/subasta', [SolicitudBidController::class, 'storeSubasta']);
     Route::get('/bids/solicitud-bid/{solicitudBidId}', [SolicitudBidController::class, 'getBySolicitudBid']);
     
-
+    
+    //graficos
+    
 });
+
     Route::get('/subastadas', [PropertyControllers::class, 'subastadas'])->name('property.subastadas');
 
     Route::prefix('solicitud')->group(function () {
