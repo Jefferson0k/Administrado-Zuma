@@ -14,102 +14,111 @@ class WhatsAppVerificationService
     protected $from;
 
     public function __construct()
-    {
-        $sid = config('services.twilio.sid');
-        $token = config('services.twilio.token');
-        $from = config('services.twilio.whatsapp_number');
-        if($sid && $token && $from){
-            $this->twilio = new Client($sid,$token);
+{
+    $sid = config('services.twilio.sid');
+    $token = config('services.twilio.token');
+    $from = config('services.twilio.whatsapp_number');
+
+    if ($sid && $token && $from) {
+        // Evita duplicar el prefijo whatsapp:
+        if (str_starts_with($from, 'whatsapp:')) {
+            $this->from = $from;
+        } else {
             $this->from = 'whatsapp:' . $from;
-        }else{
-            $this->twilio= null;
-            $this->from = null;
         }
+
+        $this->twilio = new Client($sid, $token);
+    } else {
+        $this->twilio = null;
+        $this->from = null;
+        Log::error('Twilio configuration missing', [
+            'sid' => $sid,
+            'token' => $token ? '***' : null,
+            'from' => $from,
+        ]);
     }
+}
+
+
 
     /**
      * Enviar mensaje de verificación automático cuando se registra un inversionista
      */
     public function sendVerificationMessage(Investor $investor)
     {
-        if (!$investor->telephone) {
-            Log::error('Investor has no telephone number', ['investor_id' => $investor->id]);
-            return false;
-        }
-
-        // Verificar rate limiting (máximo 1 mensaje por minuto por número)
-        $cacheKey = "whatsapp_verification_rate_limit_{$investor->telephone}";
-        if (Cache::has($cacheKey)) {
-            Log::warning('Rate limit exceeded for WhatsApp verification', [
-                'investor_id' => $investor->id,
-                'telephone' => $investor->telephone
-            ]);
-            return [
-                'success' => false,
-                'error' => 'Rate limit exceeded. Please wait before requesting another verification.'
-            ];
-        }
-
-        // Formatear número de teléfono
-        $phoneNumber = $this->formatPhoneNumber($investor->telephone);
-        
-        // Generar código de verificación
-        $verificationCode = $this->generateVerificationCode();
-        
-        // Mensaje de verificación personalizado
-        $message = $this->buildVerificationMessage($investor, $verificationCode);
-
         try {
-            
-            if ($this->twilio && $this->from) {
-                $twilioMessage = $this->twilio->messages->create(
-                    'whatsapp:' . $phoneNumber,
-                    [
-                        'from' => $this->from,
-                        'body' => $message
-                    ]
-                );
-            }else{
-                
+            // 🔒 Verifica que Twilio esté correctamente inicializado
+            if (!$this->twilio || !$this->from) {
+                Log::error('Twilio client not initialized properly', [
+                    'twilio' => $this->twilio,
+                    'from' => $this->from,
+                ]);
+                return [
+                    'success' => false,
+                    'error' => 'Twilio client not initialized properly',
+                ];
             }
 
-            // Actualizar el inversionista con los datos de verificación
-            $investor->update([
-                'whatsapp_verification_code' => $verificationCode,
-                'whatsapp_verification_sent_at' => now(),
-                'validacion_whatsapp' => 'pending',
-                'whatsapp_verified' => false // Asegurar que esté en false
+            // 📱 Verifica que el inversor tenga teléfono válido
+            if (!$investor->telephone) {
+                Log::warning('Investor has no telephone number', [
+                    'investor_id' => $investor->id,
+                ]);
+                return [
+                    'success' => false,
+                    'error' => 'Investor has no telephone number',
+                ];
+            }
+
+            // 🔢 Generar código de verificación
+            $verificationCode = $this->generateVerificationCode();
+
+            // 💾 Guardar el código temporalmente
+            $investor->verification_code = $verificationCode;
+            $investor->verification_sent_at = now();
+            $investor->save();
+
+            // 🧠 Construir mensaje
+            $message = "¡Hola {$investor->fullname}! 🎉\n\n"
+                . "Tu registro ha sido exitoso. Por favor, verifica tu cuenta usando el siguiente código:\n\n"
+                . "🔢 *{$verificationCode}*\n\n"
+                . "¡Bienvenido a nuestra plataforma de inversiones!";
+
+            // 📞 Asegurar formato correcto del número destino
+            $to = $investor->telephone;
+            if (!str_starts_with($to, 'whatsapp:')) {
+                $to = 'whatsapp:' . $to;
+            }
+
+            Log::info('Enviando WhatsApp', [
+                'to' => $to,
+                'from' => $this->from,
+                'message' => $message,
             ]);
 
-            // Establecer rate limit (1 minuto)
-            Cache::put($cacheKey, true, now()->addMinutes(1));
+            // 🚀 Enviar mensaje vía Twilio
+            $this->twilio->messages->create($to, [
+                'from' => $this->from,
+                'body' => $message,
+            ]);
 
-            // Cache del código para validación adicional
-            Cache::put("whatsapp_code_{$investor->id}", $verificationCode, now()->addMinutes(30));
-
-            Log::info('WhatsApp verification message sent', [
+            Log::info('Mensaje de verificación enviado exitosamente', [
                 'investor_id' => $investor->id,
-                'phone' => $phoneNumber,
-                'twilio_sid' => $twilioMessage->sid,
-                'verification_code' => $verificationCode
+                'code' => $verificationCode,
             ]);
 
             return [
                 'success' => true,
-                'message_sid' => $twilioMessage->sid,
-                'verification_code' => $verificationCode
+                'message' => 'Verification message sent successfully',
             ];
-
         } catch (Exception $e) {
             Log::error('Error sending WhatsApp verification message', [
-                'investor_id' => $investor->id,
-                'phone' => $phoneNumber,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
-
             return [
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ];
         }
     }

@@ -39,7 +39,7 @@ class InvestorEmailVerificationNotification extends VerifyEmail
             ->action('Verificar Email', $url)
             ->line('Este enlace de verificación expirará en ' . config('auth.verification.expire', 60) . ' minutos.')
             ->line('Si no creaste esta cuenta, puedes ignorar este email.')
-            ->salutation('Saludos, Equipo Zuma');
+            ->salutation('Saludos, Equipo Zuma');//
     }
 
     /**
@@ -76,12 +76,12 @@ class InvestorEmailVerificationNotification extends VerifyEmail
         $query = parse_url($verificationUrl, PHP_URL_QUERY);
 
         // Construir la URL del frontend
-        $frontendUrl = env('CLIENT_APP_URL', 'http://localhost:5173') . $path;
+        $frontendUrl = env('CLIENT_APP_URL', 'https://zuma.com.pe') . $path;
         if ($query) {
             $frontendUrl .= '?' . $query;
-        }
+        }   
 
-        return (new \Illuminate\Notifications\Messages\MailMessage)
+        return (new MailMessage)
             ->subject('Confirma tu correo en ZUMA')
             ->view(
                 'emails.investor-verify',

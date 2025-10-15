@@ -76,10 +76,10 @@ class InvestorEmailVerificationNotification_prod extends VerifyEmail
         $query = parse_url($verificationUrl, PHP_URL_QUERY);
 
         // Construir la URL del frontend
-        $frontendUrl = env('CLIENT_APP_URL', 'http://localhost:5173') . $path;
+        $frontendUrl = env('CLIENT_APP_URL', 'https://zuma.com.pe') . $path;
         if ($query) {
             $frontendUrl .= '?' . $query;
-        }
+        }   
 
         return (new MailMessage)
             ->subject('Confirma tu correo en ZUMA')

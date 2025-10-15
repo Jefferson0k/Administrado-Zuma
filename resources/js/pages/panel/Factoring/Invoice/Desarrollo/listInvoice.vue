@@ -312,10 +312,7 @@ async function exportToExcel() {
     const params = Object.fromEntries(
       Object.entries(filters.value).filter(([_, v]) => v !== null && v !== '')
     );
-    if (sortField.value) {
-      params.sort_field = sortField.value;
-      params.sort_order = sortOrder.value === 1 ? 'asc' : 'desc';
-    }
+   
     const queryString = new URLSearchParams(params).toString();
     const exportUrl = `/invoices/export/excel?${queryString}`;
 
@@ -428,11 +425,7 @@ async function loadData() {
       )
     };
 
-    // ▸ incluir el orden actual si existe
-    if (sortField.value) {
-      params.sort_field = sortField.value;
-      params.sort_order = sortOrder.value === 1 ? 'asc' : 'desc';
-    }
+   
 
     const response = await axios.get('/invoices', { params });
 
@@ -499,13 +492,74 @@ const onPage = (event) => {
 };
 
 // ▸ handler de orden (PrimeVue DataTable lazy)
+// ▸ handler de orden (solo página actual)
 function onSort(event) {
-  // event.sortField (string) | event.sortOrder (1|-1)
-  sortField.value = event.sortField;
-  sortOrder.value = event.sortOrder;
-  pagination.value.page = 1;
-  loadData();
+  const field = event.sortField;
+  const order = event.sortOrder; // 1 | -1
+
+  sortField.value = field;
+  sortOrder.value = order;
+
+  // Comparadores: números, fechas y texto
+  const numericFields = new Set([
+    'montoFactura',
+    'montoAsumidoZuma',
+    'montoDisponible',
+    'tasa',
+    'porcentajeMetaTerceros',
+    'porcentajeInversionTerceros',
+  ]);
+
+  const dateFields = new Set([
+    'fechaPago',
+    'fechaCreacion',
+    'fechaHoraCierreInversion',
+    'approval1_at',
+    'approval2_at',
+    'approval_conclusion_at',
+  ]);
+
+  const collator = new Intl.Collator('es', { numeric: true, sensitivity: 'base' });
+
+  const parseVal = (row, key) => {
+    const v = row?.[key];
+    if (v == null) return null;
+
+    if (numericFields.has(key)) {
+      const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/[^\d.-]/g, ''));
+      return isNaN(n) ? null : n;
+    }
+
+    if (dateFields.has(key)) {
+      const t = Date.parse(v);
+      return isNaN(t) ? null : t;
+    }
+
+    return String(v).toLowerCase();
+  };
+
+  facturas.value = [...facturas.value].sort((a, b) => {
+    const va = parseVal(a, field);
+    const vb = parseVal(b, field);
+
+    if (va === null && vb === null) return 0;
+    if (va === null) return 1;      // nulls al final
+    if (vb === null) return -1;
+
+    let cmp = 0;
+    if (typeof va === 'number' && typeof vb === 'number') {
+      cmp = va - vb;
+    } else if (typeof va === 'number' || typeof vb === 'number') {
+      // num vs no num -> num primero
+      cmp = typeof va === 'number' ? -1 : 1;
+    } else {
+      // string o timestamp
+      cmp = (typeof va === 'number' && typeof vb === 'number') ? (va - vb) : collator.compare(String(va), String(vb));
+    }
+    return order === 1 ? cmp : -cmp;
+  });
 }
+
 
 function verFactura(factura) {
   selectedFacturaId.value = factura.id;
@@ -804,7 +858,7 @@ async function confirmarPagoAdelantado() {
           </div>
         </template>
       </Column>
-      <Column field="ruc_cliente" header="Ruc Cliente" sortable style="min-width: 7rem" />
+      <Column field="ruc_cliente" header="Ruc Aceptante" sortable style="min-width: 7rem" />
       <Column field="ruc_proveedor" header="Ruc Proveedor" sortable style="min-width: 7rem" />
       <Column field="codigo" header="Código" sortable style="min-width: 15rem" />
       <Column field="moneda" header="Moneda" sortable style="min-width: 5rem" />

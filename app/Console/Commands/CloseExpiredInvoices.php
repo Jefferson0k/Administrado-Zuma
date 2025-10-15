@@ -33,7 +33,14 @@ class CloseExpiredInvoices extends Command
         $affected = Invoice::where('condicion_oportunidad', '!=', 'cerrada')
             ->where(function ($query) use ($limitDate) {
                 $query->whereDate('estimated_pay_date', '<', $limitDate)
-                    ->orWhere('financed_amount', '<=', 0);
+                    ->orWhere('financed_amount', '<=', 0)
+                    ->orWhere(function ($q) {
+                        $q->whereNull('approval1_status')
+                            ->orWhere('approval1_status', '!=', 'approved')
+                            ->orWhereNull('approval2_status')
+                            ->orWhere('approval2_status', '!=', 'approved')
+                            ->orWhere('status_conclusion', '!=', 'approved');
+                    });
             })
             ->update(['condicion_oportunidad' => 'cerrada']);
 

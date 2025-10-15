@@ -206,7 +206,7 @@ class InvoiceController extends Controller
     {
         try {
             $invoice = Invoice::findOrFail($id);
-            Gate::authorize('update', $invoice);
+            Gate::authorize('standby', $invoice);
             $invoice->update([
                 'status' => 'daStandby',
                 'condicion_oportunidad' => 'cerrada',
@@ -274,7 +274,7 @@ class InvoiceController extends Controller
         try {
             $invoice = Invoice::findOrFail($id);
             $userId = Auth::id();
-            Gate::authorize('update', $invoice);
+            Gate::authorize('approveLevel1', $invoice);
 
             // --- VALIDACIÓN NIVEL 1 ---
 
@@ -286,10 +286,10 @@ class InvoiceController extends Controller
                 'approval1_at'      => now(),
                 'approval1_comment' => $request->input('comment'),
                 'updated_by'        => $userId,
-                
+
             ]);
 
-            if ($invoice->approval2_status === 'observed'){
+            if ($invoice->approval2_status === 'observed') {
                 $invoice->approval2_status = 'pending';
                 $invoice->save();
             }
@@ -321,7 +321,7 @@ class InvoiceController extends Controller
     {
         try {
             $invoice = Invoice::findOrFail($id);
-            Gate::authorize('update', $invoice);
+            Gate::authorize('approveLevel1', $invoice);
             $userId = Auth::id();
 
             // --- Validar comentario requerido ---
@@ -333,7 +333,7 @@ class InvoiceController extends Controller
                 'comment.min'      => 'El comentario debe tener al menos 3 caracteres.'
             ]);
 
-            
+
 
             $invoice->update([
                 'approval1_status'  => 'observed',
@@ -413,7 +413,7 @@ class InvoiceController extends Controller
         try {
             $invoice = Invoice::findOrFail($id);
             $userId = Auth::id();
-            Gate::authorize('update', $invoice);
+            Gate::authorize('approveLevel2', $invoice);
 
             //Gate::authorize('aprobar factura nivel 2');
 
@@ -470,7 +470,7 @@ class InvoiceController extends Controller
     {
         try {
             $invoice = Invoice::findOrFail($id);
-            Gate::authorize('update', $invoice);
+            Gate::authorize('approveLevel2', $invoice);
             $userId = Auth::id();
 
             // --- Validar comentario requerido ---
@@ -485,8 +485,8 @@ class InvoiceController extends Controller
 
 
 
-            
-           
+
+
 
             $invoice->update([
                 'approval2_status'  => 'observed',
@@ -597,27 +597,27 @@ class InvoiceController extends Controller
 
     //FALTA SEGUNDO APROBADOR
 
-    public function delete($id)
-    {
-        try {
-            $invoice = Invoice::findOrFail($id);
-            Gate::authorize('delete', $invoice);
-            $invoice->deleted_by = Auth::id();
-            $invoice->save();
-            $invoice->delete();
-            return response()->json(['message' => 'Factura eliminada correctamente.']);
-        } catch (ModelNotFoundException $e) {
-            return response()->json(['message' => 'Factura no encontrada.'], 404);
-        } catch (AuthorizationException $e) {
-            return response()->json(['message' => 'No tienes permiso para eliminar esta factura.'], 403);
-        } catch (Throwable $e) {
-            return response()->json([
-                'message' => 'Error al eliminar la factura.',
-                'error'   => $e->getMessage(),
-                'trace'   => $e->getTraceAsString(),
-            ], 500);
-        }
-    }
+    // public function delete($id)
+    // {
+    //     try {
+    //         $invoice = Invoice::findOrFail($id);
+    //         Gate::authorize('delete', $invoice);
+    //         $invoice->deleted_by = Auth::id();
+    //         $invoice->save();
+    //         $invoice->delete();
+    //         return response()->json(['message' => 'Factura eliminada correctamente.']);
+    //     } catch (ModelNotFoundException $e) {
+    //         return response()->json(['message' => 'Factura no encontrada.'], 404);
+    //     } catch (AuthorizationException $e) {
+    //         return response()->json(['message' => 'No tienes permiso para eliminar esta factura.'], 403);
+    //     } catch (Throwable $e) {
+    //         return response()->json([
+    //             'message' => 'Error al eliminar la factura.',
+    //             'error'   => $e->getMessage(),
+    //             'trace'   => $e->getTraceAsString(),
+    //         ], 500);
+    //     }
+    // }
     public function update(UpdateInvoiceRequest $request, InvoiceService $service, $id)
     {
         try {
@@ -705,6 +705,8 @@ class InvoiceController extends Controller
 
     public function approvalHistory($id)
     {
+
+        Gate::authorize('viewAny', Invoice::class);
         $rows = HistoryAprobadorInvoice::query()
             ->where('invoice_id', $id)
             ->with([
@@ -723,94 +725,95 @@ class InvoiceController extends Controller
         ]);
     }
 
-    public function adelantarPago(Request $request, Invoice $invoice)
-    {
-        try {
-            $data = $request->validate([
-                'date' => ['required', 'date_format:Y-m-d'],
-            ]);
+    // public function adelantarPago(Request $request, Invoice $invoice)
+    // {
+    //     try {
+    //         $data = $request->validate([
+    //             'date' => ['required', 'date_format:Y-m-d'],
+    //         ]);
 
-            // Target pay date as Carbon
-            $target = Carbon::createFromFormat('Y-m-d', $data['date'])->startOfDay();
+    //         // Target pay date as Carbon
+    //         $target = Carbon::createFromFormat('Y-m-d', $data['date'])->startOfDay();
 
-            // Update invoice dates (use casts on the model)
-            $invoice->estimated_pay_date = $target;               // cast to date in model
-            $invoice->due_date           = $target->copy()->subDays(25);
+    //         // Update invoice dates (use casts on the model)
+    //         $invoice->estimated_pay_date = $target;               // cast to date in model
+    //         $invoice->due_date           = $target->copy()->subDays(25);
 
-            foreach ($invoice->investments as $investment) {
-                $created = $investment->created_at->copy()->startOfDay();
+    //         foreach ($invoice->investments as $investment) {
+    //             $created = $investment->created_at->copy()->startOfDay();
 
-                // Days between creation and new estimated pay date
-                $days = $created->diffInDays($target, false);     // negative if target < created
+    //             // Days between creation and new estimated pay date
+    //             $days = $created->diffInDays($target, false);     // negative if target < created
 
-                // Define your rule; here we clamp to 0 to avoid negative compounding
-                $days = max(0, $days);
+    //             // Define your rule; here we clamp to 0 to avoid negative compounding
+    //             $days = max(0, $days);
 
-                // Update investment due_date to the new target
-                $investment->due_date = $target;
+    //             // Update investment due_date to the new target
+    //             $investment->due_date = $target;
 
-                // Periods in 30-day months
-                $periods = $days / 30;
+    //             // Periods in 30-day months
+    //             $periods = $days / 30;
 
-                // Compound return
-                $rate = $investment->rate / 100;                  // e.g., 2.5 => 0.025
-                $newReturn = (pow(1 + $rate, $periods) - 1) * $investment->amount;
+    //             // Compound return
+    //             $rate = $investment->rate / 100;                  // e.g., 2.5 => 0.025
+    //             $newReturn = (pow(1 + $rate, $periods) - 1) * $investment->amount;
 
-                $investment->return = MoneyConverter::fromDecimal($newReturn);
-                $investment->save();
-            }
+    //             $investment->return = MoneyConverter::fromDecimal($newReturn);
+    //             $investment->save();
+    //         }
 
-            $invoice->save();
+    //         $invoice->save();
 
-            $history = HistoryAprobadorInvoice::where('invoice_id', $invoice->id)
-                ->latest()
-                ->first();
+    //         $history = HistoryAprobadorInvoice::where('invoice_id', $invoice->id)
+    //             ->latest()
+    //             ->first();
 
-            if ($history && $history->status_conclusion == null) {
-                $history?->update([
-                    'status_conclusion'  => 'adelantado',
-                    'approval_conclusion_by'      => Auth::id(),
-                    'approval_conclusion_at'      => now(),
-                    'approval_conclusion_comment' => 'Pago adelantado registrado',
-                ]);
-            } else {
+    //         if ($history && $history->status_conclusion == null) {
+    //             $history?->update([
+    //                 'status_conclusion'  => 'adelantado',
+    //                 'approval_conclusion_by'      => Auth::id(),
+    //                 'approval_conclusion_at'      => now(),
+    //                 'approval_conclusion_comment' => 'Pago adelantado registrado',
+    //             ]);
+    //         } else {
 
-                HistoryAprobadorInvoice::create([
-                    'invoice_id'       => $invoice->id,
-                    'status_conclusion' => 'adelantado',
+    //             HistoryAprobadorInvoice::create([
+    //                 'invoice_id'       => $invoice->id,
+    //                 'status_conclusion' => 'adelantado',
 
-                    'approval_conclusion_by'      => Auth::id(),
-                    'approval_conclusion_at'      => now(),
-                    'approval_conclusion_comment' => 'Pago adelantado registrado',
-                ]);
-            }
-
-
+    //                 'approval_conclusion_by'      => Auth::id(),
+    //                 'approval_conclusion_at'      => now(),
+    //                 'approval_conclusion_comment' => 'Pago adelantado registrado',
+    //             ]);
+    //         }
 
 
 
 
-            return response()->json([
-                'message' => 'Pago adelantado registrado correctamente.',
-                'data'    => $invoice->fresh('investments'),
-            ], 200);
-        } catch (AuthorizationException $e) {
 
-            Log::error('No tienes permiso para crear la factura.', [
-                'trace' => $e->getTraceAsString(),
-            ]);
-            return response()->json(['message' => 'No tienes permiso para crear la factura.'], 403);
-        } catch (Throwable $e) {
-            Log::error('Error al crear la factura: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString(),
-            ]);
-            return response()->json(['message' => 'Error al crear la factura.', 'error' => $e->getMessage()], 500);
-        }
-    }
+
+    //         return response()->json([
+    //             'message' => 'Pago adelantado registrado correctamente.',
+    //             'data'    => $invoice->fresh('investments'),
+    //         ], 200);
+    //     } catch (AuthorizationException $e) {
+
+    //         Log::error('No tienes permiso para crear la factura.', [
+    //             'trace' => $e->getTraceAsString(),
+    //         ]);
+    //         return response()->json(['message' => 'No tienes permiso para crear la factura.'], 403);
+    //     } catch (Throwable $e) {
+    //         Log::error('Error al crear la factura: ' . $e->getMessage(), [
+    //             'trace' => $e->getTraceAsString(),
+    //         ]);
+    //         return response()->json(['message' => 'Error al crear la factura.', 'error' => $e->getMessage()], 500);
+    //     }
+    // }
 
     public function cerrar(Request $request, Invoice $invoice)
 
     {
+        Gate::authorize('close', $invoice);
 
         $request->validate([
             'comentario' => 'nullable|string|max:500',
@@ -856,9 +859,7 @@ class InvoiceController extends Controller
     public function abrir(Request $request, Invoice $invoice)
     {
 
-
-
-
+        Gate::authorize('open', $invoice);
 
 
 
