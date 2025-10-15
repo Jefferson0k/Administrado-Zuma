@@ -232,6 +232,7 @@ class InvestorController extends Controller
             ]),
         ]);
     }
+
     public function register(StoreInvestorRequest $request)
 {
     try {
@@ -289,24 +290,44 @@ class InvestorController extends Controller
         
         DB::commit();
 
+        // AGREGADO: Log antes de enviar verificaciones
+        Log::info("=== INICIANDO ENVÍO DE VERIFICACIONES ===", [
+            'investor_id' => $investor->id,
+            'email' => $investor->email,
+            'telephone' => $investor->telephone
+        ]);
+
         // ENVÍO DE AMBAS VERIFICACIONES
         $whatsappSent = false;
         $emailSent = false;
         
         try {
             // 1. Verificación por Email
+            Log::info("Intentando enviar email de verificación...");
             $investor->sendEmailVerificationNotification();
             $emailSent = true;
+            Log::info("✅ Email enviado exitosamente");
         } catch (\Exception $e) {
-            Log::error("Error enviando verificación por email: " . $e->getMessage());
+            Log::error("❌ Error enviando verificación por email: " . $e->getMessage());
+            Log::error("Stack trace: " . $e->getTraceAsString());
         }
         
         try {
-            // 2. Verificación por WhatsApp - usar el teléfono ya normalizado
+            // 2. Verificación por WhatsApp
+            Log::info("Intentando enviar WhatsApp de verificación...", [
+                'telephone_original' => $investor->telephone
+            ]);
             $whatsappSent = $this->sendWhatsAppVerification($investor->telephone);
+            Log::info("Resultado WhatsApp: " . ($whatsappSent ? '✅ Enviado' : '❌ No enviado'));
         } catch (\Exception $e) {
-            Log::error("Error enviando verificación por WhatsApp: " . $e->getMessage());
+            Log::error("❌ Error enviando verificación por WhatsApp: " . $e->getMessage());
+            Log::error("Stack trace: " . $e->getTraceAsString());
         }
+
+        Log::info("=== RESUMEN VERIFICACIONES ===", [
+            'email_sent' => $emailSent,
+            'whatsapp_sent' => $whatsappSent
+        ]);
         
         return response()->json([
             'success' => true,
@@ -323,40 +344,55 @@ class InvestorController extends Controller
     } catch (Throwable $th) {
         DB::rollBack();
         Log::error("Error en registro: " . $th->getMessage());
+        Log::error("Stack trace: " . $th->getTraceAsString());
         return response()->json([
             'success' => false,
             'message' => 'Ocurrió un error al procesar tu registro. Por favor intenta nuevamente.',
         ], 500);
     }
 }
-
 private function sendWhatsAppVerification($telephone)
 {
     try {
-        // Normalizar el teléfono
+        Log::info("=== USING APPROVED TEMPLATE: message_opt_in ===");
+        
         $telephone = preg_replace('/\D/', '', $telephone);
         if (!str_starts_with($telephone, '51')) {
             $telephone = '51' . $telephone;
         }
         
-        $sid = env('TWILIO_SID');
-        $token = env('TWILIO_AUTH_TOKEN');
-        $twilio = new \Twilio\Rest\Client($sid, $token);
+        Log::info("Sending to: +" . $telephone);
         
+        $accountSid = env('TWILIO_SID');
+        $authToken = env('TWILIO_AUTH_TOKEN');
+        $whatsappNumber = env('TWILIO_WHATSAPP_NUMBER');
+
+        $twilio = new \Twilio\Rest\Client($accountSid, $authToken);
+        
+        // Usar el template APROBADO message_opt_in
         $message = $twilio->messages->create(
-            "whatsapp:+$telephone",
+            "whatsapp:+{$telephone}",
             [
-                "from" => "whatsapp:" . env('TWILIO_WHATSAPP_NUMBER'),
-                "body" => "¡Hola! 👋 Bienvenido/a a nuestra plataforma de inversiones.\n\nPara completar tu registro, por favor responde con *SI* para confirmar tu número de WhatsApp. ✅"
+                "from" => "whatsapp:{$whatsappNumber}",
+                "contentSid" => "HX10db80e119e1d3f46e385eec308b33c8" // Template APROBADO
             ]
         );
         
-        Log::info("WhatsApp verification sent to: $telephone, SID: " . $message->sid);
+        Log::info("✅ APPROVED TEMPLATE SENT SUCCESSFULLY", [
+            'message_sid' => $message->sid,
+            'status' => $message->status,
+            'template' => 'message_opt_in'
+        ]);
         
         return true;
         
-    } catch (\Exception $e) {
-        Log::error("Error sending WhatsApp verification: " . $e->getMessage());
+    } catch (\Twilio\Exceptions\RestException $e) {
+        Log::error("❌ Error with approved template: " . $e->getMessage());
+        
+        if ($e->getCode() === 63016) {
+            Log::error("🔧 Aún en Sandbox? Verifica el modo de envío");
+        }
+        
         return false;
     }
 }

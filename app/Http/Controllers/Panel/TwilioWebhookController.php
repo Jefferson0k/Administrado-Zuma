@@ -87,4 +87,10 @@ class TwilioWebhookController extends Controller
             'whatsapp_verified_at' => $investor->whatsapp_verified_at
         ]);
     }
+
+    public function statusCallback(Request $request)
+{
+    Log::info("📱 WhatsApp Status Update:", $request->all());
+    return response()->json(['status' => 'received'], 200);
+}
 }

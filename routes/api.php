@@ -61,6 +61,7 @@ Route::post('register/cliente', [InvestorController::class, 'registerCustomer'])
 Route::prefix('twilio')->group(function () {
     Route::post('/whatsapp-webhook', [TwilioWebhookController::class, 'webhook']);
     Route::get('/check-phone/{phone}', [TwilioWebhookController::class, 'checkPhone']);
+    Route::post('/whatsapp-status', [TwilioWebhookController::class, 'statusCallback']); // Nueva
 });
 
 Route::post('login', [InvestorController::class, 'login']);
