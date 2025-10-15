@@ -34,7 +34,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\HistoryAprobadorInvestor;
 use Throwable;
 use Illuminate\Auth\Events\Registered;
-
+use Predis\Client;
 
 class InvestorController extends Controller
 {
@@ -233,66 +233,133 @@ class InvestorController extends Controller
         ]);
     }
     public function register(StoreInvestorRequest $request)
-    {
-        try {
-            $validatedData = $request->validated();
-            $aliasSlug = Str::slug($validatedData['alias']);
-            $aliasProhibido = Alias::pluck('slug')->some(function ($prohibido) use ($aliasSlug) {
-                return Str::contains($aliasSlug, $prohibido);
-            });
-            if ($aliasProhibido) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'El alias ingresado no está permitido, por favor elige otro.',
-                ], 422);
-            }
-            DB::beginTransaction();
-            /** @var \App\Models\Investor $investor */
-            $investor = Investor::create([
-                'name' => $request->name,
-                'first_last_name' => $request->first_last_name,
-                'second_last_name' => $request->second_last_name,
-                'alias' => $request->alias,
-                'tipo_documento_id' => $request->tipo_documento_id,
-                'document' => $request->document,
-                'nacionalidad' => $request->nacionalidad,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'telephone' => $request->telephone,
-            ]);
-            $investor->createBalance('PEN', 0);
-            $investor->createBalance('USD', 0);
-            $investorCode = InvestorCode::create([
-                'codigo' => 'TEMP',
-                'usado' => true,
-                'investor_id' => $investor->id,
-            ]);
-            $correlativo = str_pad($investorCode->id, 6, '0', STR_PAD_LEFT);
-            $codigo = "INV-0000-{$correlativo}";
-            $investorCode->codigo = $codigo;
-            $investorCode->save();
-            $investor->codigo = $codigo;
-            $investor->save();
-            Log::info("Nuevo código de inversor generado: {$codigo} para el inversor ID: {$investor->id}");
-            
-            DB::commit();
-
-            $investor->sendEmailVerificationNotification();
-            return response()->json([
-                'success' => true,
-                'message' => 'Te has registrado con éxito, te enviaremos un correo para confirmar tu cuenta.',
-                'data' => [
-                    'codigo' => $codigo,
-                ],
-            ], 201);
-        } catch (Throwable $th) {
-            DB::rollBack();
+{
+    try {
+        $validatedData = $request->validated();
+        $aliasSlug = Str::slug($validatedData['alias']);
+        
+        $aliasProhibido = Alias::pluck('slug')->some(function ($prohibido) use ($aliasSlug) {
+            return Str::contains($aliasSlug, $prohibido);
+        });
+        
+        if ($aliasProhibido) {
             return response()->json([
                 'success' => false,
-                'message' => $th->getMessage(),
-            ], 500);
+                'message' => 'El alias ingresado no está permitido, por favor elige otro.',
+            ], 422);
         }
+        
+        DB::beginTransaction();
+        
+        /** @var \App\Models\Investor $investor */
+        $investor = Investor::create([
+            'name' => $request->name,
+            'first_last_name' => $request->first_last_name,
+            'second_last_name' => $request->second_last_name,
+            'alias' => $request->alias,
+            'tipo_documento_id' => $request->tipo_documento_id,
+            'document' => $request->document,
+            'nacionalidad' => $request->nacionalidad,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'telephone' => $request->telephone,
+            'verified' => 0,
+            'status_verified' => 'pending',
+            'whatsapp_verified_at' => null,
+        ]);
+        
+        $investor->createBalance('PEN', 0);
+        $investor->createBalance('USD', 0);
+        
+        $investorCode = InvestorCode::create([
+            'codigo' => 'TEMP',
+            'usado' => true,
+            'investor_id' => $investor->id,
+        ]);
+        
+        $correlativo = str_pad($investorCode->id, 6, '0', STR_PAD_LEFT);
+        $codigo = "INV-0000-{$correlativo}";
+        $investorCode->codigo = $codigo;
+        $investorCode->save();
+        
+        $investor->codigo = $codigo;
+        $investor->save();
+        
+        Log::info("Nuevo código de inversor generado: {$codigo} para el inversor ID: {$investor->id}");
+        
+        DB::commit();
+
+        // ENVÍO DE AMBAS VERIFICACIONES
+        $whatsappSent = false;
+        $emailSent = false;
+        
+        try {
+            // 1. Verificación por Email
+            $investor->sendEmailVerificationNotification();
+            $emailSent = true;
+        } catch (\Exception $e) {
+            Log::error("Error enviando verificación por email: " . $e->getMessage());
+        }
+        
+        try {
+            // 2. Verificación por WhatsApp - usar el teléfono ya normalizado
+            $whatsappSent = $this->sendWhatsAppVerification($investor->telephone);
+        } catch (\Exception $e) {
+            Log::error("Error enviando verificación por WhatsApp: " . $e->getMessage());
+        }
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Te has registrado con éxito. Te hemos enviado un correo para confirmar tu cuenta y un mensaje de WhatsApp para verificar tu número.',
+            'data' => [
+                'userId' => $investor->id,
+                'codigo' => $codigo,
+                'email' => $investor->email,
+                'email_verification_sent' => $emailSent,
+                'whatsapp_verification_sent' => $whatsappSent,
+            ],
+        ], 201);
+        
+    } catch (Throwable $th) {
+        DB::rollBack();
+        Log::error("Error en registro: " . $th->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Ocurrió un error al procesar tu registro. Por favor intenta nuevamente.',
+        ], 500);
     }
+}
+
+private function sendWhatsAppVerification($telephone)
+{
+    try {
+        // Normalizar el teléfono
+        $telephone = preg_replace('/\D/', '', $telephone);
+        if (!str_starts_with($telephone, '51')) {
+            $telephone = '51' . $telephone;
+        }
+        
+        $sid = env('TWILIO_SID');
+        $token = env('TWILIO_AUTH_TOKEN');
+        $twilio = new \Twilio\Rest\Client($sid, $token);
+        
+        $message = $twilio->messages->create(
+            "whatsapp:+$telephone",
+            [
+                "from" => "whatsapp:" . env('TWILIO_WHATSAPP_NUMBER'),
+                "body" => "¡Hola! 👋 Bienvenido/a a nuestra plataforma de inversiones.\n\nPara completar tu registro, por favor responde con *SI* para confirmar tu número de WhatsApp. ✅"
+            ]
+        );
+        
+        Log::info("WhatsApp verification sent to: $telephone, SID: " . $message->sid);
+        
+        return true;
+        
+    } catch (\Exception $e) {
+        Log::error("Error sending WhatsApp verification: " . $e->getMessage());
+        return false;
+    }
+}
     public function login(LoginInvestorRequest $request)
     {
         try {

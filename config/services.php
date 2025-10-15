@@ -34,24 +34,12 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
-    'twilio' => [
+        'twilio' => [
         'sid' => env('TWILIO_SID'),
         'token' => env('TWILIO_AUTH_TOKEN'),
-        'whatsapp_number' => env('TWILIO_WHATSAPP_FROM'),
-        
-        'webhook_url' => env('APP_URL') . '/webhooks/twilio',
-        'verify_signature' => env('TWILIO_VERIFY_SIGNATURE', true),
-        
-        // Configuraciones específicas de WhatsApp
-        'whatsapp' => [
-            'sandbox_mode' => env('TWILIO_WHATSAPP_SANDBOX', false),
-            'max_message_length' => 1600,
-            'rate_limit_per_minute' => 1, // 1 mensaje por minuto por número
-            'verification_expiry_minutes' => 30,
-        ],
+        'whatsapp_from' => env('TWILIO_WHATSAPP_FROM'),
     ],
-
-     'ruc' => [
+    'ruc' => [
         'endpoint' => env('RUC_API_URL'),   // p.ej. https://api.midominio.com/ruc
         'token'    => env('RUC_API_TOKEN'), // si tu API necesita token
     ],
