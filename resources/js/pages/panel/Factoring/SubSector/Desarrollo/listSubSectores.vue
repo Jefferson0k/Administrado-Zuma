@@ -9,8 +9,9 @@ import InputText from 'primevue/inputtext';
 import axios from 'axios';
 import Tag from 'primevue/tag';
 import { debounce } from 'lodash';
-import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
+import UpdateSubSectores from './updateSubSectores.vue';
+import DeleteSubSectores from './deleteSubSectores.vue';
 
 const props = defineProps({
     refresh: {
@@ -23,9 +24,6 @@ const props = defineProps({
     },
 });
 
-const emit = defineEmits(['edit-subsector']);
-
-const confirm = useConfirm();
 const toast = useToast();
 
 const dt = ref();
@@ -37,6 +35,11 @@ const contadorSubSectores = ref(0);
 
 const rowsPerPage = ref(10);
 const currentPage = ref(1);
+
+// Diálogos
+const showUpdateDialog = ref(false);
+const showDeleteDialog = ref(false);
+const selectedSubSector = ref(null);
 
 watch(() => props.refresh, () => {
     loadSubSectores();
@@ -85,7 +88,8 @@ const onPage = (event) => {
 };
 
 const editSubSector = (subsector) => {
-    emit('edit-subsector', subsector);
+    selectedSubSector.value = subsector;
+    showUpdateDialog.value = true;
 };
 
 const confirmDelete = (subsector) => {
@@ -99,35 +103,16 @@ const confirmDelete = (subsector) => {
         return;
     }
 
-    confirm.require({
-        message: `¿Estás seguro de eliminar el subsector "${subsector.name}"?`,
-        header: 'Confirmar eliminación',
-        icon: 'pi pi-exclamation-triangle',
-        acceptLabel: 'Sí, eliminar',
-        rejectLabel: 'Cancelar',
-        accept: () => deleteSubSector(subsector.id)
-    });
+    selectedSubSector.value = subsector;
+    showDeleteDialog.value = true;
 };
 
-const deleteSubSector = async (id) => {
-    try {
-        await axios.delete(`/subsectors/${id}`);
-        toast.add({
-            severity: 'success',
-            summary: 'Éxito',
-            detail: 'Subsector eliminado correctamente',
-            life: 3000
-        });
-        loadSubSectores();
-    } catch (error) {
-        console.error('Error al eliminar subsector:', error);
-        toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: error.response?.data?.message || 'No se pudo eliminar el subsector',
-            life: 3000
-        });
-    }
+const handleSubSectorUpdated = () => {
+    loadSubSectores();
+};
+
+const handleSubSectorDeleted = () => {
+    loadSubSectores();
 };
 
 onMounted(() => {
@@ -136,69 +121,97 @@ onMounted(() => {
 </script>
 
 <template>
-    <DataTable ref="dt" v-model:selection="selectedSubSectores" :value="paginatedSubSectores" dataKey="id" :paginator="true"
-        :rows="rowsPerPage" :totalRecords="filteredSubSectores.length" :first="(currentPage - 1) * rowsPerPage"
-        :loading="loading" @page="onPage" :rowsPerPageOptions="[5, 10, 20]" scrollable scrollHeight="574px"
-        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} subsectores" class="p-datatable-sm">
+    <div>
+        <DataTable 
+            ref="dt" 
+            v-model:selection="selectedSubSectores" 
+            :value="paginatedSubSectores" 
+            dataKey="id" 
+            :paginator="true"
+            :rows="rowsPerPage" 
+            :totalRecords="filteredSubSectores.length" 
+            :first="(currentPage - 1) * rowsPerPage"
+            :loading="loading" 
+            @page="onPage" 
+            :rowsPerPageOptions="[5, 10, 20]" 
+            scrollable 
+            scrollHeight="574px"
+            paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+            currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} subsectores" 
+            class="p-datatable-sm">
 
-        <template #header>
-            <div class="flex flex-wrap gap-2 items-center justify-between">
-                <h4 class="m-0">
-                    Subsectores
-                    <Tag severity="contrast" :value="contadorSubSectores" />
-                </h4>
-                <div class="flex flex-wrap gap-2">
-                    <IconField>
-                        <InputIcon>
-                            <i class="pi pi-search" />
-                        </InputIcon>
-                        <InputText v-model="globalFilterValue" @input="onGlobalSearch" placeholder="Buscar..." />
-                    </IconField>
-                    <Button icon="pi pi-refresh" outlined rounded aria-label="Refresh" @click="loadSubSectores" />
+            <template #header>
+                <div class="flex flex-wrap gap-2 items-center justify-between">
+                    <h4 class="m-0">
+                        Subsectores
+                        <Tag severity="contrast" :value="contadorSubSectores" />
+                    </h4>
+                    <div class="flex flex-wrap gap-2">
+                        <IconField>
+                            <InputIcon>
+                                <i class="pi pi-search" />
+                            </InputIcon>
+                            <InputText v-model="globalFilterValue" @input="onGlobalSearch" placeholder="Buscar..." />
+                        </IconField>
+                        <Button icon="pi pi-refresh" outlined rounded aria-label="Refresh" @click="loadSubSectores" />
+                    </div>
                 </div>
-            </div>
-        </template>
+            </template>
 
-        <Column selectionMode="multiple" style="width: 1rem" :exportable="false" />
-        <Column field="name" header="Nombre" sortable style="min-width: 13rem" />
-        <Column field="creacion" header="Creación" sortable style="min-width: 13rem" />
-        <Column field="update" header="Actualización" sortable style="min-width: 13rem" />
-        <Column header="Estado" style="min-width: 8rem">
-            <template #body="slotProps">
-                <Tag v-if="slotProps.data.vinculado === 1" severity="success" value="Vinculado" />
-                <Tag v-else severity="secondary" value="Sin vincular" />
-            </template>
-        </Column>
-        <Column header="Acciones" style="min-width: 10rem">
-            <template #body="slotProps">
-                <Button 
-                    icon="pi pi-pencil" 
-                    outlined 
-                    rounded 
-                    class="mr-2" 
-                    @click="editSubSector(slotProps.data)"
-                    v-tooltip.top="'Editar subsector'"
-                />
-                <Button 
-                    v-if="slotProps.data.vinculado === 0"
-                    icon="pi pi-trash" 
-                    outlined 
-                    rounded 
-                    severity="danger" 
-                    @click="confirmDelete(slotProps.data)"
-                    v-tooltip.top="'Eliminar subsector'"
-                />
-                <Button 
-                    v-else
-                    icon="pi pi-trash" 
-                    outlined 
-                    rounded 
-                    severity="danger" 
-                    disabled
-                    v-tooltip.top="'No se puede eliminar un subsector vinculado'"
-                />
-            </template>
-        </Column>
-    </DataTable>
+            <Column selectionMode="multiple" style="width: 1rem" :exportable="false" />
+            <Column field="name" header="Nombre" sortable style="min-width: 13rem" />
+            <Column field="creacion" header="Creación" sortable style="min-width: 13rem" />
+            <Column field="update" header="Actualización" sortable style="min-width: 13rem" />
+            <Column header="Estado" style="min-width: 8rem">
+                <template #body="slotProps">
+                    <Tag v-if="slotProps.data.vinculado === 1" severity="success" value="Vinculado" />
+                    <Tag v-else severity="secondary" value="Sin vincular" />
+                </template>
+            </Column>
+            <Column header="Acciones" style="min-width: 10rem">
+                <template #body="slotProps">
+                    <Button 
+                        icon="pi pi-pencil" 
+                        outlined 
+                        rounded 
+                        class="mr-2" 
+                        @click="editSubSector(slotProps.data)"
+                        v-tooltip.top="'Editar subsector'"
+                    />
+                    <Button 
+                        v-if="slotProps.data.vinculado === 0"
+                        icon="pi pi-trash" 
+                        outlined 
+                        rounded 
+                        severity="danger" 
+                        @click="confirmDelete(slotProps.data)"
+                        v-tooltip.top="'Eliminar subsector'"
+                    />
+                    <Button 
+                        v-else
+                        icon="pi pi-trash" 
+                        outlined 
+                        rounded 
+                        severity="danger" 
+                        disabled
+                        v-tooltip.top="'No se puede eliminar un subsector vinculado'"
+                    />
+                </template>
+            </Column>
+        </DataTable>
+
+        <!-- Diálogo de actualización -->
+        <UpdateSubSectores
+            v-model:visible="showUpdateDialog"
+            :subsector="selectedSubSector"
+            @subsector-updated="handleSubSectorUpdated"
+        />
+
+        <!-- Diálogo de eliminación -->
+        <DeleteSubSectores
+            v-model:visible="showDeleteDialog"
+            :subsector="selectedSubSector"
+            @subsector-deleted="handleSubSectorDeleted"
+        />
+    </div>
 </template>
