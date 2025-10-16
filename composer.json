@@ -21,6 +21,7 @@
         "moneyphp/money": "^4.3",
         "owen-it/laravel-auditing": "^14.0",
         "predis/predis": "^3.0",
+        "resend/resend-laravel": "^0.20.0",
         "resend/resend-php": "^0.18.1",
         "spatie/laravel-activitylog": "^4.10",
         "spatie/laravel-permission": "^6.17",

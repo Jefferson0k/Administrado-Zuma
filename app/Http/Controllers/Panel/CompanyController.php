@@ -225,8 +225,7 @@ class CompanyController extends Controller
             return response()->json(['message' => 'Error al eliminar la empresa.'], 500);
         }
     }
-    public function historicalData($companyId)
-    {
+    public function historicalData($companyId){
         $company = Company::find($companyId);
         if (!$company) {
             return response()->json([
@@ -234,8 +233,8 @@ class CompanyController extends Controller
                 "message" => "No se encontró la empresa"
             ], 404);
         }
-        $existingFinanceData = CompanyFinance::where('company_id', $companyId)->first();
 
+        $existingFinanceData = CompanyFinance::where('company_id', $companyId)->first();
         $invoices = Invoice::where('company_id', $companyId)->get();
 
         if ($invoices->isEmpty() && !$existingFinanceData) {
@@ -244,81 +243,114 @@ class CompanyController extends Controller
                 "message" => "No se encontró información financiera para esta empresa"
             ], 404);
         }
-        $currentTotalFacturasFinanciadas = $invoices->count();
-        $currentMontoTotalFinanciado = $invoices->sum(function ($invoice) {
-            return floatval($invoice->amount);
-        });
-        $currentFacturasPagadas = $invoices->where('status', 'paid')->count();
-        $currentFacturasPendientes = $invoices->whereIn('status', ['active', 'inactive'])->count();
-        $facturasReprogramadas = $invoices->where('status', 'reprogramed')->count();
-        $facturasInactivas = $invoices->where('status', 'inactive')->count();
 
-        // Calcular plazo promedio de pago actual
-        $facturasPagadasCollection = $invoices->where('status', 'paid');
-        $currentPlazoPromedioPago = 0;
+        /** =========================
+         * Agrupar facturas por moneda
+         * ========================= */
+        $invoicesPEN = $invoices->where('currency', 'PEN');
+        $invoicesUSD = $invoices->where('currency', 'USD');
 
-        if ($facturasPagadasCollection->count() > 0) {
-            $totalDias = $facturasPagadasCollection->sum(function ($invoice) {
-                $dueDate = new \DateTime($invoice->due_date);
-                $estimatedPayDate = new \DateTime($invoice->estimated_pay_date);
-                return $dueDate->diff($estimatedPayDate)->days;
-            });
-            $currentPlazoPromedioPago = round($totalDias / $facturasPagadasCollection->count());
-        }
+        /** =========================
+         * Función para calcular totales por moneda
+         * ========================= */
+        $calculateFinance = function ($invoices, $existingFinanceData, $currency) {
+            if ($invoices->isEmpty() && !$existingFinanceData) return [];
 
-        // Sumar datos históricos con datos actuales
-        $totalFacturasFinanciadas = $currentTotalFacturasFinanciadas +
-            ($existingFinanceData ? $existingFinanceData->facturas_financiadas : 0);
+            $currentTotalFacturasFinanciadas = $invoices->count();
+            $currentMontoTotalFinanciado = $invoices->sum(fn($i) => floatval($i->amount));
+            $currentFacturasPagadas = $invoices->where('status', 'paid')->count();
 
-        $totalMontoFinanciado = $currentMontoTotalFinanciado +
-            ($existingFinanceData ? floatval($existingFinanceData->monto_total_financiado) : 0);
+            // ✅ Pendientes: status = active/inactive o statusPago vacío
+            $currentFacturasPendientes = $invoices->filter(function ($invoice) {
+                return in_array($invoice->status, ['active', 'inactive'])
+                    || empty($invoice->statusPago);
+            })->count();
 
-        $totalFacturasPagadas = $currentFacturasPagadas +
-            ($existingFinanceData ? $existingFinanceData->pagadas : 0);
+            // Calcular plazo promedio actual
+            $facturasPagadas = $invoices->where('status', 'paid');
+            $currentPlazoPromedioPago = 0;
 
-        $totalFacturasPendientes = $currentFacturasPendientes +
-            ($existingFinanceData ? $existingFinanceData->pendientes : 0);
+            if ($facturasPagadas->count() > 0) {
+                $totalDias = $facturasPagadas->sum(function ($invoice) {
+                    $dueDate = new \DateTime($invoice->due_date);
+                    $estimatedPayDate = new \DateTime($invoice->estimated_pay_date);
+                    return $dueDate->diff($estimatedPayDate)->days;
+                });
+                $currentPlazoPromedioPago = round($totalDias / $facturasPagadas->count());
+            }
 
-        // Calcular plazo promedio ponderado
-        $plazoPromedioPago = 0;
-        if ($existingFinanceData && $existingFinanceData->plazo_promedio_pago > 0 && $currentPlazoPromedioPago > 0) {
-            // Promedio ponderado entre histórico y actual
-            $totalFacturasPagadasHistorico = $existingFinanceData->pagadas;
-            $plazoPromedioPago = round(
-                (($existingFinanceData->plazo_promedio_pago * $totalFacturasPagadasHistorico) +
-                    ($currentPlazoPromedioPago * $currentFacturasPagadas)) /
-                    ($totalFacturasPagadasHistorico + $currentFacturasPagadas)
-            );
-        } elseif ($existingFinanceData && $existingFinanceData->plazo_promedio_pago > 0) {
-            $plazoPromedioPago = $existingFinanceData->plazo_promedio_pago;
-        } else {
-            $plazoPromedioPago = $currentPlazoPromedioPago;
-        }
+            // Obtener valores históricos si existen
+            $facturasHistoricas = $existingFinanceData ? ($existingFinanceData["facturas_financiadas_{$currency}"] ?? 0) : 0;
+            $montoHistorico = $existingFinanceData ? floatval($existingFinanceData["monto_total_financiado_{$currency}"] ?? 0) : 0;
+            $pagadasHistoricas = $existingFinanceData ? ($existingFinanceData["pagadas_{$currency}"] ?? 0) : 0;
+            $pendientesHistoricas = $existingFinanceData ? ($existingFinanceData["pendientes_{$currency}"] ?? 0) : 0;
+            $plazoHistorico = $existingFinanceData ? ($existingFinanceData["plazo_promedio_pago_{$currency}"] ?? 0) : 0;
 
-        // Calcular montos pagados y pendientes
-        $montoPagado = $invoices->sum(function ($invoice) {
-            return floatval($invoice->paid_amount);
-        });
+            // Sumar históricos + actuales
+            $totalFacturas = $facturasHistoricas + $currentTotalFacturasFinanciadas;
+            $totalMonto = $montoHistorico + $currentMontoTotalFinanciado;
+            $totalPagadas = $pagadasHistoricas + $currentFacturasPagadas;
+            $totalPendientes = $pendientesHistoricas + $currentFacturasPendientes;
 
-        $montoPendiente = $totalMontoFinanciado - $montoPagado;
+            // Calcular plazo promedio ponderado
+            $plazoPromedio = 0;
+            if ($plazoHistorico > 0 && $currentPlazoPromedioPago > 0) {
+                $plazoPromedio = round(
+                    (($plazoHistorico * $pagadasHistoricas) + ($currentPlazoPromedioPago * $currentFacturasPagadas)) /
+                    (($pagadasHistoricas + $currentFacturasPagadas) ?: 1)
+                );
+            } elseif ($plazoHistorico > 0) {
+                $plazoPromedio = $plazoHistorico;
+            } else {
+                $plazoPromedio = $currentPlazoPromedioPago;
+            }
 
-        $financeData = (object) [
-            'id' => $existingFinanceData ? $existingFinanceData->id : null,
+            return [
+                "sales_volume_{$currency}" => number_format($totalMonto, 2, '.', ''),
+                "facturas_financiadas_{$currency}" => $totalFacturas,
+                "monto_total_financiado_{$currency}" => number_format($totalMonto, 2, '.', ''),
+                "pagadas_{$currency}" => $totalPagadas,
+                "pendientes_{$currency}" => $totalPendientes,
+                "plazo_promedio_pago_{$currency}" => $plazoPromedio
+            ];
+        };
+
+        /** =========================
+         * Calcular datos PEN y USD
+         * ========================= */
+        $penData = $calculateFinance($invoicesPEN, $existingFinanceData, 'pen');
+        $usdData = $calculateFinance($invoicesUSD, $existingFinanceData, 'usd');
+
+        /** =========================
+         * Datos generales
+         * ========================= */
+        $general = [
+            'id' => $existingFinanceData->id ?? null,
             'company_id' => $companyId,
             'company' => $company,
-            'facturas_financiadas' => $totalFacturasFinanciadas,
-            'monto_total_financiado' => number_format($totalMontoFinanciado, 2, '.', ''),
-            'pagadas' => $totalFacturasPagadas,
-            'pendientes' => $totalFacturasPendientes,
-            'reprogramadas' => $facturasReprogramadas,
-            'inactivas' => $facturasInactivas,
-            'plazo_promedio_pago' => $plazoPromedioPago,
-            'monto_pagado' => number_format($montoPagado, 2, '.', ''),
-            'monto_pendiente' => number_format($montoPendiente, 2, '.', '')
+            'facturas_financiadas' => ($penData['facturas_financiadas_pen'] ?? 0) + ($usdData['facturas_financiadas_usd'] ?? 0),
+            'monto_total_financiado' => number_format(
+                ($penData['monto_total_financiado_pen'] ?? 0) + ($usdData['monto_total_financiado_usd'] ?? 0),
+                2,
+                '.',
+                ''
+            ),
+            'pagadas' => ($penData['pagadas_pen'] ?? 0) + ($usdData['pagadas_usd'] ?? 0),
+            // ✅ Pendientes general (suma PEN + USD)
+            'pendientes' => ($penData['pendientes_pen'] ?? 0) + ($usdData['pendientes_usd'] ?? 0),
+            'plazo_promedio_pago' => round(
+                ((($penData['plazo_promedio_pago_pen'] ?? 0) + ($usdData['plazo_promedio_pago_usd'] ?? 0)) / 2)
+            )
         ];
+
+        /** =========================
+         * Unir todo
+         * ========================= */
+        $financeData = (object) array_merge($general, $penData, $usdData);
 
         return new CompanyFinanceResource($financeData);
     }
+
     public function showcompany(string $id)
     {
         try {
