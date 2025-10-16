@@ -164,7 +164,7 @@ class BlogController extends Controller
 
             // ✅ Acepta EITHER imagen (single) OR imagenes (array)
             'imagenes'          => 'required_without:imagen|array|min:1',
-            'imagenes.*'        => 'image|mimes:jpeg,jpg,png|max:10240',
+            'imagenes.*'        => 'image|mimes:jpeg,jpg,png',
             'imagen'            => 'required_without:imagenes|image|mimes:jpeg,jpg,png|max:10240',
 
             'category_id'       => 'required', // CSV o array
@@ -237,9 +237,10 @@ class BlogController extends Controller
                 }
             }
 
+            // final line inside the transaction
             return response()->json([
                 'message' => 'Publicación creada exitosamente.',
-                'post'    => $post->load('images'), // si defines la relación
+                'id'      => $post->id,
             ], 201);
         });
     }

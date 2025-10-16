@@ -122,7 +122,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/blog/registro', [BlogController::class, 'create']);
     Route::get('/blog/seguimiento', [BlogController::class, 'seguimiento']);
     Route::get('/blog/categorias', [BlogController::class, 'categorias']);
-    Route::get('/blog/posts', [BlogController::class, 'index']);
+    Route::get('/blog/posts', [BlogController::class, 'index'])->name('blog.posts');
 
     Route::post('/blog/guardar-categoria', [BlogController::class, 'guardar_categoria']);
     Route::get('/blog/eliminar-categoria/{id}', [BlogController::class, 'eliminar_categoria']);

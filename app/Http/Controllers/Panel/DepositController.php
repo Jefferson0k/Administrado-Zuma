@@ -519,7 +519,7 @@ class DepositController extends Controller
 
             $request->validate([
                 'files'   => 'required|array',
-                'files.*' => 'file|max:20480', // 20MB por archivo
+                'files.*' => 'file', // 20MB por archivo
             ]);
 
             $stored = [];

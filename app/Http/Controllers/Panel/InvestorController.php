@@ -1450,7 +1450,7 @@ private function sendWhatsAppVerification($telephone)
     {
         try {
             $request->validate([
-                'document_front' => 'required|file|image|mimes:jpg,jpeg,png|max:5120'
+                'document_front' => 'required|file|image|mimes:jpg,jpeg,png'
             ]);
 
             $investor = Investor::findOrFail($id);
@@ -1491,7 +1491,7 @@ private function sendWhatsAppVerification($telephone)
     {
         try {
             $request->validate([
-                'document_back' => 'required|file|image|mimes:jpg,jpeg,png|max:5120'
+                'document_back' => 'required|file|image|mimes:jpg,jpeg,png'
             ]);
 
             $investor = Investor::findOrFail($id);
@@ -1534,7 +1534,7 @@ private function sendWhatsAppVerification($telephone)
     {
         try {
             $request->validate([
-                'investor_photo_path' => 'required|file|image|mimes:jpg,jpeg,png|max:5120'
+                'investor_photo_path' => 'required|file|image|mimes:jpg,jpeg,png'
             ]);
 
             $investor = Investor::findOrFail($id);
@@ -1776,7 +1776,7 @@ private function sendWhatsAppVerification($telephone)
     {
         try {
             $request->validate([
-                'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+                'file' => 'required|file|mimes:jpg,jpeg,png,pdf',
                 'notes' => 'nullable|string|max:500',
             ]);
 
@@ -1905,7 +1905,7 @@ private function sendWhatsAppVerification($telephone)
     {
         try {
             $request->validate([
-                'file'  => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+                'file'  => 'required|file|mimes:jpg,jpeg,png,pdf',
                 'notes' => 'nullable|string|max:500', // 👈 usa "notes" (igual que la migración)
             ]);
 

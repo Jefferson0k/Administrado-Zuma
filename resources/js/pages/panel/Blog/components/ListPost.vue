@@ -155,6 +155,24 @@
   </Dialog>
 
   <ConfirmDialog />
+
+
+
+  <Toast position="top-center" group="confirm">
+    <template #message="slotProps">
+      <div class="flex items-start gap-3">
+        <i class="pi pi-exclamation-triangle mt-1"></i>
+        <div class="flex-1">
+          <div class="font-semibold">¿Publicar ahora?</div>
+          <div class="text-sm opacity-80">"{{ slotProps.message?.data?.item?.titulo || 'Sin título' }}"</div>
+          <div class="mt-2 flex gap-2">
+            <Button size="small" label="Sí, publicar" @click="onConfirmToast(slotProps)" />
+            <Button size="small" label="Cancelar" text @click="onRejectToast(slotProps)" />
+          </div>
+        </div>
+      </div>
+    </template>
+  </Toast>
 </template>
 
 <script setup>
@@ -175,12 +193,15 @@ import Menu from 'primevue/menu'
 import Dialog from 'primevue/dialog'
 import FileUpload from 'primevue/fileupload'
 import ConfirmDialog from 'primevue/confirmdialog'
+import Toast from 'primevue/toast'
 import VerDialog from './ver.vue'
 import Select from 'primevue/select'
 import MultiSelect from 'primevue/multiselect'
 import Calendar from 'primevue/calendar'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
+
+
 
 const toast = useToast()
 const confirm = useConfirm()
@@ -253,6 +274,8 @@ function toggleMenu(event, item) {
   selectedItem.value = item
   menuItems.value = [
     { label: 'Publicar', icon: 'pi pi-play', command: () => publicar(item) },
+    { label: 'Publicar (confirmar)', icon: 'pi pi-check-circle', command: () => confirmarPorToast(item) },
+
     { label: 'Ver imagen', icon: 'pi pi-image', command: () => verImagen(item), disabled: !item.imagen_url && !item.imagen },
 
     { label: 'Editar', icon: 'pi pi-pencil', command: () => editar(item) },
@@ -261,6 +284,30 @@ function toggleMenu(event, item) {
   menu.value.toggle(event)
 }
 
+
+
+function confirmarPorToast(item) {
+  toast.add({
+    group: 'confirm',
+    severity: 'warn',
+    summary: 'Confirmar publicación',
+    data: { item },
+    life: 0,         // sticky
+    closable: false, // obliga a usar los botones
+  })
+}
+
+async function onConfirmToast({ message, close }) {
+  const item = message?.data?.item
+  // Reutiliza tu flujo actual sin tocar publicar()
+  await publicar(item)
+  close && close()
+}
+
+function onRejectToast({ close }) {
+  toast.add({ severity: 'info', summary: 'Cancelado', detail: 'Acción cancelada por el usuario', life: 2000 })
+  close && close()
+}
 // ==== Utils de rutas para imágenes ====
 // If backend sends absolute URLs (S3/MinIO), use them.
 // Otherwise, fall back to legacy local paths.
@@ -673,6 +720,25 @@ function getEstadoSeverity(stateId) {
 // ========= Lifecycles =========
 onMounted(async () => {
   await Promise.all([obtenerPost(), obtenerProductos()])
+
+  // 🔔 show toast after redirect if ?toast=post_created
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('toast') === 'post_created') {
+    toast.add({
+      severity: 'success',
+      summary: 'Éxito',
+      detail: 'Publicación creada correctamente',
+      life: 3000
+    })
+    // clean the URL so it doesn't re-trigger on refresh
+    params.delete('toast')
+    const newUrl =
+      window.location.pathname +
+      (params.toString() ? `?${params.toString()}` : '') +
+      window.location.hash
+    window.history.replaceState({}, '', newUrl)
+  }
+
 })
 
 watch(() => props.refresh, () => {
