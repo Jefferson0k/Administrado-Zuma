@@ -1,85 +1,208 @@
-<!DOCTYPE html>
+@php
+    $appName = $appName ?? 'ZUMA';
+    $brandPrimary = $brandPrimary ?? '#fd4a2a';
+    $brandButton = $brandButton ?? '#3B82F6';
+    $title = $title ?? 'Verifica tu correo - ZUMA';
+    $userName = $userName ?? 'Usuario';
+    $ctaUrl = $ctaUrl ?? env('CLIENT_APP_URL', 'https://zuma.com.pe');
+    $companyAddr = $companyAddr ?? 'Av. Faustino Sánchez Carrión 417, Magdalena del Mar, Lima – Perú';
+    $prefsUrl = $prefsUrl ?? '#';
+    $whatsappUrl = $whatsappUrl ?? '#';
+    $supportPhone = $supportPhone ?? '+51 999 999 999';
+@endphp
+<!doctype html>
 <html lang="es">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8">
+    <meta name="x-apple-disable-message-reformatting">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Verifica tu correo - ZUMA</title>
+
+    <!-- Tell clients we only support light colors (prevents auto-invert in many apps) -->
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
+
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
+        @media (max-width:600px) {
+            .container {
+                width: 100% !important;
+                padding: 0 16px !important
+            }
+
+            .hero-title {
+                font-size: 20px !important;
+                line-height: 26px !important
+            }
         }
 
-        .header {
-            background-color: #f8f9fa;
-            padding: 20px;
-            text-align: center;
-            border-radius: 8px 8px 0 0;
+        a {
+            text-decoration: none
         }
 
-        .content {
-            background-color: #fff;
-            padding: 30px;
-            border: 1px solid #dee2e6;
+        /* Dark-mode overrides for clients that still try to invert */
+        @media (prefers-color-scheme: dark) {
+            .darkmode-bg {
+                background: #f7f7f7 !important;
+            }
+
+            .darkmode-text,
+            .darkmode-text p,
+            .darkmode-text span,
+            .darkmode-text li {
+                color: #111111 !important;
+            }
         }
 
-        .button {
-            display: inline-block;
-            padding: 12px 24px;
-            background-color: #007bff;
-            color: #fff;
-            text-decoration: none;
-            border-radius: 4px;
-            margin: 20px 0;
+        /* Outlook.com/Windows Mail dark mode */
+        [data-ogsc] .darkmode-bg {
+            background: #f7f7f7 !important;
         }
 
-        .footer {
-            background-color: #f8f9fa;
-            padding: 20px;
-            text-align: center;
-            border-radius: 0 0 8px 8px;
-            font-size: 14px;
-            color: #6c757d;
+        [data-ogsc] .darkmode-text {
+            color: #111111 !important;
         }
+
+        /* Gmail iOS often respects inline colors, but keep class anyway */
     </style>
 </head>
 
-<body>
+<body style="margin:0;padding:0;background:#F3F4F6;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+
+        <!-- Barra superior (misma anchura que la tarjeta 640px) -->
+        <tr>
+            <td align="center" style="padding:0 0 0 0;">
+                <table class="container" role="presentation" width="640" cellspacing="0" cellpadding="0" border="0"
+                    style="width:640px;max-width:640px;background:#fd4a2a;color:#E5E7EB;">
+                    <tr>
+                        <td style="padding:5px 0; text-align:center;">
+                            
+                                <img src="{{ asset('imagenes/zuma-logo.png') }}" width="370" height="90"
+                                    alt="Logo" style="display:block;margin:0 auto ;">
+                            
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+
+        <!-- Tarjeta (GRIS) -->
+        <tr>
+            <td align="center">
+                <table class="container darkmode-bg" role="presentation" width="640" cellspacing="0" cellpadding="0"
+                    border="0"  style="width:640px;max-width:640px;background:#f7f7f7;margin:0 auto;">
+                    <tr>
+                        <td style="padding:8px 32px 8px 32px;text-align:center;">
+
+                            
+
+                            <!-- Título -->
+                            <h1 class="hero-title darkmode-text"
+                                style="margin:8px 0;font:800 22px/28px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;color:#111111;text-decoration:underline;">
+                                {{ $title }}
+                            </h1>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="darkmode-text"
+                            style="padding:0 32px 6px 32px;color:#111111;font:400 14px/22px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;">
+                            <p style="color:#374151;font-size:15px;text-align:left;max-width:520px;margin:0 auto 12px;">
+                                Hola <strong>{{ $userName }}</strong>,<br><br>
+                                Gracias por registrarte en nuestra plataforma de inversiones.
+                                <strong>Para completar tu registro y acceder a todas las funcionalidades, por favor verifica tu dirección de email haciendo clic en el siguiente botón:</strong>.
+                                 
+                            </p>
+
+                          
 
 
-    <div class="content">
+                            <p>Si el botón no funciona, puedes copiar y pegar este enlace en tu navegador:</p>
+                            <p style="word-break: break-all; color: #007bff;">{{ $url }}</p>
 
-        <div class="content" style="padding:0; border:0;">
-            <div style="position:relative; width:600px; height:900px; margin:0 auto;">
-                <a href="{{ $url }}" style="display:block; line-height:0;">
-                    <img src="{{ asset('imagenes/hasVerifiedEmail.png') }}" width="550" height="730" alt="ZUMA"
-                        style="display:block; width:550px; height:730px; border:0; margin:0 auto;">
-                </a>
+                            <ol
+                                style="color:#111827;text-align:left;max-width:520px;margin:0 auto 18px;padding-left:20px;">
+                                <li>Este enlace de verificación expirará en  <strong>{{ config('auth.verification.expire', 60) }} minutos.</strong>.</li>
+                                <li>Si no creaste esta cuenta, puedes ignorar este email.</li>
+                            </ol>
 
-                <!-- Texto sobre la imagen, 100px desde arriba -->
-                <div style="position:absolute; top:180px; left:0; width:100%; text-align:center;">
-                    <h2 style="margin:0; font-family:Arial, sans-serif; font-size:45px; color:#6192f3;">
-                        {{ $investor->name }}
-                    </h2>
-                </div>
-            </div>
-        </div>
+                            <p style="text-align:center;margin:18px 0 22px 0;">
+                                <a href="{{ $url }}" class="btn"
+                                    style="display:inline-block;padding:12px 18px;border-radius:28px;font-weight:700;color:#FFFFFF;background:{{ $brandButton }};box-shadow:0 2px 0 rgba(0,0,0,.12);">
+                                    Verificar Email
+                                </a>
+                            </p>
 
 
 
+                            <p style="color:#111827;font-size:13px;margin-top:18px;">Gracias por tu colaboración,<br>El
+                                equipo de
+                                {{ $appName }}
+                            </p>
 
+                            <hr style="border:none;border-top:1px solid #D1D5DB;margin:22px 0;">
 
+                            <!-- WhatsApp ayuda -->
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                                style="margin:0 0 6px 0;">
+                                <tr>
+                                    <td width="28" valign="top" style="padding:0 8px 0 0;">
+                                        <span
+                                            style="display:inline-block;width:24px;height:24px;border-radius:999px;background:#111111;color:#FFFFFF;text-align:center;line-height:24px;font:700 14px/24px system-ui;">W</span>
+                                    </td>
+                                    <td class="darkmode-text"
+                                        style="font:500 13px/18px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;color:#111111;">
+                                        ¿Necesitas ayuda? Escríbenos a nuestro <strong>WhatsApp
+                                            {{ $supportPhone }}</strong>
+                                        @if(!empty($whatsappUrl) && $whatsappUrl !== '#')
+                                            &nbsp;<a href="{{ $whatsappUrl }}"
+                                                style="color:#111111;text-decoration:underline;">Abrir
+                                                WhatsApp</a>
+                                        @endif
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
 
-    </div>
+        <!-- Pie oscuro -->
+        <tr>
+            <td align="center" style="padding:0 0 24px 0;">
+                <table class="container" role="presentation" width="640" cellspacing="0" cellpadding="0" border="0"
+                    style="width:640px;max-width:640px;background:#0B0C0E;color:#E5E7EB;">
+                    <tr>
+                        <td style="padding:20px 24px;text-align:center;">
+                            <p
+                                style="margin:0 0 10px 0;font:500 12px/18px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;color:#E5E7EB;">
+                                {{ $companyAddr }}
+                            </p>
+                            {{-- <p style="margin:0 0 10px 0;">
+                                <a href="{{ $prefsUrl }}"
+                                    style="color:#A3A7AD;font:500 12px/18px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;text-decoration:underline;">
+                                    Gestionar preferencias
+                                </a>
+                            </p> --}}
+                            <p
+                                style="margin:0;font:500 11px/16px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;color:#A3A7AD;">
+                                © {{ $footerYear ?? date('Y') }} {{ $appName }}. Todos los derechos reservados.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        <tr>
 
-    <div class="footer">
-        <p>Saludos,<br>Equipo ZUMA</p>
-    </div>
+              <div style="text-align: center;">
+                                    <a href="{{ $url }}" class="button">Verificar Email</a>
+                                </div>   
+        </tr>
+
+    </table>
 </body>
 
 </html>

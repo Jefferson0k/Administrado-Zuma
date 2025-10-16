@@ -91,112 +91,93 @@ class ProfileController extends Controller
         try {
             $frontend = rtrim(env('CLIENT_APP_URL', 'https://zuma.com.pe'), '/');
 
-            Log::info('EmailVerification: inicio', [
-                'action'     => 'verify',
-                'route_id'   => $id,
-                'route_hash' => $hash,
-                'full_url'   => $request->fullUrl(),
-                'ip'         => $request->ip(),
-                'agent'      => $request->userAgent(),
+            Log::info('EmailVerification: start', [
+                'id'   => $id,
+                'hash' => $hash,
+                'url'  => $request->fullUrl(),
             ]);
 
-            $validatedData = $request->validated();
-
-            $investor = Investor::find($id);
+            // 1) Load investor
+            $investor = \App\Models\Investor::find($id);
             if (!$investor) {
-                Log::warning('EmailVerification: usuario no encontrado', ['route_id' => $id]);
-
-                // Browser -> redirige al frontend
-                if (!$request->expectsJson()) {
-                    return redirect()->away($this->frontendUrl('/email-verify', ['status' => 'not_found']));
-
-                }
-                return response()->json(['success' => false, 'message' => 'Usuario no encontrado.'], 404);
+                Log::warning('EmailVerification: investor not found', ['id' => $id]);
+                return $request->expectsJson()
+                    ? response()->json(['success' => false, 'message' => 'Usuario no encontrado.'], 404)
+                    : redirect()->away($this->frontendUrl('/email-verify', ['status' => 'not_found']));
             }
 
-            // Firma (relativa)
-            $signatureIsValid = URL::hasValidSignature($request) || URL::hasValidSignature($request, false);
-            Log::info('EmailVerification: check firma', ['valid_signature' => $signatureIsValid]);
+            // 2) Signature (RELATIVE only)
+            $signatureIsValid = \Illuminate\Support\Facades\URL::hasValidSignature($request, false);
+            Log::info('EmailVerification: signature', ['relative_valid' => $signatureIsValid]);
 
-            if (! $signatureIsValid) {
-                Log::warning('EmailVerification: firma inválida/expirada', ['reason' => 'invalid_signature_or_expired']);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Enlace de verificación inválido o expirado.'
-                ], 400);
+            if (!$signatureIsValid) {
+                Log::warning('EmailVerification: invalid/expired signature');
+                return $request->expectsJson()
+                    ? response()->json(['success' => false, 'message' => 'Enlace de verificación inválido o expirado.'], 400)
+                    : redirect()->away($this->frontendUrl('/email-verify', ['status' => 'invalid']));
             }
 
-            // Hash
+            // 3) Hash must match the email used at generation time
             $expectedHash = sha1($investor->getEmailForVerification());
             $hashMatch = hash_equals($expectedHash, $hash);
-            Log::info('EmailVerification: check hash', [
-                'expected_hash' => $expectedHash,
-                'received_hash' => $hash,
-                'match'         => $hashMatch,
+            Log::info('EmailVerification: hash check', [
+                'expected' => $expectedHash,
+                'got'      => $hash,
+                'match'    => $hashMatch,
+                'email'    => $investor->getEmailForVerification(),
             ]);
-            if (! $hashMatch) {
-                Log::warning('EmailVerification: hash inválido');
-
-                if (!$request->expectsJson()) {
-                    return redirect()->away("{$frontend}/email-verify?status=invalid");
-                }
-                return response()->json(['success' => false, 'message' => 'Enlace de verificación inválido.'], 400);
+            if (!$hashMatch) {
+                return $request->expectsJson()
+                    ? response()->json(['success' => false, 'message' => 'Enlace de verificación inválido.'], 400)
+                    : redirect()->away($this->frontendUrl('/email-verify', ['status' => 'invalid']));
             }
 
-            Log::info('EmailVerification: estado previo', [
-                'already_verified'  => $investor->hasVerifiedEmail(),
-                'email_verified_at' => $investor->email_verified_at,
-                'investor_id'       => $investor->id,
-            ]);
-
+            // 4) If already verified, just go to login
             if ($investor->hasVerifiedEmail()) {
-                if (!$request->expectsJson()) {
-                    return redirect()->away($this->frontendUrl('/iniciar-sesion'));
-                }
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Tu correo ya estaba verificado.',
-                    'data'    => $investor
-                ], 200);
+                Log::info('EmailVerification: already verified', ['investor_id' => $investor->id]);
+                return $request->expectsJson()
+                    ? response()->json(['success' => true, 'message' => 'Tu correo ya estaba verificado.'], 200)
+                    : redirect()->away($this->frontendUrl('/iniciar-sesion'));
             }
 
-            $investor->markEmailAsVerified();
-            event(new Verified($investor));
+            // 5) Force the verification timestamp and save
+            //    (bypasses fillable; works even if model uses guarded)
+            $now = now();
+            $investor->forceFill(['email_verified_at' => $now])->save();
 
-            Log::info('EmailVerification: marcado como verificado', [
+            // 6) Re-load fresh and confirm
+            $investor->refresh();
+            $confirmed = $investor->hasVerifiedEmail() || !is_null($investor->email_verified_at);
+
+            Log::info('EmailVerification: saved', [
                 'investor_id'       => $investor->id,
                 'email_verified_at' => $investor->email_verified_at,
+                'confirmed'         => $confirmed,
             ]);
 
-            // Browser: redirige a tu frontend (página de éxito)
-            if (!$request->expectsJson()) {
-                return redirect()->away($this->frontendUrl('/iniciar-sesion'));
+            if (!$confirmed) {
+                // Hard fallback if the trait/method behaves unexpectedly
+                Log::error('EmailVerification: not confirmed after save (check DB column & migrations)');
+                return $request->expectsJson()
+                    ? response()->json(['success' => false, 'message' => 'No se pudo verificar el correo.'], 500)
+                    : redirect()->away($this->frontendUrl('/email-verify', ['status' => 'error']));
             }
 
-            // API: responde JSON
-            return response()->json([
-                'success' => true,
-                'message' => 'Tu cuenta ha sido activada correctamente.',
-                'data'    => $investor
-            ], 200);
+            // Fire event (optional but standard)
+            event(new \Illuminate\Auth\Events\Verified($investor));
+
+            // OK -> login page
+            return $request->expectsJson()
+                ? response()->json(['success' => true, 'message' => 'Cuenta activada correctamente.'], 200)
+                : redirect()->away($this->frontendUrl('/iniciar-sesion'));
         } catch (\Throwable $th) {
-            Log::error('EmailVerification: excepción en verify', [
-                'error' => $th->getMessage(),
-                'trace' => $th->getTraceAsString(),
-            ]);
-
-            // Browser: redirige a error genérico del frontend
-            if (!$request->expectsJson()) {
-                $code = $th->getCode();
-                return redirect()->away(rtrim(env('CLIENT_APP_URL', 'https://zuma.com.pe'), '/') . '/email-verify?status=error');
-            }
-
-            return response()->json([
-                'success' => false,
-                'message' => $th->getMessage(),
-            ], 500);
+            Log::error('EmailVerification: exception', ['error' => $th->getMessage()]);
+            return $request->expectsJson()
+                ? response()->json(['success' => false, 'message' => $th->getMessage()], 500)
+                : redirect()->away($this->frontendUrl('/email-verify', ['status' => 'error']));
         }
     }
+
 
 
     /**

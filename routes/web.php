@@ -71,6 +71,7 @@ use App\Http\Controllers\BlogController;
 use App\Http\Controllers\Panel\DetalleInversionistaHipotecaController;
 use App\Http\Controllers\Panel\SolicitudController;
 use App\Http\Controllers\Web\SubastaHipotecas\TipoInmuebleController;
+use App\Http\Controllers\PublicS3ImageController;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 
@@ -78,6 +79,9 @@ Route::get('/', function () {
     return Inertia::render('Welcome');
 })->name('home');
 
+
+Route::get('/s3/public/{path}', [PublicS3ImageController::class, 'show'])
+    ->where('path', '.*');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/investors/{id}', [InvestorController::class, 'show']);

@@ -63,7 +63,7 @@ Route::post('/twilio/whatsapp/status', [TwilioWebhookController::class, 'handleM
 
 Route::post('login', [InvestorController::class, 'login']);
 Route::post('/customers/register', [RegisteredCustomerController::class, 'store']);
-Route::get('/email/verify/{id}/{hash}', [ProfileController::class, 'emailVerification'])
+Route::get('/email/verify/{id}/{hash}', action: [ProfileController::class, 'emailVerification'])
     ->name('investor.verification.verify');
 Route::get('/consultar-dni/{dni?}', [ConsultasDni::class, 'consultar'])->name('consultar.dni');
 Route::post('/email/verify/resend/{id}', [InvestorController::class, 'resendEmailVerification']);

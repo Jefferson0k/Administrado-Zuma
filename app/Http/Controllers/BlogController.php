@@ -598,13 +598,13 @@ class BlogController extends Controller
             $disk = Storage::disk('s3');
 
             $p->imagen_url = $p->imagen
-                ? url("s3/{$p->imagen}")
+                ? url("s3/public/{$p->imagen}")
                 : null;
 
             if ($p->relationLoaded('images')) {
                 foreach ($p->images as $img) {
                     $img->url = $img->image_path
-                        ? url("s3/{$img->image_path}")
+                        ? url("s3/public{$img->image_path}")
                         : null;
                 }
             }
@@ -649,13 +649,13 @@ class BlogController extends Controller
         $disk = Storage::disk('s3');
 
         $post->imagen_url = $post->imagen
-            ? url("s3/{$post->imagen}")
+            ? url("s3/public/{$post->imagen}")
             : null;
 
         if ($post->relationLoaded('images')) {
             foreach ($post->images as $img) {
                 $img->url = $img->image_path
-                    ? url("s3/{$img->image_path}")
+                    ? url("s3/public/{$img->image_path}")
                     : null;
             }
         }
