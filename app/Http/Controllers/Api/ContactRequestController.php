@@ -8,6 +8,8 @@ use App\Models\ContactRequest;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Exception;
+use App\Http\Requests\Contact\NewsletterRequest;
+use App\Models\Newsletter;
 
 class ContactRequestController extends Controller
 {
@@ -61,12 +63,51 @@ class ContactRequestController extends Controller
             Log::info('Internal contact request created successfully', ['id' => $contactRequest->id]);
 
             // Intentar enviar emails solo si el registro se creó exitosamente
-            // $this->sendContactEmails($request->validated());
+            $this->sendContactEmails($request->validated());
 
             return response()->json([
                 'message' => 'Su mensaje ha sido enviado',
                 'success' => true,
                 'id' => $contactRequest->id
+            ], 201);
+
+        } catch (Exception $e) {
+            Log::error('Error in storeInternal', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
+
+            return response()->json([
+                'message' => 'There was an error processing your request. Please try again.',
+                'success' => false,
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
+    }
+    
+    public function newsletter(NewsletterRequest $request)
+    {
+        try {
+            // Primero, crear el registro
+            $newsletterRequest = Newsletter::create([
+                ...$request->validated(),
+                'status' => 'internal',
+            ]);
+            
+            
+
+            
+            Log::info('Internal contact request created successfully', ['id' => $newsletterRequest->id]);
+
+            // Intentar enviar emails solo si el registro se creó exitosamente
+             $this->sendContactEmails($request->validated());
+
+            return response()->json([
+                'message' => 'Ha sido registrado',
+                'success' => true,
+                'id' => $newsletterRequest->id
             ], 201);
 
         } catch (Exception $e) {
@@ -111,7 +152,7 @@ class ContactRequestController extends Controller
         // Enviar email al admin
         try {
             $adminMail = new \App\Mail\ContactToAdminMail($data);
-            Mail::to('adminzuma@zuma.com.pe')->send($adminMail);
+            Mail::to('info@zuma.com.pe')->send($adminMail);
             Log::info('Admin email sent successfully');
         } catch (Exception $e) {
             Log::error('Failed to send admin email', [
