@@ -5,7 +5,7 @@
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} inversiones" @page="onPage"
         :sortField="sortField" :sortOrder="sortOrder" @sort="onSort" scrollable scrollHeight="574px"
-        class="p-datatable-sm"  >
+        class="p-datatable-sm">
         <!-- Header -->
         <template #header>
             <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -56,8 +56,12 @@
                             <Button icon="pi pi-filter-slash" severity="secondary" outlined @click="clearFilters" />
                         </div>
                     </div>
-                    <Button icon="pi pi-refresh" outlined rounded aria-label="Refresh" severity="contrast"
-                        @click="loadInvestments" />
+                    <div class="flex gap-2">
+                        <Button label="Exportar" icon="pi pi-download" severity="success"
+                            @click="exportInvestmentsToExcel" />
+                        <Button icon="pi pi-refresh" outlined rounded aria-label="Refresh" severity="contrast"
+                            @click="loadInvestments" />
+                    </div>
                 </div>
             </div>
         </template>
@@ -94,6 +98,8 @@
 
 <script setup lang="ts">
 import axios from 'axios';
+import { useToast } from 'primevue/usetoast';
+
 import { debounce } from 'lodash';
 import Button from 'primevue/button';
 import Column from 'primevue/column';
@@ -110,6 +116,7 @@ const investments = ref<any[]>([]);
 const selectedInvestments = ref<any[]>([]);
 const loading = ref(false);
 const totalRecords = ref(0);
+const toast = useToast();
 
 const rowsPerPage = ref(10);
 const currentPage = ref(1);
@@ -135,23 +142,23 @@ function normalize(v: unknown) {
 }
 
 function applySortIfNeeded() {
-  if (!sortField.value || !sortOrder.value) return
-  const field = sortField.value
-  const order = sortOrder.value
+    if (!sortField.value || !sortOrder.value) return
+    const field = sortField.value
+    const order = sortOrder.value
 
-  investments.value = [...investments.value].sort((a, b) => {
-    const av = normalize(a?.[field as keyof typeof a])
-    const bv = normalize(b?.[field as keyof typeof b])
-    if (av < bv) return order === 1 ? -1 : 1
-    if (av > bv) return order === 1 ? 1 : -1
-    return 0
-  })
+    investments.value = [...investments.value].sort((a, b) => {
+        const av = normalize(a?.[field as keyof typeof a])
+        const bv = normalize(b?.[field as keyof typeof b])
+        if (av < bv) return order === 1 ? -1 : 1
+        if (av > bv) return order === 1 ? 1 : -1
+        return 0
+    })
 }
 
 function onSort(e: { sortField: string; sortOrder: number }) {
-  sortField.value = e.sortField
-  sortOrder.value = e.sortOrder
-  applySortIfNeeded()
+    sortField.value = e.sortField
+    sortOrder.value = e.sortOrder
+    applySortIfNeeded()
 }
 
 
@@ -329,6 +336,42 @@ function formatCurrency(amount: string | number, currency: string) {
         maximumFractionDigits: 2,
     }).format(num);
 }
+
+
+
+// Exportar a Excel respetando filtros activos
+const exportInvestmentsToExcel = async () => {
+  try {
+    const params: any = {};
+
+    if (filters.value.razon_social) params.razon_social = filters.value.razon_social;
+    if (filters.value.currency) params.currency = filters.value.currency;
+
+    if (filters.value.status && filters.value.status.length > 0) {
+      params.status = filters.value.status.join(',');
+    }
+
+    if (filters.value.codigo) params.codigo = filters.value.codigo;
+
+    const query = new URLSearchParams(params).toString();
+    const url = `/investment/all/export/excel${query ? `?${query}` : ''}`;
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `inversiones_${new Date().toISOString().split('T')[0]}.xlsx`;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.add({ severity: 'success', summary: 'Exportación', detail: 'Descarga iniciada', life: 2500 });
+  } catch (e) {
+    console.error('Error al exportar inversiones:', e);
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo exportar', life: 3000 });
+  }
+};
+
+
 
 onMounted(() => {
     loadInvestments();
