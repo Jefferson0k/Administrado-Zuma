@@ -75,28 +75,15 @@
 
             <!-- ✅ Nuevo nombre de empresa (opcional y editable) -->
             <div>
-                <label class="block font-bold mb-2">Nuevo nombre de empresa (opcional)</label>
+                <label class="block font-bold mb-2">Nuevo nombre de empresa</label>
                 <InputText
                     v-model.trim="editForm.nuevonombreempresa"
-                    placeholder="Propuesta de nuevo nombre"
+                    placeholder="Nombre alternativo / nuevo nombre"
                     class="w-full"
                     maxlength="255"
-                    :class="{
-                        'p-invalid':
-                            submitted &&
-                            (
-                                (editForm.nuevonombreempresa && editForm.nuevonombreempresa.length > 255)
-                                || editErrors.nuevonombreempresa
-                            )
-                    }"
+                    :class="{ 'p-invalid': editErrors.nuevonombreempresa }"
                 />
-                <small
-                    v-if="submitted && editForm.nuevonombreempresa && editForm.nuevonombreempresa.length > 255"
-                    class="text-red-500"
-                >
-                    No puede superar 255 caracteres.
-                </small>
-                <small v-else-if="editErrors.nuevonombreempresa" class="text-red-500">
+                <small v-if="editErrors.nuevonombreempresa" class="text-red-500">
                     {{ editErrors.nuevonombreempresa[0] }}
                 </small>
             </div>
@@ -142,8 +129,8 @@
                         :class="{ 'p-invalid': submitted && (editForm.risk === null || editForm.risk === '' || editErrors.risk) }"
                     >
                         <template #value="slotProps">
-                            <div v-if="slotProps.value !== null && slotProps.value !== undefined" class="flex items-center">
-                                <Tag :value="getRiesgoLabel(slotProps.value)" :severity="getRiesgoSeverity(slotProps.value)" />
+                            <div v-if="slotProps.value !== null && slotProps.value !== undefined && slotProps.value !== ''" class="flex items-center">
+                                <Tag :value="slotProps.value" :severity="getRiesgoSeverity(slotProps.value)" />
                             </div>
                             <span v-else>{{ slotProps.placeholder }}</span>
                         </template>
@@ -168,7 +155,7 @@
                         placeholder="2005"
                         class="w-full"
                         :disabled="true"
-                        :class="{ 'p-invalid': submitted && (!editForm.incorporation_year || editErrors.incorporation_year || (editForm.incorporation_year && (editForm.incorporation_year < 1800 || editForm.incorporation_year > 2030))) }"
+                        :class="{ 'p-invalid': submitted && (!editForm.incorporation_year || editErrors.incorporation_year) }"
                     />
                     <small v-if="submitted && !editForm.incorporation_year" class="text-red-500">
                         El año de constitución es obligatorio.
@@ -237,19 +224,10 @@
                 </div>
             </div>
 
-            <!-- Moneda (🔒) -->
-            <div>
+            <!-- Moneda (🔒 oculta pero consistente) -->
+            <div class="hidden">
                 <label class="block font-bold mb-2">Moneda <span class="text-red-500">*</span></label>
-                <Select
-                    v-model="editForm.moneda"
-                    :options="monedas"
-                    optionLabel="label"
-                    optionValue="value"
-                    placeholder="Seleccione la moneda"
-                    class="w-full"
-                    :disabled="true"
-                    :class="{ 'p-invalid': submitted && (!editForm.moneda || editErrors.moneda) }"
-                />
+                <InputText v-model="editForm.moneda" type="hidden" />
                 <small v-if="submitted && !editForm.moneda" class="text-red-500">
                     La moneda es obligatoria.
                 </small>
@@ -259,10 +237,10 @@
             </div>
 
             <!-- Campos de Ventas (🔒) -->
-            <div v-if="editForm.moneda && editForm.moneda !== ''" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div v-if="editForm.moneda && editForm.moneda !== ''" class="grid grid-cols-1 gap-4">
                 <div v-if="editForm.moneda === 'PEN' || editForm.moneda === 'BOTH'">
-                    <label class="block font-bold mb-2">Volumen de ventas PEN <span class="text-red-500">*</span></label>
-                    <div class="p-inputgroup">
+                    <label class="block font-bold mb-2">Facturado del año anterior PEN <span class="text-red-500">*</span></label>
+                    <div class="p-inputgroup w-full">
                         <InputNumber
                             v-model="editForm.sales_PEN"
                             mode="currency"
@@ -273,23 +251,23 @@
                             placeholder="Ej: 500000.00"
                             class="w-full"
                             :disabled="true"
-                            :class="{ 'p-invalid': submitted && (!editForm.sales_PEN && editForm.sales_PEN !== 0 || editErrors.sales_PEN) }"
+                            :class="{ 'p-invalid': submitted && ((!editForm.sales_PEN && editForm.sales_PEN !== 0) || editErrors.sales_PEN) }"
                         />
                     </div>
                     <small
                         v-if="submitted && !editForm.sales_PEN && editForm.sales_PEN !== 0 && (editForm.moneda === 'PEN' || editForm.moneda === 'BOTH')"
-                        class="text-red-500"
+                        class="block w-full text-red-500"
                     >
-                        El volumen de ventas en PEN es obligatorio.
+                        Facturado del Año Anterior en PEN es obligatorio.
                     </small>
-                    <small v-else-if="editErrors.sales_PEN" class="text-red-500">
+                    <small v-else-if="editErrors.sales_PEN" class="block w-full text-red-500">
                         {{ editErrors.sales_PEN[0] }}
                     </small>
                 </div>
 
                 <div v-if="editForm.moneda === 'USD' || editForm.moneda === 'BOTH'">
-                    <label class="block font-bold mb-2">Volumen de ventas USD <span class="text-red-500">*</span></label>
-                    <div class="p-inputgroup">
+                    <label class="block font-bold mb-2">Facturado del año anterior USD <span class="text-red-500">*</span></label>
+                    <div class="p-inputgroup w-full">
                         <InputNumber
                             v-model="editForm.sales_USD"
                             mode="currency"
@@ -300,26 +278,26 @@
                             placeholder="Ej: 150000.00"
                             class="w-full"
                             :disabled="true"
-                            :class="{ 'p-invalid': submitted && (!editForm.sales_USD && editForm.sales_USD !== 0 || editErrors.sales_USD) }"
+                            :class="{ 'p-invalid': submitted && ((!editForm.sales_USD && editForm.sales_USD !== 0) || editErrors.sales_USD) }"
                         />
                     </div>
                     <small
                         v-if="submitted && !editForm.sales_USD && editForm.sales_USD !== 0 && (editForm.moneda === 'USD' || editForm.moneda === 'BOTH')"
-                        class="text-red-500"
+                        class="block w-full text-red-500"
                     >
-                        El volumen de ventas en USD es obligatorio.
+                        Facturado del año anterior en USD es obligatorio.
                     </small>
-                    <small v-else-if="editErrors.sales_USD" class="text-red-500">
+                    <small v-else-if="editErrors.sales_USD" class="block w-full text-red-500">
                         {{ editErrors.sales_USD[0] }}
                     </small>
                 </div>
             </div>
 
             <!-- Información Financiera (🔒) -->
-            <div v-if="editForm.moneda && editForm.moneda !== ''" class="border p-4 rounded bg-gray-50">
+            <div v-if="editForm.moneda && editForm.moneda !== ''" class="border rounded bg-gray-50 p-4">
                 <h4 class="font-bold mb-4">Información Financiera</h4>
 
-                <div v-if="editForm.moneda === 'PEN' || editForm.moneda === 'BOTH'" class="mb-6">
+                <div class="mb-6">
                     <h5 class="font-semibold mb-3 text-green-700">Datos en PEN (Soles)</h5>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
@@ -346,18 +324,14 @@
                             <label class="block font-medium mb-1">Facturas Pagadas <span class="text-red-500">*</span></label>
                             <InputNumber v-model="editForm.pagadas_pen" :min="0" placeholder="0" class="w-full" :disabled="true" />
                         </div>
-                        <!-- <div>
-                            <label class="block font-medium mb-1">Facturas Pendientes <span class="text-red-500">*</span></label>
-                            <InputNumber v-model="editForm.pendientes_pen" :min="0" placeholder="0" class="w-full" :disabled="true" />
-                        </div> -->
                         <div>
-                            <label class="block font-medium mb-1">Plazo Pago (días) <span class="text-red-500">*</span></label>
+                            <label class="block font-medium mb-1">Plazo Promedio (pago) <span class="text-red-500">*</span></label>
                             <InputNumber v-model="editForm.plazo_promedio_pago_pen" :min="0" placeholder="30" class="w-full" :disabled="true" />
                         </div>
                     </div>
                 </div>
 
-                <div v-if="editForm.moneda === 'USD' || editForm.moneda === 'BOTH'">
+                <div>
                     <h5 class="font-semibold mb-3 text-blue-700">Datos en USD (Dólares)</h5>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
@@ -384,12 +358,8 @@
                             <label class="block font-medium mb-1">Facturas Pagadas <span class="text-red-500">*</span></label>
                             <InputNumber v-model="editForm.pagadas_usd" :min="0" placeholder="0" class="w-full" :disabled="true" />
                         </div>
-                        <!-- <div>
-                            <label class="block font-medium mb-1">Facturas Pendientes <span class="text-red-500">*</span></label>
-                            <InputNumber v-model="editForm.pendientes_usd" :min="0" placeholder="0" class="w-full" :disabled="true" />
-                        </div> -->
                         <div>
-                            <label class="block font-medium mb-1">Plazo Pago (días) <span class="text-red-500">*</span></label>
+                            <label class="block font-medium mb-1">Plazo Promedio (pago) <span class="text-red-500">*</span></label>
                             <InputNumber v-model="editForm.plazo_promedio_pago_usd" :min="0" placeholder="30" class="w-full" :disabled="true" />
                         </div>
                     </div>
@@ -443,12 +413,13 @@ const submitted = ref(false);
 const saving = ref(false);
 const editErrors = ref({});
 
+// ✅ Riesgos como LETRAS (para frontend y backend)
 const riesgos = [
-    { label: 'A', value: 0 },
-    { label: 'B', value: 1 },
-    { label: 'C', value: 2 },
-    { label: 'D', value: 3 },
-    { label: 'E', value: 4 }
+    { label: 'A', value: 'A' },
+    { label: 'B', value: 'B' },
+    { label: 'C', value: 'C' },
+    { label: 'D', value: 'D' },
+    { label: 'E', value: 'E' }
 ];
 
 const monedas = [
@@ -464,44 +435,36 @@ const editForm = ref({
     document: null,
     name: '',
     business_name: '',
-    risk: null,
+    risk: '', // ✅ LETRA (A, B, C, D, E)
     sector_id: null,
     subsector_id: null,
     incorporation_year: null,
     sales_PEN: null,
     sales_USD: null,
     link_web_page: '',
-    moneda: '',
+    moneda: 'PEN',
     description: '',
-    // ✅ Nuevo campo opcional
     nuevonombreempresa: '',
-    // Finanzas
     facturas_financiadas_pen: null,
     monto_total_financiado_pen: null,
     pagadas_pen: null,
-    // pendientes_pen: null,
     plazo_promedio_pago_pen: null,
     facturas_financiadas_usd: null,
     monto_total_financiado_usd: null,
     pagadas_usd: null,
-    // pendientes_usd: null,
     plazo_promedio_pago_usd: null
 });
 
-// Helpers riesgo
-function getRiesgoLabel(value) {
-    const r = riesgos.find((x) => x.value === value);
-    return r ? r.label : '';
-}
+// ✅ Severity basado en letras
 function getRiesgoSeverity(value) {
-    switch (value) {
-        case 0: return 'success';
-        case 1: return 'info';
-        case 2: return 'warn';
-        case 3: return 'danger';
-        case 4: return 'contrast';
-        default: return 'secondary';
-    }
+    const severityMap = {
+        'A': 'success',
+        'B': 'info',
+        'C': 'warn',
+        'D': 'danger',
+        'E': 'contrast'
+    };
+    return severityMap[value] || 'secondary';
 }
 
 // URL válida
@@ -514,16 +477,16 @@ function isValidUrl(url) {
     }
 }
 
-// ✅ Validamos solo riesgo, descripción y web; más un límite de 255 para el nuevo campo
+// Validación del formulario
 function isFormValid() {
-    const hasRisk = !(editForm.value.risk === null || editForm.value.risk === '');
+    const hasRisk = editForm.value.risk !== null && editForm.value.risk !== '';
     const hasDescription = !!editForm.value.description && editForm.value.description.trim().length > 0;
     const hasValidUrl = isValidUrl(editForm.value.link_web_page);
     const nuevoOk = !editForm.value.nuevonombreempresa || editForm.value.nuevonombreempresa.length <= 255;
     return hasRisk && hasDescription && hasValidUrl && nuevoOk;
 }
 
-// Cargar sectores (solo para mostrar)
+// Cargar sectores
 onMounted(async () => {
     try {
         const response = await axios.get('/sectors/search');
@@ -533,7 +496,7 @@ onMounted(async () => {
     }
 });
 
-// Cargar subsectores si cambiara el sector (mantener coherencia)
+// Cargar subsectores
 watch(
     () => editForm.value.sector_id,
     async (nuevoSector) => {
@@ -552,14 +515,13 @@ watch(
     }
 );
 
-// Reset ventas si cambia moneda (aunque estén deshabilitados)
+// Reset ventas si cambia moneda
 watch(() => editForm.value.moneda, (nuevaMoneda) => {
     if (nuevaMoneda !== 'PEN' && nuevaMoneda !== 'BOTH') {
         editForm.value.sales_PEN = null;
         editForm.value.facturas_financiadas_pen = null;
         editForm.value.monto_total_financiado_pen = null;
         editForm.value.pagadas_pen = null;
-        // editForm.value.pendientes_pen = null;
         editForm.value.plazo_promedio_pago_pen = null;
     }
     if (nuevaMoneda !== 'USD' && nuevaMoneda !== 'BOTH') {
@@ -567,7 +529,6 @@ watch(() => editForm.value.moneda, (nuevaMoneda) => {
         editForm.value.facturas_financiadas_usd = null;
         editForm.value.monto_total_financiado_usd = null;
         editForm.value.pagadas_usd = null;
-        // editForm.value.pendientes_usd = null;
         editForm.value.plazo_promedio_pago_usd = null;
     }
 });
@@ -579,27 +540,24 @@ watch([() => props.visible, () => props.company], ([visible, company]) => {
             document: parseInt(company.document),
             name: company.name || '',
             business_name: company.business_name || '',
-            risk: parseInt(company.risk),
+            // ✅ Risk como LETRA directamente
+            risk: company.risk || 'A',
             sector_id: company.sector_id,
             subsector_id: company.subsector_id,
             incorporation_year: parseInt(company.incorporation_year),
             sales_PEN: parseFloat(company.sales_PEN) || null,
             sales_USD: parseFloat(company.sales_USD) || null,
             link_web_page: company.link_web_page || '',
-            moneda: company.moneda || '',
+            moneda: company.moneda || 'PEN',
             description: company.description || '',
-            // ✅ traer el nuevo campo si existe en el modelo
-            nuevonombreempresa: company.nuevonombreempresa ?? '',
-            // Finanzas
+            nuevonombreempresa: company.nuevonombreempresa || '',
             facturas_financiadas_pen: company.finances?.facturas_financiadas_pen || null,
             monto_total_financiado_pen: parseFloat(company.finances?.monto_total_financiado_pen) || null,
             pagadas_pen: company.finances?.pagadas_pen || null,
-            // pendientes_pen: company.finances?.pendientes_pen || null,
             plazo_promedio_pago_pen: company.finances?.plazo_promedio_pago_pen || null,
             facturas_financiadas_usd: company.finances?.facturas_financiadas_usd || null,
             monto_total_financiado_usd: parseFloat(company.finances?.monto_total_financiado_usd) || null,
             pagadas_usd: company.finances?.pagadas_usd || null,
-            // pendientes_usd: company.finances?.pendientes_usd || null,
             plazo_promedio_pago_usd: company.finances?.plazo_promedio_pago_usd || null
         };
 
@@ -620,6 +578,7 @@ async function updateCompany() {
     saving.value = true;
 
     try {
+        // ✅ Enviamos directamente las LETRAS al backend
         const empresaParaEnvio = { ...editForm.value };
 
         await axios.put(`/companies/${props.company.id}`, empresaParaEnvio);
@@ -627,7 +586,7 @@ async function updateCompany() {
         toast.add({
             severity: 'success',
             summary: 'Éxito',
-            detail: 'Empresa y datos financieros actualizados correctamente',
+            detail: 'Empresa actualizada correctamente',
             life: 3000
         });
 

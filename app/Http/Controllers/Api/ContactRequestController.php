@@ -4,16 +4,22 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Contact\StoreContactRequest;
+use App\Models\Admin;
 use App\Models\ContactRequest;
+use App\Notifications\ProductInformationRequest;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Exception;
+use Illuminate\Support\Facades\Notification;
 
 class ContactRequestController extends Controller
 {
+    
     public function storeContactUs(StoreContactRequest $request)
     {
         try {
+            Log::info('Starting storeContactUs', ['data' => $request->validated()]);
+
             // Primero, crear el registro
             $contactRequest = ContactRequest::create([
                 ...$request->validated(),
@@ -22,11 +28,11 @@ class ContactRequestController extends Controller
 
             Log::info('Contact request created successfully', ['id' => $contactRequest->id]);
 
-            // Intentar enviar emails solo si el registro se creó exitosamente
-            //$this->sendContactEmails($request->validated());
+            // Enviar email de notificación al administrador
+            $this->sendNotificationEmail($request->validated());
 
             return response()->json([
-                'message' => 'Contact request received. We will get back to you soon.',
+                'message' => 'Solicitud recibida. Nos pondremos en contacto pronto.',
                 'success' => true,
             ], 201);
 
@@ -39,42 +45,63 @@ class ContactRequestController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'There was an error processing your request. Please try again.',
+                'message' => 'Hubo un error procesando tu solicitud. Por favor intenta nuevamente.',
                 'success' => false,
-                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+                'error' => config('app.debug') ? $e->getMessage() : 'Error interno del servidor'
             ], 500);
+        }
+    }
+
+    private function sendNotificationEmail($contactData)
+    {
+        try {
+            Log::info('Attempting to send notification email', ['contact_data' => $contactData]);
+
+            // Email de ZUMA
+            $adminEmail = 'info@zuma.com.pe';
+            
+            // Para testing, puedes usar un email temporal
+            // $adminEmail = 'test@example.com';
+            
+            Notification::route('mail', $adminEmail)
+                ->notify(new ProductInformationRequest($contactData));
+            
+            Log::info('Product information email sent successfully', [
+                'to' => $adminEmail,
+                'product' => $contactData['interested_product']
+            ]);
+            
+        } catch (Exception $e) {
+            Log::error('Error sending product information email', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            // No lanzar excepción para no afectar la experiencia del usuario
         }
     }
 
     public function storeInternal(StoreContactRequest $request)
     {
         try {
-            // Primero, crear el registro
             $contactRequest = ContactRequest::create([
                 ...$request->validated(),
                 'status' => 'internal',
             ]);
-            
-            
 
-            
             Log::info('Internal contact request created successfully', ['id' => $contactRequest->id]);
 
-            // Intentar enviar emails solo si el registro se creó exitosamente
-            // $this->sendContactEmails($request->validated());
+            // Enviar notificación
+            $this->sendContactEmails($request->validated());
 
             return response()->json([
                 'message' => 'Su mensaje ha sido enviado',
                 'success' => true,
                 'id' => $contactRequest->id
             ], 201);
-
         } catch (Exception $e) {
             Log::error('Error in storeInternal', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'line' => $e->getLine(),
-                'file' => $e->getFile()
             ]);
 
             return response()->json([
@@ -84,71 +111,6 @@ class ContactRequestController extends Controller
             ], 500);
         }
     }
-
-    private function sendContactEmails(array $data)
-    {
-        // Verificar configuración de Resend
-        try {
-            $resendKey = config('services.resend.key') ?? env('RESEND_API_KEY');
-            $mailDriver = config('mail.default');
-            
-            Log::info('Email configuration check', [
-                'mail_driver' => $mailDriver,
-                'resend_key_exists' => !empty($resendKey),
-                'from_address' => config('mail.from.address')
-            ]);
-
-            if (empty($resendKey)) {
-                Log::warning('Resend API key not configured');
-                return;
-            }
-
-        } catch (Exception $e) {
-            Log::error('Email configuration error', ['error' => $e->getMessage()]);
-            return;
-        }
-
-        // Enviar email al admin
-        try {
-            $adminMail = new \App\Mail\ContactToAdminMail($data);
-            Mail::to('adminzuma@zuma.com.pe')->send($adminMail);
-            Log::info('Admin email sent successfully');
-        } catch (Exception $e) {
-            Log::error('Failed to send admin email', [
-                'error' => $e->getMessage(),
-                'line' => $e->getLine(),
-                'file' => basename($e->getFile())
-            ]);
-        }
-
-        // Enviar email de confirmación al usuario
-        try {
-            $userMail = new \App\Mail\ContactToUserMail($data);
-            Mail::to($data['email'])->send($userMail);
-            Log::info('User confirmation email sent successfully', ['email' => $data['email']]);
-        } catch (Exception $e) {
-            Log::error('Failed to send user email', [
-                'error' => $e->getMessage(),
-                'email' => $data['email'],
-                'line' => $e->getLine(),
-                'file' => basename($e->getFile())
-            ]);
-        }
-
-        // Enviar email secundario
-        try {
-            $secondaryMail = new \App\Mail\ContactToSecondaryMail($data);
-            Mail::to('jefersoncovenas7@gmail.com')->send($secondaryMail);
-            Log::info('Secondary email sent successfully');
-        } catch (Exception $e) {
-            Log::error('Failed to send secondary email', [
-                'error' => $e->getMessage(),
-                'line' => $e->getLine(),
-                'file' => basename($e->getFile())
-            ]);
-        }
-    }
-
     // Método para probar la configuración de email sin crear registros
     public function testEmail()
     {
@@ -179,7 +141,49 @@ class ContactRequestController extends Controller
             ], 500);
         }
     }
+    private function sendContactEmails(array $data): void
+    {
+        try {
+            $adminEmail = config('mail.admin_email', 'info@zuma.com.pe');
+            $fromEmail = config('mail.from.address', 'notificaciones@zuma.com.pe');
+            $fromName = config('mail.from.name', 'Zuma Inversiones');
+            
+            Log::info('Attempting to send contact notification', [
+                'to' => $adminEmail,
+                'from' => $fromEmail,
+                'data' => $data
+            ]);
+            
+            $emailContent = "Nueva solicitud de contacto:\n\n" .
+                        "Nombre: {$data['full_name']}\n" .
+                        "Email: {$data['email']}\n" .
+                        "Teléfono: {$data['phone']}\n" .
+                        "Producto de interés: {$data['interested_product']}\n" .
+                        "Mensaje: {$data['message']}\n" .
+                        "Aceptó políticas: " . ($data['accepted_policy'] ? 'Sí' : 'No') . "\n\n" .
+                        "Enviado: " . now()->format('d/m/Y H:i:s');
 
+            Mail::raw($emailContent, function ($message) use ($adminEmail, $fromEmail, $fromName) {
+                $message->to($adminEmail)
+                    ->subject('Nuevo contacto - Zuma Inversiones')
+                    ->from($fromEmail, $fromName);
+            });
+            
+            Log::info('Contact notification sent successfully', [
+                'email' => $adminEmail
+            ]);
+            
+        } catch (Exception $e) {
+            Log::error('Error sending contact notification', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            if (config('app.debug')) {
+                throw $e;
+            }
+        }
+    }
     // Método para verificar el estado del sistema
     public function systemCheck()
     {

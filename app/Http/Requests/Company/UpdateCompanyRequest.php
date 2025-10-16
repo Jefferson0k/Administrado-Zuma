@@ -34,7 +34,7 @@ class UpdateCompanyRequest extends FormRequest
 
         // Requeridos (los únicos que vas a editar)
         $required = [
-            'risk'          => ['required', 'integer', 'between:0,4'],
+            'risk'          => ['required',],
             'description'   => ['required', 'string', 'min:1', 'max:250'],
             'link_web_page' => ['required', 'string', 'url', 'max:255'],
         ];
@@ -78,8 +78,6 @@ class UpdateCompanyRequest extends FormRequest
     {
         return [
             'risk.required'            => 'El riesgo es obligatorio.',
-            'risk.integer'             => 'El riesgo debe ser un número entero.',
-            'risk.between'             => 'El riesgo debe estar entre 0 y 4.',
 
             'description.required'     => 'La descripción es obligatoria.',
             'description.string'       => 'La descripción debe ser texto.',
