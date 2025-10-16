@@ -35,6 +35,8 @@ use App\Models\HistoryAprobadorInvestor;
 use Throwable;
 use Illuminate\Auth\Events\Registered;
 use Predis\Client;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\InvestorsExport;
 
 class InvestorController extends Controller
 {
@@ -1457,7 +1459,7 @@ private function sendWhatsAppVerification($telephone, $investorName)
     {
         try {
             $request->validate([
-                'document_front' => 'required|file|image|mimes:jpg,jpeg,png|max:5120'
+                'document_front' => 'required|file|image|mimes:jpg,jpeg,png'
             ]);
 
             $investor = Investor::findOrFail($id);
@@ -1498,7 +1500,7 @@ private function sendWhatsAppVerification($telephone, $investorName)
     {
         try {
             $request->validate([
-                'document_back' => 'required|file|image|mimes:jpg,jpeg,png|max:5120'
+                'document_back' => 'required|file|image|mimes:jpg,jpeg,png'
             ]);
 
             $investor = Investor::findOrFail($id);
@@ -1541,7 +1543,7 @@ private function sendWhatsAppVerification($telephone, $investorName)
     {
         try {
             $request->validate([
-                'investor_photo_path' => 'required|file|image|mimes:jpg,jpeg,png|max:5120'
+                'investor_photo_path' => 'required|file|image|mimes:jpg,jpeg,png'
             ]);
 
             $investor = Investor::findOrFail($id);
@@ -1783,7 +1785,7 @@ private function sendWhatsAppVerification($telephone, $investorName)
     {
         try {
             $request->validate([
-                'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+                'file' => 'required|file|mimes:jpg,jpeg,png,pdf',
                 'notes' => 'nullable|string|max:500',
             ]);
 
@@ -1912,7 +1914,7 @@ private function sendWhatsAppVerification($telephone, $investorName)
     {
         try {
             $request->validate([
-                'file'  => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+                'file'  => 'required|file|mimes:jpg,jpeg,png,pdf',
                 'notes' => 'nullable|string|max:500', // 👈 usa "notes" (igual que la migración)
             ]);
 
@@ -2038,5 +2040,16 @@ private function sendWhatsAppVerification($telephone, $investorName)
                 'error'   => $e->getMessage(),
             ], 500);
         }
+    }
+
+
+     public function exportExcel(Request $request)
+    {
+        // Filtro global (coincide con el frontend)
+        $search = $request->string('search')->trim()->toString();
+
+        $fileName = 'inversionistas_' . now()->format('Y-m-d') . '.xlsx';
+
+        return Excel::download(new InvestorsExport($search), $fileName);
     }
 }

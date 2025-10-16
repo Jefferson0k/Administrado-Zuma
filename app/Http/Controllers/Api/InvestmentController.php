@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Throwable;
+use Illuminate\Support\Facades\Log;
 
 class InvestmentController extends Controller{
     protected $simulatorService;
@@ -229,6 +230,7 @@ class InvestmentController extends Controller{
                 'data' => $investments,
             ]);
         } catch (\Throwable $th) {
+            Log::error('Error fetching investments: ' . $th->getMessage(), ['exception' => $th]);
             return response()->json([
                 'success' => false,
                 'message' => $th->getMessage(),

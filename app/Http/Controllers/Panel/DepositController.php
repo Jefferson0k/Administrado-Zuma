@@ -466,7 +466,7 @@ class DepositController extends Controller
     {
         try {
             // Autorización (descomentala si la necesitas)
-            Gate::authorize('export', Deposit::class);
+            
             $search = $request->input('search', '');
             $status = $request->input('status', null);
             $query = Deposit::query()->with([
@@ -519,7 +519,7 @@ class DepositController extends Controller
 
             $request->validate([
                 'files'   => 'required|array',
-                'files.*' => 'file|max:20480', // 20MB por archivo
+                'files.*' => 'file', // 20MB por archivo
             ]);
 
             $stored = [];
