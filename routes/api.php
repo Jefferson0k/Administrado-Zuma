@@ -69,6 +69,7 @@ Route::get('/consultar-dni/{dni?}', [ConsultasDni::class, 'consultar'])->name('c
 Route::post('/email/verify/resend/{id}', [InvestorController::class, 'resendEmailVerification']);
 Route::post('/contact-request', [ContactRequestController::class, 'storeContactUs']);
 Route::post('/contact-request/internal', [ContactRequestController::class, 'storeInternal']);
+Route::post('/contact-request/newsletter', [ContactRequestController::class, 'newsletter']);
 Route::get('/contact/system-check', [ContactRequestController::class, 'systemCheck']);
 Route::get('/contact/test-email', [ContactRequestController::class, 'testEmail']);
 Route::get('/investors/{id}', [InvestorController::class, 'show']);

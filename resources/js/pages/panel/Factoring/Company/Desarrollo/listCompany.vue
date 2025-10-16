@@ -74,12 +74,7 @@
                 </template>
             </Column>
 
-            <Column field="risk" header="Calificación" sortable style="min-width: 6rem">
-                <template #body="{ data }">
-                    <Tag :value="getRiskLabel(data.risk)" :severity="getRiskSeverity(data.risk)"
-                        class="px-3 py-1 rounded-lg font-bold" />
-                </template>
-            </Column>
+            <Column field="risk" header="Calificación" sortable style="min-width: 6rem"></Column>
 
             <Column field="sectornom" header="Sector" sortable style="min-width: 10rem">
                 <template #body="{ data }">

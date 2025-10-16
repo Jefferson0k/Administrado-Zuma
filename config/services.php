@@ -34,10 +34,12 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
-        'twilio' => [
+    'twilio' => [
         'sid' => env('TWILIO_SID'),
-        'token' => env('TWILIO_AUTH_TOKEN'),
-        'whatsapp_from' => env('TWILIO_WHATSAPP_FROM'),
+        'auth_token' => env('TWILIO_AUTH_TOKEN'),
+        'whatsapp_number' => env('TWILIO_WHATSAPP_NUMBER'),
+        'template_name' => env('TWILIO_TEMPLATE_NAME'),
+        'template_language' => env('TWILIO_TEMPLATE_LANGUAGE', 'es'),
     ],
     'ruc' => [
         'endpoint' => env('RUC_API_URL'),   // p.ej. https://api.midominio.com/ruc
