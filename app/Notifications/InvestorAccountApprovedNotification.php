@@ -23,7 +23,7 @@ class InvestorAccountApprovedNotification extends Notification
     public function toMail($notifiable)
     {
         $appName   = config('app.name', 'ZUMA');
-        $clientUrl = rtrim(env('CLIENT_APP_URL', 'http://localhost:5173'), '/');
+        $clientUrl = rtrim(env('CLIENT_APP_URL', 'https://zuma.com.pe'), '/');
         $dashboard = "{$clientUrl}/dashboard";
 
         return (new MailMessage)
@@ -33,7 +33,7 @@ class InvestorAccountApprovedNotification extends Notification
                 'userName'     => $notifiable->name ?? 'Usuario',
                 'dashboardUrl' => $dashboard,
                 'whatsappUrl'  => $this->whatsappUrl ?? '#',
-                'supportPhone' => $this->supportPhone ?? '',
+                'supportPhone' => $this->supportPhone ?? '+51 986 351 267',
             ]);
     }
 }

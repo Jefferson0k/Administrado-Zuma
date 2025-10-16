@@ -20,8 +20,8 @@ class BAccountObservedJointAccountNotification extends Notification
         $appName      = config('app.name', 'ZUMA');
         $brandPrimary = '#F0372D'; // rojo ZUMA
         $logoUrl      = rtrim(env('APP_URL', ''), '/') . '/images/zuma-logo-dark.png';
-        $whatsUrl     = env('ZUMA_WHATSAPP_URL', 'https://wa.me/51999999999');
-        $supportPhone = env('ZUMA_SUPPORT_PHONE', '+51 999 999 999');
+        $whatsUrl     = env('ZUMA_WHATSAPP_URL', 'https://wa.me/51986351267');
+        $supportPhone = env('ZUMA_SUPPORT_PHONE', '+51 986 351 267');
         $prefsUrl     = env('ZUMA_EMAIL_PREFS_URL', '#');
 
         return (new MailMessage)

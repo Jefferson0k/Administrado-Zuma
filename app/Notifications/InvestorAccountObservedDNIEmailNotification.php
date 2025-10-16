@@ -31,8 +31,8 @@ class InvestorAccountObservedDNIEmailNotification extends Notification
         $brandPrimary = '#F0372D'; // barra/logo (rojo)
         $brandButton  = '#22c55e'; // botón WhatsApp (verde)
         $logoUrl      = rtrim(env('APP_URL', ''), '/') . '/images/zuma-logo-dark.png'; // URL absoluta
-        $whatsUrl     = $this->whatsappUrl ?: 'https://wa.me/51999999999';
-        $supportPhone = $this->supportPhone ?: '+51 999 999 999';
+        $whatsUrl     = $this->whatsappUrl ?: 'https://wa.me/51986351267';
+        $supportPhone = $this->supportPhone ?: '+51 986 351 267';
 
         return (new MailMessage)
             ->subject($this->title)

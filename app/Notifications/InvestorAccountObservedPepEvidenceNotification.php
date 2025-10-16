@@ -25,7 +25,7 @@ class InvestorAccountObservedPepEvidenceNotification extends Notification
         $appName      = config('app.name', 'ZUMA');
         $brandPrimary = '#F0372D'; // barra/logo bg (rojo)
         $brandButton  = '#2563eb'; // botón "Formato PEP" (azul, como el mockup)
-        $logoUrl      = rtrim(env('APP_URL', ''), '/') . '/images/zuma-logo-dark.png';
+        $logoUrl      = rtrim(env('APP_URL', ''), '/') . '/images/zuma-logo.png';
 
         return (new MailMessage)
             ->subject('ZUMA - Completa el formato PEP para continuar con tu registro')
@@ -42,8 +42,8 @@ class InvestorAccountObservedPepEvidenceNotification extends Notification
                 'pepFormUrl'   => $this->pepFormUrl ?: 'https://tusitio.com/pep-formato.pdf',
 
                 // Soporte & footer
-                'whatsappUrl'  => $this->whatsappUrl ?: 'https://wa.me/51999999999',
-                'supportPhone' => $this->supportPhone ?: '+51 999 999 999',
+                'whatsappUrl'  => $this->whatsappUrl ?: 'https://wa.me/51986351267',
+                'supportPhone' => $this->supportPhone ?: '+51 986 351 267',
                 'companyAddr'  => 'Av. Faustino Sánchez Carrión 417, Magdalena del Mar, Lima – Perú',
                 'prefsUrl'     => rtrim(env('CLIENT_APP_URL', 'https://zuma.com.pe'), '/') . '/preferencias',
             ]);

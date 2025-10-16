@@ -30,7 +30,7 @@ class BankAccountObserved extends Notification
 
     public function toMail($notifiable)
     {
-        $dashboardUrl = env('CLIENT_APP_URL', 'https://zuma.com.pe') . '/dashboard';
+        $dashboardUrl = env('CLIENT_APP_URL', 'https://zuma.com.pe');
 
         return (new MailMessage)
             ->subject('Cuenta bancaria observada - ZUMA')
@@ -38,7 +38,7 @@ class BankAccountObserved extends Notification
             ->line('Tu cuenta bancaria con alias "' . ($this->bankAccount->alias ?? '—') . '" ha sido observada.')
             // Línea que usa tu mensaje desde el frontend:
             ->line($this->customMessage ?: 'Por favor revisa los comentarios y actualiza la información solicitada.')
-            ->action('Ir al Dashboard', $dashboardUrl)
+            ->action('Ir a ZUMA', $dashboardUrl)
             ->line('Si tienes dudas, contacta a soporte. ¡Gracias por usar ZUMA!');
     }
 }

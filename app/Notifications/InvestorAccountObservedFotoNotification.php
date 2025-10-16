@@ -33,8 +33,8 @@ class InvestorAccountObservedFotoNotification extends Notification
         $brandPrimary = '#F0372D'; // barra/logo bg (rojo)
         $brandButton  = '#22c55e'; // botón WhatsApp (verde)
         $logoUrl      = rtrim(env('APP_URL', ''), '/') . '/images/zuma-logo-dark.png'; // usa URL absoluta
-        $whatsUrl     = $this->whatsappUrl ?: 'https://wa.me/51999999999';
-        $supportPhone = $this->supportPhone ?: '+51 999 999 999';
+        $whatsUrl     = $this->whatsappUrl ?: 'https://wa.me/51986351267';
+        $supportPhone = $this->supportPhone ?: '+51 986 351 267';
 
         // Se envía una vista Blade en lugar de texto plano.
         return (new MailMessage)

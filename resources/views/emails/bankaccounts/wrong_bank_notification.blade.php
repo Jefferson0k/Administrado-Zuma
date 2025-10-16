@@ -8,7 +8,7 @@
   $companyAddr = $companyAddr ?? 'Av. Faustino Sánchez Carrión 417, Magdalena del Mar, Lima – Perú';
   $prefsUrl = $prefsUrl ?? '#';
   $whatsappUrl = $whatsappUrl ?? '#';
-  $supportPhone = $supportPhone ?? '+51 999 999 999';
+  $supportPhone = $supportPhone ?? '+51 986 351 267';
 @endphp
 <!doctype html>
 <html lang="es">
