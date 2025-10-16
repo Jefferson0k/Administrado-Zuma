@@ -19,6 +19,7 @@
         "prettier": "^3.4.2",
         "prettier-plugin-organize-imports": "^4.1.0",
         "prettier-plugin-tailwindcss": "^0.6.9",
+        "rollup": "^4.24.0",
         "sass-embedded": "^1.87.0",
         "tailwindcss-primeui": "^0.6.1",
         "typescript-eslint": "^8.23.0",

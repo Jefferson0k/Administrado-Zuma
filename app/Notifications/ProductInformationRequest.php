@@ -24,16 +24,18 @@ class ProductInformationRequest extends Notification
 
     public function toMail($notifiable): MailMessage
     {
-        // Versión simple para testing
+        $phone = preg_replace('/\D/', '', $this->contactData['phone']); // Limpia el número
+        $whatsappUrl = "https://wa.me/51{$phone}"; // WhatsApp directo al cliente
+
         return (new MailMessage)
             ->from('admin@zuma.com.pe', 'ZUMA')
-            ->subject("ZUMA - Nueva solicitud: {$this->contactData['interested_product']}")
-            ->line('Nueva solicitud de información recibida:')
+            ->subject('ZUMA - Nueva solicitud de inversión')
+            ->line('Se ha recibido una nueva solicitud de información sobre inversiones:')
             ->line('Nombre: ' . $this->contactData['full_name'])
             ->line('Email: ' . $this->contactData['email'])
             ->line('Teléfono: ' . $this->contactData['phone'])
-            ->line('Producto: ' . $this->contactData['interested_product'])
-            ->action('Contactar por WhatsApp', 'https://wa.me/51986351267')
-            ->line('Gracias por usar nuestra aplicación!');
+            ->line('Producto de interés: ' . $this->contactData['interested_product'])
+            ->action('Contactar por WhatsApp', $whatsappUrl)
+            ->line('Gracias por usar nuestra plataforma.');
     }
 }

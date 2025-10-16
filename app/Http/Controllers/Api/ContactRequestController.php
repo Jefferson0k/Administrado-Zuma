@@ -6,36 +6,27 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Contact\StoreContactRequest;
 use App\Models\Admin;
 use App\Models\ContactRequest;
+use App\Notifications\LoanRequestNotification;
 use App\Notifications\ProductInformationRequest;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Exception;
 use Illuminate\Support\Facades\Notification;
 
-class ContactRequestController extends Controller
-{
-    
-    public function storeContactUs(StoreContactRequest $request)
-    {
+class ContactRequestController extends Controller{
+    public function storeContactUs(StoreContactRequest $request){
         try {
             Log::info('Starting storeContactUs', ['data' => $request->validated()]);
-
-            // Primero, crear el registro
-            $contactRequest = ContactRequest::create([
+            $contactRequest = ContactRequest::create(attributes: [
                 ...$request->validated(),
                 'status' => 'contact_us',
             ]);
-
             Log::info('Contact request created successfully', ['id' => $contactRequest->id]);
-
-            // Enviar email de notificación al administrador
             $this->sendNotificationEmail($request->validated());
-
             return response()->json([
                 'message' => 'Solicitud recibida. Nos pondremos en contacto pronto.',
                 'success' => true,
             ], 201);
-
         } catch (Exception $e) {
             Log::error('Error in storeContactUs', [
                 'error' => $e->getMessage(),
@@ -43,7 +34,6 @@ class ContactRequestController extends Controller
                 'line' => $e->getLine(),
                 'file' => $e->getFile()
             ]);
-
             return response()->json([
                 'message' => 'Hubo un error procesando tu solicitud. Por favor intenta nuevamente.',
                 'success' => false,
@@ -51,35 +41,23 @@ class ContactRequestController extends Controller
             ], 500);
         }
     }
-
-    private function sendNotificationEmail($contactData)
-    {
+    private function sendNotificationEmail($contactData){
         try {
             Log::info('Attempting to send notification email', ['contact_data' => $contactData]);
-
-            // Email de ZUMA
-            $adminEmail = 'info@zuma.com.pe';
-            
-            // Para testing, puedes usar un email temporal
-            // $adminEmail = 'test@example.com';
-            
+            $adminEmail = env('MAIL_INVERSIONES_EMAIL', 'info@zuma.com.pe');
             Notification::route('mail', $adminEmail)
                 ->notify(new ProductInformationRequest($contactData));
-            
             Log::info('Product information email sent successfully', [
                 'to' => $adminEmail,
-                'product' => $contactData['interested_product']
+                'product' => $contactData['interested_product'] ?? null
             ]);
-            
         } catch (Exception $e) {
             Log::error('Error sending product information email', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            // No lanzar excepción para no afectar la experiencia del usuario
         }
     }
-
     public function storeInternal(StoreContactRequest $request)
     {
         try {
@@ -90,11 +68,14 @@ class ContactRequestController extends Controller
 
             Log::info('Internal contact request created successfully', ['id' => $contactRequest->id]);
 
-            // Enviar notificación
-            $this->sendContactEmails($request->validated());
+            // Enviar notificación al correo configurado para préstamos
+            $loanEmail = env('MAIL_PRESTAMOS_EMAIL', 'irocha@zuma.com.pe');
+
+            Notification::route('mail', $loanEmail)
+                ->notify(new LoanRequestNotification($request->validated()));
 
             return response()->json([
-                'message' => 'Su mensaje ha sido enviado',
+                'message' => 'Su solicitud de préstamo ha sido enviada correctamente.',
                 'success' => true,
                 'id' => $contactRequest->id
             ], 201);
@@ -105,15 +86,13 @@ class ContactRequestController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'There was an error processing your request. Please try again.',
+                'message' => 'Ocurrió un error al procesar su solicitud. Intente nuevamente.',
                 'success' => false,
                 'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
             ], 500);
         }
     }
-    // Método para probar la configuración de email sin crear registros
-    public function testEmail()
-    {
+    public function testEmail(){
         try {
             Log::info('Testing email configuration...');
             
@@ -141,8 +120,7 @@ class ContactRequestController extends Controller
             ], 500);
         }
     }
-    private function sendContactEmails(array $data): void
-    {
+    private function sendContactEmails(array $data): void{
         try {
             $adminEmail = config('mail.admin_email', 'info@zuma.com.pe');
             $fromEmail = config('mail.from.address', 'notificaciones@zuma.com.pe');
