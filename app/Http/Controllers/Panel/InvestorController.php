@@ -341,7 +341,7 @@ class InvestorController extends Controller
         Log::error("Stack trace: " . $th->getTraceAsString());
         return response()->json([
             'success' => false,
-            'message' => 'Ocurrió un error al procesar tu registro. Por favor intenta nuevamente.'.$th->getMessage(),
+            'message' => 'Ocurrió un error al procesar tu registro. Por favor intenta nuevamente.',
         ], 500);
     }
 }

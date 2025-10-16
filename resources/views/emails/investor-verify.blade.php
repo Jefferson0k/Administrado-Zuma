@@ -7,8 +7,8 @@
     $ctaUrl = $ctaUrl ?? env('CLIENT_APP_URL', 'https://zuma.com.pe');
     $companyAddr = $companyAddr ?? 'Av. Faustino Sánchez Carrión 417, Magdalena del Mar, Lima – Perú';
     $prefsUrl = $prefsUrl ?? '#';
-    $whatsappUrl = $whatsappUrl ?? 'https://wa.me/51986351267';
-    $supportPhone = $supportPhone ?? '+51 986 351 267'; $url= 'https://zuma.com.pe/factoring/iniciar-sesion';
+    $whatsappUrl = $whatsappUrl ?? '#';
+    $supportPhone = $supportPhone ?? '+51 999 999 999';
 @endphp
 <!doctype html>
 <html lang="es">
