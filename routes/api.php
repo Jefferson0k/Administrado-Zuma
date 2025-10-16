@@ -40,9 +40,7 @@ use App\Http\Controllers\Panel\TwilioWebhookController;
 use App\Http\Controllers\TipoDocumentoController;
 use App\Http\Controllers\Web\SubastaHipotecas\TipoInmuebleController;
 use App\Http\Controllers\Api\InvestorDashboardController;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Twilio\Rest\Client;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -57,12 +55,10 @@ Route::post('register/cliente', [InvestorController::class, 'registerCustomer'])
 | RUTA PARA EL SERVICIO DE SMS X WHTS
 |--------------------------------------------------------------------------
 */
+Route::post('twilio/whatsapp-webhook', [TwilioWebhookController::class, 'webhook']);
+Route::get('twilio/check-phone/{phone}', [TwilioWebhookController::class, 'checkPhone']);
+Route::post('twilio/whatsapp-status', [TwilioWebhookController::class, 'statusCallback']); // Nueva
 
-Route::prefix('twilio')->group(function () {
-    Route::post('/whatsapp-webhook', [TwilioWebhookController::class, 'webhook']);
-    Route::get('/check-phone/{phone}', [TwilioWebhookController::class, 'checkPhone']);
-    Route::post('/whatsapp-status', [TwilioWebhookController::class, 'statusCallback']); // Nueva
-});
 
 Route::post('login', [InvestorController::class, 'login']);
 Route::post('/customers/register', [RegisteredCustomerController::class, 'store']);
