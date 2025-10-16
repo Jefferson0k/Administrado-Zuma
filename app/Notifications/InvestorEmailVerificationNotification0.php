@@ -31,6 +31,7 @@ class InvestorEmailVerificationNotification extends VerifyEmail
      */
     protected function buildMailMessage($url)
     {
+         dd($url);
         return (new MailMessage)
             ->subject('Verifica tu dirección de email - zuma')
             ->greeting('¡Hola!')
