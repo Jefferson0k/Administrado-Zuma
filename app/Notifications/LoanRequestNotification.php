@@ -47,3 +47,4 @@ class LoanRequestNotification extends Notification
             ->line('Gracias por usar nuestra plataforma.');
     }
 }
+

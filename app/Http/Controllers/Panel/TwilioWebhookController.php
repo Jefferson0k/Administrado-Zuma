@@ -1,11 +1,11 @@
 <?php
+
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
 use App\Models\Investor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Twilio\Rest\Client;
 use Twilio\TwiML\MessagingResponse;
 
 class TwilioWebhookController extends Controller{

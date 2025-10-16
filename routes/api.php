@@ -54,12 +54,9 @@ Route::post('register/cliente', [InvestorController::class, 'registerCustomer'])
 | RUTA PARA EL SERVICIO DE SMS X WHTS
 |--------------------------------------------------------------------------
 */
-
-Route::post('/twilio/whatsapp/incoming', [TwilioWebhookController::class, 'handleIncomingMessage'])
-    ->name('twilio.whatsapp.incoming');
-
-Route::post('/twilio/whatsapp/status', [TwilioWebhookController::class, 'handleMessageStatus'])
-    ->name('twilio.whatsapp.status');
+Route::post('twilio/whatsapp-webhook', [TwilioWebhookController::class, 'webhook']);
+Route::get('twilio/check-phone/{phone}', [TwilioWebhookController::class, 'checkPhone']);
+Route::post('twilio/whatsapp-status', [TwilioWebhookController::class, 'statusCallback']);
 
 Route::post('login', [InvestorController::class, 'login']);
 Route::post('/customers/register', [RegisteredCustomerController::class, 'store']);
