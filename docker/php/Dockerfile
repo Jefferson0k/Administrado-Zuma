@@ -38,6 +38,9 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Copiar TODO el código de la aplicación
 COPY . /var/www
 
+# Copiar .env al contenedor (se crea en GitHub Actions)
+COPY .env /var/www/.env
+
 # Instalar dependencias de PHP
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 

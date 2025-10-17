@@ -1,0 +1,32 @@
+services:
+  zuma-admin:
+    image: ghcr.io/adm-garantiacapital/administrado-zuma:latest
+    container_name: zuma-admin
+    restart: unless-stopped
+    networks:
+      - shared_network
+    ports:
+      - "80:80"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    environment:
+      - APP_NAME=ZumaAdmin
+      - APP_ENV=production
+      - APP_KEY=base64:TgTR4geoDsZigm++7WmF3u5EkypjseS/BjY35dlG1qo=
+      - APP_DEBUG=false
+      - APP_URL=https://admin.zuma.dev
+      - DB_CONNECTION=mysql
+      - DB_HOST=shared_mysql
+      - DB_PORT=3306
+      - DB_DATABASE=laravel
+      - DB_USERNAME=root
+      - DB_PASSWORD=root
+      - REDIS_HOST=shared_redis
+      - REDIS_PORT=6379
+      - CACHE_DRIVER=redis
+      - SESSION_DRIVER=redis
+
+networks:
+  shared_network:
+    external: true
