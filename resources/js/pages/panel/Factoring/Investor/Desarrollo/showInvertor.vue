@@ -188,8 +188,16 @@
           <div><span class="text-xs font-medium text-blue-800">Email verificado:</span>
             <p class="text-sm">{{ investor.emailverificacion }}</p>
           </div>
-          <div><span class="text-xs font-medium text-blue-800">Whatsapp Verificado:</span>
-            <p class="text-sm">No</p>
+          <!-- ✅ CORRECTO -->
+          <!-- ✅ CORRECTO -->
+          <div><span class="text-xs font-medium text-blue-800">WhatsApp Verificado:</span>
+            <div class="flex items-center gap-2 mt-1">
+              <Tag :severity="getWhatsAppSeverity(investor.status_verified || 'pending')" 
+                  :value="getWhatsAppLabel(investor.status_verified || 'pending')" />
+              <span v-if="investor.whatsapp_verified_at" class="text-xs text-gray-600">
+                {{ formatDate(investor.whatsapp_verified_at) }}
+              </span>
+            </div>
           </div>
         </div>
       </Message>
@@ -200,7 +208,7 @@
         <div>
           <h3 class="text-base font-semibold mb-2 text-gray-900 flex items-center gap-2">
             <i class="pi pi-upload text-blue-600"></i>
-            Evidencia Espectro
+            Evidencia Inspektor
           </h3>
 
           <!-- Listado SIEMPRE visible -->
@@ -571,6 +579,34 @@ const ensureKey = (k: string) => {
   if (!selectedNotifyKeys.value.includes(k)) selectedNotifyKeys.value.push(k);
 };
 
+
+// ✅ AGREGAR ESTO CON LAS OTRAS FUNCIONES UTILS (después de getStatusLabel)
+
+// Utils - TODAS JUNTAS
+// ✅ NUEVAS FUNCIONES DE WHATSAPP - agregar aquí
+const getWhatsAppSeverity = (statusVerified: string) => {
+  switch (statusVerified) {
+    case 'verified':
+      return 'success';
+    case 'rejected':
+      return 'danger';
+    case 'pending':
+    default:
+      return 'warn';
+  }
+};
+
+const getWhatsAppLabel = (statusVerified: string) => {
+  switch (statusVerified) {
+    case 'verified':
+      return 'Verificado';
+    case 'rejected':
+      return 'Rechazado';
+    case 'pending':
+    default:
+      return 'Pendiente';
+  }
+};
 // Defaults al cambiar de step (1ª/2ª)
 
 
@@ -671,6 +707,9 @@ interface Investor {
   approval2_at?: string;
   perfil?: string;
   creacion?: string;
+
+  status_verified?: string;
+  whatsapp_verified_at?: string;
 }
 
 interface Evidence {
