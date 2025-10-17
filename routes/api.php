@@ -40,9 +40,6 @@ use App\Http\Controllers\Panel\TwilioWebhookController;
 use App\Http\Controllers\TipoDocumentoController;
 use App\Http\Controllers\Web\SubastaHipotecas\TipoInmuebleController;
 use App\Http\Controllers\Api\InvestorDashboardController;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Twilio\Rest\Client;
 
 /*
 |--------------------------------------------------------------------------
@@ -57,20 +54,19 @@ Route::post('register/cliente', [InvestorController::class, 'registerCustomer'])
 | RUTA PARA EL SERVICIO DE SMS X WHTS
 |--------------------------------------------------------------------------
 */
-
-Route::prefix('twilio')->group(function () {
-    Route::post('/whatsapp-webhook', [TwilioWebhookController::class, 'webhook']);
-    Route::get('/check-phone/{phone}', [TwilioWebhookController::class, 'checkPhone']);
-    Route::post('/whatsapp-status', [TwilioWebhookController::class, 'statusCallback']); // Nueva
-});
+Route::post('twilio/whatsapp-webhook', [TwilioWebhookController::class, 'webhook']);
+Route::get('twilio/check-phone/{phone}', [TwilioWebhookController::class, 'checkPhone']);
+Route::post('twilio/whatsapp-status', [TwilioWebhookController::class, 'statusCallback']);
 
 Route::post('login', [InvestorController::class, 'login']);
 Route::post('/customers/register', [RegisteredCustomerController::class, 'store']);
-Route::put('/email/verify/{id}/{hash}', [ProfileController::class, 'emailVerification']);
+Route::get('/email/verify/{id}/{hash}', action: [ProfileController::class, 'emailVerification'])
+    ->name('investor.verification.verify');
 Route::get('/consultar-dni/{dni?}', [ConsultasDni::class, 'consultar'])->name('consultar.dni');
 Route::post('/email/verify/resend/{id}', [InvestorController::class, 'resendEmailVerification']);
 Route::post('/contact-request', [ContactRequestController::class, 'storeContactUs']);
 Route::post('/contact-request/internal', [ContactRequestController::class, 'storeInternal']);
+Route::post('/contact-request/newsletter', [ContactRequestController::class, 'newsletter']);
 Route::get('/contact/system-check', [ContactRequestController::class, 'systemCheck']);
 Route::get('/contact/test-email', [ContactRequestController::class, 'testEmail']);
 Route::get('/investors/{id}', [InvestorController::class, 'show']);

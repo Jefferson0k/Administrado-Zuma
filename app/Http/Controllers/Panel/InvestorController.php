@@ -35,6 +35,8 @@ use App\Models\HistoryAprobadorInvestor;
 use Throwable;
 use Illuminate\Auth\Events\Registered;
 use Predis\Client;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\InvestorsExport;
 
 class InvestorController extends Controller
 {
@@ -233,7 +235,7 @@ class InvestorController extends Controller
         ]);
     }
 
-    public function register(StoreInvestorRequest $request)
+public function register(StoreInvestorRequest $request)
 {
     try {
         $validatedData = $request->validated();
@@ -290,9 +292,9 @@ class InvestorController extends Controller
         
         DB::commit();
 
-      
         // ENVÍO DE AMBAS VERIFICACIONES
         $emailSent = false;
+        $whatsappSent = false;
         
         try {
             // 1. Verificación por Email
@@ -305,22 +307,26 @@ class InvestorController extends Controller
             Log::error("Stack trace: " . $e->getTraceAsString());
         }
         
-        // try {
-        //     // 2. Verificación por WhatsApp
-        //     Log::info("Intentando enviar WhatsApp de verificación...", [
-        //         'telephone_original' => $investor->telephone
-        //     ]);
-        //     $whatsappSent = $this->sendWhatsAppVerification($investor->telephone);
-        //     Log::info("Resultado WhatsApp: " . ($whatsappSent ? '✅ Enviado' : '❌ No enviado'));
-        // } catch (\Exception $e) {
-        //     Log::error("❌ Error enviando verificación por WhatsApp: " . $e->getMessage());
-        //     Log::error("Stack trace: " . $e->getTraceAsString());
-        // }
+        try {
+            // 2. Verificación por WhatsApp CON PLANTILLA APROBADA
+            Log::info("Intentando enviar WhatsApp de verificación...", [
+                'telephone_original' => $investor->telephone,
+                'investor_name' => $investor->name
+            ]);
+            
+            // Pasar el nombre del inversor como parámetro
+            $whatsappSent = $this->sendWhatsAppVerification($investor->telephone, $investor->name);
+            
+            Log::info("Resultado WhatsApp: " . ($whatsappSent ? '✅ Enviado' : '❌ No enviado'));
+        } catch (\Exception $e) {
+            Log::error("❌ Error enviando verificación por WhatsApp: " . $e->getMessage());
+            Log::error("Stack trace: " . $e->getTraceAsString());
+        }
 
-        // Log::info("=== RESUMEN VERIFICACIONES ===", [
-        //     'email_sent' => $emailSent,
-        //     'whatsapp_sent' => $whatsappSent
-        // ]);
+        Log::info("=== RESUMEN VERIFICACIONES ===", [
+            'email_sent' => $emailSent,
+            'whatsapp_sent' => $whatsappSent
+        ]);
         
         return response()->json([
             'success' => true,
@@ -330,6 +336,7 @@ class InvestorController extends Controller
                 'codigo' => $codigo,
                 'email' => $investor->email,
                 'email_verification_sent' => $emailSent,
+                'whatsapp_verification_sent' => $whatsappSent,
             ],
         ], 201);
         
@@ -343,10 +350,10 @@ class InvestorController extends Controller
         ], 500);
     }
 }
-private function sendWhatsAppVerification($telephone)
+private function sendWhatsAppVerification($telephone, $investorName)
 {
     try {
-        Log::info("=== USING APPROVED TEMPLATE: message_opt_in ===");
+        Log::info("=== USING APPROVED TEMPLATE: verificacion_cuenta_v2 ===");
         
         $telephone = preg_replace('/\D/', '', $telephone);
         if (!str_starts_with($telephone, '51')) {
@@ -361,30 +368,34 @@ private function sendWhatsAppVerification($telephone)
 
         $twilio = new \Twilio\Rest\Client($accountSid, $authToken);
         
-        // Usar el template APROBADO message_opt_in
+        // Usar la plantilla APROBADA verificacion_cuenta_v2 con parámetros
         $message = $twilio->messages->create(
             "whatsapp:+{$telephone}",
             [
                 "from" => "whatsapp:{$whatsappNumber}",
-                "contentSid" => "HX10db80e119e1d3f46e385eec308b33c8" // Template APROBADO
+                "contentSid" => "HXea2c2ea5a07edfbd62c39bba43b7ba06", // Template verificacion_cuenta_v2
+                "contentVariables" => json_encode([
+                    "1" => $investorName // Parámetro {{1}} en la plantilla
+                ])
             ]
         );
         
-        Log::info("✅ APPROVED TEMPLATE SENT SUCCESSFULLY", [
+        Log::info("✅ PLANTILLA APROBADA ENVIADA EXITOSAMENTE", [
             'message_sid' => $message->sid,
             'status' => $message->status,
-            'template' => 'message_opt_in'
+            'template' => 'verificacion_cuenta_v2',
+            'investor_name' => $investorName
         ]);
         
         return true;
         
     } catch (\Twilio\Exceptions\RestException $e) {
-        Log::error("❌ Error with approved template: " . $e->getMessage());
+        Log::error("❌ Error con plantilla aprobada: " . $e->getMessage());
+        Log::error("Código error: " . $e->getCode());
         
-        if ($e->getCode() === 63016) {
-            Log::error("🔧 Aún en Sandbox? Verifica el modo de envío");
-        }
-        
+        return false;
+    } catch (\Exception $e) {
+        Log::error("❌ Error general enviando WhatsApp: " . $e->getMessage());
         return false;
     }
 }
@@ -1448,7 +1459,7 @@ private function sendWhatsAppVerification($telephone)
     {
         try {
             $request->validate([
-                'document_front' => 'required|file|image|mimes:jpg,jpeg,png|max:5120'
+                'document_front' => 'required|file|image|mimes:jpg,jpeg,png'
             ]);
 
             $investor = Investor::findOrFail($id);
@@ -1489,7 +1500,7 @@ private function sendWhatsAppVerification($telephone)
     {
         try {
             $request->validate([
-                'document_back' => 'required|file|image|mimes:jpg,jpeg,png|max:5120'
+                'document_back' => 'required|file|image|mimes:jpg,jpeg,png'
             ]);
 
             $investor = Investor::findOrFail($id);
@@ -1532,7 +1543,7 @@ private function sendWhatsAppVerification($telephone)
     {
         try {
             $request->validate([
-                'investor_photo_path' => 'required|file|image|mimes:jpg,jpeg,png|max:5120'
+                'investor_photo_path' => 'required|file|image|mimes:jpg,jpeg,png'
             ]);
 
             $investor = Investor::findOrFail($id);
@@ -1774,7 +1785,7 @@ private function sendWhatsAppVerification($telephone)
     {
         try {
             $request->validate([
-                'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+                'file' => 'required|file|mimes:jpg,jpeg,png,pdf',
                 'notes' => 'nullable|string|max:500',
             ]);
 
@@ -1903,7 +1914,7 @@ private function sendWhatsAppVerification($telephone)
     {
         try {
             $request->validate([
-                'file'  => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+                'file'  => 'required|file|mimes:jpg,jpeg,png,pdf',
                 'notes' => 'nullable|string|max:500', // 👈 usa "notes" (igual que la migración)
             ]);
 
@@ -2029,5 +2040,16 @@ private function sendWhatsAppVerification($telephone)
                 'error'   => $e->getMessage(),
             ], 500);
         }
+    }
+
+
+     public function exportExcel(Request $request)
+    {
+        // Filtro global (coincide con el frontend)
+        $search = $request->string('search')->trim()->toString();
+
+        $fileName = 'inversionistas_' . now()->format('Y-m-d') . '.xlsx';
+
+        return Excel::download(new InvestorsExport($search), $fileName);
     }
 }

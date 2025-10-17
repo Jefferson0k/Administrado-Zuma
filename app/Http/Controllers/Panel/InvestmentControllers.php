@@ -26,6 +26,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\InvestmentsExport;
 use Throwable;
 
 class InvestmentControllers extends Controller
@@ -167,5 +169,24 @@ class InvestmentControllers extends Controller
                 'error'   => $e->getMessage(),
             ], 500);
         }
+    }
+
+
+         public function exportAllExcel(Request $request)
+    {
+        // (Opcional) Autorización
+        // $this->authorize('viewAny', Investment::class);
+
+        $fileName = 'inversiones_' . now()->format('Y-m-d') . '.xlsx';
+
+        return Excel::download(
+            new InvestmentsExport(
+                razonSocial: (string) $request->query('razon_social', ''),
+                currency: $request->query('currency'),
+                status: (string) $request->query('status', ''), // CSV o único
+                codigo: (string) $request->query('codigo', '')
+            ),
+            $fileName
+        );
     }
 }

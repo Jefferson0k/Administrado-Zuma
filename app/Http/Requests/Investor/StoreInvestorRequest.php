@@ -46,7 +46,7 @@ class StoreInvestorRequest extends FormRequest
             return $input->tipo_documento_id == 1;
         });
 
-        $validator->sometimes('document', 'digits:11', function ($input) {
+        $validator->sometimes('document', 'digits_between:8,25', function ($input) {
             // RUC
             return $input->tipo_documento_id == 2;
         });

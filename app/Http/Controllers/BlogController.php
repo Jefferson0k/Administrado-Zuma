@@ -106,9 +106,9 @@ class BlogController extends Controller
 
         // map image URLs (no key normalization here)
         $paginator->getCollection()->transform(function ($p) {
-            $p->imagen_url = $p->imagen ? url("s3/images/{$p->imagen}") : null;
+            $p->imagen_url = $p->imagen ? url("s3/{$p->imagen}") : null;
             foreach ($p->images as $img) {
-                $img->url = $img->image_path ? url("s3/images/{$img->image_path}") : null;
+                $img->url = $img->image_path ? url("s3/{$img->image_path}") : null;
             }
             return $p;
         });
@@ -164,7 +164,7 @@ class BlogController extends Controller
 
             // ✅ Acepta EITHER imagen (single) OR imagenes (array)
             'imagenes'          => 'required_without:imagen|array|min:1',
-            'imagenes.*'        => 'image|mimes:jpeg,jpg,png|max:10240',
+            'imagenes.*'        => 'image|mimes:jpeg,jpg,png',
             'imagen'            => 'required_without:imagenes|image|mimes:jpeg,jpg,png|max:10240',
 
             'category_id'       => 'required', // CSV o array
@@ -206,15 +206,14 @@ class BlogController extends Controller
             // 1) Guardar imagen principal en posts.imagen
             $principal = $imagenes[0];
             $disk = Storage::disk('s3');
-            $mainKey = $disk->putFile('images', $principal, 'public'); // e.g. images/abc.jpg
-            $mainName = basename($mainKey); // store only filename in DB
+            $mainKey = $disk->putFile('images', $principal, 'public');
 
 
 
             // 2) Crear post (evitar mass-assign de "imagenes")
             $postData = $validated;
             unset($postData['imagenes']);
-            $postData['imagen'] = $mainName;
+            $postData['imagen'] = $mainKey; // store FULL S3 key, e.g. images/abc.jpg
 
             $post = Post::create($postData);
 
@@ -229,19 +228,19 @@ class BlogController extends Controller
             // 4) Guardar imágenes adicionales en post_image
             if (count($imagenes) > 1) {
                 foreach (array_slice($imagenes, 1) as $img) {
-                    $key = $disk->putFile('images', $img, 'public'); // images/<hash>.ext
-                    $name = basename($key);
+                    $key = $disk->putFile('images', $img, 'public'); // images/<hash>.ext (S3 key)
 
                     PostImage::create([
                         'post_id'    => $post->id,
-                        'image_path' => $name,
+                        'image_path' => $key, // store FULL S3 key
                     ]);
                 }
             }
 
+            // final line inside the transaction
             return response()->json([
                 'message' => 'Publicación creada exitosamente.',
-                'post'    => $post->load('images'), // si defines la relación
+                'id'      => $post->id,
             ], 201);
         });
     }
@@ -337,9 +336,9 @@ class BlogController extends Controller
 
     public function eliminar_categoria($id)
     {
-       
+
         $category = Category::findOrFail($id);
-         Gate::authorize('delete', $category);
+        Gate::authorize('delete', $category);
         $category->delete();
         return response()->json(['message' => 'Categoría eliminada correctamente']);
     }
@@ -379,12 +378,12 @@ class BlogController extends Controller
             Gate::authorize('delete', $post);
             return DB::transaction(function () use ($post) {
                 // Eliminar imagen principal
-                if ($post->imagen && Storage::disk('s3')->exists("images/{$post->imagen}")) {
-                    Storage::disk('s3')->delete("images/{$post->imagen}");
+                if ($post->imagen && Storage::disk('s3')->exists("{$post->imagen}")) {
+                    Storage::disk('s3')->delete("{$post->imagen}");
                 }
                 foreach ($post->images as $img) {
-                    if (Storage::disk('s3')->exists("images/{$img->image_path}")) {
-                        Storage::disk('s3')->delete("images/{$img->image_path}");
+                    if (Storage::disk('s3')->exists("{$img->image_path}")) {
+                        Storage::disk('s3')->delete("{$img->image_path}");
                     }
                     $img->delete();
                 }
@@ -437,7 +436,7 @@ class BlogController extends Controller
 
     public function actualizar(Request $request, $id)
     {
-       
+
         $validated = $request->validate([
             'user_id'           => 'required|exists:users,id',
             'updated_user_id'   => 'nullable|integer',
@@ -463,7 +462,7 @@ class BlogController extends Controller
         ]);
 
         $post = Post::with('images')->findOrFail($id);
-         Gate::authorize('update', $post);
+        Gate::authorize('update', $post);
 
         // Actualiza campos base
         $post->update([
@@ -496,8 +495,8 @@ class BlogController extends Controller
             $disk = Storage::disk('s3');
             $key = $disk->putFile('images', $img, 'public');
             $name = basename($key);
-            if ($post->imagen && $disk->exists("images/{$post->imagen}")) {
-                $disk->delete("images/{$post->imagen}");
+            if ($post->imagen && $disk->exists("{$post->imagen}")) {
+                $disk->delete("{$post->imagen}");
             }
             $post->imagen = $name;
             $post->save();
@@ -556,7 +555,7 @@ class BlogController extends Controller
 
     public function publicar($user_id, $post_id, $state_id)
     {
-        
+
         $post = Post::findOrFail($post_id);
         Gate::authorize('update', $post);
         $post->updated_user_id = $user_id;
@@ -600,13 +599,13 @@ class BlogController extends Controller
             $disk = Storage::disk('s3');
 
             $p->imagen_url = $p->imagen
-                ? url("s3/images/{$p->imagen}")
+                ? url("s3/public/{$p->imagen}")
                 : null;
 
             if ($p->relationLoaded('images')) {
                 foreach ($p->images as $img) {
                     $img->url = $img->image_path
-                        ? url("s3/images/{$img->image_path}")
+                        ? url("s3/public{$img->image_path}")
                         : null;
                 }
             }
@@ -651,13 +650,13 @@ class BlogController extends Controller
         $disk = Storage::disk('s3');
 
         $post->imagen_url = $post->imagen
-            ? url("s3/images/{$post->imagen}")
+            ? url("s3/public/{$post->imagen}")
             : null;
 
         if ($post->relationLoaded('images')) {
             foreach ($post->images as $img) {
                 $img->url = $img->image_path
-                    ? url("s3/images/{$img->image_path}")
+                    ? url("s3/public/{$img->image_path}")
                     : null;
             }
         }

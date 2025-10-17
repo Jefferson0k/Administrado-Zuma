@@ -21,8 +21,12 @@
             <InputText v-model="globalFilter" @input="onGlobalSearch"
               placeholder="Buscar por nombre, alias, email o estado..." />
           </IconField>
-          <Button icon="pi pi-refresh" outlined rounded aria-label="Refresh" severity="contrast"
-            @click="reloadFirstPage" />
+          <div class="flex gap-2">
+            <Button label="Exportar" icon="pi pi-download" severity="success" @click="exportInvestorsToExcel" />
+            <Button icon="pi pi-refresh" outlined rounded aria-label="Refresh" severity="contrast"
+              @click="reloadFirstPage" />
+          </div>
+
         </div>
       </div>
     </template>
@@ -402,6 +406,33 @@ const handleStatusUpdate = (updatedInvestor: any) => {
   }
   showDetailDialog.value = false
 }
+
+
+const exportInvestorsToExcel = async () => {
+  try {
+    const params: any = {}
+
+    // Respetar el filtro global actual
+    if (globalFilter.value) params.search = globalFilter.value
+
+    const query = new URLSearchParams(params).toString()
+    const url = `/investor/export/excel${query ? `?${query}` : ''}`
+
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `inversionistas_${new Date().toISOString().split('T')[0]}.xlsx`
+    link.style.display = 'none'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    toast.add({ severity: 'success', summary: 'Exportación', detail: 'Descarga iniciada', life: 2500 })
+  } catch (e) {
+    console.error('Error al exportar inversionistas:', e)
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo exportar', life: 3000 })
+  }
+}
+
 
 onMounted(() => {
   loadInvestors({ page: 0, rows: rowsPerPage.value })
