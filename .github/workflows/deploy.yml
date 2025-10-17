@@ -1,31 +1,32 @@
 name: Deploy Backend Admin to Dev Server
-
 on:
   push:
     branches:
       - dev
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
+      
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.ZUMA_SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.ZUMA_SERVER_HOST }} >> ~/.ssh/known_hosts
-
+      
       - name: Deploy to server
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.ZUMA_SERVER_USER }}@${{ secrets.ZUMA_SERVER_HOST }} << 'EOF'
             set -e
-            
             echo "🚀 Starting backend deployment..."
+            
+            # Detener nginx del sistema si está corriendo
+            echo "🛑 Stopping system nginx..."
+            sudo systemctl stop nginx || true
+            sudo systemctl disable nginx || true
             
             # Navegar al directorio del proyecto
             cd /var/www/backend/admin
@@ -40,8 +41,8 @@ jobs:
             git reset --hard origin/dev
             git pull origin dev
             
-            echo "🐳 Stopping containers..."
-            docker compose down || true
+            echo "🐳 Stopping containers and removing orphans..."
+            docker compose down --remove-orphans || true
             
             echo "🏗️ Building and starting containers..."
             docker compose up -d --build
@@ -50,11 +51,10 @@ jobs:
             docker image prune -f
             
             echo "✅ Backend deployment completed successfully!"
-            
             echo "📊 Container status:"
             docker compose ps
           EOF
-
+      
       - name: Verify deployment
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.ZUMA_SERVER_USER }}@${{ secrets.ZUMA_SERVER_HOST }} << 'EOF'
