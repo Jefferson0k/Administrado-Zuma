@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app:
     build:
@@ -9,11 +7,17 @@ services:
     working_dir: /var/www
     volumes:
       - .:/var/www
-    depends_on:
-      mysql:
-        condition: service_healthy
     networks:
       - laravel_red_2025
+      - shared_network
+    environment:
+      - DB_HOST=shared_mysql
+      - DB_PORT=3306
+      - DB_DATABASE=laravel
+      - DB_USERNAME=root
+      - DB_PASSWORD=root
+      - REDIS_HOST=shared_redis
+      - REDIS_PORT=6379
 
   nginx:
     image: nginx:latest
@@ -29,75 +33,6 @@ services:
     networks:
       - laravel_red_2025
 
-  mysql:
-    image: mysql:8.0
-    container_name: laravel_mysql
-    restart: always
-    command: --default-authentication-plugin=mysql_native_password
-    environment:
-      MYSQL_DATABASE: laravel
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_USER: laravel_user
-      MYSQL_PASSWORD: password
-    ports:
-      - "3306:3306"
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-    volumes:
-      - mysql_data:/var/lib/mysql
-    networks:
-      - laravel_red_2025
-
-  phpmyadmin:
-    image: phpmyadmin:5.2.1
-    container_name: laravel_phpmyadmin
-    restart: always
-    ports:
-      - "8080:80"
-    environment:
-      PMA_HOST: mysql
-      PMA_USER: root
-      PMA_PASSWORD: root
-      MYSQL_ROOT_PASSWORD: root
-    depends_on:
-      mysql:
-        condition: service_healthy
-    networks:
-      - laravel_red_2025
-
-  redis:
-    image: redis:alpine
-    container_name: laravel_redis
-    restart: always
-    ports:
-      - "6379:6379"
-    networks:
-      - laravel_red_2025
-
-  # AGREGAR MINIO AQUÍ
-  minio:
-    image: minio/minio:latest
-    container_name: laravel_minio
-    restart: always
-    ports:
-      - "9000:9000"   # API
-      - "9001:9001"   # Console
-    environment:
-      MINIO_ROOT_USER: 88Mrvl8CrL2tfosPn0we
-      MINIO_ROOT_PASSWORD: pMBUqsHOx2kIaeSlkL915WXl70H8CCRCnzhoRK9s
-    command: server /data --console-address ":9001"
-    volumes:
-      - minio_data:/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
-    networks:
-      - laravel_red_2025
   node:
     image: node:22
     container_name: laravel_node
@@ -123,7 +58,6 @@ services:
 
 networks:
   laravel_red_2025:
-
-volumes:
-  mysql_data:
-  minio_data:  # Agregar volumen para MinIO
+    driver: bridge
+  shared_network:
+    external: true
