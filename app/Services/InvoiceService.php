@@ -25,7 +25,8 @@ class InvoiceService{
             'financed_amount_by_garantia' => $data['financed_amount_by_garantia'],
             'financed_amount'          => $data['amount'] - $data['financed_amount_by_garantia'],
             'rate'                     => $data['rate'],
-            'due_date'                 => $dueDate,
+            'due_date'                 => $data['estimated_pay_date'], #TMPOTAL
+            //'due_date'                 => $dueDate, #ESTO VA SOLO X EL MOMENTO SE HABILITA
             'estimated_pay_date'       => $data['estimated_pay_date'],
             'status'                   => $status,
             'company_id'               => $company->id,
@@ -53,7 +54,8 @@ class InvoiceService{
             'financed_amount_by_garantia'  => $data['financed_amount_by_garantia'],
             'financed_amount'              => $data['amount'] - $data['financed_amount_by_garantia'],
             'rate'                         => $data['rate'],
-            'due_date'                     => $dueDate,
+            'due_date'                     => $data['estimated_pay_date'], #ESTO ES TEMPORAL
+            //'due_date'                     => $dueDate, #ESTO VA SOLO X EL MOMENTO SE HABILITA,
             'estimated_pay_date'           => $data['estimated_pay_date'],
 
             'company_id'                   => $company->id,
