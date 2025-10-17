@@ -1,66 +1,73 @@
 name: Deploy Backend Admin to Dev Server
+
 on:
   push:
     branches:
       - dev
+
 jobs:
-  deploy:
+  build-and-push:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
-      - name: Setup SSH
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mbstring, ctype, fileinfo, openssl, PDO, mysql
+          tools: composer
+
+      - name: Install Composer dependencies
+        run: composer install --no-dev --optimize-autoloader
+
+      - name: Create .env file
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.ZUMA_SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.ZUMA_SERVER_HOST }} >> ~/.ssh/known_hosts
-      
-      - name: Deploy to server
-        run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.ZUMA_SERVER_USER }}@${{ secrets.ZUMA_SERVER_HOST }} << 'EOF'
-            set -e
-            echo "🚀 Starting backend deployment..."
-            
-            # Detener nginx del sistema si está corriendo
-            echo "🛑 Stopping system nginx..."
-            sudo systemctl stop nginx || true
-            sudo systemctl disable nginx || true
-            
-            # Navegar al directorio del proyecto
-            cd /var/www/backend/admin
-            
-            echo "📥 Fetching latest changes..."
-            git fetch origin dev
-            
-            echo "🔄 Checking out dev branch..."
-            git checkout dev
-            
-            echo "⬇️ Pulling latest changes..."
-            git reset --hard origin/dev
-            git pull origin dev
-            
-            echo "🐳 Stopping containers and removing orphans..."
-            docker compose down --remove-orphans || true
-            
-            echo "🏗️ Building and starting containers..."
-            docker compose up -d --build
-            
-            echo "🧹 Cleaning up old images..."
-            docker image prune -f
-            
-            echo "✅ Backend deployment completed successfully!"
-            echo "📊 Container status:"
-            docker compose ps
+          cat <<EOF > .env
+          APP_NAME=${{ secrets.APP_NAME }}
+          APP_ENV=production
+          APP_KEY=${{ secrets.APP_KEY }}
+          APP_DEBUG=false
+          APP_URL=${{ secrets.APP_URL }}
+          DB_CONNECTION=mysql
+          DB_HOST=shared_mysql
+          DB_PORT=3306
+          DB_DATABASE=${{ secrets.DB_DATABASE }}
+          DB_USERNAME=${{ secrets.DB_USERNAME }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          REDIS_HOST=shared_redis
+          REDIS_PORT=6379
+          CACHE_DRIVER=redis
+          SESSION_DRIVER=redis
           EOF
-      
-      - name: Verify deployment
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.ZUMA_SERVER_USER }}@${{ secrets.ZUMA_SERVER_HOST }} << 'EOF'
-            cd /var/www/backend/admin
-            echo "🔍 Verifying backend deployment..."
-            docker compose ps
-            echo "📝 Recent commits:"
-            git log --oneline -n 5
-          EOF
+          docker build --tag ghcr.io/adm-garantiacapital/zuma-admin:latest -f docker/php/Dockerfile .
+          docker push ghcr.io/adm-garantiacapital/zuma-admin:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.ZUMA_SERVER_HOST }}
+          username: ${{ secrets.ZUMA_SERVER_USER }}
+          key: ${{ secrets.ZUMA_SERVER_SSH_KEY }}
+          script: |
+            cd /var/www/services/zuma-admin
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose pull
+            docker compose down
+            docker compose up -d --force-recreate
+            bash setup.sh
