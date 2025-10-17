@@ -7,11 +7,6 @@ RUN apk add --no-cache \
     nginx \
     supervisor \
     mysql-client \
-    msmtp \
-    perl \
-    wget \
-    procps \
-    shadow \
     libzip \
     libpng \
     libjpeg-turbo \
@@ -19,12 +14,10 @@ RUN apk add --no-cache \
     freetype \
     icu \
     bash \
-    busybox-suid \
     nodejs \
     npm && \
     apk add --no-cache --virtual build-deps \
     icu-dev \
-    icu-libs \
     zlib-dev \
     g++ \
     make \
@@ -63,7 +56,10 @@ RUN mkdir -p /var/www/storage/logs \
     chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache && \
     chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
-# Configurar supervisor para correr nginx y php-fpm
+# Copiar crontab (desde la raíz del proyecto)
+COPY laravel.cron /etc/crontabs/root
+
+# Configurar supervisor para correr nginx, php-fpm y cron
 RUN echo -e "[supervisord]\n\
 nodaemon=true\n\
 \n\
@@ -75,13 +71,12 @@ autorestart=true\n\
 [program:nginx]\n\
 command=nginx -g 'daemon off;'\n\
 autostart=true\n\
+autorestart=true\n\
+\n\
+[program:cron]\n\
+command=crond -f -l 2\n\
+autostart=true\n\
 autorestart=true" > /etc/supervisord.conf
-
-# Crear log de cron
-RUN touch /var/log/cron.log
-
-# Copiar crontab
-COPY laravel.cron /etc/crontabs/root
 
 EXPOSE 80
 
