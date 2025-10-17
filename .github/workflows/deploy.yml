@@ -40,6 +40,7 @@ jobs:
           REDIS_PORT=6379
           CACHE_DRIVER=redis
           SESSION_DRIVER=redis
+          QUEUE_CONNECTION=sync
           EOF
 
       - name: Login to GitHub Container Registry
@@ -51,7 +52,11 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          docker build --tag ghcr.io/adm-garantiacapital/zuma-admin:latest -f docker/php/Dockerfile .
+          docker build \
+            --tag ghcr.io/adm-garantiacapital/zuma-admin:latest \
+            --file docker/php/Dockerfile \
+            --build-arg BUILDKIT_INLINE_CACHE=1 \
+            .
           docker push ghcr.io/adm-garantiacapital/zuma-admin:latest
 
   deploy:
@@ -66,8 +71,13 @@ jobs:
           key: ${{ secrets.ZUMA_SERVER_SSH_KEY }}
           script: |
             cd /var/www/services/zuma-admin
+            
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
             docker compose pull
             docker compose down
             docker compose up -d --force-recreate
+            
             bash setup.sh
+            
+            docker compose logs --tail=50 zuma-admin
