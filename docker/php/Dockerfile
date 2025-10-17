@@ -56,8 +56,8 @@ RUN mkdir -p /var/www/storage/logs \
     chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache && \
     chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
-# Copiar crontab (desde la raíz del proyecto)
-COPY laravel.cron /etc/crontabs/root
+# Copiar crontab
+COPY docker/php/laravel.cron /etc/crontabs/root
 
 # Configurar supervisor para correr nginx, php-fpm y cron
 RUN echo -e "[supervisord]\n\
