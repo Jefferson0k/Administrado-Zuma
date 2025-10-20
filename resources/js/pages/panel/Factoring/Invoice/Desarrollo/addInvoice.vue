@@ -123,7 +123,7 @@
       <!-- Grid para Fecha y Número del Préstamo (2 columnas) -->
       <div class="grid grid-cols-2 gap-4">
         <!-- Fecha Estimada de Pago -->
-        <div>
+        <!--<div>
           <label for="estimated_pay_date" class="block font-bold mb-2">
             Fecha Estimada de Pago <span class="text-red-500">*</span>
           </label>
@@ -133,8 +133,18 @@
           <small v-if="submitted && (!factura.estimated_pay_date || errors.estimated_pay_date)" class="text-red-500">
             {{ errors.estimated_pay_date || 'La fecha estimada de pago es obligatoria.' }}
           </small>
+        </div> -->
+        <!-- Fecha Estimada de Pago -->
+        <div>
+          <label for="estimated_pay_date" class="block font-bold mb-2">
+            Fecha Estimada de Pago <span class="text-red-500">*</span>
+          </label>
+          <DatePicker id="estimated_pay_date" v-model="factura.estimated_pay_date" dateFormat="dd/mm/yy" class="w-full"
+            :class="{ 'p-invalid': submitted && (!factura.estimated_pay_date || errors.estimated_pay_date) }" />
+          <small v-if="submitted && (!factura.estimated_pay_date || errors.estimated_pay_date)" class="text-red-500">
+            {{ errors.estimated_pay_date || 'La fecha estimada de pago es obligatoria.' }}
+          </small>
         </div>
-
         <!-- Número del Préstamo -->
         <div>
           <label for="loan_number" class="block font-bold mb-2">
@@ -360,8 +370,9 @@ async function exportToExcel() {
   }
 }
 
-
 function isFormValid() {
+  console.log('Validando formulario:', factura.value);
+  
   const requiredFields = [
     'company_id',
     'currency',
@@ -376,28 +387,44 @@ function isFormValid() {
 
   // Verificar campos requeridos
   for (let field of requiredFields) {
-    if (!factura.value[field]) return false;
+    if (!factura.value[field]) {
+      console.log(`Campo requerido vacío: ${field}`, factura.value[field]);
+      return false;
+    }
   }
 
   // Validaciones adicionales según las reglas del backend
-  if (factura.value.amount <= 0) return false;
-  if (factura.value.financed_amount_by_garantia <= 0) return false;
-  if (factura.value.financed_amount_by_garantia > factura.value.amount) return false;
-  if (factura.value.rate <= 0 || factura.value.rate > 6) return false;
+  if (factura.value.amount <= 0) {
+    console.log('Monto factura inválido:', factura.value.amount);
+    return false;
+  }
+  if (factura.value.financed_amount_by_garantia <= 0) {
+    console.log('Monto financiado inválido:', factura.value.financed_amount_by_garantia);
+    return false;
+  }
+  if (factura.value.financed_amount_by_garantia > factura.value.amount) {
+    console.log('Monto financiado mayor que monto factura');
+    return false;
+  }
+  if (factura.value.rate <= 0 || factura.value.rate > 6) {
+    console.log('Tasa inválida:', factura.value.rate);
+    return false;
+  }
 
   // Validar moneda
-  if (!['PEN', 'USD'].includes(factura.value.currency)) return false;
-
-  // Validar RUC (ahora es obligatorio)
-  if (!factura.value.ruc_proveedor || !/^[0-9]{11}$/.test(factura.value.ruc_proveedor)) {
+  if (!['PEN', 'USD'].includes(factura.value.currency)) {
+    console.log('Moneda inválida:', factura.value.currency);
     return false;
   }
 
-  // Validar fecha mínima
-  if (factura.value.estimated_pay_date && factura.value.estimated_pay_date < minDate.value) {
+  // Validar RUC (limpiar espacios y validar)
+  const rucLimpio = factura.value.ruc_proveedor?.trim();
+  if (!rucLimpio || !/^[0-9]{11}$/.test(rucLimpio)) {
+    console.log('RUC inválido:', factura.value.ruc_proveedor);
     return false;
   }
 
+  console.log('Formulario válido ✓');
   return true;
 }
 

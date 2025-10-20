@@ -33,6 +33,10 @@ class InvestorResources extends JsonResource
             'investor_photo_path' => $this->investor_photo,
             'personaexpuesta'     => $this->is_pep,
             'relacionPolitica'    => $this->has_relationship_pep,
+            
+            'verified'            => $this->verified,
+            'status_verified'     => $this->status_verified,
+            'whatsapp_verified_at' => $this->whatsapp_verified_at,
 
             'file_path'          => $this->file_path,
             'approval1_status'   => $this->approval1_status,
