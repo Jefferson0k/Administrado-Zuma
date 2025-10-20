@@ -39,16 +39,16 @@ class StoreBankAccountRequest extends FormRequest
                 'string',
                 'min:2',
                 'max:15',
-                'unique:bank_accounts,cc,NULL,id,investor_id,' . Auth::user()->id,
-                'unique:bank_accounts,cc',
+                // 'unique:bank_accounts,cc,NULL,id,investor_id,' . Auth::user()->id, //unique quitar
+                // 'unique:bank_accounts,cc', //unique quitar
             ],
             'cci' => [
                 'required',
                 'string',
                 'min:20',
                 'max:20',
-                'unique:bank_accounts,cci,NULL,id,investor_id,' . Auth::user()->id,
-                'unique:bank_accounts,cci',
+                // 'unique:bank_accounts,cci,NULL,id,investor_id,' . Auth::user()->id, //unique quitar
+                // 'unique:bank_accounts,cci', //unique quitar
             ],
             'alias' => 'required|string|min:2',
         ];
@@ -56,7 +56,7 @@ class StoreBankAccountRequest extends FormRequest
 
     /**
      * Get the proper failed validation response for the request.
-     * 
+     *
      * @return array<string, string>
      */
     public function messages()

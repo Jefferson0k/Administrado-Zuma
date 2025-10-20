@@ -78,9 +78,9 @@
                     <tr>
                         <td style="padding:5px 0; text-align:center;">
                             
-                                <img src="{{ asset('imagenes/zuma-logo.png') }}" width="370" height="90"
-                                    alt="Logo" style="display:block;margin:0 auto ;">
-                            
+                                <img src="{{ asset('imagenes/zuma-logo.png') }}" width="275" height="35"
+                                    alt="Logo" style="display:block;margin:7.5px auto ;">
+
                         </td>
                     </tr>
                 </table>
@@ -106,13 +106,13 @@
           <tr>
             <td class="darkmode-text"
               style="padding:0 32px 6px 32px;color:#111111;font:400 14px/22px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;">
-              <p style="color:#374151;font-size:15px;text-align:left;max-width:520px;margin:0 auto 12px;">
+              <p style="color:#374151;font-size:15px;text-align:justify;max-width:520px;margin:0 auto 12px;">
                 Hola <strong>{{ $userName }}</strong>,<br><br>
                 Al validar tu información bancaria, encontramos que
                 <strong>el tipo de cuenta seleccionado no coincide con la cuenta registrada</strong>.
               </p>
 
-              <ol style="color:#111827;text-align:left;max-width:520px;margin:0 auto 18px;padding-left:20px;">
+              <ol style="color:#111827;text-align:justify;max-width:520px;margin:0 auto 18px;padding-left:20px;">
                 <li>Ingresa a la sección <strong>Información bancaria</strong>.</li>
                 <li>Elimina el registro anterior.</li>
                 <li>Registra correctamente la información de tu cuenta bancaria.</li>
@@ -125,7 +125,7 @@
                 </a>
               </p>
 
-              <p style="color:#4B5563;font-size:13px;text-align:left;max-width:520px;margin:0 auto 8px;">
+              <p style="color:#4B5563;font-size:13px;text-align:justify;max-width:520px;margin:0 auto 8px;">
                 Este proceso es necesario para garantizar que tus operaciones y transferencias se realicen de manera
                 segura.
               </p>

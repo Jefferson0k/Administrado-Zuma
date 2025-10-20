@@ -235,170 +235,168 @@ class InvestorController extends Controller
         ]);
     }
 
-public function register(StoreInvestorRequest $request)
-{
-    try {
-        $validatedData = $request->validated();
-        $aliasSlug = Str::slug($validatedData['alias']);
-        
-        $aliasProhibido = Alias::pluck('slug')->some(function ($prohibido) use ($aliasSlug) {
-            return Str::contains($aliasSlug, $prohibido);
-        });
-        
-        if ($aliasProhibido) {
+    public function register(StoreInvestorRequest $request)
+    {
+        try {
+            $validatedData = $request->validated();
+            $aliasSlug = Str::slug($validatedData['alias']);
+
+            $aliasProhibido = Alias::pluck('slug')->some(function ($prohibido) use ($aliasSlug) {
+                return Str::contains($aliasSlug, $prohibido);
+            });
+
+            if ($aliasProhibido) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El alias ingresado no está permitido, por favor elige otro.',
+                ], 422);
+            }
+
+            DB::beginTransaction();
+
+            /** @var \App\Models\Investor $investor */
+            $investor = Investor::create([
+                'name' => $request->name,
+                'first_last_name' => $request->first_last_name,
+                'second_last_name' => $request->second_last_name,
+                'alias' => $request->alias,
+                'tipo_documento_id' => $request->tipo_documento_id,
+                'document' => $request->document,
+                'nacionalidad' => $request->nacionalidad,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'telephone' => $request->telephone,
+                'verified' => 0,
+                'status_verified' => 'pending',
+                'whatsapp_verified_at' => null,
+            ]);
+
+            $investor->createBalance('PEN', 0);
+            $investor->createBalance('USD', 0);
+
+            $investorCode = InvestorCode::create([
+                'codigo' => 'TEMP',
+                'usado' => true,
+                'investor_id' => $investor->id,
+            ]);
+
+            $correlativo = str_pad($investorCode->id, 6, '0', STR_PAD_LEFT);
+            $codigo = "INV-0000-{$correlativo}";
+            $investorCode->codigo = $codigo;
+            $investorCode->save();
+
+            $investor->codigo = $codigo;
+            $investor->save();
+
+            Log::info("Nuevo código de inversor generado: {$codigo} para el inversor ID: {$investor->id}");
+
+            DB::commit();
+
+            // ENVÍO DE AMBAS VERIFICACIONES
+            $emailSent = false;
+            $whatsappSent = false;
+
+            try {
+                // 1. Verificación por Email
+                Log::info("Intentando enviar email de verificación...");
+                $investor->sendEmailVerificationNotification();
+                $emailSent = true;
+                Log::info("✅ Email enviado exitosamente");
+            } catch (\Exception $e) {
+                Log::error("❌ Error enviando verificación por email: " . $e->getMessage());
+                Log::error("Stack trace: " . $e->getTraceAsString());
+            }
+
+            try {
+                // 2. Verificación por WhatsApp CON PLANTILLA APROBADA
+                Log::info("Intentando enviar WhatsApp de verificación...", [
+                    'telephone_original' => $investor->telephone,
+                    'investor_name' => $investor->name
+                ]);
+
+                // Pasar el nombre del inversor como parámetro
+                $whatsappSent = $this->sendWhatsAppVerification($investor->telephone, $investor->name);
+
+                Log::info("Resultado WhatsApp: " . ($whatsappSent ? '✅ Enviado' : '❌ No enviado'));
+            } catch (\Exception $e) {
+                Log::error("❌ Error enviando verificación por WhatsApp: " . $e->getMessage());
+                Log::error("Stack trace: " . $e->getTraceAsString());
+            }
+
+            Log::info("=== RESUMEN VERIFICACIONES ===", [
+                'email_sent' => $emailSent,
+                'whatsapp_sent' => $whatsappSent
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Te has registrado con éxito. Te hemos enviado un correo para confirmar tu cuenta y un mensaje de WhatsApp para verificar tu número.',
+                'data' => [
+                    'userId' => $investor->id,
+                    'codigo' => $codigo,
+                    'email' => $investor->email,
+                    'email_verification_sent' => $emailSent,
+                    'whatsapp_verification_sent' => $whatsappSent,
+                ],
+            ], 201);
+        } catch (Throwable $th) {
+            DB::rollBack();
+            Log::error("Error en registro: " . $th->getMessage());
+            Log::error("Stack trace: " . $th->getTraceAsString());
             return response()->json([
                 'success' => false,
-                'message' => 'El alias ingresado no está permitido, por favor elige otro.',
-            ], 422);
+                'message' => 'Ocurrió un error al procesar tu registro. Por favor intenta nuevamente.',
+            ], 500);
         }
-        
-        DB::beginTransaction();
-        
-        /** @var \App\Models\Investor $investor */
-        $investor = Investor::create([
-            'name' => $request->name,
-            'first_last_name' => $request->first_last_name,
-            'second_last_name' => $request->second_last_name,
-            'alias' => $request->alias,
-            'tipo_documento_id' => $request->tipo_documento_id,
-            'document' => $request->document,
-            'nacionalidad' => $request->nacionalidad,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'telephone' => $request->telephone,
-            'verified' => 0,
-            'status_verified' => 'pending',
-            'whatsapp_verified_at' => null,
-        ]);
-        
-        $investor->createBalance('PEN', 0);
-        $investor->createBalance('USD', 0);
-        
-        $investorCode = InvestorCode::create([
-            'codigo' => 'TEMP',
-            'usado' => true,
-            'investor_id' => $investor->id,
-        ]);
-        
-        $correlativo = str_pad($investorCode->id, 6, '0', STR_PAD_LEFT);
-        $codigo = "INV-0000-{$correlativo}";
-        $investorCode->codigo = $codigo;
-        $investorCode->save();
-        
-        $investor->codigo = $codigo;
-        $investor->save();
-        
-        Log::info("Nuevo código de inversor generado: {$codigo} para el inversor ID: {$investor->id}");
-        
-        DB::commit();
+    }
+    private function sendWhatsAppVerification($telephone, $investorName)
+    {
+        try {
+            Log::info("=== USING APPROVED TEMPLATE: verificacion_cuenta_v2 ===");
 
-        // ENVÍO DE AMBAS VERIFICACIONES
-        $emailSent = false;
-        $whatsappSent = false;
-        
-        try {
-            // 1. Verificación por Email
-            Log::info("Intentando enviar email de verificación...");
-            $investor->sendEmailVerificationNotification();
-            $emailSent = true;
-            Log::info("✅ Email enviado exitosamente");
-        } catch (\Exception $e) {
-            Log::error("❌ Error enviando verificación por email: " . $e->getMessage());
-            Log::error("Stack trace: " . $e->getTraceAsString());
-        }
-        
-        try {
-            // 2. Verificación por WhatsApp CON PLANTILLA APROBADA
-            Log::info("Intentando enviar WhatsApp de verificación...", [
-                'telephone_original' => $investor->telephone,
-                'investor_name' => $investor->name
+            $telephone = preg_replace('/\D/', '', $telephone);
+            if (!str_starts_with($telephone, '51')) {
+                $telephone = '51' . $telephone;
+            }
+
+            Log::info("Sending to: +" . $telephone);
+
+            $accountSid = env('TWILIO_SID');
+            $authToken = env('TWILIO_AUTH_TOKEN');
+            $whatsappNumber = env('TWILIO_WHATSAPP_NUMBER');
+
+            $twilio = new \Twilio\Rest\Client($accountSid, $authToken);
+
+            // Usar la plantilla APROBADA verificacion_cuenta_v2 con parámetros
+            $message = $twilio->messages->create(
+                "whatsapp:+{$telephone}",
+                [
+                    "from" => "whatsapp:{$whatsappNumber}",
+                    "contentSid" => "HXea2c2ea5a07edfbd62c39bba43b7ba06", // Template verificacion_cuenta_v2
+                    "contentVariables" => json_encode([
+                        "1" => $investorName // Parámetro {{1}} en la plantilla
+                    ])
+                ]
+            );
+
+            Log::info("✅ PLANTILLA APROBADA ENVIADA EXITOSAMENTE", [
+                'message_sid' => $message->sid,
+                'status' => $message->status,
+                'template' => 'verificacion_cuenta_v2',
+                'investor_name' => $investorName
             ]);
-            
-            // Pasar el nombre del inversor como parámetro
-            $whatsappSent = $this->sendWhatsAppVerification($investor->telephone, $investor->name);
-            
-            Log::info("Resultado WhatsApp: " . ($whatsappSent ? '✅ Enviado' : '❌ No enviado'));
+
+            return true;
+        } catch (\Twilio\Exceptions\RestException $e) {
+            Log::error("❌ Error con plantilla aprobada: " . $e->getMessage());
+            Log::error("Código error: " . $e->getCode());
+
+            return false;
         } catch (\Exception $e) {
-            Log::error("❌ Error enviando verificación por WhatsApp: " . $e->getMessage());
-            Log::error("Stack trace: " . $e->getTraceAsString());
+            Log::error("❌ Error general enviando WhatsApp: " . $e->getMessage());
+            return false;
         }
-
-        Log::info("=== RESUMEN VERIFICACIONES ===", [
-            'email_sent' => $emailSent,
-            'whatsapp_sent' => $whatsappSent
-        ]);
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Te has registrado con éxito. Te hemos enviado un correo para confirmar tu cuenta y un mensaje de WhatsApp para verificar tu número.',
-            'data' => [
-                'userId' => $investor->id,
-                'codigo' => $codigo,
-                'email' => $investor->email,
-                'email_verification_sent' => $emailSent,
-                'whatsapp_verification_sent' => $whatsappSent,
-            ],
-        ], 201);
-        
-    } catch (Throwable $th) {
-        DB::rollBack();
-        Log::error("Error en registro: " . $th->getMessage());
-        Log::error("Stack trace: " . $th->getTraceAsString());
-        return response()->json([
-            'success' => false,
-            'message' => 'Ocurrió un error al procesar tu registro. Por favor intenta nuevamente.',
-        ], 500);
     }
-}
-private function sendWhatsAppVerification($telephone, $investorName)
-{
-    try {
-        Log::info("=== USING APPROVED TEMPLATE: verificacion_cuenta_v2 ===");
-        
-        $telephone = preg_replace('/\D/', '', $telephone);
-        if (!str_starts_with($telephone, '51')) {
-            $telephone = '51' . $telephone;
-        }
-        
-        Log::info("Sending to: +" . $telephone);
-        
-        $accountSid = env('TWILIO_SID');
-        $authToken = env('TWILIO_AUTH_TOKEN');
-        $whatsappNumber = env('TWILIO_WHATSAPP_NUMBER');
-
-        $twilio = new \Twilio\Rest\Client($accountSid, $authToken);
-        
-        // Usar la plantilla APROBADA verificacion_cuenta_v2 con parámetros
-        $message = $twilio->messages->create(
-            "whatsapp:+{$telephone}",
-            [
-                "from" => "whatsapp:{$whatsappNumber}",
-                "contentSid" => "HXea2c2ea5a07edfbd62c39bba43b7ba06", // Template verificacion_cuenta_v2
-                "contentVariables" => json_encode([
-                    "1" => $investorName // Parámetro {{1}} en la plantilla
-                ])
-            ]
-        );
-        
-        Log::info("✅ PLANTILLA APROBADA ENVIADA EXITOSAMENTE", [
-            'message_sid' => $message->sid,
-            'status' => $message->status,
-            'template' => 'verificacion_cuenta_v2',
-            'investor_name' => $investorName
-        ]);
-        
-        return true;
-        
-    } catch (\Twilio\Exceptions\RestException $e) {
-        Log::error("❌ Error con plantilla aprobada: " . $e->getMessage());
-        Log::error("Código error: " . $e->getCode());
-        
-        return false;
-    } catch (\Exception $e) {
-        Log::error("❌ Error general enviando WhatsApp: " . $e->getMessage());
-        return false;
-    }
-}
     public function login(LoginInvestorRequest $request)
     {
         try {
@@ -410,26 +408,55 @@ private function sendWhatsAppVerification($telephone, $investorName)
                     'message' => 'Credenciales inválidas'
                 ], 401);
             }
+
+
+            $issues = [];
             if (! $investor->hasVerifiedEmail()) {
                 // optional: trigger another verification email
-                $investor->sendEmailVerificationNotification();
+                try {
+                    $investor->sendEmailVerificationNotification();
+                } catch (Throwable $th) {
+                    Log::info($th->getMessage());
+                }
 
-                return response()->json([
+                $issues[] = [
                     'code' => 'email_not_verified',
                     'message' => 'Tu email aún no ha sido verificado. Revisa tu bandeja de entrada.',
-                ], 403);
+                ];
+
+
+                // return response()->json([
+                //      'success' => false,
+                //     'code' => 'email_not_verified',
+
+                //     'message' => 'Tu email aún no ha sido verificado. Revisa tu bandeja de entrada.',
+                // ], 403);
             }
-            // if (! $investor->hasVerifiedWhatsapp()) {
-            //     // optional: trigger another verification email
-            //     //$investor->sendWhatsappVerificationNotification();
-            //     return response()->json([
-            //         'code' => 'whatsapp_not_verified',
-            //         'message' => 'Tu WhatsApp aún no ha sido verificado. Revisa tu bandeja de entrada.',
-            //     ], 403);
-            // }
+            if (! $investor->hasVerifiedWhatsapp()) {
+                // optional: trigger another verification email
+                // $investor->sendWhatsappVerificationNotification();
+                // return response()->json([
+                //     'code' => 'whatsapp_not_verified',
+                //     'message' => 'Tu WhatsApp aún no ha sido verificado. Revisa tu bandeja de entrada.',
+                // ], 403);
+                $issues[] = [
+                    'code' => 'whatsapp_not_verified',
+                    'message' => 'Tu WhatsApp aún no ha sido verificado. Revisa tu bandeja de entrada.',
+                ];
+            }
             // if (! $investor->hasVerifiedWhatsapp()) {
             //     return response()->json(['message' => 'WhatsApp aún no ha sido verificado.'], 403);
             // }
+
+
+            // Si hay una o más observaciones, devolverlas juntas
+            if (!empty($issues)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Acceso bloqueado: tienes verificaciones pendientes.',
+                    'issues'  => $issues,   // <-- el frontend puede iterar esto y mostrar todo
+                ], 403);
+            }
 
             return response()->json([
                 'success' => true,
@@ -443,7 +470,7 @@ private function sendWhatsAppVerification($telephone, $investorName)
             Log::info($th->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => $th->getMessage(),
+                'message' => 'Ocurrió un error en el servidor. Inténtalo más tarde.',
                 'data' => null,
             ], 500);
         }
@@ -791,6 +818,8 @@ private function sendWhatsAppVerification($telephone, $investorName)
             // $publicFrontUrl = $disk->temporaryUrl($documentFrontKey, now()->addMinutes(15));
             // $publicBackUrl  = $disk->temporaryUrl($documentBackKey,  now()->addMinutes(15));
             // $publicPhotoUrl = $disk->temporaryUrl($photoKey,         now()->addMinutes(15));
+
+            $investor->sendAccountUpdatedInformation();
 
             return response()->json([
                 'success' => true,
@@ -2043,7 +2072,7 @@ private function sendWhatsAppVerification($telephone, $investorName)
     }
 
 
-     public function exportExcel(Request $request)
+    public function exportExcel(Request $request)
     {
         // Filtro global (coincide con el frontend)
         $search = $request->string('search')->trim()->toString();

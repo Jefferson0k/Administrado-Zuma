@@ -120,6 +120,8 @@ class BankAccountController extends Controller
 
             $bank_account->save();
 
+            $investor->sendsbankcreatednotification($bank_account);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Operación realizada correctamente.',

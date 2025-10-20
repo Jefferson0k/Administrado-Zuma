@@ -107,7 +107,7 @@
                     <tr>
                         <td class="darkmode-text"
                             style="padding:0 32px 6px 32px;color:#111111;font:400 14px/22px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;">
-                            <p style="color:#374151;font-size:15px;text-align:left;max-width:520px;margin:0 auto 12px;">
+                            <p style="color:#374151;font-size:15px;text-align:justify;max-width:520px;margin:0 auto 12px;">
                                 Hola <strong>{{ $userName }}</strong>,<br><br>
                                 Al revisar tu comprobante de depósito, detectamos que la
                                 cuenta bancaria de origen seleccionada en la plataforma no
@@ -115,7 +115,7 @@
                             </p>
 
                             <ol
-                                style="color:#111827;text-align:left;max-width:520px;margin:0 auto 18px;padding-left:20px;">
+                                style="color:#111827;text-align:justify;max-width:520px;margin:0 auto 18px;padding-left:20px;">
                                 <li>Ingresa a la sección <strong>billetera</strong>.</li>
                                 <li>Elimina el registro anterior.</li>
                                 <li>Carga los datos de tu depósito con la información correcta.</li>
@@ -128,7 +128,7 @@
                                 </a>
                             </p>
 
-                            <p style="color:#4B5563;font-size:13px;text-align:left;max-width:520px;margin:0 auto 8px;">
+                            <p style="color:#4B5563;font-size:13px;text-align:justify;max-width:520px;margin:0 auto 8px;">
                                 Este control es importante para garantizar la seguridad de tus
                                 operaciones y que tus fondos sean acreditados correctamente
                                 en tu cuenta de inversión.

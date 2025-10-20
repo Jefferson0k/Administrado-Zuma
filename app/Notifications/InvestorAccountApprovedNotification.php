@@ -27,7 +27,7 @@ class InvestorAccountApprovedNotification extends Notification
         $dashboard = "{$clientUrl}/dashboard";
 
         return (new MailMessage)
-            ->subject("{$appName} — ¡Tu cuenta fue aprobada!")
+            ->subject("{$appName} — ¡Tu usuario fue aprobado!")
             ->view('emails.investor-approved', [
                 'appName'      => $appName,
                 'userName'     => $notifiable->name ?? 'Usuario',

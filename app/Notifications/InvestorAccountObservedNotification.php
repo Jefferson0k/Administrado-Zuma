@@ -11,7 +11,7 @@ class InvestorAccountObservedNotification extends Notification
       use Queueable;
 
     public function __construct(
-        public ?string $title = 'Tu cuenta fue observada',
+        public ?string $title = 'ZUMA - Tu usuario fue observado',
         public ?string $intro = 'Detectamos observaciones en tu cuenta que requieren tu atención para continuar con el proceso.',
         public array $reasons = [], // opcional, si tienes motivos específicos
         public ?string $whatsappUrl = null,

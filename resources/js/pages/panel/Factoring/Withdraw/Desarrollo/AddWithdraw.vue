@@ -28,9 +28,14 @@
                     <!-- Tab de Ingresos -->
                     <TabPanel header="Ingresos">
                         <div class="flex justify-between items-center mb-4">
-                            <h5 class="m-0 text-green-700">
-                                Ingresos Totales: {{ formatCurrency(totalIncome, 'PEN') }}
-                            </h5>
+                            <div class="flex items-center gap-3">
+                                <h5 class="m-0 text-green-700">Ingresos Totales:</h5>
+                                <Tag severity="success"
+                                    :value="formatCurrency(totalsIncomeByCurrency.PEN || 0, 'PEN')" />
+                                <Tag severity="success"
+                                    :value="formatCurrency(totalsIncomeByCurrency.USD || 0, 'USD')" />
+                            </div>
+
                             <IconField>
                                 <InputIcon>
                                     <i class="pi pi-search" />
@@ -96,9 +101,14 @@
                     <!-- Tab de Egresos -->
                     <TabPanel header="Egresos">
                         <div class="flex justify-between items-center mb-4">
-                            <h5 class="m-0 text-red-700">
-                                Egresos Totales: {{ formatCurrency(totalExpenses, 'PEN') }}
-                            </h5>
+                            <div class="flex items-center gap-3">
+                                <h5 class="m-0 text-red-700">Egresos Totales:</h5>
+                                <Tag severity="danger"
+                                    :value="formatCurrency(totalsExpensesByCurrency.PEN || 0, 'PEN')" />
+                                <Tag severity="danger"
+                                    :value="formatCurrency(totalsExpensesByCurrency.USD || 0, 'USD')" />
+                            </div>
+
                             <IconField>
                                 <InputIcon>
                                     <i class="pi pi-search" />
@@ -167,8 +177,18 @@
                                     <i class="pi pi-arrow-down-left text-2xl text-green-600"></i>
                                     <div>
                                         <p class="text-sm font-medium text-green-800">Total Ingresos</p>
-                                        <p class="text-2xl font-bold text-green-600">
-                                            {{ formatCurrency(totalIncome, 'PEN') }}
+                                        <!-- <p class="text-2xl font-bold text-green-600">
+                                            {{ formatCurrency((totalsIncomeByCurrency.PEN || 0) +
+                                                (totalsIncomeByCurrency.USD || 0), 'PEN')
+                                            }}
+                                        </p> -->
+                                        <p class=" text-green-700">
+                                            PEN: {{ formatCurrency(totalsIncomeByCurrency.PEN || 0, 'PEN') }}
+
+                                        </p>
+                                        <p class=" text-green-700">
+
+                                            USD: {{ formatCurrency(totalsIncomeByCurrency.USD || 0, 'USD') }}
                                         </p>
                                         <p class="text-xs text-green-500">{{ incomeMovements.length }} movimientos</p>
                                     </div>
@@ -181,9 +201,17 @@
                                     <i class="pi pi-arrow-up-right text-2xl text-red-600"></i>
                                     <div>
                                         <p class="text-sm font-medium text-red-800">Total Egresos</p>
-                                        <p class="text-2xl font-bold text-red-600">
-                                            {{ formatCurrency(totalExpenses, 'PEN') }}
+
+                                        <p class=" text-red-700">
+                                            PEN: {{ formatCurrency(totalsExpensesByCurrency.PEN || 0, 'PEN') }}
+
                                         </p>
+
+                                        <p class=" text-red-700">
+
+                                            USD: {{ formatCurrency(totalsExpensesByCurrency.USD || 0, 'USD') }}
+                                        </p>
+
                                         <p class="text-xs text-red-500">{{ expenseMovements.length }} movimientos</p>
                                     </div>
                                 </div>
@@ -195,10 +223,16 @@
                                     <i class="pi pi-chart-line text-2xl text-blue-600"></i>
                                     <div>
                                         <p class="text-sm font-medium text-blue-800">Balance Neto</p>
-                                        <p class="text-2xl font-bold"
-                                            :class="netBalance >= 0 ? 'text-green-600' : 'text-red-600'">
-                                            {{ formatCurrency(netBalance, 'PEN') }}
+                                      
+                                        <p class=" text-blue-600 font-bold">
+                                            PEN: {{ formatCurrency(netBalanceByCurrency.PEN || 0, 'PEN') }}
+                                           
                                         </p>
+                                        <p class=" text-blue-600 font-bold">
+                                    
+                                            USD: {{ formatCurrency(netBalanceByCurrency.USD || 0, 'USD') }}
+                                        </p>
+
                                         <p class="text-xs text-blue-500">Saldo actual</p>
                                     </div>
                                 </div>
@@ -246,7 +280,7 @@
             </div>
         </div>
 
-        
+
     </div>
 </template>
 
@@ -434,62 +468,62 @@ watch(() => props.investorId, (newValue) => {
 
 // Methods
 const loadInvestorMovements = async () => {
-  if (!props.investorId) return;
-  loading.value = true;
+    if (!props.investorId) return;
+    loading.value = true;
 
-  // Intenta varias rutas posibles hasta encontrar una que devuelva array de movimientos
-  const candidateUrls = [
-    `/withdraws/investor/${props.investorId}`,    // recomendado (movimientos por inversionista)
-    `/investors/${props.investorId}/movements`,   // alternativa
-    `/withdraws/${props.investorId}`              // tu ruta actual, pero la validamos
-  ];
+    // Intenta varias rutas posibles hasta encontrar una que devuelva array de movimientos
+    const candidateUrls = [
+        `/withdraws/investor/${props.investorId}`,    // recomendado (movimientos por inversionista)
+        `/investors/${props.investorId}/movements`,   // alternativa
+        `/withdraws/${props.investorId}`              // tu ruta actual, pero la validamos
+    ];
 
-  try {
-    let ok = false;
-    for (const url of candidateUrls) {
-      try {
-        const { data } = await axios.get(url);
+    try {
+        let ok = false;
+        for (const url of candidateUrls) {
+            try {
+                const { data } = await axios.get(url);
 
-        // Normalización: acepta { data: [] } o { movements: [] }, y opcionalmente { investor: {...} }
-        const arr =
-          Array.isArray(data?.data) ? data.data :
-          Array.isArray(data?.movements) ? data.movements :
-          null;
+                // Normalización: acepta { data: [] } o { movements: [] }, y opcionalmente { investor: {...} }
+                const arr =
+                    Array.isArray(data?.data) ? data.data :
+                        Array.isArray(data?.movements) ? data.movements :
+                            null;
 
-        const inv =
-          data?.investor ??
-          (data?.meta?.investor ?? null);
+                const inv =
+                    data?.investor ??
+                    (data?.meta?.investor ?? null);
 
-        if (Array.isArray(arr)) {
-          movements.value = arr;
-          investorInfo.value = inv || investorInfo.value; // conserva si no viene
-          ok = true;
-          break;
+                if (Array.isArray(arr)) {
+                    movements.value = arr;
+                    investorInfo.value = inv || investorInfo.value; // conserva si no viene
+                    ok = true;
+                    break;
+                }
+            } catch (e) {
+                // probar siguiente url
+            }
         }
-      } catch (e) {
-        // probar siguiente url
-      }
-    }
 
-    if (!ok) {
-      // si ninguna ruta devolvió array, asegura array vacío
-      movements.value = [];
-      investorInfo.value = null;
-    }
-  } catch (error) {
-    movements.value = [];
-    investorInfo.value = null;
+        if (!ok) {
+            // si ninguna ruta devolvió array, asegura array vacío
+            movements.value = [];
+            investorInfo.value = null;
+        }
+    } catch (error) {
+        movements.value = [];
+        investorInfo.value = null;
 
-    let errorMessage = 'Error al cargar los movimientos del inversionista';
-    if (error.response) {
-      errorMessage = error.response.data?.message || `Error ${error.response.status}`;
-    } else if (error.request) {
-      errorMessage = 'Error de conexión con el servidor';
+        let errorMessage = 'Error al cargar los movimientos del inversionista';
+        if (error.response) {
+            errorMessage = error.response.data?.message || `Error ${error.response.status}`;
+        } else if (error.request) {
+            errorMessage = 'Error de conexión con el servidor';
+        }
+        toast.add({ severity: 'error', summary: 'Error', detail: errorMessage, life: 5000 });
+    } finally {
+        loading.value = false;
     }
-    toast.add({ severity: 'error', summary: 'Error', detail: errorMessage, life: 5000 });
-  } finally {
-    loading.value = false;
-  }
 };
 
 // Load when mounted (if already visible) and whenever visible/investorId change
@@ -583,4 +617,47 @@ const formatTime = (dateString) => {
         minute: '2-digit'
     });
 };
+
+
+
+// --- Totales por moneda ---
+const aggregateByCurrency = (arr, amountFn, currencyFn) => {
+    return arr.reduce((acc, item) => {
+        const cur = String(currencyFn(item) || 'PEN').toUpperCase();
+        const amt = Number(amountFn(item) || 0);
+        acc[cur] = (acc[cur] || 0) + amt;
+        return acc;
+    }, {});
+};
+
+const totalsIncomeByCurrency = computed(() =>
+    aggregateByCurrency(
+        incomeMovements.value,
+        (m) => incomeDisplayAmount(m),
+        (m) => m.currency
+    )
+);
+
+const totalsExpensesByCurrency = computed(() =>
+    aggregateByCurrency(
+        expenseMovements.value,
+        (m) => parseFloat(m.amount ?? 0),
+        (m) => m.currency
+    )
+);
+
+const netBalanceByCurrency = computed(() => {
+    const all = new Set([
+        ...Object.keys(totalsIncomeByCurrency.value || {}),
+        ...Object.keys(totalsExpensesByCurrency.value || {})
+    ]);
+    const res = {};
+    all.forEach((c) => {
+        res[c] =
+            (totalsIncomeByCurrency.value?.[c] || 0) -
+            (totalsExpensesByCurrency.value?.[c] || 0);
+    });
+    return res;
+});
+
 </script>

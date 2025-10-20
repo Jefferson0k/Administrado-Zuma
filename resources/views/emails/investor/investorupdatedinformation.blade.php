@@ -2,12 +2,12 @@
   $appName = $appName ?? 'ZUMA';
   $brandPrimary = $brandPrimary ?? '#fd4a2a';
   $brandButton = $brandButton ?? '#3B82F6';
-  $title = $title ?? 'Registraste el nombre de otra entidad bancaria en tu formulario';
+  $title = $title ?? 'Perfil de inversionista pendiente de validación';
   $userName = $userName ?? 'Usuario';
   $ctaUrl = $ctaUrl ?? env('CLIENT_APP_URL', 'https://zuma.com.pe');
   $companyAddr = $companyAddr ?? 'Av. Faustino Sánchez Carrión 417, Magdalena del Mar, Lima – Perú';
   $prefsUrl = $prefsUrl ?? '#';
-  $whatsappUrl = $whatsappUrl ?? '#';
+  // $whatsappUrl = $whatsappUrl ?? '#';
   $supportPhone = $supportPhone ?? '+51 986 351 267';
 @endphp
 <!doctype html>
@@ -68,31 +68,32 @@
 </head>
 
 <body style="margin:0;padding:0;background:#F3F4F6;">
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
 
-        <!-- Barra superior (misma anchura que la tarjeta 640px) -->
-        <tr>
-            <td align="center" style="padding:0 0 0 0;">
-                <table class="container" role="presentation" width="640" cellspacing="0" cellpadding="0" border="0"
-                    style="width:640px;max-width:640px;background:#fd4a2a;color:#E5E7EB;">
-                    <tr>
-                        <td style="padding:5px 0; text-align:center;">
-                            <img src="{{ asset('imagenes/zuma-logo.png') }}" width="275" height="35"
-                                alt="Logo" style="display:block;margin:7.5px auto ;">
-                        </td>
-                    </tr>
-                </table>
+    <!-- Barra superior (misma anchura que la tarjeta 640px) -->
+    <tr>
+      <td align="center" style="padding:0 0 0 0;">
+        <table class="container" role="presentation" width="640" cellspacing="0" cellpadding="0" border="0"
+          style="width:640px;max-width:640px;background:#fd4a2a;color:#E5E7EB;">
+          <tr>
+            <td style="padding:5px 0; text-align:center;">
+
+              <img src="{{ asset('imagenes/zuma-logo.png') }}" width="275" height="35" alt="Logo"
+                style="display:block;margin:7.5px auto ;">
+
             </td>
-        </tr>
+          </tr>
+        </table>
+      </td>
+    </tr>
 
-        <!-- Tarjeta (GRIS) -->
-        <tr>
-            <td align="center">
-                <table class="container darkmode-bg" role="presentation" width="640" cellspacing="0" cellpadding="0"
-                    border="0" bgcolor="#f7f7f7" style="width:640px;max-width:640px;background:#f7f7f7;margin:0 auto;">
-                    <tr>
-                        <td style="padding:8px 32px 8px 32px;text-align:center;">
-
+    <!-- Tarjeta (GRIS) -->
+    <tr>
+      <td align="center">
+        <table class="container darkmode-bg" role="presentation" width="640" cellspacing="0" cellpadding="0" border="0"
+          bgcolor="#f7f7f7" style="width:640px;max-width:640px;background:#f7f7f7;margin:0 auto;">
+          <tr>
+            <td style="padding:8px 32px 8px 32px;text-align:center;">
               <!-- Título -->
               <h1 class="hero-title darkmode-text"
                 style="margin:8px 0;font:800 22px/28px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;color:#111111;text-decoration:underline;">
@@ -104,20 +105,23 @@
           <tr>
             <td class="darkmode-text"
               style="padding:0 32px 6px 32px;color:#111111;font:400 14px/22px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;">
-              <p style="margin:0 0 14px 0;color:#111111;">Hola <strong>{{ $userName }}</strong>,</p>
-
-              <p style="margin:0 0 12px 0;color:#111111;">
-                Al validar los datos de tu cuenta bancaria, identificamos que
-                <strong>la entidad bancaria no corresponde con el número de cuenta que registraste.</strong>
+              <p style="color:#374151;font-size:15px;text-align:justify;max-width:520px;margin:0 auto 12px;">
+                Hola <strong>{{ $userName }}</strong>,<br><br>
+                Gracias por completar tus datos personales. <strong>Nos encontramos validando la información que
+                  proporcionaste.</strong>.
               </p>
 
-              <ol style="margin:0 0 16px 20px;padding:0;color:#111111;">
-                <li>Ingresa a la sección <strong>Información bancaria</strong>.</li>
-                <li>Elimina el registro anterior.</li>
-                <li>Registra correctamente la información de tu cuenta bancaria.</li>
-              </ol>
+              <p style="color:#374151;font-size:15px;text-align:justify;max-width:520px;margin:0 auto 12px;">
+                Este proceso puede tomar hasta 12 horas hábiles, para cumplir con los requisitos de seguridad y el marco
+                normativo vigente.
+              </p>
 
-              <!-- CTA -->
+               <p style="color:#374151;font-size:15px;text-align:justify;max-width:520px;margin:0 auto 12px;">
+                Una vez completada la validación, recibirás un correo de confirmación para empezar a invertir de manera fácil y segura.
+              </p>
+
+
+
               <p style="text-align:center;margin:18px 0 22px 0;">
                 <a href="{{ $ctaUrl }}" class="btn"
                   style="display:inline-block;padding:12px 18px;border-radius:28px;font-weight:700;color:#FFFFFF;background:{{ $brandButton }};box-shadow:0 2px 0 rgba(0,0,0,.12);">
@@ -125,13 +129,11 @@
                 </a>
               </p>
 
-              <p style="margin:0 0 12px 0;color:#111111;">
-                Este proceso es necesario para garantizar que tus operaciones y transferencias se realicen de manera
-                segura.
-              </p>
+              
 
-              <p style="margin:0;color:#111111;">
-                Gracias por tu colaboración,<br>El equipo de {{ $appName }}
+
+              <p style="color:#111827;font-size:13px;margin-top:18px;">Gracias por tu paciencia y confianza,,<br>El equipo de
+                {{ $appName }}
               </p>
 
               <hr style="border:none;border-top:1px solid #D1D5DB;margin:22px 0;">
@@ -146,10 +148,7 @@
                   <td class="darkmode-text"
                     style="font:500 13px/18px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;color:#111111;">
                     ¿Necesitas ayuda? Escríbenos a nuestro <strong>WhatsApp {{ $supportPhone }}</strong>
-                    @if(!empty($whatsappUrl) && $whatsappUrl !== '#')
-                      &nbsp;<a href="{{ $whatsappUrl }}" style="color:#111111;text-decoration:underline;">Abrir
-                        WhatsApp</a>
-                    @endif
+                    
                   </td>
                 </tr>
               </table>

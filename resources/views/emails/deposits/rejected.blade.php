@@ -2,13 +2,18 @@
     $appName = $appName ?? 'ZUMA';
     $brandPrimary = $brandPrimary ?? '#fd4a2a';
     $brandButton = $brandButton ?? '#3B82F6';
-    $title = $title ?? 'Verifica tu correo - ZUMA';
-    $userName = $investor->name ?? 'Usuario';
+    $title = $title ?? 'Depósito rechazado';
+    $userName = $notifiable->name ?? 'Usuario';
     $ctaUrl = $ctaUrl ?? env('CLIENT_APP_URL', 'https://zuma.com.pe');
     $companyAddr = $companyAddr ?? 'Av. Faustino Sánchez Carrión 417, Magdalena del Mar, Lima – Perú';
     $prefsUrl = $prefsUrl ?? '#';
-    $whatsappUrl = $whatsappUrl ?? '#';
-    $supportPhone = config('app.support_phone') ?? '+51 986 351 267';
+    $depositAmount = $depositAmount ?? 'S/. 0.00';
+    $depositDate = $depositDate ?? '';
+    // $whatsappUrl = $whatsappUrl ?? '#';
+    $supportPhone = $supportPhone ?? '+51 986 351 267';
+    $moneda = $moneda ?? 'S/.';
+    
+    
 @endphp
 <!doctype html>
 <html lang="es">
@@ -17,7 +22,7 @@
     <meta charset="utf-8">
     <meta name="x-apple-disable-message-reformatting">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Verifica tu correo - ZUMA</title>
+    <title>{{ $title }}</title>
 
     <!-- Tell clients we only support light colors (prevents auto-invert in many apps) -->
     <meta name="color-scheme" content="light">
@@ -78,7 +83,7 @@
                     <tr>
                         <td style="padding:5px 0; text-align:center;">
 
-                            <img src="{{ asset('imagenes/zuma-logo.png') }}" width="280" height="35" alt="Logo"
+                            <img src="{{ asset('imagenes/zuma-logo.png') }}" width="275" height="35" alt="Logo"
                                 style="display:block;margin:7.5px auto ;">
 
                         </td>
@@ -91,12 +96,9 @@
         <tr>
             <td align="center">
                 <table class="container darkmode-bg" role="presentation" width="640" cellspacing="0" cellpadding="0"
-                    border="0" style="width:640px;max-width:640px;background:#f7f7f7;margin:0 auto;">
+                    border="0" bgcolor="#f7f7f7" style="width:640px;max-width:640px;background:#f7f7f7;margin:0 auto;">
                     <tr>
                         <td style="padding:8px 32px 8px 32px;text-align:center;">
-
-
-
                             <!-- Título -->
                             <h1 class="hero-title darkmode-text"
                                 style="margin:8px 0;font:800 22px/28px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;color:#111111;text-decoration:underline;">
@@ -110,40 +112,29 @@
                             style="padding:0 32px 6px 32px;color:#111111;font:400 14px/22px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;">
                             <p style="color:#374151;font-size:15px;text-align:justify;max-width:520px;margin:0 auto 12px;">
                                 Hola <strong>{{ $userName }}</strong>,<br><br>
-                                Gracias por registrarte en nuestra plataforma de inversiones.
-                                <strong>Para completar tu registro y acceder a todas las funcionalidades, por favor
-                                    verifica tu dirección de email haciendo clic en el siguiente botón:</strong>.
-
+                                Tu depósito con número de operación {{ $deposit->nro_operation }} ha sido rechazado.
                             </p>
-
-
-
 
                             <p style="color:#374151;font-size:15px;text-align:justify;max-width:520px;margin:0 auto 12px;">
-                                Si el botón no funciona, intenta ingresar con el siguiente enlace:</p>
-                            <p style="color:blue;font-size:15px;text-align:justify;max-width:520px;margin:0 auto 12px;">
-                                <a href="{{ $url }}" class="button">Verificar Email</a>
-                            </p>
+                             <strong>Monto: </strong>  {{ $monto }} </p>
+                            
+                             <p style="color:#374151;font-size:15px;text-align:justify;max-width:520px;margin:0 auto 12px;">
+                                <strong>Fecha del depósito: </strong>{{ $fecha }}
+                             </p>
+                           
 
-                            <ol
-                                style="color:#111827;text-align:justify;max-width:520px;margin:0 auto 18px;padding-left:20px;">
-                                <li>Este enlace de verificación expirará en
-                                    <strong>{{ config('auth.verification.expire', 60) }} minutos.</strong>.
-                                </li>
-                                <li>Si no creaste esta cuenta, puedes ignorar este email.</li>
-                            </ol>
 
                             <p style="text-align:center;margin:18px 0 22px 0;">
-                                <a href="{{ $url }}" class="btn"
+                                <a href="{{ $ctaUrl }}" class="btn"
                                     style="display:inline-block;padding:12px 18px;border-radius:28px;font-weight:700;color:#FFFFFF;background:{{ $brandButton }};box-shadow:0 2px 0 rgba(0,0,0,.12);">
-                                    Verificar Email
+                                    Ir a ZUMA
                                 </a>
                             </p>
 
 
 
-                            <p style="color:#111827;font-size:13px;margin-top:18px;">Gracias por tu colaboración,<br>El
-                                equipo de
+
+                            <p style="color:#111827;font-size:13px;margin-top:18px;">Gracias por usar nuestros servicios. <br>El equipo de
                                 {{ $appName }}
                             </p>
 
@@ -161,11 +152,7 @@
                                         style="font:500 13px/18px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;color:#111111;">
                                         ¿Necesitas ayuda? Escríbenos a nuestro <strong>WhatsApp
                                             {{ $supportPhone }}</strong>
-                                        @if(!empty($whatsappUrl) && $whatsappUrl !== '#')
-                                            &nbsp;<a href="{{ $whatsappUrl }}"
-                                                style="color:#111111;text-decoration:underline;">Abrir
-                                                WhatsApp</a>
-                                        @endif
+
                                     </td>
                                 </tr>
                             </table>
@@ -186,12 +173,12 @@
                                 style="margin:0 0 10px 0;font:500 12px/18px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;color:#E5E7EB;">
                                 {{ $companyAddr }}
                             </p>
-                            {{-- <p style="margin:0 0 10px 0;">
+                            <p style="margin:0 0 10px 0;">
                                 <a href="{{ $prefsUrl }}"
                                     style="color:#A3A7AD;font:500 12px/18px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;text-decoration:underline;">
                                     Gestionar preferencias
                                 </a>
-                            </p> --}}
+                            </p>
                             <p
                                 style="margin:0;font:500 11px/16px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;color:#A3A7AD;">
                                 © {{ $footerYear ?? date('Y') }} {{ $appName }}. Todos los derechos reservados.
@@ -201,7 +188,6 @@
                 </table>
             </td>
         </tr>
-
 
     </table>
 </body>

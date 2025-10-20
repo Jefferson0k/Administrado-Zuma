@@ -11,7 +11,7 @@ class InvestorAccountObservedDNIEmailNotification extends Notification
     use Queueable;
 
     public function __construct(
-        public ?string $title = 'Necesitamos validar tu documento de identidad',
+        public ?string $title = 'ZUMA - Necesitamos validar tu documento de identidad',
         public array $reasons = [
             'La imagen está borrosa o poco legible.',
             'Los datos del documento no coinciden con el número de DNI/CE ingresado.',

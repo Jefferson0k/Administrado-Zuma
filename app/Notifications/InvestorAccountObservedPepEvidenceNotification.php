@@ -39,7 +39,7 @@ class InvestorAccountObservedPepEvidenceNotification extends Notification
                 // Contenido
                 'title'        => 'Completa el formato PEP',
                 'userName'     => $notifiable->name ?? 'Usuario',
-                'pepFormUrl'   => $this->pepFormUrl ?: 'https://tusitio.com/pep-formato.pdf',
+                'pepFormUrl'   => $this->pepFormUrl ?: 'https://www.zuma.com.pe',
 
                 // Soporte & footer
                 'whatsappUrl'  => $this->whatsappUrl ?: 'https://wa.me/51986351267',

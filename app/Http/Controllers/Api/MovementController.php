@@ -486,6 +486,9 @@ class MovementController extends Controller
                     'movement_id' => $movement->id,
                 ]);
 
+
+                $investor->sendDepositPendingEmailNotification($deposit);
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Operación creada correctamente.',

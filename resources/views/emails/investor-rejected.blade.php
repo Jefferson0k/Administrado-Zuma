@@ -49,7 +49,20 @@
       <td align="center">
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
 
-        <!-- Barra superior (misma anchura que la tarjeta 640px) -->
+
+            <tr>
+                        <td style="padding:8px 32px 8px 32px;text-align:center;">
+
+
+
+                            <!-- Título -->
+                            <h1 class="hero-title darkmode-text"
+                                style="margin:8px 0;font:800 22px/28px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;color:#111111;text-decoration:underline;">
+                                {{ $title }}
+                            </h1>
+                        </td>
+                    </tr>
+
        
 
           <tr>
@@ -57,7 +70,7 @@
               <p style="margin:0 0 14px 0;">Hola <strong>{{ $userName }}</strong>,</p>
 
               <p style="margin:0 0 12px 0;color:#374151;">
-                Tu cuenta fue <strong>rechazada</strong> durante la validación. Para continuar,
+                Tu usuario fue <strong>rechazado</strong> durante la validación. Para continuar,
                 por favor ingresa y vuelve a completar tus datos y <strong>sube las fotos de tu DNI</strong>
                 correctamente.
               </p>

@@ -15,10 +15,14 @@ use App\Notifications\InvestorDepositRejectedNotification;
 use App\Notifications\InvestorEmailVerificationNotification;
 use App\Notifications\InvestorFullyPaymentNotification;
 use App\Notifications\InvestorInvestedNotification;
+use App\Notifications\InvestorAccountUpdatedInformation;
 use App\Notifications\InvestorPartialPaymentNotification;
 use App\Notifications\InvestorPasswordResetNotification;
 use App\Notifications\InvestorWithdrawApprovedNotification;
 use App\Notifications\InvestorWithdrawPendingNotification;
+use App\Notifications\BankAccountCreatedNotification;
+use App\Notifications\WithdrawRejected;
+use App\Notifications\WithdrawObserved;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -91,6 +95,8 @@ class Investor extends Authenticatable implements MustVerifyEmail, AuditableCont
         'is_pep' => 'boolean',
         'has_relationship_pep' => 'boolean',
         'verified' => 'boolean', // siempre devuelve true/false
+        'whatsapp_verified_at' => 'datetime',
+
     ];
     public function investments()
     {
@@ -242,6 +248,15 @@ class Investor extends Authenticatable implements MustVerifyEmail, AuditableCont
     {
         $this->notify(new InvestorWithdrawApprovedNotification($withdraw));
     }
+    public function sendWithdrawRejectedEmailNotification(Withdraw $withdraw)
+    {
+        $this->notify(new WithdrawRejected($withdraw));
+    }
+
+    public function sendWithdrawObservedEmailNotification(Withdraw $withdraw)
+    {
+        $this->notify(new WithdrawObserved($withdraw));
+    }
     public function sendInvestmentEmailNotification(Invoice $invoice, Investment $investment, Company $company)
     {
         $this->notify(new InvestorInvestedNotification($invoice, $investment, $company));
@@ -290,6 +305,17 @@ class Investor extends Authenticatable implements MustVerifyEmail, AuditableCont
     public function sendAccountObservedPepEvidenceNotification()
     {
         $this->notify(new InvestorAccountObservedPepEvidenceNotification());
+    }
+
+    public function sendAccountUpdatedInformation()
+    {
+        $this->notify(new InvestorAccountUpdatedInformation());
+    }
+
+
+    public function sendsbankcreatednotification()
+    {
+        $this->notify(new BankAccountCreatedNotification());
     }
 
 
@@ -441,7 +467,9 @@ class Investor extends Authenticatable implements MustVerifyEmail, AuditableCont
 
     public function hasVerifiedWhatsapp(): bool
     {
-        return (bool) $this->whatsapp_verified;
+        return (bool) $this->whatsapp_verified_at;
+
+        // (bool) $this->whatsapp_verified 
     }
 
 }

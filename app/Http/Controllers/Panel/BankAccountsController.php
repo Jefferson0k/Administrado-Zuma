@@ -403,6 +403,7 @@ class BankAccountsController extends Controller
                 try {
                     $account->sendBankAccountRejectionEmail();
                 } catch (\Throwable $e) {
+                    Log::warning('Error enviando correo de rechazo: ' . $e->getMessage());
                 }
             } elseif ($account->status === 'observed') {
                 try {

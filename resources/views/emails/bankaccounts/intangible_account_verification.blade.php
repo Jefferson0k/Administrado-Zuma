@@ -77,10 +77,8 @@
                     style="width:640px;max-width:640px;background:#fd4a2a;color:#E5E7EB;">
                     <tr>
                         <td style="padding:5px 0; text-align:center;">
-                            
-                                <img src="{{ asset('imagenes/zuma-logo.png') }}" width="370" height="90"
-                                    alt="Logo" style="display:block;margin:0 auto ;">
-                            
+                            <img src="{{ asset('imagenes/zuma-logo.png') }}" width="275" height="35"
+                                alt="Logo" style="display:block;margin:7.5px auto ;">
                         </td>
                     </tr>
                 </table>
@@ -106,29 +104,29 @@
           <tr>
             <td class="darkmode-text"
               style="padding:0 32px 6px 32px;color:#111111;font:400 14px/22px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;">
-              <p style="color:#374151;font-size:15px;text-align:left;max-width:520px;margin:0 auto 12px;">
+              <p style="color:#374151;font-size:15px;text-align:justify;max-width:520px;margin:0 auto 12px;">
                 Hola <strong>{{ $userName }}</strong>,<br><br>
                 Al validar tu cuenta bancaria, identificamos que la cuenta registrada corresponde a una
                 <strong>cuenta intangible</strong> (ejemplo: AFP, ONP, CTS, entre otras).
               </p>
 
-              <p style="color:#1E3A8A;font-size:14px;text-align:left;max-width:520px;margin:0 auto 10px;">
+              <p style="color:#1E3A8A;font-size:14px;text-align:justify;max-width:520px;margin:0 auto 10px;">
                 💡 Ten en cuenta que este tipo de cuentas solo pueden ser utilizadas para recibir depósitos,
                 más no para realizar retiros desde la plataforma.
               </p>
 
-              <p style="color:#111827;font-size:15px;text-align:left;max-width:520px;margin:12px auto;font-weight:700;">
+              <p style="color:#111827;font-size:15px;text-align:justify;max-width:520px;margin:12px auto;font-weight:700;">
                 Por favor responde a este correo adjuntando un certificado bancario donde se valide tu nombre completo
                 como titular de la cuenta.
               </p>
 
-              <p style="color:#374151;font-size:14px;text-align:left;max-width:520px;margin:0 auto 14px;">
+              <p style="color:#374151;font-size:14px;text-align:justify;max-width:520px;margin:0 auto 14px;">
                 Uno de nuestros asesores también se pondrá en contacto contigo por WhatsApp para apoyarte con este
                 proceso
                 y resolver cualquier duda que tengas.
               </p>
 
-              <p style="color:#4B5563;font-size:13px;text-align:left;max-width:520px;margin:0 auto 14px;">
+              <p style="color:#4B5563;font-size:13px;text-align:justify;max-width:520px;margin:0 auto 14px;">
                 Esta validación es importante para garantizar que tus operaciones se realicen de forma segura y conforme
                 a la normativa vigente.
               </p>
