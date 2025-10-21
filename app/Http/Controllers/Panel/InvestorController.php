@@ -397,98 +397,80 @@ class InvestorController extends Controller
             return false;
         }
     }
-    public function login(LoginInvestorRequest $request)
-    {
+    public function login(LoginInvestorRequest $request){
         try {
             $validatedData = $request->validated();
-            $investor = Investor::where('email', $request->email)->first();
+            $investor = Investor::where('email', $request->email)->first();           
             if (!$investor || !Hash::check($request->password, $investor->password)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Credenciales inválidas'
                 ], 401);
             }
+            $token = $investor->createToken('token')->plainTextToken;
+            // Detectar frontend de origen
+            $origin = request()->header('Origin');
+            $isFromVue = $origin && str_contains($origin, 'localhost:4005');
+            // Leer URLs desde variables de entorno
+            $reactBaseUrl = env('REACT_BASE_URL', 'https://zuma.com.pe/factoring');
+            $vueBaseUrl   = env('VUE_BASE_URL', 'https://zuma.com.pe/hipotecas');
 
-
-            $issues = [];
-            if (! $investor->hasVerifiedEmail()) {
-                // optional: trigger another verification email
-                try {
-                    $investor->sendEmailVerificationNotification();
-                } catch (Throwable $th) {
-                    Log::info($th->getMessage());
-                }
-
-                $issues[] = [
-                    'code' => 'email_not_verified',
-                    'message' => 'Tu email aún no ha sido verificado. Revisa tu bandeja de entrada.',
-                ];
-
-
-                // return response()->json([
-                //      'success' => false,
-                //     'code' => 'email_not_verified',
-
-                //     'message' => 'Tu email aún no ha sido verificado. Revisa tu bandeja de entrada.',
-                // ], 403);
-            }
-            if (! $investor->hasVerifiedWhatsapp()) {
-                // optional: trigger another verification email
-                // $investor->sendWhatsappVerificationNotification();
-                // return response()->json([
-                //     'code' => 'whatsapp_not_verified',
-                //     'message' => 'Tu WhatsApp aún no ha sido verificado. Revisa tu bandeja de entrada.',
-                // ], 403);
-                $issues[] = [
-                    'code' => 'whatsapp_not_verified',
-                    'message' => 'Tu WhatsApp aún no ha sido verificado. Revisa tu bandeja de entrada.',
-                ];
-            }
-            // if (! $investor->hasVerifiedWhatsapp()) {
-            //     return response()->json(['message' => 'WhatsApp aún no ha sido verificado.'], 403);
-            // }
-
-
-            // Si hay una o más observaciones, devolverlas juntas
-            if (!empty($issues)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Acceso bloqueado: tienes verificaciones pendientes.',
-                    'issues'  => $issues,   // <-- el frontend puede iterar esto y mostrar todo
-                ], 403);
-            }
-
-            return response()->json([
+            $response = [
                 'success' => true,
                 'message' => "Bienvenido {$investor->name}",
                 'data' => $investor,
-                'api_token' => $investor->createToken('token')->plainTextToken,
+                'api_token' => $token,
                 'user_type' => $investor->type,
-                'redirect_route' => $this->getRedirectRoute($investor->type)
-            ]);
+            ];
+
+            if ($isFromVue) {
+                // Redirección cruzada
+                $tokenParam = "token=" . urlencode($token);
+
+                switch ($investor->type) {
+                    case 'cliente':
+                        $response['cross_domain_redirect'] = "{$vueBaseUrl}?{$tokenParam}";
+                        break;
+                    case 'inversionista':
+                    case 'mixto':
+                    default:
+                        $response['cross_domain_redirect'] = "{$reactBaseUrl}?{$tokenParam}";
+                        break;
+                }
+
+                \Log::info("Redirección generada para Vue", [
+                    'redirect_url' => $response['cross_domain_redirect']
+                ]);
+            } else {
+                // Si viene de React, ruta interna normal
+                $response['redirect_route'] = $this->getRedirectRoute($investor->type);
+            }
+
+            return response()->json($response);
+
         } catch (Throwable $th) {
-            Log::info($th->getMessage());
+            \Log::error('Error en login method', [
+                'message' => $th->getMessage(),
+                'file' => $th->getFile(),
+                'line' => $th->getLine()
+            ]);
+            
             return response()->json([
                 'success' => false,
-                'message' => 'Ocurrió un error en el servidor. Inténtalo más tarde.',
+                'message' => 'Error durante el login: ' . $th->getMessage(),
                 'data' => null,
             ], 500);
         }
     }
-    private function getRedirectRoute($userType)
-    {
-        switch ($userType) {
-            case 'cliente':
-                return '/cliente';
-            case 'inversionista':
-            case 'mixto':
-                return '/hipotecas';
-            default:
-                return '/hipotecas';
-        }
+    private function getRedirectRoute($userType){
+        $route = match($userType) {
+            'cliente' => '/hipotecas',
+            'inversionista', 'mixto' => '/factoring',
+            default => '/factoring'
+        };
+        \Log::info("Redirect route for {$userType}: {$route}");
+        return $route;
     }
-
-
     public function logout(Request $request)
     {
         $token = PersonalAccessToken::findToken($request->bearerToken());
