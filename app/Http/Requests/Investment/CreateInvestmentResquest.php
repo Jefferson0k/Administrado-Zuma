@@ -31,7 +31,7 @@ class CreateInvestmentResquest extends FormRequest
             'amount' => [
                 'required',
                 'numeric',
-                'gte:100',
+                'gte:50',
                 function ($attribute, $value, $fail) {
                     /** @var \App\Models\User $investor */
                     $investor = Auth::user();
@@ -124,7 +124,7 @@ class CreateInvestmentResquest extends FormRequest
         return [
             'amount.required' => 'El monto es obligatorio',
             'amount.numeric' => 'El monto debe ser numérico',
-            'amount.gte' => 'El monto debe ser mayor o igual a 100',
+            'amount.gte' => 'El monto debe ser mayor o igual a 50',
             'currency.required' => 'La moneda es obligatoria',
             'currency.in' => 'Seleccione una moneda válida',
             'invoice_code.required' => 'El código de factura es obligatorio',
