@@ -9,7 +9,6 @@ return new class extends Migration {
         Schema::create('properties', function (Blueprint $table) {
             $table->ulid('id')->primary();
             $table->unsignedBigInteger('id_solicitud')->nullable(); //nuevo campo faltaba para que haga la migracion
-            $table->foreignUlid('investor_id')->constrained('investors');
             $table->string('departamento')->nullable();
             $table->string('provincia')->nullable();
             $table->string('distrito')->nullable();

@@ -25,12 +25,18 @@ class InvestorDepositApprovalNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Depósito aprobado')
-            ->line('Hola ' . $notifiable->name)
-            ->line('Tu depósito con número de operación ' . $this->deposit->nro_operation . ' se ha aprobado correctamente.')
-            ->line('Monto: ' . MoneyFormatter::formatFromDecimal($this->deposit->amount))
-            ->line('Fecha de depósito: ' . Carbon::parse($this->deposit->created_at)->format('d/m/Y H:i'))
-            ->action('Ver oportunidades', config('app.client_app_url') . '/oportunidades')
-            ->line('Gracias por usar nuestros servicios.');
+            ->subject('ZUMA - Depósito aprobado')
+            ->view('emails.deposits.approved', [
+                'notifiable' => $notifiable,
+                'deposit' => $this->deposit,
+                'monto' => MoneyFormatter::formatFromDecimal($this->deposit->amount, $this->deposit->currency),
+                'fecha' => Carbon::parse($this->deposit->created_at)->format('d/m/Y H:i'),
+            ]);
+            // ->line('Hola ' . $notifiable->name)
+            // ->line('Tu depósito con número de operación ' . $this->deposit->nro_operation . ' se ha aprobado correctamente.')
+            // ->line('Monto: ' . MoneyFormatter::formatFromDecimal($this->deposit->amount))
+            // ->line('Fecha de depósito: ' . Carbon::parse($this->deposit->created_at)->format('d/m/Y H:i'))
+            // ->action('Ver oportunidades', config('app.client_app_url') . '/oportunidades')
+            // ->line('Gracias por usar nuestros servicios.');
     }
 }

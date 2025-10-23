@@ -26,12 +26,19 @@ class InvestorDepositRejectedNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Depósito rechazado')
-            ->line('Hola ' . $notifiable->name)
-            ->line('Tu depósito se ha rechazado.')
-            ->line('Monto: ' . MoneyFormatter::formatFromDecimal($this->deposit->amount))
-            ->line('Fecha de rechazo: ' . Carbon::now()->format('d/m/Y H:i'))
-            ->line('Motivo: ' . $this->deposit->description)
-            ->line('Gracias por usar nuestros servicios.');
+            ->subject('ZUMA - Depósito rechazado')
+            ->view('emails.deposits.rejected', 
+            [
+                'deposit' => $this->deposit, 
+            'notifiable' => $notifiable,
+            'fecha' => Carbon::now()->format('d/m/Y H:i'),
+            'monto' => MoneyFormatter::formatFromDecimal($this->deposit->amount, $this->deposit->currency),
+        ]);
+            // ->line('Hola ' . $notifiable->name)
+            // ->line('Tu depósito se ha rechazado.')
+            // ->line('Monto: ' . MoneyFormatter::formatFromDecimal($this->deposit->amount))
+            // ->line('Fecha de rechazo: ' . Carbon::now()->format('d/m/Y H:i'))
+            // ->line('Motivo: ' . $this->deposit->description)
+            // ->line('Gracias por usar nuestros servicios.');
     }
 }

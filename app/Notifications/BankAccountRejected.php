@@ -33,14 +33,15 @@ class BankAccountRejected extends Notification
      */
     public function toMail($notifiable)
     {
-        $dashboardUrl = env('CLIENT_APP_URL', 'http://localhost:5173') . '/dashboard';
+        $dashboardUrl = env('CLIENT_APP_URL', default: 'https://zuma.com.pe');
 
         return (new MailMessage)
-            ->subject('Cuenta bancaria rechazada - ZUMA')
-            ->greeting('Hola ' . $notifiable->name . ',')
-            ->line('Lamentamos informarte que tu cuenta bancaria con alias "' . $this->bankAccount->alias . '" ha sido rechazada.')
-            ->line('Por favor verifica tus datos y vuelve a enviarlos para validación.')
-            ->action('Ir al Dashboard', $dashboardUrl)
-            ->line('Si tienes dudas, contacta a soporte. ¡Gracias por usar ZUMA!');
+            ->subject('ZUMA - Cuenta bancaria rechazada')
+            ->view('emails.bankaccounts.rejected', [
+                'notifiable' => $notifiable,
+                'bankAccount' => $this->bankAccount,
+                'dashboardUrl' => $dashboardUrl,
+                'userName' => $notifiable->name,
+            ]);
     }
 }

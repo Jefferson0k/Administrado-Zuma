@@ -8,7 +8,7 @@
   $companyAddr = $companyAddr ?? 'Av. Faustino Sánchez Carrión 417, Magdalena del Mar, Lima – Perú';
   $prefsUrl = $prefsUrl ?? '#';
   $whatsappUrl = $whatsappUrl ?? '#';
-  $supportPhone = $supportPhone ?? '+51 999 999 999';
+  $supportPhone = $supportPhone ?? '+51 986 351 267';
 @endphp
 <!doctype html>
 <html lang="es">
@@ -77,10 +77,8 @@
                     style="width:640px;max-width:640px;background:#fd4a2a;color:#E5E7EB;">
                     <tr>
                         <td style="padding:5px 0; text-align:center;">
-                            
-                                <img src="{{ asset('imagenes/zuma-logo.png') }}" width="370" height="90"
-                                    alt="Logo" style="display:block;margin:0 auto ;">
-                            
+                            <img src="{{ asset('imagenes/zuma-logo.png') }}" width="275" height="35"
+                                alt="Logo" style="display:block;margin:7.5px auto ;">
                         </td>
                     </tr>
                 </table>

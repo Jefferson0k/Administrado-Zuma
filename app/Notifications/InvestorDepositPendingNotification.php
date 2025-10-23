@@ -25,12 +25,30 @@ class InvestorDepositPendingNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
+
+        $appName      = config('app.name', 'ZUMA');
+        $brandPrimary = '#F0372D'; // rojo corporativo
+        $brandButton  = '#3B82F6'; // azul CTA
+        $logoUrl      = rtrim(env('APP_URL', ''), '/') . '/images/zuma-logo.png';
+        $supportPhone = env('SUPPORT_PHONE', '+51 986 351 267');
+        $depositAmount = MoneyFormatter::formatFromDecimal($this->deposit->amount, $this->deposit->currency);
+        $depositDate = Carbon::parse($this->deposit->created_at)->format('d/m/Y H:i');
+        $moneda = $this->deposit->currency === 'PEN' ? 'S/.' : '$';
+
+
         return (new MailMessage)
-            ->subject('Depósito recibido')
-            ->line('Hola ' . $notifiable->name)
-            ->line('Tu depósito se encuentra pendiente de aprobación.')
-            ->line('Monto: ' . MoneyFormatter::formatFromDecimal($this->deposit->amount))
-            ->line('Fecha de depósito: ' . Carbon::parse($this->deposit->created_at)->format('d/m/Y H:i'))
-            ->line('Gracias por usar nuestros servicios.');
+            ->subject('ZUMA – Depósito registrado, en proceso de validación')
+            ->view('emails.deposits.investordepositpending', [
+                'appName'      => $appName,
+                'brandPrimary' => $brandPrimary,
+                'brandButton'  => $brandButton,
+                'logoUrl'      => $logoUrl,
+                'userName'     => $notifiable->name ?? 'Usuario',
+                'supportPhone' => $supportPhone,
+                'depositAmount' => $depositAmount,
+                'depositDate'  => $depositDate,
+                'companyAddr'  => 'Av. Faustino Sánchez Carrión 417, Magdalena del Mar, Lima – Perú',
+                'footerYear'   => date('Y'),
+            ]);
     }
 }

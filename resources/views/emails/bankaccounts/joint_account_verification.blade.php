@@ -8,7 +8,7 @@
   $companyAddr = $companyAddr ?? 'Av. Faustino Sánchez Carrión 417, Magdalena del Mar, Lima – Perú';
   $prefsUrl = $prefsUrl ?? '#';
   $whatsappUrl = $whatsappUrl ?? '#';
-  $supportPhone = $supportPhone ?? '+51 999 999 999';
+  $supportPhone = $supportPhone ?? '+51 986 351 267';
 @endphp
 <!doctype html>
 <html lang="es">
@@ -77,10 +77,8 @@
                     style="width:640px;max-width:640px;background:#fd4a2a;color:#E5E7EB;">
                     <tr>
                         <td style="padding:5px 0; text-align:center;">
-                            
-                                <img src="{{ asset('imagenes/zuma-logo.png') }}" width="370" height="90"
-                                    alt="Logo" style="display:block;margin:0 auto ;">
-                            
+                            <img src="{{ asset('imagenes/zuma-logo.png') }}" width="275" height="35"
+                                alt="Logo" style="display:block;margin:7.5px auto ;">
                         </td>
                     </tr>
                 </table>
@@ -108,28 +106,28 @@
               style="padding:0 32px 6px 32px;color:#111111;font:400 14px/22px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;">
               <p style="margin:0 0 14px 0;color:#111111;">Hola <strong>{{ $userName }}</strong>,</p>
 
-               <p style="color:#374151;font-size:15px;text-align:left;max-width:520px;margin:0 auto 12px;">
+               <p style="color:#374151;font-size:15px;text-align:justify;max-width:520px;margin:0 auto 12px;">
                 Hola <strong>{{ $userName }}</strong>,<br><br>
                 Al validar los datos de tu cuenta bancaria, identificamos que la cuenta registrada es
                 <strong>mancomunada</strong> (con más de un titular).
               </p>
-              <p style="color:#374151;font-size:14px;text-align:left;max-width:520px;margin:0 auto 10px;">
+              <p style="color:#374151;font-size:14px;text-align:justify;max-width:520px;margin:0 auto 10px;">
                 Te recordamos que en ZUMA solo podemos aceptar cuentas mancomunadas tipo <strong>“O”</strong>
                 (cualquiera de los titulares puede operar), no las de tipo <strong>“Y”</strong>
                 (requieren la autorización conjunta de ambos titulares).
               </p>
 
-              <p style="color:#111827;font-size:15px;text-align:left;max-width:520px;margin:12px auto;font-weight:700;">
+              <p style="color:#111827;font-size:15px;text-align:justify;max-width:520px;margin:12px auto;font-weight:700;">
                 Por favor responde a este correo adjuntando un certificado bancario en el que figure tu nombre completo
                 como uno de los titulares de la cuenta.
               </p>
 
-              <p style="color:#374151;font-size:14px;text-align:left;max-width:520px;margin:0 auto 14px;">
+              <p style="color:#374151;font-size:14px;text-align:justify;max-width:520px;margin:0 auto 14px;">
                 Además, uno de nuestros asesores te contactará por WhatsApp para apoyarte en este proceso
                 y resolver cualquier consulta que tengas.
               </p>
 
-              <p style="color:#4B5563;font-size:13px;text-align:left;max-width:520px;margin:0 auto 14px;">
+              <p style="color:#4B5563;font-size:13px;text-align:justify;max-width:520px;margin:0 auto 14px;">
                 Esta validación es necesaria para garantizar que tus operaciones se realicen de forma segura y conforme
                 a la
                 normativa vigente.
@@ -164,10 +162,7 @@
                   <td class="darkmode-text"
                     style="font:500 13px/18px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;color:#111111;">
                     ¿Necesitas ayuda? Escríbenos a nuestro <strong>WhatsApp {{ $supportPhone }}</strong>
-                    @if(!empty($whatsappUrl) && $whatsappUrl !== '#')
-                      &nbsp;<a href="{{ $whatsappUrl }}" style="color:#111111;text-decoration:underline;">Abrir
-                        WhatsApp</a>
-                    @endif
+                   
                   </td>
                 </tr>
               </table>

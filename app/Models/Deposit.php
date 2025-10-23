@@ -149,7 +149,9 @@ class Deposit extends Model{
     }
 
 
-    public function sendDepositRejecteddEmail(): void
+
+
+    public function sendDepositRejectedEmail(): void
     {
         // $stage: 'first' (Primera Validación) | 'second' (Aprobación Final)
         if ($this->investor && $this->investor->email) {

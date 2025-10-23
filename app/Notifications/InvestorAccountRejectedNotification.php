@@ -23,7 +23,7 @@ class InvestorAccountRejectedNotification extends Notification
     public function toMail($notifiable)
     {
         $appName      = config('app.name', 'ZUMA');
-        $clientUrl    = rtrim(env('CLIENT_APP_URL', 'http://localhost:5173'), '/');
+        $clientUrl    = rtrim(env('CLIENT_APP_URL', 'https://zuma.com.pe'), '/');
         $loginUrl     = "{$clientUrl}/login";
 
         return (new MailMessage)

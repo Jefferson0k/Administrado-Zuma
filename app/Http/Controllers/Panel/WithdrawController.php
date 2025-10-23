@@ -282,6 +282,8 @@ class WithdrawController extends Controller
             
 
             DB::commit();
+            $withdraw->investor->sendWithdrawObservedEmailNotification($withdraw);
+
 
             return response()->json([
                 'message' => 'Retiro observado en primera validación',
@@ -330,6 +332,8 @@ class WithdrawController extends Controller
             ]);
 
             DB::commit();
+            $withdraw->investor->sendWithdrawObservedEmailNotification($withdraw);
+
 
             return response()->json([
                 'message' => 'Retiro observado en segunda validación',
@@ -390,6 +394,8 @@ class WithdrawController extends Controller
             );
 
             DB::commit();
+
+            $withdraw->investor->sendWithdrawRejectedEmailNotification($withdraw);
 
             return response()->json([
                 'message' => 'Retiro rechazado en primera validación',
@@ -458,6 +464,8 @@ class WithdrawController extends Controller
             );
             
             DB::commit();
+            $withdraw->investor->sendWithdrawRejectedEmailNotification($withdraw);
+
 
             return response()->json([
                 'message' => 'Retiro rechazado en segunda validación',

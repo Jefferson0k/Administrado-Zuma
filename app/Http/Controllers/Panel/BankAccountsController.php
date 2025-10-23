@@ -161,7 +161,7 @@ class BankAccountsController extends Controller
 
             $request->validate([
                 'files'   => ['required', 'array', 'min:1'], // <- OBLIGATORIO: min:1 (no min[1])
-                'files.*' => ['file', 'mimes:pdf,jpg,jpeg,png,webp,heic', 'max:10240'], // 10 MB (en KB)
+                'files.*' => ['file', 'mimes:pdf,jpg,jpeg,png,webp,heic'], // 10 MB (en KB)
             ]);
 
             $stored = [];
@@ -418,6 +418,7 @@ class BankAccountsController extends Controller
                 try {
                     $account->sendBankAccountRejectionEmail();
                 } catch (\Throwable $e) {
+                    Log::warning('Error enviando correo de rechazo: ' . $e->getMessage());
                 }
             } elseif ($account->status === 'observed') {
                 try {

@@ -134,6 +134,8 @@ class BankAccountController extends Controller
             }
             
 
+            $investor->sendsbankcreatednotification($bank_account);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Operación realizada correctamente.',

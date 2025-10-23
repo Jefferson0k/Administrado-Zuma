@@ -38,12 +38,19 @@ class InvestorAccountActivateNotification extends Notification
     {
 
         return (new MailMessage)
-            ->subject('Cuenta de Banco validada')
-            ->line('Hola ' . $notifiable->name)
-            ->line("Tu cuenta de banco {$this->bankAccount->bank->name} ({$this->bankAccount->currency}) ha sido validada.")
-            ->line('Realiza un depósito y empieza a invertir.')
-            ->action('Realizar depósito', config('app.client_app_url') . '/informacion-bancaria/estado-de-cuentas?isOpenModal=true')
-            ->line('Gracias por usar nuestros servicios.');
+            ->subject('Zuma - Cuenta de Banco validada')
+            ->view('emails.bankaccounts.approved', [
+                'username' => $notifiable->name,
+                'bankAccountbank' => $this->bankAccount->bank->name,
+                'bankAccountAlias' => $this->bankAccount->alias,
+                'moneda' => $this->bankAccount->currency,
+                'userName' => $notifiable->name,
+            ]);
+        
+            // ->line("Tu cuenta de banco {$this->bankAccount->bank->name} ({$this->bankAccount->currency}) ha sido validada.")
+            // ->line('Realiza un depósito y empieza a invertir.')
+            // ->action('Realizar depósito', config('app.client_app_url') . '/informacion-bancaria/estado-de-cuentas?isOpenModal=true')
+            // ->line('Gracias por usar nuestros servicios.');
     }
 
     /**
