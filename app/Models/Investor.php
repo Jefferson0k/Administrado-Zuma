@@ -94,12 +94,18 @@ class Investor extends Authenticatable implements MustVerifyEmail, AuditableCont
     ];
     public function investments()
     {
-        return $this->hasMany(Investment::class);
+        return $this->hasMany(Investment::class,'investor_id');
     }
     public function aprovacionuseruno()
     {
         return $this->belongsTo(User::class, 'approval1_by');
     }
+    
+    public function notificaciones(){
+        return $this->hasMany(StateNotification::class, 'investor_id')->where('status',0);
+    }
+
+    
 
     public function aprovacionuserdos()
     {

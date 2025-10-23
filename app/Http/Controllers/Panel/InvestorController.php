@@ -37,6 +37,7 @@ use Illuminate\Auth\Events\Registered;
 use Predis\Client;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\InvestorsExport;
+use App\Models\StateNotification;
 
 class InvestorController extends Controller
 {
@@ -290,6 +291,13 @@ class InvestorController extends Controller
         
         Log::info("Nuevo código de inversor generado: {$codigo} para el inversor ID: {$investor->id}");
         
+        $stateNotification = StateNotification::create([
+            'investor_id' => $investor->id,
+            'status' => 0,
+            'type' => 'datos_personales'
+        ]);
+        $stateNotification->save();
+        
         DB::commit();
 
       
@@ -466,8 +474,23 @@ private function sendWhatsAppVerification($telephone)
     {
         try {
             $investor = Auth::user();
-            $investor->loadCount('bankAccounts');
-            $investor->movements_count =  Movement::where('investor_id', $investor->id)->count();
+            $investor->loadCount([
+                'bankAccounts as bank_approved_accounts_count' => fn($q) => $q->where('status_conclusion', 'approved'),
+                'bankAccounts as bank_pending_accounts_count' => fn($q) => $q->where('status_conclusion', 'pending'),
+                'bankAccounts as bank_rejected_accounts_count' => fn($q) => $q->where('status_conclusion', 'rejected'),
+                'bankAccounts as bank_deleted_accounts_count' => fn($q) => $q->where('status_conclusion', 'deleted'),
+            ]);
+            $investor->loadCount([
+                'movements as movements_count' => fn($q) => $q->where('confirm_status', 'confirmed'),
+                'movements as deposit_confirmed' => fn($q) => $q->where('type', 'deposit')->where('confirm_status', 'confirmed'),
+                'movements as deposit_pending_approval' => fn($q) => $q->where('type', 'deposit')->where('confirm_status', 'pending')->whereNull('aprobacion_1')->whereNull('aprobacion_2'),
+                'movements as deposit_approval' => fn($q) => $q->where('type', 'deposit')->where('confirm_status', 'confirmed')->whereRaw('aprobacion_2 < DATE_ADD(NOW(), INTERVAL 1 DAY)'),
+                'movements as deposit_rejected' => fn($q) => $q->where('type', 'deposit')->where('status', 'rejected')
+            ]);
+            $investor->load('notificaciones');
+            $investor->load('investments.invoice');
+            
+            
             return response()->json([
                 'success' => true,
                 'message' => null,
@@ -782,7 +805,21 @@ private function sendWhatsAppVerification($telephone)
             // $publicFrontUrl = $disk->temporaryUrl($documentFrontKey, now()->addMinutes(15));
             // $publicBackUrl  = $disk->temporaryUrl($documentBackKey,  now()->addMinutes(15));
             // $publicPhotoUrl = $disk->temporaryUrl($photoKey,         now()->addMinutes(15));
-
+            
+            $sn = StateNotification::where('investor_id',$investor->id)->where('type','espera_confirmacion_deposito')->first();
+            if($sn){
+                
+            }else{
+                $stateNotification = StateNotification::create([
+                    'investor_id' => $investor->id,
+                    'status' => 0,
+                    'type' => 'cuenta_bancaria'
+                ]);
+                $stateNotification->save();
+            }
+            
+            
+            
             return response()->json([
                 'success' => true,
                 'message' => 'Tu cuenta ha sido confirmada correctamente.',

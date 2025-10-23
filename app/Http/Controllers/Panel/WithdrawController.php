@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Throwable;
 use App\Models\HistoryAprobadorWithdraw;
+use App\Models\StateNotification;
+
 
 class WithdrawController extends Controller
 {
@@ -154,7 +156,17 @@ class WithdrawController extends Controller
             ]);
 
 
-
+            StateNotification::updateOrCreate(
+                [
+                    'investor_id' => $withdraw->investor->id,
+                    'type' => 'aceptacion_retiro',
+                ],
+                [
+                    'investor_id' => $withdraw->investor->id,
+                    'status' => 0,
+                    'type' => 'aceptacion_retiro',
+                ]
+            );
 
 
             DB::commit();
@@ -207,6 +219,19 @@ class WithdrawController extends Controller
                 'approval2_comment' => $request->input('approval2_comment'),
                 'approval2_at' => now(),
             ]);
+            
+            StateNotification::updateOrCreate(
+                [
+                    'investor_id' => $withdraw->investor->id,
+                    'type' => 'aceptacion_retiro',
+                ],
+                [
+                    'investor_id' => $withdraw->investor->id,
+                    'status' => 0,
+                    'type' => 'aceptacion_retiro',
+                ]
+            );
+            
             DB::commit();
             return response()->json([
                 'message' => 'Retiro aprobado en segunda validación correctamente',
@@ -254,7 +279,7 @@ class WithdrawController extends Controller
                 'approval1_at' => now(),
             ]);
 
-
+            
 
             DB::commit();
 
@@ -352,7 +377,17 @@ class WithdrawController extends Controller
                 'approval1_at' => now(),
             ]);
 
-
+            StateNotification::updateOrCreate(
+                [
+                    'investor_id' => $withdraw->investor->id,
+                    'type' => 'rechazo_retiro',
+                ],
+                [
+                    'investor_id' => $withdraw->investor->id,
+                    'status' => 0,
+                    'type' => 'rechazo_retiro',
+                ]
+            );
 
             DB::commit();
 
@@ -409,7 +444,19 @@ class WithdrawController extends Controller
                 'approval2_comment' => $request->input('approval2_comment'),
                 'approval2_at' => now(),
             ]);
-
+            
+            StateNotification::updateOrCreate(
+                [
+                    'investor_id' => $withdraw->investor->id,
+                    'type' => 'rechazo_retiro',
+                ],
+                [
+                    'investor_id' => $withdraw->investor->id,
+                    'status' => 0,
+                    'type' => 'rechazo_retiro',
+                ]
+            );
+            
             DB::commit();
 
             return response()->json([
