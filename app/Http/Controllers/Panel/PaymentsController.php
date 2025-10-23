@@ -19,6 +19,7 @@ use App\Models\Invoice;
 use App\Models\Movement;
 use App\Models\Payment;
 use App\Models\PaymentDetail;
+use App\Models\StateNotification;
 use App\Notifications\InvoiceAnnulledRefundNotification;
 use Carbon\Carbon;
 use Exception;
@@ -338,7 +339,7 @@ class PaymentsController extends Controller{
     public function store(Request $request, $invoiceId)
     {
         $validated = $request->validate([
-            'pay_type' => 'required|string|in:intereses,parcial,total',
+            'pay_type' => 'required|string|in:intereses,partial,total',
             'amount_to_be_paid' => 'required|numeric',
             'pay_date' => 'required|string',
         ]);
@@ -391,9 +392,9 @@ class PaymentsController extends Controller{
 
                 // Movimiento principal - Pago de intereses
                 $mainMovement = Movement::create([
-                    'amount' => $returnEfectivizado,
-                    'type' => 'fixed_rate_interest_payment',
                     'currency' => $currency, // 🔹 Usar moneda de la inversión
+                    'amount' => $returnEfectivizado,
+                    'type' => 'fixed_rate_interest_payment',                    
                     'status' => MovementStatus::CONFIRMED->value,
                     'confirm_status' => MovementStatus::CONFIRMED->value,
                     'description' => 'Pago de intereses - Factura #' . $invoiceId,
@@ -404,9 +405,9 @@ class PaymentsController extends Controller{
                 // Movimiento de recaudación (tax)
                 if ($recaudacion > 0) {
                     Movement::create([
-                        'amount' => $recaudacion,
-                        'type' => 'tax',
                         'currency' => $currency, // 🔹 Usar moneda de la inversión
+                        'amount' => $recaudacion,
+                        'type' => 'tax',                        
                         'status' => MovementStatus::CONFIRMED->value,
                         'confirm_status' => MovementStatus::CONFIRMED->value,
                         'description' => 'Recaudación por intereses - Factura #' . $invoiceId,
@@ -429,14 +430,14 @@ class PaymentsController extends Controller{
             }
 
             // 🔸 Pago PARCIAL
-            elseif ($validated['pay_type'] === 'parcial') {
+            elseif ($validated['pay_type'] === 'partial') {
                 $monto = $bruto;
 
                 // Movimiento de retorno de capital parcial
                 $mainMovement = Movement::create([
-                    'amount' => $monto,
-                    'type' => 'fixed_rate_capital_return',
                     'currency' => $currency, // 🔹 Usar moneda de la inversión
+                    'amount' => $monto,
+                    'type' => 'fixed_rate_capital_return',                    
                     'status' => MovementStatus::CONFIRMED->value,
                     'confirm_status' => MovementStatus::CONFIRMED->value,
                     'description' => 'Retorno de capital parcial - Factura #' . $invoiceId,
@@ -448,7 +449,36 @@ class PaymentsController extends Controller{
                     'invested_amount' => $balance->invested_amount - $monto,
                     'amount' => $balance->amount + $monto,
                 ]);
-
+                if (Carbon::parse($investment->invoice->estimated_pay_date)->lte(Carbon::today())) {
+                    StateNotification::updateOrCreate(
+                        [
+                            'investor_id' => $investorId,
+                            'type' => 'pago_parcial_con_reprogramacion',
+                        ],
+                        [                        
+                            'status' => 0,                        
+                        ]
+                    );
+                    StateNotification::updateOrCreate(
+                        [
+                            'investor_id' => $investorId,
+                            'type' => 'factura_reprogramada',
+                        ],
+                        [                        
+                            'status' => 0,                        
+                        ]
+                    );
+                }else{
+                    StateNotification::updateOrCreate(
+                        [
+                            'investor_id' => $investorId,
+                            'type' => 'pago_parcial_sin_reprogramacion',
+                        ],
+                        [                        
+                            'status' => 0,                        
+                        ]
+                    );
+                }
                 $investment->update(['status' => 'parcial']);
             }
 
@@ -458,9 +488,9 @@ class PaymentsController extends Controller{
 
                 // Movimiento de retorno de capital total
                 $mainMovement = Movement::create([
-                    'amount' => $monto,
-                    'type' => 'fixed_rate_capital_return',
                     'currency' => $currency, // 🔹 Usar moneda de la inversión
+                    'amount' => $monto,
+                    'type' => 'fixed_rate_capital_return',                    
                     'status' => MovementStatus::CONFIRMED->value,
                     'confirm_status' => MovementStatus::CONFIRMED->value,
                     'description' => 'Retorno de capital total - Factura #' . $invoiceId,
@@ -474,6 +504,17 @@ class PaymentsController extends Controller{
                 ]);
 
                 $investment->update(['status' => 'paid']);
+                
+                StateNotification::updateOrCreate(
+                    [
+                        'investor_id' => $investorId,
+                        'type' => 'pago_inversionn',
+                    ],
+                    [                        
+                        'status' => 0,                        
+                    ]
+                );
+                
             }
 
             // 🔹 Actualizar el payment con el movement_id si es necesario

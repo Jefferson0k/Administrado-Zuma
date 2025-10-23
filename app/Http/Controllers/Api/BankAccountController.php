@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Alias;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use App\Models\StateNotification;
 
 /**
  * @OA\Tag(
@@ -119,6 +120,19 @@ class BankAccountController extends Controller
             }
 
             $bank_account->save();
+            
+            $sn = StateNotification::where('investor_id',$investor->id)->where('type','primer_deposito')->first();
+            if($sn){
+                
+            }else{
+                $stateNotification = StateNotification::create([
+                    'investor_id' => $investor->id,
+                    'status' => 0,
+                    'type' => 'primer_deposito'
+                ]);
+                $stateNotification->save();
+            }
+            
 
             $investor->sendsbankcreatednotification($bank_account);
 
