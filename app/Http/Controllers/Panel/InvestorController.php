@@ -510,8 +510,25 @@ class InvestorController extends Controller
     {
         try {
             $investor = Auth::user();
-            $investor->loadCount('bankAccounts');
-            $investor->movements_count =  Movement::where('investor_id', $investor->id)->count();
+            //$investor->loadCount('bankAccounts');
+            //$investor->movements_count =  Movement::where('investor_id', $investor->id)->count();
+            
+            $investor->loadCount([
+                'bankAccounts as bank_approved_accounts_count' => fn($q) => $q->where('status_conclusion', 'approved'),
+                'bankAccounts as bank_pending_accounts_count' => fn($q) => $q->where('status_conclusion', 'pending'),
+                'bankAccounts as bank_rejected_accounts_count' => fn($q) => $q->where('status_conclusion', 'rejected'),
+                'bankAccounts as bank_deleted_accounts_count' => fn($q) => $q->where('status_conclusion', 'deleted'),
+            ]);
+            $investor->loadCount([
+                'movements as movements_count' => fn($q) => $q->where('confirm_status', 'confirmed'),
+                'movements as deposit_confirmed' => fn($q) => $q->where('type', 'deposit')->where('confirm_status', 'confirmed'),
+                'movements as deposit_pending_approval' => fn($q) => $q->where('type', 'deposit')->where('confirm_status', 'pending')->whereNull('aprobacion_1')->whereNull('aprobacion_2'),
+                'movements as deposit_approval' => fn($q) => $q->where('type', 'deposit')->where('confirm_status', 'confirmed')->whereRaw('aprobacion_2 < DATE_ADD(NOW(), INTERVAL 1 DAY)'),
+                'movements as deposit_rejected' => fn($q) => $q->where('type', 'deposit')->where('status', 'rejected')
+            ]);
+            $investor->load('notificaciones');
+            $investor->load('investments.invoice');
+            
             return response()->json([
                 'success' => true,
                 'message' => null,

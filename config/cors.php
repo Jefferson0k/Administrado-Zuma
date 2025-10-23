@@ -16,8 +16,10 @@ return [
 
     'allowed_methods' => explode(',', env('CORS_ALLOWED_METHODS', '*')),
 
-    'allowed_origins' => explode(',', env('CORS_ALLOWED_ORIGINS', 'https://zuma.com.pe/factoring,https://zuma.com.pe/hipotecas')),
-
+    //'allowed_origins' => explode(',', env('CORS_ALLOWED_ORIGINS', 'https://zuma.com.pe/factoring,https://zuma.com.pe/hipotecas')),
+    
+    'allowed_origins' => ['*'],
+    
     'allowed_origins_patterns' => [],
 
     'allowed_headers' => explode(',', env('CORS_ALLOWED_HEADERS', '*')),
