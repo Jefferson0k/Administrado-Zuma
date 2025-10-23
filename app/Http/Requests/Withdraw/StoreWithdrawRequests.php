@@ -19,8 +19,7 @@ class StoreWithdrawRequests extends FormRequest{
 
             'file' => [
                 'nullable',
-                'mimes:jpeg,png,jpg,gif,webp',
-                'max:10240', // 10MB
+                'mimes:jpeg,png,jpg,gif,webp',                
                 'dimensions:min_width=100,min_height=100,max_width=2000,max_height=2000',
             ],
 

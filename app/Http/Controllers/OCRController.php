@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Http;
 class OCRController extends Controller{
     public function extractText(Request $request){
         $request->validate([
-            'image' => 'required|image|max:5120',
+            'image' => 'required|image',
         ]);
 
         if (!$request->hasFile('image') || !$request->file('image')->isValid()) {

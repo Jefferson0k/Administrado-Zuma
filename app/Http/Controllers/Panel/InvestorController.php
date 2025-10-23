@@ -1,5 +1,6 @@
-namespace App\Http\Controllers\Panel;
 <?php
+
+namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Investor\LoginInvestorRequest;
@@ -36,6 +37,7 @@ use Illuminate\Auth\Events\Registered;
 use Predis\Client;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\InvestorsExport;
+use App\Models\StateNotification;
 
 class InvestorController extends Controller
 {
@@ -290,6 +292,13 @@ class InvestorController extends Controller
             Log::info("Nuevo código de inversor generado: {$codigo} para el inversor ID: {$investor->id}");
 
             DB::commit();
+
+            $stateNotification = StateNotification::create([
+                'investor_id' => $investor->id,
+                'status' => 0,
+                'type' => 'datos_personales'
+            ]);
+            $stateNotification->save();
 
             // ENVÍO DE AMBAS VERIFICACIONES
             $emailSent = false;
@@ -819,6 +828,18 @@ class InvestorController extends Controller
             // $publicPhotoUrl = $disk->temporaryUrl($photoKey,         now()->addMinutes(15));
 
             // $investor->sendAccountUpdatedInformation();
+
+            $sn = StateNotification::where('investor_id',$investor->id)->where('type','espera_confirmacion_deposito')->first();
+            if($sn){
+                
+            }else{
+                $stateNotification = StateNotification::create([
+                    'investor_id' => $investor->id,
+                    'status' => 0,
+                    'type' => 'cuenta_bancaria'
+                ]);
+                $stateNotification->save();
+            }
 
             return response()->json([
                 'success' => true,
@@ -2076,5 +2097,6 @@ public function observarPrimeraValidacion(Request $request, $id)
         $fileName = 'inversionistas_' . now()->format('Y-m-d') . '.xlsx';
 
         return Excel::download(new InvestorsExport($search), $fileName);
-    }
+    }
+
 }

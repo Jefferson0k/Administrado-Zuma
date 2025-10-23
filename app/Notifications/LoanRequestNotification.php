@@ -31,7 +31,7 @@ class LoanRequestNotification extends Notification
         $phoneWithCode = str_starts_with($phone, '51') ? $phone : "51{$phone}";
 
         // Enlace a WhatsApp del cliente
-        $whatsappUrl = "https://wa.me/{$phoneWithCode}";
+        $whatsappUrl = "https://wa.me/51986351267";
 
         return (new MailMessage)
             ->from(config('mail.from.address', 'notificaciones@zuma.com.pe'), config('mail.from.name', 'Zuma Inversiones'))

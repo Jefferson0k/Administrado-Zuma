@@ -20,7 +20,7 @@ class BAccountObservedWrongBankNotification extends Notification
         $appName      = config('app.name', 'ZUMA');
         $brandPrimary = '#F0372D'; // barra/logo (rojo)
         $brandButton  = '#3B82F6'; // botón (azul)
-        $logoUrl      = rtrim(env('APP_URL', ''), '/') . '/images/zuma-logo-dark.png';
+        $logoUrl      = rtrim(env('APP_URL', ''), '/') . '/images/zuma-logo.png';
         $whatsUrl     = env('ZUMA_WHATSAPP_URL', 'https://wa.me/51986351267');
         $supportPhone = env('ZUMA_SUPPORT_PHONE', '+51 986 351 267');
 

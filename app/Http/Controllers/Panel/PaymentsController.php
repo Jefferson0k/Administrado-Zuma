@@ -559,7 +559,7 @@ class PaymentsController extends Controller{
             'nro_operation' => 'required|string',
             'currency' => 'required|string|size:3',
             'investor_id' => 'required|exists:investors,id',
-            'resource_path' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'resource_path' => 'nullable|file|mimes:pdf,jpg,jpeg,png',
             'bank_account_id' => 'required|exists:bank_accounts,id',
         ]);
 

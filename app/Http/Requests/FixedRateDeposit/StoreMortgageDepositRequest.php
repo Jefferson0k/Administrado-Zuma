@@ -16,7 +16,7 @@ class StoreMortgageDepositRequest extends FormRequest
         return [
             'nro_operation'            => 'required|string|max:255',
             'amount'                   => 'required|numeric|min:0.01',
-            'voucher'                  => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'voucher'                  => 'required|file|mimes:jpg,jpeg,png,pdf',
             'payment_source'           => 'nullable|string|max:255',
             'property_reservations_id' => 'required',
         ];

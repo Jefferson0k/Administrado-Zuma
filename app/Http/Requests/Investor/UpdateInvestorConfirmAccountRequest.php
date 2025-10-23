@@ -21,9 +21,9 @@ class UpdateInvestorConfirmAccountRequest extends FormRequest
             'district' => 'required|regex:/^[0-9]{2}$/',
             'address' => 'required|string',
             // 🔑 allow partial updates + PDFs
-            'document_front'       => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
-            'document_back'        => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
-            'investor_photo_path'  => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'document_front'       => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf'],
+            'document_back'        => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf'],
+            'investor_photo_path'  => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf'],
         ];
     }
 
