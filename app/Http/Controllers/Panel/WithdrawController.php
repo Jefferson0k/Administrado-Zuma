@@ -94,7 +94,7 @@ class WithdrawController extends Controller
         Gate::authorize('uploadFiles', $withdraw);
 
         $request->validate([
-            'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:4096',
+            'file' => 'required|file|mimes:jpg,jpeg,png,pdf',
             'comment' => 'nullable|string|max:2000',
         ]);
 
@@ -448,7 +448,7 @@ class WithdrawController extends Controller
 
         $validated = $request->validate([
             'payment_comment' => ['nullable', 'string', 'max:2000'],
-            'file'         => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:4096'],
+            'file'         => ['required', 'file', 'mimes:jpg,jpeg,png,pdf'],
         ]);
 
         try {

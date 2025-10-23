@@ -38,7 +38,7 @@ class UpdatePropertyRequest extends FormRequest
             
             // Imágenes (opcionales en update)
             'properties.*.imagenes' => 'nullable|array',
-            'properties.*.imagenes.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'properties.*.imagenes.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp',
             'properties.*.descriptions' => 'nullable|array',
             'properties.*.descriptions.*' => 'nullable|string|max:255',
             

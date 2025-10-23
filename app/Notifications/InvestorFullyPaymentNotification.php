@@ -40,7 +40,7 @@ class InvestorFullyPaymentNotification extends Notification
             ->line('Monto: ' . MoneyFormatter::formatFromDecimal($this->investment->amount))
             ->line('Retorno neto esperado: ' . MoneyFormatter::format($this->netExpectedReturn))
             ->line('ITF: ' . MoneyFormatter::format($this->itfAmount))
-            ->action('Ver oportunidades', config('app.client_app_url') . '/oportunidades')
+            ->action('Ver oportunidades', env('CLIENT_APP_URL','https://www.zuma.com.pe') . '/factoring/oportunidades')
             ->line('Gracias por usar nuestros servicios.');
     }
 }

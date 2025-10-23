@@ -47,7 +47,7 @@ class StorePropertyRequest extends FormRequest
 
             // Imágenes
             'properties.*.imagenes' => 'required|array|min:3',
-            'properties.*.imagenes.*' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'properties.*.imagenes.*' => 'required|image|mimes:jpeg,png,jpg,gif,webp',
             'properties.*.description' => 'required|array',
             'properties.*.description.*' => 'required|string|max:255',
         ];
@@ -55,7 +55,7 @@ class StorePropertyRequest extends FormRequest
         // Si es UPDATE, ajustar las reglas
         if ($this->route('property') || $this->isMethod('put') || $this->isMethod('patch')) {
             $rules['properties.*.imagenes'] = 'nullable|array';
-            $rules['properties.*.imagenes.*'] = 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048';
+            $rules['properties.*.imagenes.*'] = 'nullable|image|mimes:jpeg,png,jpg,gif,webp';
         }
 
         return $rules;

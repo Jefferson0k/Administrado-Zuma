@@ -42,14 +42,23 @@ class InvestorInvestedNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Nueva operación recibida')
-            ->line('Hola ' . $notifiable->name)
-            ->line('Tu inversión se registró correctamente.')
-            ->line('Empresa: ' . $this->company->name)
-            ->line('Factura: ' . $this->invoice->invoice_code)
-            ->line('Monto: ' . MoneyFormatter::formatFromDecimal($this->investment->amount, $this->invoice->currency))
-            ->line('Tasa: ' . $this->investment->rate . '%')
-            ->line('Fecha estimada de pago: ' . Carbon::parse($this->investment->due_date)->format('d/m/Y'))
-            ->action('Ver detalles', env('CLIENT_APP_URL') . '/mis-inversiones');
+            ->subject('ZUMA - Nueva operación recibida')
+            ->view('emails.investments.invested', [
+                'notifiable' => $notifiable,
+                'company' => $this->company,
+                'invoice' => $this->invoice,
+                'investment' => $this->investment,
+                'monto' => MoneyFormatter::formatFromDecimal($this->investment->amount, $this->invoice->currency),
+                'tasa' => $this->investment->rate,
+                'fecha' => Carbon::parse($this->investment->due_date)->format('d/m/Y'),
+            ]);
+            // ->line('Hola ' . $notifiable->name)
+            // ->line('Tu inversión se registró correctamente.')
+            // ->line('Empresa: ' . $this->company->name)
+            // ->line('Factura: ' . $this->invoice->invoice_code)
+            // ->line('Monto: ' . MoneyFormatter::formatFromDecimal($this->investment->amount, $this->invoice->currency))
+            // ->line('Tasa: ' . $this->investment->rate . '%')
+            // ->line('Fecha estimada de pago: ' . Carbon::parse($this->investment->due_date)->format('d/m/Y'))
+            // ->action('Ver detalles', env('CLIENT_APP_URL') . '/mis-inversiones');
     }
 }

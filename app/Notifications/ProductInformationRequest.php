@@ -25,7 +25,7 @@ class ProductInformationRequest extends Notification
     public function toMail($notifiable): MailMessage
     {
         $phone = preg_replace('/\D/', '', $this->contactData['phone']); // Limpia el número
-        $whatsappUrl = "https://wa.me/51{$phone}"; // WhatsApp directo al cliente
+        $whatsappUrl = "https://wa.me/51986351267"; // WhatsApp directo al cliente
 
         return (new MailMessage)
             ->from('admin@zuma.com.pe', 'ZUMA')

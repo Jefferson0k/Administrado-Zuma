@@ -40,7 +40,7 @@ class InvestorPartialPaymentNotification extends Notification
             ->line('Tasa de reprogramación: ' . $this->payment->reprogramation_rate . '%')
             ->line('Monto invertido: ' . MoneyFormatter::formatFromDecimal($this->investment->amount))
             ->line('Monto a pagar: ' . MoneyFormatter::format($this->amountToPay))
-            ->action('Ver oportunidades', config('app.client_app_url') . '/oportunidades')
+            ->action('IR A ZUMA', env('CLIENT_APP_URL','https://www.zuma.com.pe'))
             ->line('Gracias por usar nuestros servicios.');
     }
 }

@@ -819,7 +819,7 @@ class InvestorController extends Controller
             // $publicBackUrl  = $disk->temporaryUrl($documentBackKey,  now()->addMinutes(15));
             // $publicPhotoUrl = $disk->temporaryUrl($photoKey,         now()->addMinutes(15));
 
-            $investor->sendAccountUpdatedInformation();
+            // $investor->sendAccountUpdatedInformation();
 
             return response()->json([
                 'success' => true,
@@ -839,6 +839,7 @@ class InvestorController extends Controller
                 ],
             ]);
         } catch (\Throwable $th) {
+        Log::error("Error updating account confirmation: " . $th->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => $th->getMessage(),
