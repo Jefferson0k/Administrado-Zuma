@@ -1,6 +1,5 @@
-<?php
-
 namespace App\Http\Controllers\Panel;
+<?php
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Investor\LoginInvestorRequest;
@@ -37,7 +36,6 @@ use Illuminate\Auth\Events\Registered;
 use Predis\Client;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\InvestorsExport;
-use App\Models\StateNotification;
 
 class InvestorController extends Controller
 {
@@ -293,13 +291,6 @@ class InvestorController extends Controller
 
             DB::commit();
 
-            $stateNotification = StateNotification::create([
-                'investor_id' => $investor->id,
-                'status' => 0,
-                'type' => 'datos_personales'
-            ]);
-            $stateNotification->save();
-
             // ENVÍO DE AMBAS VERIFICACIONES
             $emailSent = false;
             $whatsappSent = false;
@@ -405,80 +396,98 @@ class InvestorController extends Controller
             return false;
         }
     }
-    public function login(LoginInvestorRequest $request){
+    public function login(LoginInvestorRequest $request)
+    {
         try {
             $validatedData = $request->validated();
-            $investor = Investor::where('email', $request->email)->first();           
+            $investor = Investor::where('email', $request->email)->first();
             if (!$investor || !Hash::check($request->password, $investor->password)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Credenciales inválidas'
                 ], 401);
             }
-            $token = $investor->createToken('token')->plainTextToken;
-            // Detectar frontend de origen
-            $origin = request()->header('Origin');
-            $isFromVue = $origin && str_contains($origin, 'localhost:4005');
-            // Leer URLs desde variables de entorno
-            $reactBaseUrl = env('REACT_BASE_URL', 'https://zuma.com.pe/factoring');
-            $vueBaseUrl   = env('VUE_BASE_URL', 'https://zuma.com.pe/hipotecas');
 
-            $response = [
+
+            $issues = [];
+            if (! $investor->hasVerifiedEmail()) {
+                // optional: trigger another verification email
+                try {
+                    $investor->sendEmailVerificationNotification();
+                } catch (Throwable $th) {
+                    Log::info($th->getMessage());
+                }
+
+                $issues[] = [
+                    'code' => 'email_not_verified',
+                    'message' => 'Tu email aún no ha sido verificado. Revisa tu bandeja de entrada.',
+                ];
+
+
+                // return response()->json([
+                //      'success' => false,
+                //     'code' => 'email_not_verified',
+
+                //     'message' => 'Tu email aún no ha sido verificado. Revisa tu bandeja de entrada.',
+                // ], 403);
+            }
+            if (! $investor->hasVerifiedWhatsapp()) {
+                // optional: trigger another verification email
+                // $investor->sendWhatsappVerificationNotification();
+                // return response()->json([
+                //     'code' => 'whatsapp_not_verified',
+                //     'message' => 'Tu WhatsApp aún no ha sido verificado. Revisa tu bandeja de entrada.',
+                // ], 403);
+                $issues[] = [
+                    'code' => 'whatsapp_not_verified',
+                    'message' => 'Tu WhatsApp aún no ha sido verificado. Revisa tu bandeja de entrada.',
+                ];
+            }
+            // if (! $investor->hasVerifiedWhatsapp()) {
+            //     return response()->json(['message' => 'WhatsApp aún no ha sido verificado.'], 403);
+            // }
+
+
+            // Si hay una o más observaciones, devolverlas juntas
+            if (!empty($issues)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Acceso bloqueado: tienes verificaciones pendientes.',
+                    'issues'  => $issues,   // <-- el frontend puede iterar esto y mostrar todo
+                ], 403);
+            }
+
+            return response()->json([
                 'success' => true,
                 'message' => "Bienvenido {$investor->name}",
                 'data' => $investor,
-                'api_token' => $token,
+                'api_token' => $investor->createToken('token')->plainTextToken,
                 'user_type' => $investor->type,
-            ];
-
-            if ($isFromVue) {
-                // Redirección cruzada
-                $tokenParam = "token=" . urlencode($token);
-
-                switch ($investor->type) {
-                    case 'cliente':
-                        $response['cross_domain_redirect'] = "{$vueBaseUrl}?{$tokenParam}";
-                        break;
-                    case 'inversionista':
-                    case 'mixto':
-                    default:
-                        $response['cross_domain_redirect'] = "{$reactBaseUrl}?{$tokenParam}";
-                        break;
-                }
-
-                \Log::info("Redirección generada para Vue", [
-                    'redirect_url' => $response['cross_domain_redirect']
-                ]);
-            } else {
-                // Si viene de React, ruta interna normal
-                $response['redirect_route'] = $this->getRedirectRoute($investor->type);
-            }
-
-            return response()->json($response);
-
-        } catch (Throwable $th) {
-            \Log::error('Error en login method', [
-                'message' => $th->getMessage(),
-                'file' => $th->getFile(),
-                'line' => $th->getLine()
+                'redirect_route' => $this->getRedirectRoute($investor->type)
             ]);
-            
+        } catch (Throwable $th) {
+            Log::info($th->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Error durante el login: ' . $th->getMessage(),
+                'message' => 'Ocurrió un error en el servidor. Inténtalo más tarde.',
                 'data' => null,
             ], 500);
         }
     }
-    private function getRedirectRoute($userType){
-        $route = match($userType) {
-            'cliente' => '/hipotecas',
-            'inversionista', 'mixto' => '/factoring',
-            default => '/factoring'
-        };
-        \Log::info("Redirect route for {$userType}: {$route}");
-        return $route;
+    private function getRedirectRoute($userType)
+    {
+        switch ($userType) {
+            case 'cliente':
+                return '/cliente';
+            case 'inversionista':
+            case 'mixto':
+                return '/hipotecas';
+            default:
+                return '/hipotecas';
+        }
     }
+
+
     public function logout(Request $request)
     {
         $token = PersonalAccessToken::findToken($request->bearerToken());
@@ -492,23 +501,8 @@ class InvestorController extends Controller
     {
         try {
             $investor = Auth::user();
-            $investor->loadCount([
-                'bankAccounts as bank_approved_accounts_count' => fn($q) => $q->where('status_conclusion', 'approved'),
-                'bankAccounts as bank_pending_accounts_count' => fn($q) => $q->where('status_conclusion', 'pending'),
-                'bankAccounts as bank_rejected_accounts_count' => fn($q) => $q->where('status_conclusion', 'rejected'),
-                'bankAccounts as bank_deleted_accounts_count' => fn($q) => $q->where('status_conclusion', 'deleted'),
-            ]);
-            $investor->loadCount([
-                'movements as movements_count' => fn($q) => $q->where('confirm_status', 'confirmed'),
-                'movements as deposit_confirmed' => fn($q) => $q->where('type', 'deposit')->where('confirm_status', 'confirmed'),
-                'movements as deposit_pending_approval' => fn($q) => $q->where('type', 'deposit')->where('confirm_status', 'pending')->whereNull('aprobacion_1')->whereNull('aprobacion_2'),
-                'movements as deposit_approval' => fn($q) => $q->where('type', 'deposit')->where('confirm_status', 'confirmed')->whereRaw('aprobacion_2 < DATE_ADD(NOW(), INTERVAL 1 DAY)'),
-                'movements as deposit_rejected' => fn($q) => $q->where('type', 'deposit')->where('status', 'rejected')
-            ]);
-            $investor->load('notificaciones');
-            $investor->load('investments.invoice');
-            
-            
+            $investor->loadCount('bankAccounts');
+            $investor->movements_count =  Movement::where('investor_id', $investor->id)->count();
             return response()->json([
                 'success' => true,
                 'message' => null,
@@ -685,7 +679,7 @@ class InvestorController extends Controller
         $request->validate([
             'email' => 'required|email',
             'token' => 'required',
-            'password' => 'required|confirmed|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/',
+            'password' => 'required|confirmed|regex:/^(?=.[a-z])(?=.[A-Z])(?=.\d)(?=.[@$!%?&])[A-Za-z\d@$!%?&]{8,}$/',
         ], [
             'email.required' => 'El email es obligatorio.',
             'email.email' => 'El email ingresado no es válido.',
@@ -824,19 +818,7 @@ class InvestorController extends Controller
             // $publicBackUrl  = $disk->temporaryUrl($documentBackKey,  now()->addMinutes(15));
             // $publicPhotoUrl = $disk->temporaryUrl($photoKey,         now()->addMinutes(15));
 
-            $sn = StateNotification::where('investor_id',$investor->id)->where('type','espera_confirmacion_deposito')->first();
-            if($sn){
-                
-            }else{
-                $stateNotification = StateNotification::create([
-                    'investor_id' => $investor->id,
-                    'status' => 0,
-                    'type' => 'cuenta_bancaria'
-                ]);
-                $stateNotification->save();
-            }
-
-            $investor->sendAccountUpdatedInformation();
+            // $investor->sendAccountUpdatedInformation();
 
             return response()->json([
                 'success' => true,
@@ -856,6 +838,7 @@ class InvestorController extends Controller
                 ],
             ]);
         } catch (\Throwable $th) {
+        Log::error("Error updating account confirmation: " . $th->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => $th->getMessage(),
@@ -1003,14 +986,10 @@ class InvestorController extends Controller
                 'message' => 'Error al rechazar inversionista.',
                 'error' => $e->getMessage()
             ], 500);
-        }
-    }
+        }
+    }
 
-
-
-
-
-    public function observarPrimeraValidacion(Request $request, $id)
+public function observarPrimeraValidacion(Request $request, $id)
     {
         $request->validate([
             'approval1_comment'   => 'nullable|string',
@@ -2097,5 +2076,5 @@ class InvestorController extends Controller
         $fileName = 'inversionistas_' . now()->format('Y-m-d') . '.xlsx';
 
         return Excel::download(new InvestorsExport($search), $fileName);
-    }
+    }
 }
