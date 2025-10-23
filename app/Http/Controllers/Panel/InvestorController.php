@@ -1007,8 +1007,8 @@ class InvestorController extends Controller
                 'message' => 'Error al rechazar inversionista.',
                 'error' => $e->getMessage()
             ], 500);
-        }
-    }
+        }
+    }
 
 public function observarPrimeraValidacion(Request $request, $id)
     {
