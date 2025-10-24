@@ -38,7 +38,7 @@ class StoreBankAccountRequest extends FormRequest
                 'required',
                 'string',
                 'min:2',
-                'max:15',
+                'max:20',
                 // 'unique:bank_accounts,cc,NULL,id,investor_id,' . Auth::user()->id, //unique quitar
                 // 'unique:bank_accounts,cc', //unique quitar
             ],
