@@ -486,7 +486,7 @@ class MovementController extends Controller
                     'deposit_id'  => $deposit->id,
                     'movement_id' => $movement->id,
                 ]);
-                
+
                 $sn = StateNotification::where('investor_id',$investor->id)->where('type','espera_confirmacion_deposito')->first();
                 if($sn){
                     $sn->update([
@@ -500,10 +500,6 @@ class MovementController extends Controller
                     ]);
                     $stateNotification->save();
                 }
-                
-                
-                
-
 
                 $investor->sendDepositPendingEmailNotification($deposit);
 
@@ -613,7 +609,7 @@ class MovementController extends Controller
             $withdrawal->updated_by = $investor->id;
             $withdrawal->movement_id = $movement->id;
             $withdrawal->save();
-            
+
             StateNotification::updateOrCreate(
                 [
                     'investor_id' => $investor->id,
@@ -842,7 +838,8 @@ class MovementController extends Controller
                 'success' => false,
                 'message' => $th->getMessage(),
             ], in_array((int)$th->getCode(), range(100,599)) ? (int)$th->getCode() : 500);
-        }   
+        }
+
     }
-    
+
 }
