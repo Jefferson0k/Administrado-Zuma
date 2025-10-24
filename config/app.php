@@ -15,6 +15,8 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
+    'support_phone' => env('SUPPORT_PHONE', '+51 986 351 267'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment

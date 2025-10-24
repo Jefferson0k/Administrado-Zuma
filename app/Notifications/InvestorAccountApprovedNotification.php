@@ -23,17 +23,17 @@ class InvestorAccountApprovedNotification extends Notification
     public function toMail($notifiable)
     {
         $appName   = config('app.name', 'ZUMA');
-        $clientUrl = rtrim(env('CLIENT_APP_URL', 'http://localhost:5173'), '/');
+        $clientUrl = rtrim(env('CLIENT_APP_URL', 'https://zuma.com.pe'), '/');
         $dashboard = "{$clientUrl}/dashboard";
 
         return (new MailMessage)
-            ->subject("{$appName} — ¡Tu cuenta fue aprobada!")
+            ->subject("{$appName} — ¡Tu usuario fue aprobado!")
             ->view('emails.investor-approved', [
                 'appName'      => $appName,
                 'userName'     => $notifiable->name ?? 'Usuario',
                 'dashboardUrl' => $dashboard,
                 'whatsappUrl'  => $this->whatsappUrl ?? '#',
-                'supportPhone' => $this->supportPhone ?? '',
+                'supportPhone' => $this->supportPhone ?? '+51 986 351 267',
             ]);
     }
 }

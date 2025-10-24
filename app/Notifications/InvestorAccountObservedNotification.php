@@ -11,7 +11,7 @@ class InvestorAccountObservedNotification extends Notification
       use Queueable;
 
     public function __construct(
-        public ?string $title = 'Tu cuenta fue observada',
+        public ?string $title = 'ZUMA - Tu usuario fue observado',
         public ?string $intro = 'Detectamos observaciones en tu cuenta que requieren tu atención para continuar con el proceso.',
         public array $reasons = [], // opcional, si tienes motivos específicos
         public ?string $whatsappUrl = null,
@@ -29,8 +29,8 @@ class InvestorAccountObservedNotification extends Notification
         $brandPrimary = '#F0372D'; // barra/logo bg (rojo)
         $brandButton  = '#22c55e'; // botón WhatsApp (verde)
         $logoUrl      = rtrim(env('APP_URL', ''), '/') . '/images/zuma-logo-dark.png';
-        $whatsUrl     = $this->whatsappUrl ?: 'https://wa.me/51999999999';
-        $supportPhone = $this->supportPhone ?: '+51 999 999 999';
+        $whatsUrl     = $this->whatsappUrl ?: 'https://wa.me/51986351267';
+        $supportPhone = $this->supportPhone ?: '+51 986 351 267';
 
         return (new MailMessage)
             ->subject($this->title)

@@ -19,8 +19,8 @@ class UpdateWithdrawRequest extends FormRequest{
             'file' => [
                 'nullable',
                 'mimes:jpeg,png,jpg,gif,webp',
-                'max:10240',
-                'dimensions:min_width=100,min_height=100,max_width=2000,max_height=2000',
+              
+               
             ],
             'movement_id'     => 'sometimes|required|exists:movements,id',
             'investor_id'     => 'sometimes|required|exists:investors,id',

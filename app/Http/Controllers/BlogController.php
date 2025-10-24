@@ -165,7 +165,7 @@ class BlogController extends Controller
             // ✅ Acepta EITHER imagen (single) OR imagenes (array)
             'imagenes'          => 'required_without:imagen|array|min:1',
             'imagenes.*'        => 'image|mimes:jpeg,jpg,png',
-            'imagen'            => 'required_without:imagenes|image|mimes:jpeg,jpg,png|max:10240',
+            'imagen'            => 'required_without:imagenes|image|mimes:jpeg,jpg,png',
 
             'category_id'       => 'required', // CSV o array
             'state_id'          => 'required|exists:states,id',
@@ -445,7 +445,7 @@ class BlogController extends Controller
             'resumen'           => 'nullable|string|max:1000',
 
             // ⚠️ ya no es required; opcional si quieres cambiar la portada con una NUEVA imagen
-            'imagen'            => 'nullable|image|mimes:jpeg,jpg,png|max:10240',
+            'imagen'            => 'nullable|image|mimes:jpeg,jpg,png',
 
             // categorías puede llegar como CSV
             'category_id'       => 'required|string',
@@ -455,7 +455,7 @@ class BlogController extends Controller
 
             // NUEVO: manejo granular de galería
             'new_images'        => 'nullable|array',
-            'new_images.*'      => 'image|mimes:jpeg,jpg,png|max:10240',
+            'new_images.*'      => 'image|mimes:jpeg,jpg,png',
             'delete_image_ids'  => 'nullable|array',
             'delete_image_ids.*' => 'integer|exists:post_images,id',
             'cover_image_id'    => 'nullable|integer|exists:post_images,id',

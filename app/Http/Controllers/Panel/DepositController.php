@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\DepositAttachment;
 use Illuminate\Support\Facades\Storage;
 use App\Models\HistoryAprobadorDeposit;
+use App\Models\StateNotification;
 
 
 
@@ -182,6 +183,18 @@ class DepositController extends Controller
             $deposit->status_conclusion = 'pending';
         } elseif ($validated['status0'] === 'rejected') {
             try {
+                StateNotification::updateOrCreate(
+                    [
+                        'investor_id' => $deposit->investor->id,
+                        'type' => 'rechazo_deposito',
+                    ],
+                    [
+                        'investor_id' => $deposit->investor->id,
+                        'status' => 0,
+                        'type' => 'rechazo_deposito',
+                    ]
+                );
+                
                 $deposit->sendDepositRejectedEmail();
             } catch (\Throwable $e) {
                 // opcional: loggear
@@ -288,6 +301,19 @@ class DepositController extends Controller
             $deposit->status_conclusion = 'pending';
         } elseif ($validated['status'] === 'approved') {
             try {
+                
+                StateNotification::updateOrCreate(
+                    [
+                        'investor_id' => $deposit->investor->id,
+                        'type' => 'confirmacion_deposito',
+                    ],
+                    [
+                        'investor_id' => $deposit->investor->id,
+                        'status' => 0,
+                        'type' => 'confirmacion_deposito',
+                    ]
+                );
+                
                 $deposit->sendDepositApprovedEmail();
             } catch (\Throwable $e) {
                 // opcional: loggear
@@ -296,6 +322,17 @@ class DepositController extends Controller
             $deposit->status_conclusion = 'approved';
         } elseif ($validated['status'] === 'rejected') {
             try {
+                StateNotification::updateOrCreate(
+                    [
+                        'investor_id' => $deposit->investor->id,
+                        'type' => 'confirmacion_deposito',
+                    ],
+                    [
+                        'investor_id' => $deposit->investor->id,
+                        'status' => 0,
+                        'type' => 'confirmacion_deposito',
+                    ]
+                );
                 $deposit->sendDepositRejectedEmail();
             } catch (\Throwable $e) {
                 // opcional: loggear

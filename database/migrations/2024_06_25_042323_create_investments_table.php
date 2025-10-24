@@ -25,7 +25,7 @@ return new class extends Migration
             $table->foreignUlid('movement_id')->constrained();
             $table->ulid('previous_investment_id')->nullable();
             $table->ulid('original_investment_id')->nullable();
-            $table->enum('status', ['inactive', 'active', 'paid', 'reprogramed', 'reembloso', 'pending', 'intereses'])->default('inactive');
+            $table->enum('status', ['inactive', 'active', 'paid', 'reprogramed', 'reembloso', 'pending', 'intereses','parcial'])->default('inactive');
             $table->foreignUlid('movement_reembloso')->nullable()->constrained('movements');
             $table->string('operation_number')->nullable();
             $table->string('receipt_path')->nullable();     

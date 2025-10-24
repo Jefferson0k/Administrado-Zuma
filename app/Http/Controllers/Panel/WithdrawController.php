@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Throwable;
 use App\Models\HistoryAprobadorWithdraw;
+use App\Models\StateNotification;
+
 
 class WithdrawController extends Controller
 {
@@ -94,7 +96,7 @@ class WithdrawController extends Controller
         Gate::authorize('uploadFiles', $withdraw);
 
         $request->validate([
-            'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:4096',
+            'file' => 'required|file|mimes:jpg,jpeg,png,pdf',
             'comment' => 'nullable|string|max:2000',
         ]);
 
@@ -154,7 +156,17 @@ class WithdrawController extends Controller
             ]);
 
 
-
+            StateNotification::updateOrCreate(
+                [
+                    'investor_id' => $withdraw->investor->id,
+                    'type' => 'aceptacion_retiro',
+                ],
+                [
+                    'investor_id' => $withdraw->investor->id,
+                    'status' => 0,
+                    'type' => 'aceptacion_retiro',
+                ]
+            );
 
 
             DB::commit();
@@ -207,6 +219,19 @@ class WithdrawController extends Controller
                 'approval2_comment' => $request->input('approval2_comment'),
                 'approval2_at' => now(),
             ]);
+            
+            StateNotification::updateOrCreate(
+                [
+                    'investor_id' => $withdraw->investor->id,
+                    'type' => 'aceptacion_retiro',
+                ],
+                [
+                    'investor_id' => $withdraw->investor->id,
+                    'status' => 0,
+                    'type' => 'aceptacion_retiro',
+                ]
+            );
+            
             DB::commit();
             return response()->json([
                 'message' => 'Retiro aprobado en segunda validación correctamente',
@@ -254,9 +279,11 @@ class WithdrawController extends Controller
                 'approval1_at' => now(),
             ]);
 
-
+            
 
             DB::commit();
+            $withdraw->investor->sendWithdrawObservedEmailNotification($withdraw);
+
 
             return response()->json([
                 'message' => 'Retiro observado en primera validación',
@@ -305,6 +332,8 @@ class WithdrawController extends Controller
             ]);
 
             DB::commit();
+            $withdraw->investor->sendWithdrawObservedEmailNotification($withdraw);
+
 
             return response()->json([
                 'message' => 'Retiro observado en segunda validación',
@@ -352,9 +381,21 @@ class WithdrawController extends Controller
                 'approval1_at' => now(),
             ]);
 
-
+            StateNotification::updateOrCreate(
+                [
+                    'investor_id' => $withdraw->investor->id,
+                    'type' => 'rechazo_retiro',
+                ],
+                [
+                    'investor_id' => $withdraw->investor->id,
+                    'status' => 0,
+                    'type' => 'rechazo_retiro',
+                ]
+            );
 
             DB::commit();
+
+            $withdraw->investor->sendWithdrawRejectedEmailNotification($withdraw);
 
             return response()->json([
                 'message' => 'Retiro rechazado en primera validación',
@@ -409,8 +450,22 @@ class WithdrawController extends Controller
                 'approval2_comment' => $request->input('approval2_comment'),
                 'approval2_at' => now(),
             ]);
-
+            
+            StateNotification::updateOrCreate(
+                [
+                    'investor_id' => $withdraw->investor->id,
+                    'type' => 'rechazo_retiro',
+                ],
+                [
+                    'investor_id' => $withdraw->investor->id,
+                    'status' => 0,
+                    'type' => 'rechazo_retiro',
+                ]
+            );
+            
             DB::commit();
+            $withdraw->investor->sendWithdrawRejectedEmailNotification($withdraw);
+
 
             return response()->json([
                 'message' => 'Retiro rechazado en segunda validación',
@@ -440,7 +495,7 @@ class WithdrawController extends Controller
 
         $validated = $request->validate([
             'payment_comment' => ['nullable', 'string', 'max:2000'],
-            'file'         => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:4096'],
+            'file'         => ['required', 'file', 'mimes:jpg,jpeg,png,pdf'],
         ]);
 
         try {

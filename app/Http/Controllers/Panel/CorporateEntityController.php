@@ -51,7 +51,7 @@ class CorporateEntityController extends Controller{
             'email' => 'sometimes|email|max:255',
             'tipo_entidad' => 'sometimes|string|max:50',
             'estado' => 'sometimes|boolean',
-            'pdf' => 'nullable|file|mimes:pdf|max:2048',
+            'pdf' => 'nullable|file|mimes:pdf',
         ]);
         if ($request->hasFile('pdf')) {
             if ($entity->pdf) {

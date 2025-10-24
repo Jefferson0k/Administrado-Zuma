@@ -56,8 +56,8 @@
           <tr>
             <td style="padding:5px 0; text-align:center;">
 
-              <img src="{{ asset('imagenes/zuma-logo.png') }}" width="370" height="90" alt="Logo"
-                style="display:block;margin:0 auto ;">
+              <img src="{{ asset('imagenes/zuma-logo.png') }}" width="275" height="35" alt="Logo"
+                style="display:block;margin:7.5px auto ;">
 
             </td>
           </tr>

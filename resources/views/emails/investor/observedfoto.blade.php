@@ -7,7 +7,7 @@
   $companyAddr = $companyAddr ?? 'Av. Faustino Sánchez Carrión 417, Magdalena del Mar, Lima – Perú';
   $prefsUrl = $prefsUrl ?? '#';
   $supportPhone = $supportPhone ?? '+51 999 999 999';
-  $ctaUrl = $ctaUrl ?? '#'; // <- URL para volver a subir la foto
+  $ctaUrl = $ctaUrl ?? 'https://www.zuma.com.pe/login'; // <- URL para volver a subir la foto
 @endphp
 <!doctype html>
 <html lang="es">
@@ -55,8 +55,8 @@
           <tr>
             <td style="padding:5px 0; text-align:center;">
 
-              <img src="{{ asset('imagenes/zuma-logo.png') }}" width="370" height="90" alt="Logo"
-                style="display:block;margin:0 auto ;">
+              <img src="{{ asset('imagenes/zuma-logo.png') }}" width="275" height="35" alt="Logo"
+                style="display:block;margin:7.5px auto ;">
 
             </td>
           </tr>
@@ -72,8 +72,7 @@
           <tr>
             <td style="padding:8px 32px 8px 32px;text-align:center;">
 
-              <img src="{{ asset('imagenes/personitadocumento.png') }}" width="64" height="80" alt="Aviso"
-                style="display:block;margin:0 auto 10px auto;">
+             
               <h1 class="hero-title"
                 style="margin:8px 0;font:800 22px/28px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;color:#111827;text-decoration:underline;">
                 {{ $title }}

@@ -6,6 +6,8 @@
   $userName     = $userName     ?? 'Usuario';
   $companyAddr  = 'Av. Faustino Sánchez Carrión 417, Magdalena del Mar, Lima – Perú'; // opcional
   $prefsUrl     = '#'; // opcional
+  $supportPhone =  config('app.support_phone') ?? '+51 986 351 267';
+  $url_zuma    = env('CLIENT_APP_URL', 'https://zuma.com.pe');
 @endphp
 <!doctype html>
 <html lang="es">
@@ -26,35 +28,49 @@
 <body style="margin:0;padding:0;background:#F3F4F6;">
   <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
     <!-- Barra superior -->
-    <tr>
-      <td style="background: {{ $brandPrimary }}; padding: 18px 0; text-align:center;">
-        <span style="font:800 30px/1 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;color:#000;letter-spacing:.5px;">
-          {{ strtolower($appName) }}
-        </span>
-      </td>
-    </tr>
+     <tr>
+            <td align="center" style="padding:0 0 0 0;">
+                <table class="container" role="presentation" width="640" cellspacing="0" cellpadding="0" border="0"
+                    style="width:640px;max-width:640px;background:#fd4a2a;color:#E5E7EB;">
+                    <tr>
+                        <td style="padding:5px 0; text-align:center;">
+
+                            <img src="{{ asset('imagenes/zuma-logo.png') }}" width="300" height="40" alt="Logo"
+                                style="display:block;margin:5px auto ;">
+
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
 
     <!-- Card -->
     <tr>
       <td align="center">
-        <table class="container" role="presentation" width="640" cellspacing="0" cellpadding="0" border="0"
-               style="width:640px;max-width:640px;background:#FFFFFF;margin:0 auto;">
-          <tr>
-            <td style="padding:28px 32px 8px 32px; text-align:center;">
-              <div style="font-size:56px;line-height:1;margin:0 0 8px 0;">❌</div>
-              <h1 class="hero-title"
-                  style="margin:6px 0 4px 0;font:800 22px/28px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;color:#111;">
-                {{ $title }}
-              </h1>
-            </td>
-          </tr>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+
+
+            <tr>
+                        <td style="padding:8px 32px 8px 32px;text-align:center;">
+
+
+
+                            <!-- Título -->
+                            <h1 class="hero-title darkmode-text"
+                                style="margin:8px 0;font:800 22px/28px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;color:#111111;text-decoration:underline;">
+                                {{ $title }}
+                            </h1>
+                        </td>
+                    </tr>
+
+       
 
           <tr>
             <td style="padding:0 32px 6px 32px;color:#111;font:400 14px/22px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;">
               <p style="margin:0 0 14px 0;">Hola <strong>{{ $userName }}</strong>,</p>
 
               <p style="margin:0 0 12px 0;color:#374151;">
-                Tu cuenta fue <strong>rechazada</strong> durante la validación. Para continuar,
+                Tu usuario fue <strong>rechazado</strong> durante la validación. Para continuar,
                 por favor ingresa y vuelve a completar tus datos y <strong>sube las fotos de tu DNI</strong>
                 correctamente.
               </p>
@@ -67,20 +83,15 @@
               </ul>
 
               <p style="text-align:center; margin:18px 0 22px 0;">
-                <a href="{{ $loginUrl }}" class="btn"
-                   style="background:#111827;">Reintentar registro</a>
+                <a href="{{ $url_zuma }}" class="btn"
+                   style="background:#111827;">Ir a zuma</a>
               </p>
 
               <p style="margin:0 0 12px 0;color:#374151;">
-                ¿Necesitas ayuda? Escríbenos por WhatsApp y con gusto te asistimos.
+                ¿Necesitas ayuda? Escríbenos por WhatsApp y con gusto te asistimos. <strong>{{ $supportPhone }}</strong>
               </p>
 
-              <p style="text-align:center; margin:0 0 22px 0;">
-                <a href="{{ $whatsappUrl ?? '#' }}" class="btn"
-                   style="background: {{ $brandButton }}; box-shadow:0 2px 0 rgba(0,0,0,.12);">
-                  WhatsApp {{ $appName }}
-                </a>
-              </p>
+              
 
               <p style="margin:0;color:#111;">Gracias por tu comprensión,<br>
                 El equipo de {{ $appName }}</p>
@@ -112,11 +123,7 @@
               <p style="margin:0 0 10px 0;font:500 12px/18px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;color:#E5E7EB;">
                 {{ $companyAddr }}
               </p>
-              <p style="margin:0 0 10px 0;">
-                <a href="{{ $prefsUrl }}" style="color:#A3A7AD; font:500 12px/18px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;">
-                  Gestionar preferencias
-                </a>
-              </p>
+              
               <p style="margin:0; font:500 11px/16px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu; color:#A3A7AD;">
                 © {{ date('Y') }} {{ $appName }}. Todos los derechos reservados.
               </p>

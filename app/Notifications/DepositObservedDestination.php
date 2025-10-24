@@ -20,10 +20,10 @@ class DepositObservedDestination extends Notification
         $appName      = config('app.name', 'ZUMA');
         $brandPrimary = '#F0372D'; // rojo corporativo
         $brandButton  = '#3B82F6'; // azul CTA
-        $logoUrl      = rtrim(env('APP_URL', ''), '/') . '/images/zuma-logo-dark.png';
-        $whatsUrl     = env('ZUMA_WHATSAPP_URL', 'https://wa.me/51999999999');
-        $supportPhone = env('ZUMA_SUPPORT_PHONE', '+51 999 999 999');
-        $prefsUrl     = env('ZUMA_EMAIL_PREFS_URL', '#');
+        $logoUrl      = rtrim(env('APP_URL', ''), '/') . '/images/zuma-logo.png';
+        $whatsUrl     = env('ZUMA_WHATSAPP_URL', 'https://wa.me/51986351267');
+        $supportPhone = env('ZUMA_SUPPORT_PHONE', '+51 986 351 267');
+        $prefsUrl     = env('APP_URL', '#');
 
         return (new MailMessage)
             ->subject('ZUMA - Tu depósito no pudo validarse, cuenta de destino incorrecta')

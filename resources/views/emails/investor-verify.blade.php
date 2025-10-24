@@ -3,12 +3,12 @@
     $brandPrimary = $brandPrimary ?? '#fd4a2a';
     $brandButton = $brandButton ?? '#3B82F6';
     $title = $title ?? 'Verifica tu correo - ZUMA';
-    $userName = $userName ?? 'Usuario';
+    $userName = $investor->name ?? 'Usuario';
     $ctaUrl = $ctaUrl ?? env('CLIENT_APP_URL', 'https://zuma.com.pe');
     $companyAddr = $companyAddr ?? 'Av. Faustino Sánchez Carrión 417, Magdalena del Mar, Lima – Perú';
     $prefsUrl = $prefsUrl ?? '#';
     $whatsappUrl = $whatsappUrl ?? '#';
-    $supportPhone = $supportPhone ?? '+51 999 999 999';
+    $supportPhone = config('app.support_phone') ?? '+51 986 351 267';
 @endphp
 <!doctype html>
 <html lang="es">
@@ -77,10 +77,10 @@
                     style="width:640px;max-width:640px;background:#fd4a2a;color:#E5E7EB;">
                     <tr>
                         <td style="padding:5px 0; text-align:center;">
-                            
-                                <img src="{{ asset('imagenes/zuma-logo.png') }}" width="370" height="90"
-                                    alt="Logo" style="display:block;margin:0 auto ;">
-                            
+
+                            <img src="{{ asset('imagenes/zuma-logo.png') }}" width="280" height="35" alt="Logo"
+                                style="display:block;margin:7.5px auto ;">
+
                         </td>
                     </tr>
                 </table>
@@ -91,11 +91,11 @@
         <tr>
             <td align="center">
                 <table class="container darkmode-bg" role="presentation" width="640" cellspacing="0" cellpadding="0"
-                    border="0"  style="width:640px;max-width:640px;background:#f7f7f7;margin:0 auto;">
+                    border="0" style="width:640px;max-width:640px;background:#f7f7f7;margin:0 auto;">
                     <tr>
                         <td style="padding:8px 32px 8px 32px;text-align:center;">
 
-                            
+
 
                             <!-- Título -->
                             <h1 class="hero-title darkmode-text"
@@ -108,22 +108,28 @@
                     <tr>
                         <td class="darkmode-text"
                             style="padding:0 32px 6px 32px;color:#111111;font:400 14px/22px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;">
-                            <p style="color:#374151;font-size:15px;text-align:left;max-width:520px;margin:0 auto 12px;">
+                            <p style="color:#374151;font-size:15px;text-align:justify;max-width:520px;margin:0 auto 12px;">
                                 Hola <strong>{{ $userName }}</strong>,<br><br>
                                 Gracias por registrarte en nuestra plataforma de inversiones.
-                                <strong>Para completar tu registro y acceder a todas las funcionalidades, por favor verifica tu dirección de email haciendo clic en el siguiente botón:</strong>.
-                                 
+                                <strong>Para completar tu registro y acceder a todas las funcionalidades, por favor
+                                    verifica tu dirección de email haciendo clic en el siguiente botón:</strong>.
+
                             </p>
 
-                          
 
 
-                            <p>Si el botón no funciona, puedes copiar y pegar este enlace en tu navegador:</p>
-                            <p style="word-break: break-all; color: #007bff;">{{ $url }}</p>
+
+                            <p style="color:#374151;font-size:15px;text-align:justify;max-width:520px;margin:0 auto 12px;">
+                                Si el botón no funciona, intenta ingresar con el siguiente enlace:</p>
+                            <p style="color:blue;font-size:15px;text-align:justify;max-width:520px;margin:0 auto 12px;">
+                                <a href="{{ $url }}" class="button">Verificar Email</a>
+                            </p>
 
                             <ol
-                                style="color:#111827;text-align:left;max-width:520px;margin:0 auto 18px;padding-left:20px;">
-                                <li>Este enlace de verificación expirará en  <strong>{{ config('auth.verification.expire', 60) }} minutos.</strong>.</li>
+                                style="color:#111827;text-align:justify;max-width:520px;margin:0 auto 18px;padding-left:20px;">
+                                <li>Este enlace de verificación expirará en
+                                    <strong>{{ config('auth.verification.expire', 60) }} minutos.</strong>.
+                                </li>
                                 <li>Si no creaste esta cuenta, puedes ignorar este email.</li>
                             </ol>
 
@@ -195,12 +201,7 @@
                 </table>
             </td>
         </tr>
-        <tr>
 
-              <div style="text-align: center;">
-                                    <a href="{{ $url }}" class="button">Verificar Email</a>
-                                </div>   
-        </tr>
 
     </table>
 </body>

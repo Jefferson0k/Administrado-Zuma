@@ -4,8 +4,8 @@
     $brandButton  = $brandButton  ?? '#22c55e';
     $logoUrl      = $logoUrl      ?? '';
 
-    $title        = $title        ?? 'Tu cuenta fue observada';
-    $intro        = $intro        ?? 'Detectamos observaciones en tu cuenta que requieren tu atención.';
+    $title        = $title        ?? 'Tu usuario fue observado';
+    $intro        = $intro        ?? 'Detectamos observaciones en tu usuario que requieren tu atención.';
     $userName     = $userName     ?? 'Usuario';
     $reasons      = $reasons      ?? [];
 
@@ -42,10 +42,8 @@
                     style="width:640px;max-width:640px;background:#fd4a2a;color:#E5E7EB;">
                     <tr>
                         <td style="padding:5px 0; text-align:center;">
-                            
-                                <img src="{{ asset('imagenes/zuma-logo.png') }}" width="370" height="90"
-                                    alt="Logo" style="display:block;margin:0 auto ;">
-                            
+                            <img src="{{ asset('imagenes/zuma-logo.png') }}" width="275" height="35"
+                                alt="Logo" style="display:block;margin:7.5px auto ;">
                         </td>
                     </tr>
                 </table>

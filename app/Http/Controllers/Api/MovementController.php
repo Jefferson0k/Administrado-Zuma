@@ -32,6 +32,7 @@ use Laravel\Sanctum\PersonalAccessToken;
 use Illuminate\Support\Facades\Storage;
 use Aws\S3\Exception\S3Exception;
 use Throwable;
+use App\Models\StateNotification;
 
 class MovementController extends Controller
 {
@@ -486,6 +487,22 @@ class MovementController extends Controller
                     'movement_id' => $movement->id,
                 ]);
 
+                $sn = StateNotification::where('investor_id',$investor->id)->where('type','espera_confirmacion_deposito')->first();
+                if($sn){
+                    $sn->update([
+                        'status' => 0
+                    ]);
+                }else{
+                    $stateNotification = StateNotification::create([
+                        'investor_id' => $investor->id,
+                        'status' => 0,
+                        'type' => 'espera_confirmacion_deposito'
+                    ]);
+                    $stateNotification->save();
+                }
+
+                $investor->sendDepositPendingEmailNotification($deposit);
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Operación creada correctamente.',
@@ -593,6 +610,17 @@ class MovementController extends Controller
             $withdrawal->movement_id = $movement->id;
             $withdrawal->save();
 
+            StateNotification::updateOrCreate(
+                [
+                    'investor_id' => $investor->id,
+                    'type' => 'solicitud_retiro',
+                ],
+                [
+                    'investor_id' => $investor->id,
+                    'status' => 0,
+                    'type' => 'solicitud_retiro',
+                ]
+            );
 
             // send email notification
             $investor->sendWithdrawalPendingEmailNotification($withdrawal);
@@ -810,7 +838,8 @@ class MovementController extends Controller
                 'success' => false,
                 'message' => $th->getMessage(),
             ], in_array((int)$th->getCode(), range(100,599)) ? (int)$th->getCode() : 500);
-        }   
+        }
+
     }
-    
+
 }

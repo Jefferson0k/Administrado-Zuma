@@ -40,6 +40,7 @@ use App\Http\Controllers\Panel\TwilioWebhookController;
 use App\Http\Controllers\TipoDocumentoController;
 use App\Http\Controllers\Web\SubastaHipotecas\TipoInmuebleController;
 use App\Http\Controllers\Api\InvestorDashboardController;
+use App\Http\Controllers\Api\StateNotificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -309,3 +310,5 @@ Route::get('/blog/showpost/{id}', [BlogController::class, 'showPost']);
 Route::get('/blog/getcomentarios/{id}', [BlogController::class, 'getComentarios']);
 Route::post('/detalle-inversionista', [DetalleInversionistaHipotecaController::class, 'store']);
 Route::get('/tipo-inmueble', [TipoInmuebleController::class, 'index']);
+
+Route::post('/update-notification/{id}', [StateNotificationController::class, 'updateState']);

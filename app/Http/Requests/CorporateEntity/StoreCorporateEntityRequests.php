@@ -17,7 +17,7 @@ class StoreCorporateEntityRequests extends FormRequest{
             'email' => 'nullable|email|max:255',
             'tipo_entidad' => 'required|string|max:100',
             'estado' => 'required|string|in:activo,inactivo',
-            'pdf' => 'nullable|file|mimes:pdf|max:10240',
+            'pdf' => 'nullable|file|mimes:pdf',
         ];
     }
 

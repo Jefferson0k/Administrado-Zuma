@@ -24,7 +24,7 @@ class StoreZumaDepositRequest extends FormRequest
             'amount' => 'required|numeric|min:0.01',
             'bank_destino'  => ['required', 'string', 'exists:bank_account_destinos,id'],
 
-            'voucher' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            'voucher' => 'required|file|mimes:jpg,jpeg,png,pdf',
             'payment_source' => 'nullable|string|max:255',
             'payment_schedules_id' => 'required|exists:payment_schedules,id',
         ];

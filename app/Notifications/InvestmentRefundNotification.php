@@ -57,8 +57,8 @@ class InvestmentRefundNotification extends Notification implements ShouldQueue
             $mail->line("📎 El comprobante está disponible en la plataforma.");
         }
 
-        $dashboardUrl = env('CLIENT_APP_URL', 'http://localhost:5173') . '/dashboard';
-        $mail->action('Ir al Dashboard', $dashboardUrl);
+        $dashboardUrl = env('CLIENT_APP_URL', 'https://zuma.com.pe');
+        $mail->action('Ir a ZUMA', $dashboardUrl);
 
         return $mail;
     }

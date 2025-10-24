@@ -8,7 +8,7 @@
     $companyAddr = $companyAddr ?? 'Av. Faustino Sánchez Carrión 417, Magdalena del Mar, Lima – Perú';
     $prefsUrl = $prefsUrl ?? '#';
     $whatsappUrl = $whatsappUrl ?? '#';
-    $supportPhone = $supportPhone ?? '+51 999 999 999';
+    $supportPhone = $supportPhone ?? '+51 986 351 267';
 @endphp
 <!doctype html>
 <html lang="es">
@@ -108,7 +108,7 @@
                     <tr>
                         <td class="darkmode-text"
                             style="padding:0 32px 6px 32px;color:#111111;font:400 14px/22px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;">
-                            <p style="color:#374151;font-size:15px;text-align:left;max-width:520px;margin:0 auto 12px;">
+                            <p style="color:#374151;font-size:15px;text-align:justify;max-width:520px;margin:0 auto 12px;">
                                 Hola <strong>{{ $userName }}</strong>,<br><br>
                                 Al validar tu información bancaria, identificamos que
                                 <strong>la transferencia se realizó a una cuenta distinta a la de
@@ -116,7 +116,7 @@
                             </p>
 
                             <ol
-                                style="color:#111827;text-align:left;max-width:520px;margin:0 auto 18px;padding-left:20px;">
+                                style="color:#111827;text-align:justify;max-width:520px;margin:0 auto 18px;padding-left:20px;">
                                 <li>Ingresa a la sección <strong>mi billetera</strong>.</li>
                                 <li>Elimina el registro anterior.</li>
                                 <li>Registra correctamente la información correcta.</li>
@@ -129,7 +129,7 @@
                                 </a>
                             </p>
 
-                            <p style="color:#4B5563;font-size:13px;text-align:left;max-width:520px;margin:0 auto 8px;">
+                            <p style="color:#4B5563;font-size:13px;text-align:justify;max-width:520px;margin:0 auto 8px;">
                                 Este control es importante para garantizar la seguridad de tus
                                 operaciones y que tus fondos sean acreditados correctamente
                                 en tu cuenta de inversión.

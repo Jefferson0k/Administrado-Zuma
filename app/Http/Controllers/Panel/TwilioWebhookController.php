@@ -184,8 +184,8 @@ class TwilioWebhookController extends Controller{
     }
 
     public function statusCallback(Request $request)
-{
-    Log::info("📱 WhatsApp Status Update:", $request->all());
-    return response()->json(['status' => 'received'], 200);
-}
+    {
+        Log::info("📱 WhatsApp Status Update:", $request->all());
+        return response()->json(['status' => 'received'], 200);
+    }
 }

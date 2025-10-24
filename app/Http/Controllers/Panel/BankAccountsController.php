@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use App\Models\HistoryAprobadorBankAccount;
+use App\Models\StateNotification;
 
 class BankAccountsController extends Controller
 {
@@ -267,7 +268,21 @@ class BankAccountsController extends Controller
             if ($validated['status0'] === 'rejected') {
                 $account->status_conclusion = 'rejected';
                 try {
+                    
                     $account->sendBankAccountRejectionEmail();
+                    
+                    StateNotification::updateOrCreate(
+                        [
+                            'investor_id' => $account->investor->id,
+                            'type' => 'rechazo_cuenta',
+                        ],
+                        [
+                            'investor_id' => $account->investor->id,
+                            'status' => 0,
+                            'type' => 'rechazo_cuenta',
+                        ]
+                    );
+                    
                 } catch (\Throwable $e) {
                 }
             } else {
@@ -403,6 +418,7 @@ class BankAccountsController extends Controller
                 try {
                     $account->sendBankAccountRejectionEmail();
                 } catch (\Throwable $e) {
+                    Log::warning('Error enviando correo de rechazo: ' . $e->getMessage());
                 }
             } elseif ($account->status === 'observed') {
                 try {

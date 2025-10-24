@@ -22,7 +22,7 @@ class UpdateInvestorAvatarRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'avatar' => 'required|image|mimes:jpeg,png,jpg,svg|max:5000',
+            'avatar' => 'required|image|mimes:jpeg,png,jpg,svg',
             'avatar_type' => 'required|integer|min:1|max:6',
             'clothing_color' => 'required|string|max:20',
             'background_color' => 'required|string|max:20',

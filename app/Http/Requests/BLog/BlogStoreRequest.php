@@ -19,7 +19,7 @@ class BlogStoreRequest extends FormRequest
             'titulo' => 'required|string|max:255',
             'contenido' => 'required|string',
             'resumen' => 'nullable|string|max:1000',
-            'imagen' => 'required|image|max:10048', // ajusta si no es imagen
+            'imagen' => 'required|image', // ajusta si no es imagen
             //'imagen' => 'nullable|string|max:255',
             //'product_id' => 'required|exists:products,id',
             'category_id' => 'required|exists:categories,id',

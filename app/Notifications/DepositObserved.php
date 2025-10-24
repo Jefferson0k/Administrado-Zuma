@@ -28,7 +28,7 @@ class DepositObserved extends Notification
 
     public function toMail($notifiable)
     {
-        $dashboardUrl = rtrim(env('CLIENT_APP_URL', 'https://zuma.com.pe'), '/') . '/dashboard';
+        $dashboardUrl = rtrim(env('CLIENT_APP_URL', 'https://zuma.com.pe'), '/') ;
         $logoUrl      = rtrim(config('app.url', 'https://zuma.com.pe'), '/') . '/images/logo.png'; // public/images/logo.png
 
         $op     = $this->deposit->nro_operation ?? '—';

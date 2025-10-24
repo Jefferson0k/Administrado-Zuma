@@ -8,7 +8,7 @@
   // Contenido
   $title = $title ?? 'Completa el formato PEP';
   $userName = $userName ?? 'Usuario';
-  $pepFormUrl = $pepFormUrl ?? '#';
+  $pepFormUrl = $pepFormUrl ?? 'https://www.zuma.com.pe';
 
   // Soporte & footer
   $companyAddr = $companyAddr ?? '';
@@ -75,8 +75,8 @@
           <tr>
             <td style="padding:5px 0; text-align:center;">
 
-              <img src="{{ asset('imagenes/zuma-logo.png') }}" width="370" height="90" alt="Logo"
-                style="display:block;margin:0 auto ;">
+              <img src="{{ asset('imagenes/zuma-logo.png') }}" width="275" height="35" alt="Logo"
+                style="display:block;margin:7.5px auto ;">
 
             </td>
           </tr>
@@ -92,9 +92,7 @@
           <tr>
             <td style="padding:8px 32px 8px 32px;text-align:center;">
 
-              {{-- Ícono simple tipo nota (opcional) --}}
-              <img src="{{ asset('imagenes/personitadocumento.png') }}" width="64" height="80" alt="Aviso"
-                style="display:block;margin:0 auto 10px auto;">
+           
 
 
               <h1 class="hero-title"
