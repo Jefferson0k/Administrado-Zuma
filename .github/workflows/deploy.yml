@@ -34,8 +34,8 @@ jobs:
           APP_DEBUG=false
           APP_URL=${{ secrets.APP_URL }}
           DB_CONNECTION=mysql
-          DB_HOST=shared_mysql
-          DB_PORT=3306
+          DB_HOST=${{ secrets.DB_HOST }}
+          DB_PORT=${{ secrets.DB_PORT }}
           DB_DATABASE=${{ secrets.DB_DATABASE }}
           DB_USERNAME=${{ secrets.DB_USERNAME }}
           DB_PASSWORD=${{ secrets.DB_PASSWORD }}
@@ -43,6 +43,25 @@ jobs:
           REDIS_PORT=6379
           CACHE_DRIVER=redis
           SESSION_DRIVER=redis
+
+          RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
+          MAIL_MAILER=${{ secrets.MAIL_MAILER }}
+          MAIL_HOST=${{ secrets.MAIL_HOST }}
+          MAIL_PORT=${{ secrets.MAIL_PORT }}
+          MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}
+          MAIL_ENCRYPTION=${{ secrets.MAIL_ENCRYPTION }}
+          MAIL_FROM_ADDRESS=${{ secrets.MAIL_FROM_ADDRESS }}
+          MAIL_FROM_NAME=${{ secrets.MAIL_FROM_NAME }}
+          MAIL_ADMIN_EMAIL=${{ secrets.MAIL_ADMIN_EMAIL }}
+          BREVO_KEY=${{ secrets.BREVO_KEY }}
+
+          CONSULTA_DNI_API_TOKEN=${{ secrets.CONSULTA_DNI_API_TOKEN }}
+          CONSULTA_RUC_API_TOKEN=${{ secrets.CONSULTA_RUC_API_TOKEN }}
+
+          TWILIO_SID=${{ secrets.TWILIO_SID }}
+          TWILIO_AUTH_TOKEN=${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_WHATSAPP_NUMBER=${{ secrets.TWILIO_WHATSAPP_NUMBER }}
           QUEUE_CONNECTION=sync
           EOF
 
