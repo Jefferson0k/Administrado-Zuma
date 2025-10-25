@@ -48,7 +48,7 @@ class InvestorPasswordResetNotification extends ResetPassword
     protected function resetUrl($notifiable)
     {
         // Construir la URL del frontend directamente
-        $frontendUrl = env('CLIENT_APP_URL', 'https://zuma.com.pe') . '/reset-password?token=' . $this->token . '&email=' . urlencode($notifiable->getEmailForPasswordReset());
+        $frontendUrl = env('CLIENT_APP_URL_FACTORING', 'https://zuma.com.pe') . '/factoring/reset-password?token=' . $this->token . '&email=' . urlencode($notifiable->getEmailForPasswordReset());
 
         return $frontendUrl;
     }

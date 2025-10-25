@@ -30,7 +30,7 @@ class InvestorResources extends JsonResource
             'province'  => $this->province,
             'district'  => $this->district,
             'address'  => $this->address,
-            'investor_photo_path' => $this->investor_photo,
+            'investor_photo_path' => $this->investor_photo_path,
             'personaexpuesta'     => $this->is_pep,
             'relacionPolitica'    => $this->has_relationship_pep,
             

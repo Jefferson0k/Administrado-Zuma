@@ -35,6 +35,7 @@ class ProfileController extends Controller
                 'data' => $customer,
             ]);
         } catch (\Throwable $th) {
+             Log::error("Error: " . $th->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => $th->getMessage(),

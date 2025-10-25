@@ -78,6 +78,7 @@ Route::post('/producto/{id}/click', [VisitaProductoController::class, 'registrar
 Route::get('/investors/{id}', [InvestorController::class, 'showcliente']);
 Route::put('/investors/{id}', [InvestorController::class, 'updatecliente']);
 Route::post('reset-password', [InvestorController::class, 'resetPassword']);
+Route::post('reset-password/update', [InvestorController::class, 'resetPasswordRequest']);
 Route::post('logout', [InvestorController::class, 'logout']);
 
 /*

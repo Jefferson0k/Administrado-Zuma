@@ -535,6 +535,8 @@ class InvestorController extends Controller
                 'data' => $investor,
             ]);
         } catch (Throwable $th) {
+             Log::error("Error : " . $th->getMessage());
+            
             return response()->json([
                 'success' => false,
                 'message' => $th->getMessage(),
@@ -705,7 +707,12 @@ class InvestorController extends Controller
         $request->validate([
             'email' => 'required|email',
             'token' => 'required',
-            'password' => 'required|confirmed|regex:/^(?=.[a-z])(?=.[A-Z])(?=.\d)(?=.[@$!%?&])[A-Za-z\d@$!%?&]{8,}$/',
+            'password' => [
+    'required',
+    'confirmed',
+    'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/',
+],
+
         ], [
             'email.required' => 'El email es obligatorio.',
             'email.email' => 'El email ingresado no es válido.',
@@ -1218,6 +1225,7 @@ public function observarPrimeraValidacion(Request $request, $id)
                 'address'          => null,
                 'document_front'   => null,
                 'document_back'    => null,
+                'investor_photo_path' =>null,
                 'updated_by'       => Auth::id(),
             ]);
             $investor->sendAccountRejectedEmailNotification();

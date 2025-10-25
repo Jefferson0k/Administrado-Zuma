@@ -66,7 +66,8 @@ class NotificacionController extends Controller
             'province' => 'provincia',
             'district' => 'distrito',
             'document_front' => 'documento frontal',
-            'document_back' => 'documento posterior'
+            'document_back' => 'documento posterior',
+            'investor_photo_path' => 'foto del inversionista'
         ];
         $missingFields = [];
         foreach ($requiredFields as $field => $label) {
@@ -166,7 +167,8 @@ class NotificacionController extends Controller
                 'province' => 'Provincia',
                 'district' => 'Distrito',
                 'document_front' => 'Documento Frontal',
-                'document_back' => 'Documento Posterior'
+                'document_back' => 'Documento Posterior',
+                'investor_photo_path'=>'Foto del inversionista',
             ];
 
             foreach ($personalFields as $field => $label) {
@@ -193,7 +195,7 @@ class NotificacionController extends Controller
         $totalFields = 8;
         $completedFields = 3;
 
-        $additionalFields = ['department', 'province', 'district', 'document_front', 'document_back'];
+        $additionalFields = ['department', 'province', 'district', 'document_front', 'document_back', 'investor_photo_path'];
 
         foreach ($additionalFields as $field) {
             if (!empty($investor->$field)) {
