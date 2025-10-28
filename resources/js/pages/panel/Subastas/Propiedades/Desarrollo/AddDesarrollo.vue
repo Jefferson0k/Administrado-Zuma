@@ -215,15 +215,28 @@
               />
             </div>
 
-            <div>
-              <label class="font-bold mb-1">Valor del Inmueble <span class="text-red-500">(*)</span></label>
-              <InputNumber
-                v-model="inmuebles[inmuebleActivo].valor_individual"
-                class="w-full"
-                :useGrouping="true"
-                :locale="'es-PE'"
-                :disabled="inmuebles[inmuebleActivo].bloqueado"
-              />
+            <div class="flex gap-3">
+              <div class="w-1/2">
+                <label class="font-bold mb-1">Moneda <span class="text-red-500">(*)</span></label>
+                <Select
+                  v-model="form.currency_id"
+                  :options="monedas"
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Selecciona moneda"
+                  class="w-full"
+                />
+              </div>
+              <div class="w-1/2">
+                <label class="font-bold mb-1">Valor del Inmueble<span class="text-red-500">(*)</span></label>
+                <InputNumber
+                  v-model="inmuebles[inmuebleActivo].valor_individual"
+                  class="w-full"
+                  :useGrouping="true"
+                  :locale="'es-PE'"
+                  :disabled="inmuebles[inmuebleActivo].bloqueado"
+                />
+              </div>
             </div>
 
             <div>
@@ -939,7 +952,7 @@ const saveProperty = async () => {
     }
 
     // Todas deben tener descripción
-    const sinDescripcion = imgs.filter(img => !img.description?.trim())
+    const sinDescripcion = imgs.filter((img:any) => !img.description?.trim())
     if (sinDescripcion.length > 0) {
       toast.add({
         severity: 'warn',
@@ -958,14 +971,14 @@ const saveProperty = async () => {
     // Datos de la solicitud
     formData.append('investor_id', investorId.value.toString())
     formData.append('codigo', form.value.numero_solicitud)
-    formData.append('valor_general', form.value.valor_estimado?.toString() || '0')
-    formData.append('valor_requerido', form.value.valor_requerido?.toString() || '0')
-    formData.append('currency_id', form.value.currency_id?.toString() || '1')
+    formData.append('valor_general', String(form.value.valor_estimado ?? '0') )
+    formData.append('valor_requerido', String(form.value.valor_requerido || '0'))
+    formData.append('currency_id', String(form.value.currency_id || '1'))
     
     // Agregar los campos faltantes
     formData.append('fuente_ingreso', form.value.fuente_ingreso || '')
     formData.append('profesion_ocupacion', form.value.profesion_ocupacion || '')
-    formData.append('ingreso_promedio', form.value.ingreso_promedio?.toString() || '0')
+    formData.append('ingreso_promedio', String(form.value.ingreso_promedio || '0'))
 
     // Datos de los inmuebles
     inmuebles.value.forEach((inmueble, idx) => {
@@ -973,8 +986,8 @@ const saveProperty = async () => {
       formData.append(`properties[${idx}][direccion]`, inmueble.direccion)
       formData.append(`properties[${idx}][id_tipo_inmueble]`, inmueble.id_tipo_inmueble)
       formData.append(`properties[${idx}][valor_estimado]`, inmueble.valor_individual?.toString() || '0')
-      formData.append(`properties[${idx}][valor_requerido]`, form.value.valor_requerido?.toString() || '0')
-      formData.append(`properties[${idx}][currency_id]`, form.value.currency_id?.toString() || '1')
+      formData.append(`properties[${idx}][valor_requerido]`, String(form.value.valor_requerido || '0'))
+      formData.append(`properties[${idx}][currency_id]`, String(form?.value?.currency_id || '1'))
       formData.append(`properties[${idx}][descripcion]`, inmueble.descripcion || '')
       formData.append(`properties[${idx}][pertenece]`, inmueble.pertenece || '')
 

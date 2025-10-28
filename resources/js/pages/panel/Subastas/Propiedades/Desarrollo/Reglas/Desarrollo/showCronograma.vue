@@ -199,12 +199,16 @@ interface Props {
     visible: boolean
     propiedadData: any
     parametros: {
-        tea: number
-        tem: number
-        cronograma: string
-        duracion_meses: number
-        valor_requerido: number
-        currency_id?: number
+        tea: number|null,
+        tem: number|null,
+        cronograma: any|null,
+        riesgo: any,
+        duracion_meses: number,
+        valor_requerido: number,
+        currency_id?: number,
+        deadlines_id?:number|undefined|null,
+        currency?:string,
+        currency_symbol?:string
     }
 }
 
@@ -215,7 +219,7 @@ const toast = useToast()
 
 const loading = ref(false)
 const error = ref('')
-const cronograma = ref(null)
+const cronograma = ref<any>(null)
 
 const visible = computed({
     get: () => props.visible,
@@ -234,14 +238,14 @@ const currencySymbol = computed(() => {
 // Computed para totales
 const totalCapital = computed(() => {
     if (!cronograma.value?.cronograma_final?.pagos) return 0
-    return cronograma.value.cronograma_final.pagos.reduce((sum, pago) => 
+    return cronograma.value.cronograma_final.pagos.reduce((sum:any, pago:any) => 
         sum + parseFloat(pago.capital || 0), 0
     )
 })
 
 const totalIntereses = computed(() => {
     if (!cronograma.value?.cronograma_final?.pagos) return 0
-    return cronograma.value.cronograma_final.pagos.reduce((sum, pago) => 
+    return cronograma.value.cronograma_final.pagos.reduce((sum:any, pago:any) => 
         sum + parseFloat(pago.interes || 0), 0
     )
 })
@@ -295,9 +299,9 @@ const generarCronograma = async () => {
             life: 3000
         })
 
-    } catch (err) {
+    } catch (err:any) {
         console.error('Error al generar cronograma:', err)
-        error.value = err.response?.data?.message || 'Error al generar el cronograma'
+        error.value = err?.response?.data?.message || 'Error al generar el cronograma'
         toast.add({
             severity: 'error',
             summary: 'Error',
@@ -337,7 +341,7 @@ const exportarCSV = () => {
         ]
 
         // Preparar filas de datos
-        const rows = cronograma.value.cronograma_final.pagos.map(pago => [
+        const rows = cronograma.value.cronograma_final.pagos.map((pago:any) => [
             pago.cuota,
             pago.vcmto,
             parseFloat(pago.saldo_inicial || 0).toFixed(2),
@@ -361,8 +365,8 @@ const exportarCSV = () => {
 
         // Construir el contenido CSV
         let csvContent = headers.join(',') + '\n'
-        rows.forEach(row => {
-            csvContent += row.map(cell => {
+        rows.forEach((row:any) => {
+            csvContent += row.map((cell:any) => {
                 // Escapar comas y comillas en los datos
                 const cellStr = String(cell)
                 if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {

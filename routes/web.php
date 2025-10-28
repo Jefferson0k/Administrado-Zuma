@@ -418,6 +418,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/reglas/{id}/show', [PropertyControllers::class, 'showReglas']);
         Route::post('/enviar-emails', [PropertyControllers::class, 'enviar']);
         Route::post('/{id}/approve-config', [PropertyControllers::class, 'approveConfig'])->name('property.approveConfig');
+        Route::put('/reglas/{id}/update', [PropertyControllers::class, 'updateReglas'])->name('actualizar.update');
     });
 
     Route::get('/propiedad/{id}/cronograma', [PaymentScheduleController::class, 'getCronogramaPorPropiedad']);
