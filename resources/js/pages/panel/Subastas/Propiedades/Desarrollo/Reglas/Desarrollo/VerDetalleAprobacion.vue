@@ -13,7 +13,7 @@
     </div>
 
     <div v-else-if="detalleConfig" class="space-y-4">
-      <!-- Información General -->
+      <!-- Información General  -->
       <Card>
         <template #title>
           <div class="flex items-center gap-2">
@@ -206,6 +206,7 @@ const cargarDetalle = async () => {
   try {
     const { data } = await axios.get(`/property/reglas/${props.configuracionId}/show`)
     detalleConfig.value = data.data
+    console.log('detalleConfig.value',detalleConfig.value);
   } catch (error) {
     toast.add({
       severity: 'error',

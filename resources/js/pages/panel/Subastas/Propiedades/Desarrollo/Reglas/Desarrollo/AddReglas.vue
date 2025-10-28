@@ -73,7 +73,7 @@
             </div>
             <!-- SECCIÓN INVERSIONISTA -->
             <Message severity="info" :closable="false" class="fluid">
-                <template #messageicon>
+                <template #icon>
                     <i class="pi pi-chart-line"></i>
                 </template>
                 <template #default>
@@ -135,7 +135,7 @@
 
             <!-- SECCIÓN CLIENTE -->
             <Message severity="success" :closable="false" class="fluid mt-6">
-                <template #messageicon>
+                <template #icon>
                     <i class="pi pi-user"></i>
                 </template>
                 <template #default>
@@ -187,19 +187,18 @@
                             :options="riesgos" 
                             :disabled="clienteGuardado"
                             optionLabel="label" 
-                            optionValue="value"
                             placeholder="Seleccionar riesgo..." 
                             fluid>
                             <template #value="{ value }">
                                 <div v-if="value" class="flex items-center gap-2">
-                                    <img :src="`/imagenes/riesgos/${value}.png`" 
-                                        :alt="`Riesgo ${value}`" 
+                                    <img :src="`/imagenes/riesgos/${value.img}`" 
+                                        :alt="`Riesgo ${value.value}`" 
                                         class="w-6 h-6 object-contain" />
                                 </div>
                             </template>
                             <template #option="{ option }">
                                 <div class="flex items-center gap-2">
-                                    <img :src="`/imagenes/riesgos/${option.value}.png`" 
+                                    <img :src="`/imagenes/riesgos/${option.img}`" 
                                         :alt="`Riesgo ${option.value}`" 
                                         class="w-6 h-6 object-contain" />
                                 </div>
@@ -269,13 +268,13 @@ const deadlines_id = ref(null)
 const plazos = ref([])
 
 // Campos específicos para inversionista
-const temInversionista = ref(null)
-const teaInversionista = ref(null)
+const temInversionista = ref<null|number>(null)
+const teaInversionista = ref<number|null>(null)
 
 // Campos específicos para cliente
-const temCliente = ref(null)
-const teaCliente = ref(null)
-const riesgoCliente = ref(null)
+const temCliente = ref<number|null>(null)
+const teaCliente = ref<number|null>(null)
+const riesgoCliente = ref<any>(null)
 
 const tipoUsuarioActual = ref(null)
 
@@ -288,13 +287,13 @@ const camposGeneralesBloqueados = computed(() => {
     return inversionistaGuardado.value || clienteGuardado.value
 })
 
-const convertirTeaATem = (tea) => {
+const convertirTeaATem = (tea:number) => {
     if (!tea || tea === 0) return 0
     // Fórmula: TEM = (1 + TEA)^(1/12) - 1
     return Math.pow(1 + (tea / 100), 1/12) - 1
 }
 
-const convertirTemATea = (tem) => {
+const convertirTemATea = (tem:number) => {
     if (!tem || tem === 0) return 0
     // Fórmula: TEA = (1 + TEM)^12 - 1
     return Math.pow(1 + (tem / 100), 12) - 1
@@ -308,9 +307,9 @@ const actualizandoCliente = ref(false)
 const calcularTeaDesdeTemInversionista = () => {
     if (actualizandoInversionista.value || inversionistaGuardado.value) return
     
-    if (temInversionista.value !== null && temInversionista.value !== undefined && temInversionista.value !== '') {
+    if (temInversionista.value !== null && temInversionista.value !== undefined && temInversionista.value.toString() !== '') {
         actualizandoInversionista.value = true
-        const teaCalculado = convertirTemATea(parseFloat(temInversionista.value))
+        const teaCalculado = convertirTemATea(parseFloat(temInversionista.value.toString()))
         teaInversionista.value = parseFloat((teaCalculado * 100).toFixed(3))
         setTimeout(() => {
             actualizandoInversionista.value = false
@@ -325,9 +324,9 @@ const calcularTeaDesdeTemInversionista = () => {
 const calcularTemDesdeTeaInversionista = () => {
     if (actualizandoInversionista.value || inversionistaGuardado.value) return
     
-    if (teaInversionista.value !== null && teaInversionista.value !== undefined && teaInversionista.value !== '') {
+    if (teaInversionista.value !== null && teaInversionista.value !== undefined && teaInversionista.value.toString() !== '') {
         actualizandoInversionista.value = true
-        const temCalculado = convertirTeaATem(parseFloat(teaInversionista.value))
+        const temCalculado = convertirTeaATem(parseFloat(teaInversionista.value.toString()))
         temInversionista.value = parseFloat((temCalculado * 100).toFixed(3))
         setTimeout(() => {
             actualizandoInversionista.value = false
@@ -343,9 +342,9 @@ const calcularTemDesdeTeaInversionista = () => {
 const calcularTeaDesdeTemCliente = () => {
     if (actualizandoCliente.value || clienteGuardado.value) return
     
-    if (temCliente.value !== null && temCliente.value !== undefined && temCliente.value !== '') {
+    if (temCliente.value !== null && temCliente.value !== undefined && temCliente.value.toString() !== '') {
         actualizandoCliente.value = true
-        const teaCalculado = convertirTemATea(parseFloat(temCliente.value))
+        const teaCalculado = convertirTemATea(parseFloat(temCliente.value.toString()))
         teaCliente.value = parseFloat((teaCalculado * 100).toFixed(3))
         setTimeout(() => {
             actualizandoCliente.value = false
@@ -360,9 +359,9 @@ const calcularTeaDesdeTemCliente = () => {
 const calcularTemDesdeTeaCliente = () => {
     if (actualizandoCliente.value || clienteGuardado.value) return
     
-    if (teaCliente.value !== null && teaCliente.value !== undefined && teaCliente.value !== '') {
+    if (teaCliente.value !== null && teaCliente.value !== undefined && teaCliente.value.toString() !== '') {
         actualizandoCliente.value = true
-        const temCalculado = convertirTeaATem(parseFloat(teaCliente.value))
+        const temCalculado = convertirTeaATem(parseFloat(teaCliente.value.toString()))
         temCliente.value = parseFloat((temCalculado * 100).toFixed(3))
         setTimeout(() => {
             actualizandoCliente.value = false
@@ -394,8 +393,8 @@ const resetForm = () => {
 }
 
 const parametrosCronograma = computed(() => {
-    const plazoSeleccionado = plazos.value.find(p => p.id === deadlines_id.value)
-    const propiedadData = propiedades.value.find(p => p.value === propiedadSeleccionada.value)
+    const plazoSeleccionado:any = plazos.value.find((p:any) => p.id === deadlines_id.value)
+    const propiedadData:any = propiedades.value.find((p:any) => p.value === propiedadSeleccionada.value)
     const valorRequerido = propiedadData ? parseFloat(propiedadData.valor_requerido) : 0
 
     const teaActual = tipoUsuarioActual.value === 'inversionista' ? teaInversionista.value : teaCliente.value
@@ -405,18 +404,18 @@ const parametrosCronograma = computed(() => {
     return {
         tea: teaActual,
         tem: temActual,
-        riesgo: riesgoActual,
         cronograma: cronograma.value,
-        deadlines_id: deadlines_id.value,
+        riesgo: riesgoActual,
         duracion_meses: plazoSeleccionado ? plazoSeleccionado.duracion_meses : 0,
         valor_requerido: valorRequerido,
         currency_id: propiedadData?.currency_id || 1,
+        deadlines_id: deadlines_id.value,
         currency: propiedadData?.currency || 'PEN',
         currency_symbol: propiedadData?.currency_symbol || 'S/'
     }
 })
 
-const previsualizarCronograma = async (tipo) => {
+const previsualizarCronograma = async (tipo:any) => {
     if (!propiedadSeleccionada.value) {
         toast.add({
             severity: 'warn',
@@ -427,7 +426,7 @@ const previsualizarCronograma = async (tipo) => {
         return
     }
 
-    const propiedadData = propiedades.value.find(p => p.value === propiedadSeleccionada.value)
+    const propiedadData:any = propiedades.value.find((p:any) => p.value === propiedadSeleccionada.value)
     if (!propiedadData) {
         toast.add({
             severity: 'error',
@@ -463,36 +462,36 @@ const camposGenerales = computed(() => {
 // Computed para validar previsualización inversionista
 const canPreviewCronogramaInversionista = computed(() => {
     return camposGenerales.value && 
-        temInversionista.value !== null && temInversionista.value !== '' &&
-        teaInversionista.value !== null && teaInversionista.value !== ''
+        temInversionista.value !== null && temInversionista.value.toString() !== '' &&
+        teaInversionista.value !== null && teaInversionista.value.toString() !== ''
 })
 
 // Computed para validar previsualización cliente
 const canPreviewCronogramaCliente = computed(() => {
     return camposGenerales.value && 
-        temCliente.value !== null && temCliente.value !== '' &&
-        teaCliente.value !== null && teaCliente.value !== '' &&
+        temCliente.value !== null && temCliente.value.toString() !== '' &&
+        teaCliente.value !== null && teaCliente.value.toString() !== '' &&
         riesgoCliente.value !== null
 })
 
 // Computed para validar guardado inversionista
 const canSaveInversionista = computed(() => {
     return camposGenerales.value && 
-        temInversionista.value !== null && temInversionista.value !== '' &&
-        teaInversionista.value !== null && teaInversionista.value !== ''
+        temInversionista.value !== null && temInversionista.value.toString() !== '' &&
+        teaInversionista.value !== null && teaInversionista.value.toString() !== ''
 })
 
 // Computed para validar guardado cliente
 const canSaveCliente = computed(() => {
     return camposGenerales.value && 
-        temCliente.value !== null && temCliente.value !== '' &&
-        teaCliente.value !== null && teaCliente.value !== '' &&
+        temCliente.value !== null && temCliente.value.toString() !== '' &&
+        teaCliente.value !== null && teaCliente.value.toString() !== '' &&
         riesgoCliente.value !== null
 })
 
 const cronogramaOpciones = [
-    { label: 'Sistema Francés (cuota fija)', value: 'frances' },
-    { label: 'Sistema Americano (cuota de interés y pago final)', value: 'americano' }
+    { label: 'Cuota fija', value: 'frances' },
+    { label: 'Libre amortización', value: 'americano' }
 ]
 
 const openDialog = () => {
@@ -501,12 +500,12 @@ const openDialog = () => {
     visible.value = true
 }
 
-const getPropiedadLabel = (id) => {
-    const prop = propiedades.value.find(p => p.value === id)
+const getPropiedadLabel = (id:any) => {
+    const prop:any = propiedades.value.find((p:any) => p.value === id)
     return prop ? prop.label : id
 }
 
-const getEstadoSeverity = (estado) => {
+const getEstadoSeverity = (estado:string) => {
     switch (estado) {
         case 'pendiente':
             return 'warn'
@@ -530,7 +529,7 @@ const buscarPropiedades = debounce(async (texto) => {
             params: { search: texto },
         })
 
-        propiedades.value = response.data.data.map((propiedad) => ({
+        propiedades.value = response.data.data.map((propiedad:any) => ({
             label: `${propiedad.codigo}`,
             sublabel: `Valor General: ${propiedad.currency_symbol}${propiedad.valor_general} | Valor Requerido: ${propiedad.currency_symbol}${propiedad.valor_requerido}`,
             value: propiedad.id,
@@ -559,22 +558,24 @@ const cargarPlazos = async () => {
     }
 }
 
-const onInputChange = (valor) => {
+const onInputChange = (valor:string) => {
     if (typeof valor === 'string' && !camposGeneralesBloqueados.value) {
         buscarPropiedades(valor)
     }
 }
 
-const actualizarPropiedad = async (tipoUsuario) => {
+const actualizarPropiedad = async (tipoUsuario:number) => {
     if (!propiedadSeleccionada.value) {
         toast.add({ severity: 'warn', summary: 'Validación', detail: 'Seleccione una propiedad', life: 3000 })
         return
     }
 
+    console.log('riesgoCliente.value:',riesgoCliente?.value?.value ?? '');
+
     // Validar campos según el tipo de usuario
     const tea = tipoUsuario === 1 ? teaInversionista.value : teaCliente.value
     const tem = tipoUsuario === 1 ? temInversionista.value : temCliente.value
-    const riesgo = tipoUsuario === 2 ? riesgoCliente.value : null
+    const riesgo = tipoUsuario === 2 ? (riesgoCliente?.value?.value ?? '') : null
 
     // Para inversionista no se requiere riesgo
     const riesgoRequerido = tipoUsuario === 2 ? riesgo : true
@@ -601,7 +602,9 @@ const actualizarPropiedad = async (tipoUsuario) => {
 
         // Solo agregar riesgo si es cliente
         if (tipoUsuario === 2) {
-            payload.riesgo = riesgo
+            Object.assign(payload, {
+                riesgo: riesgo
+            });
         }
 
         const response = await axios.put(`/property/${propiedadSeleccionada.value}/estado`, payload)
@@ -621,10 +624,10 @@ const actualizarPropiedad = async (tipoUsuario) => {
             clienteGuardado.value = true
         }
 
-    } catch (error) {
-        const errores = error.response?.data?.errors
+    } catch (error:any) {
+        const errores = error?.response?.data?.errors
         if (errores) {
-            Object.values(errores).forEach((mensajeArray) => {
+            Object.values(errores).forEach((mensajeArray:any) => {
                 toast.add({
                     severity: 'error',
                     summary: 'Error de validación',
@@ -643,9 +646,9 @@ const actualizarPropiedad = async (tipoUsuario) => {
     }
 }
 const riesgos = [
-    { label: 'A+', value: 'A+' },
-    { label: 'A', value: 'A' },
-    { label: 'B', value: 'B' },
-    { label: 'C', value: 'C' }
+    { label: 'A+', value: 'A+', img: 'Aplus.png' },
+    { label: 'A', value: 'A', img: 'A.png' },
+    { label: 'B', value: 'B', img: 'B.png' },
+    { label: 'C', value: 'C', img: 'C.png' }
 ]
 </script>

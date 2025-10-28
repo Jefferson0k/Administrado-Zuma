@@ -26,29 +26,49 @@
 
             <!-- Primera fila de 3 columnas -->
             <div class="grid grid-cols-3 gap-4">
-                <!-- TEA -->
-                <div>
-                    <label class="block font-semibold mb-2">
-                        TEA (%) <span class="text-red-500">*</span>
-                    </label>
-                    <div class="relative">
-                        <input type="number" v-model="tea" class="p-inputtext p-component w-full pr-8"
-                            placeholder="Ej. 12.5" step="0.01" min="0" max="100" />
-                        <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
-                    </div>
-                </div>
-
                 <!-- TEM -->
                 <div>
                     <label class="block font-semibold mb-2">
                         TEM (%) <span class="text-red-500">*</span>
                     </label>
                     <div class="relative">
-                        <input type="number" v-model="tem" class="p-inputtext p-component w-full pr-8"
-                            placeholder="Ej. 1.05" step="0.01" min="0" max="20" />
+
+                        <InputNumber v-model="tem" 
+                                @update:modelValue="calcularTeaDesdeTemInversionista"
+                                :disabled="inversionistaGuardado"
+                                fluid
+                                placeholder="Ej. 1.05" 
+                                :minFractionDigits="3"
+                                :maxFractionDigits="3"
+                                suffix="%" 
+                                :min="0" 
+                                :max="20" />
+                        
                         <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
                     </div>
                 </div>
+
+                <!-- TEA -->
+                <div>
+                    <label class="block font-semibold mb-2">
+                        TEA (%) <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <InputNumber v-model="tea" 
+                                @update:modelValue="calcularTemDesdeTeaInversionista"
+                                :disabled="inversionistaGuardado"
+                                fluid
+                                placeholder="Ej. 12.5" 
+                                :minFractionDigits="3"
+                                :maxFractionDigits="3"
+                                suffix="%" 
+                                :min="0" 
+                                :max="100" />
+                        <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
+                    </div>
+                </div>
+
+                
 
                 <!-- Tipo Cronograma -->
                 <div>
@@ -65,7 +85,7 @@
                 <!-- Plazo -->
                 <div>
                     <label class="block font-semibold mb-2">
-                        Plazo del crédito <span class="text-red-500">*</span>
+                        Plazo del crédito  <span class="text-red-500">*</span>
                     </label>
                     <Select v-model="deadlines_id" :options="plazos" optionLabel="nombre" optionValue="id"
                         placeholder="Seleccione un plazo" class="w-full" />
@@ -114,6 +134,7 @@ import axios from 'axios'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 import { useToast } from 'primevue/usetoast'
+import InputNumber from 'primevue/inputnumber'
 
 const toast = useToast()
 
@@ -179,6 +200,7 @@ const cargarPlazos = async () => {
     try {
         const response = await axios.get('/deadlines')
         plazos.value = response.data.data
+        console.log('plazos.value',plazos.value);
     } catch (error) {
         toast.add({
             severity: 'warn',
@@ -196,6 +218,7 @@ const cargarDatosRegla = async () => {
         const response = await axios.get(`/property/reglas/${props.regla.id}/show`)
         const reglaData = response.data.data
 
+        console.log('reglaData', reglaData);
         // Guardar todos los datos de la solicitud
         solicitudData.value = reglaData
 
@@ -287,6 +310,96 @@ const saveProperty = async () => {
         loading.value = false
     }
 }
+
+const actualizandoInversionista = ref(false)
+const actualizandoCliente = ref(false)
+const inversionistaGuardado = ref(false)
+const clienteGuardado = ref(false)
+//FUNCIONES 
+const convertirTeaATem = (tea) => {
+    if (!tea || tea === 0) return 0
+    // Fórmula: TEM = (1 + TEA)^(1/12) - 1
+    return Math.pow(1 + (tea / 100), 1/12) - 1
+}
+
+const convertirTemATea = (tem) => {
+    if (!tem || tem === 0) return 0
+    // Fórmula: TEA = (1 + TEM)^12 - 1
+    return Math.pow(1 + (tem / 100), 12) - 1
+}
+
+
+// Funciones para calcular automáticamente - Inversionista
+const calcularTeaDesdeTemInversionista = () => {
+    if (actualizandoInversionista.value || inversionistaGuardado.value) return
+    console.log('tem.value',tem.value);
+    if (tem.value !== null && tem.value !== undefined && tem.value.toString() !== '') {
+        actualizandoInversionista.value = true
+        const teaCalculado = convertirTemATea(parseFloat(tem.value.toString()))
+        tea.value = parseFloat((teaCalculado * 100).toFixed(3))
+        setTimeout(() => {
+            actualizandoInversionista.value = false
+        }, 100)
+    } else {
+        if (!actualizandoInversionista.value) {
+            tea.value = null
+        }
+    }
+}
+
+const calcularTemDesdeTeaInversionista = () => {
+    if (actualizandoInversionista.value || inversionistaGuardado.value) return
+    
+    if (tea.value !== null && tea.value !== undefined && tea.value.toString() !== '') {
+        actualizandoInversionista.value = true
+        const temCalculado = convertirTeaATem(parseFloat(tea.value.toString()))
+        tem.value = parseFloat((temCalculado * 100).toFixed(3))
+        setTimeout(() => {
+            actualizandoInversionista.value = false
+        }, 100)
+    } else {
+        if (!actualizandoInversionista.value) {
+            temInversionista.value = null
+        }
+    }
+}
+
+// Funciones para calcular automáticamente - Cliente
+const calcularTeaDesdeTemCliente = () => {
+    if (actualizandoCliente.value || clienteGuardado.value) return
+    
+    if (temCliente.value !== null && temCliente.value !== undefined && temCliente.value.toString() !== '') {
+        actualizandoCliente.value = true
+        const teaCalculado = convertirTemATea(parseFloat(temCliente.value.toString()))
+        teaCliente.value = parseFloat((teaCalculado * 100).toFixed(3))
+        setTimeout(() => {
+            actualizandoCliente.value = false
+        }, 100)
+    } else {
+        if (!actualizandoCliente.value) {
+            teaCliente.value = null
+        }
+    }
+}
+
+const calcularTemDesdeTeaCliente = () => {
+    if (actualizandoCliente.value || clienteGuardado.value) return
+    
+    if (teaCliente.value !== null && teaCliente.value !== undefined && teaCliente.value.toString() !== '') {
+        actualizandoCliente.value = true
+        const temCalculado = convertirTeaATem(parseFloat(teaCliente.value.toString()))
+        temCliente.value = parseFloat((temCalculado * 100).toFixed(3))
+        setTimeout(() => {
+            actualizandoCliente.value = false
+        }, 100)
+    } else {
+        if (!actualizandoCliente.value) {
+            temCliente.value = null
+        }
+    }
+}
+
+
 
 // Watchers
 watch(() => props.modelValue, (val) => {
