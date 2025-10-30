@@ -145,7 +145,7 @@
                                     </div>
 
                                     <!-- Automático: Monto a Invertir -->
-                                    <div class="col-12 md:col-6 mb-4">
+                                    <div class="col-12 md:col-6 mb-4" :class="{ 'hidden': !isHidden }">
                                         <label for="monto_invertir" class="font-semibold block mb-2">
                                             Monto a Invertir *
                                         </label>
@@ -222,11 +222,11 @@
                                     <!-- Descripción del Financiamiento -->
                                     <div class="col-12 field">
                                         <label class="font-semibold text-900 mb-3 block text-lg">
-                                            Descripción del Financiamiento <span class="text-red-500">*</span>
+                                            Descripción del negocio <span class="text-red-500">*</span>
                                         </label>
                                         <Textarea v-model="form.descripcion_financiamiento" autoResize rows="4" class="w-full"
                                             :maxlength="500"
-                                            placeholder="Detalla las características del financiamiento solicitado..." />
+                                            placeholder="Detalla las caracteristicas de la fuente de ingresos (ejem. El Empresario se dedica a...)" />
                                         <small class="text-500 float-right mt-2">{{ form.descripcion_financiamiento.length
                                         }}/500 caracteres</small>
                                     </div>
@@ -237,7 +237,7 @@
                                         </label>
                                         <Textarea v-model="form.solicitud_prestamo_para" autoResize rows="4" class="w-full"
                                             :maxlength="500"
-                                            placeholder="Detalla las características del financiamiento solicitado..." />
+                                            placeholder="Detalla las caracteristicas del inmueble en garantía (ejem. El inmueble en garantía esta ubicado en ...)" />
                                         <small class="text-500 float-right mt-2">{{ form.solicitud_prestamo_para.length
                                         }}/500 caracteres</small>
                                     </div>
@@ -423,6 +423,8 @@ const propiedadSeleccionada = ref(null)
 const propiedades = ref([])
 const clienteVinculado = ref(null)
 
+const isHidden = ref(true);
+
 const form = ref({
     // ocupacion_profesion: '',
     empresa_tasadora: '',
@@ -500,6 +502,8 @@ const calcularMontos = () => {
         const porcentajeDecimal = form.value.porcentaje_prestamo / 100
         form.value.monto_prestamo = Math.round(form.value.monto_tasacion * porcentajeDecimal)
         form.value.monto_invertir = form.value.monto_tasacion - form.value.monto_prestamo
+
+        isHidden.value = false;
     } else {
         form.value.monto_prestamo = null
         form.value.monto_invertir = null

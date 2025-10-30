@@ -20,11 +20,44 @@ const form = useForm({
     remember: false,
 });
 
-const submit = () => {
-    form.post(route('login'), {
-        onFinish: () => form.reset('password'),
-    });
-};
+ 
+const submit = async () => {
+    try {
+        console.log('enviando form')
+        await form.post(route('login'), {
+            onFinish: () => form.reset('password'),
+            preserveScroll: true,
+            onError: (errors) => {
+                // Aquí puedes manejar errores de validación si los hay
+                console.log(errors)
+            },
+        })
+    } catch (error) {
+        // Cuando el error viene del servidor
+        console.error('error:',error)
+        if (error.response) {
+            const status = error.response.status
+
+            switch (status) {
+                case 419:
+                    alert('⚠️ La sesión ha expirado. Se recargará la página.')
+                    window.location.reload()
+                    break
+                case 404:
+                    alert('❌ Ruta no encontrada.')
+                    break
+                case 500:
+                    alert('💥 Error interno del servidor.')
+                    break
+                default:
+                    alert(`Error inesperado (${status})`)
+            }
+        } else {
+            console.error('Error de red o desconocido:', error)
+        }
+    }
+}
+
 </script>
 
 <template>
@@ -132,5 +165,11 @@ const submit = () => {
     border-width: 0;
     padding: 0.3rem 0.5rem;
     margin-top: 0.25rem;
+}
+
+</style>
+<style>
+div:where(.swal2-container){
+    z-index: 900060;
 }
 </style>

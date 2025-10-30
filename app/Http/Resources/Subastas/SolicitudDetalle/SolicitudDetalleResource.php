@@ -8,6 +8,8 @@ use App\Http\Resources\Subastas\PropertyInvestorSimple\PropertyInvestorSimpleRes
 use App\Http\Resources\Subastas\PropertySimple\PropertySimpleResource;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Money\Money;
+use App\Http\Resources\PropertyLoanDetailResource;
+use App\Http\Resources\Subastas\SolicitudBid\SolicitudBidResource;
 
 class SolicitudDetalleResource extends JsonResource
 {
@@ -51,7 +53,8 @@ class SolicitudDetalleResource extends JsonResource
                     ? trim($this->configuracionSubasta->subasta->ganador->name . ' ' . $this->configuracionSubasta->subasta->ganador->first_last_name . ' ' . $this->configuracionSubasta->subasta->ganador->second_last_name)
                     : null,
             ] : null,
-
+            'property_loan_details' => PropertyLoanDetailResource::collection($this->whenLoaded('propertyLoanDetails')),
+            'solicitud_bids' => SolicitudBidResource::collection($this->whenLoaded('solicitudBids')),
         ];
     }
 
