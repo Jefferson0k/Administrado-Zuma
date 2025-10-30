@@ -714,7 +714,9 @@ class PropertyControllers extends Controller{
                 'configuracionSubasta.propertyInvestor',
                 'configuracionSubasta.detalleInversionistaHipoteca',
                 'propertyInvestors.paymentSchedules',
-                'propertyInvestors.configuracion'
+                'propertyInvestors.configuracion',
+                'propertyLoanDetails',
+                'solicitudBids'
             ])->whereHas('configuracionSubasta.subasta', function ($q) use ($ahora) {
                 $q->where('estado', 'en_subasta')
                 ->where(function ($q2) use ($ahora) {

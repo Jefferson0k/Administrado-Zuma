@@ -23,7 +23,9 @@ class SolicitudController extends Controller{
                 'configuracionSubasta.propertyInvestor',
                 'configuracionSubasta.detalleInversionistaHipoteca',
                 'propertyInvestors.paymentSchedules',
-                'propertyInvestors.configuracion'
+                'propertyInvestors.configuracion',
+                'propertyLoanDetails',
+                'solicitudBids'
             ])->findOrFail($id);
             return (new SolicitudDetalleResource($solicitud))
                 ->additional([

@@ -39,6 +39,17 @@ class Solicitud extends Model
     // -------------------------
     // Relaciones
     // -------------------------
+
+    public function solicitudBids()
+    {
+        return $this->hasMany(SolicitudBid::class, 'solicitud_id', 'id');
+    }
+
+    public function propertyLoanDetails()
+    {
+        return $this->hasMany(PropertyLoanDetail::class, 'solicitud_id', 'id');
+    }
+
     public function investor()
     {
         return $this->belongsTo(Investor::class, 'investor_id', 'id');
