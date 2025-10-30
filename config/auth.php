@@ -108,8 +108,8 @@ return [
             'throttle' => 60,
         ],
 
-        'costumers' => [
-            'provider' => 'costumers',
+        'investors' => [
+            'provider' => 'investors',
             'table' => 'password_reset_tokens', // o una separada si lo deseas
             'expire' => 60,
             'throttle' => 60,

@@ -813,7 +813,9 @@ class InvoiceController extends Controller
     public function cerrar(Request $request, Invoice $invoice)
 
     {
-        Gate::authorize('close', $invoice);
+
+        try{
+        //Gate::authorize('close', $invoice);
 
         $request->validate([
             'comentario' => 'nullable|string|max:500',
@@ -853,7 +855,14 @@ class InvoiceController extends Controller
             'message' => 'La factura se cerró correctamente',
             'data' => $invoice,
         ]);
-    }
+    } catch (AuthorizationException $e) {
+        return response()->json(['message' => 'No tienes permiso para cerrar la factura.'], 403);
+    } catch (Throwable $e) {
+        return response()->json([
+            'message' => 'Error al cerrar la factura.',
+            'error'   => $e->getMessage()
+        ], 500);
+    }}
 
 
     public function abrir(Request $request, Invoice $invoice)

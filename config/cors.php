@@ -14,7 +14,7 @@ return [
 
     'paths' => explode(',', env('CORS_PATHS', 'api/*,sanctum/csrf-cookie')),
 
-    'allowed_methods' => explode(',', env('CORS_ALLOWED_METHODS', '*')),
+    'allowed_methods' => ['*'],
 
     //'allowed_origins' => explode(',', env('CORS_ALLOWED_ORIGINS', 'https://zuma.com.pe/factoring,https://zuma.com.pe/hipotecas')),
     

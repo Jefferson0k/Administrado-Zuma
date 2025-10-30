@@ -39,7 +39,7 @@ class CloseExpiredInvoices extends Command
                             ->orWhere('approval1_status', '!=', 'approved')
                             ->orWhereNull('approval2_status')
                             ->orWhere('approval2_status', '!=', 'approved')
-                            ->orWhere('status_conclusion', '!=', 'approved');
+                            ;
                     });
             })
             ->update(['condicion_oportunidad' => 'cerrada']);
