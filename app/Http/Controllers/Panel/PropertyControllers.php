@@ -88,6 +88,7 @@ class PropertyControllers extends Controller{
                     'valor_estimado' => $propData['valor_estimado'],
                     'estado' => 'pendiente',
                     'created_by' => Auth::id(),
+                    'investor_id' => $data['investor_id']
                 ]);
                 
                 // Procesar imágenes
@@ -713,7 +714,9 @@ class PropertyControllers extends Controller{
                 'configuracionSubasta.propertyInvestor',
                 'configuracionSubasta.detalleInversionistaHipoteca',
                 'propertyInvestors.paymentSchedules',
-                'propertyInvestors.configuracion'
+                'propertyInvestors.configuracion',
+                'propertyLoanDetails',
+                'solicitudBids'
             ])->whereHas('configuracionSubasta.subasta', function ($q) use ($ahora) {
                 $q->where('estado', 'en_subasta')
                 ->where(function ($q2) use ($ahora) {
@@ -939,6 +942,38 @@ class PropertyControllers extends Controller{
         Gate::authorize('view', $regla);
         return new PropertyReglaResource($regla);
     }
+    
+    public function updateReglas(Request $request,$id){
+        $regla = PropertyConfiguracion::find($id);
+        try{
+            $userId = Auth::id();
+            if (!$regla) {
+                return response()->json(['message' => 'Configuración no encontrada'], 404);
+            }
+            $tea_entero = (int) round((float) $request->tea * 100);
+            $tem_entero = (int) round((float) $request->tem * 100);
+            $regla->update([
+                'deadlines_id' => $request->deadlines_id,
+                'estado' => $request->estado_configuracion,
+                'riesgo' => $request->filled('riesgo') ? $request->riesgo : '-',
+                'tea' => $tea_entero,
+                'tem' => $tem_entero,
+                'tipo_cronograma' => $request->tipo_cronograma,   
+                'updated_by' => $userId,
+            ]);
+            return response()->json([
+                'message' => 'Configuración actualizada correctamente.',
+                'regla' => $regla,
+            ]);
+        } catch (Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error interno del servidor',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+    
     public function showConfig($configId, Request $request){
         $perPage = $request->input('per_page', 15);
         $propertyInvestorIds = PropertyInvestor::where('config_id', $configId)->pluck('id');

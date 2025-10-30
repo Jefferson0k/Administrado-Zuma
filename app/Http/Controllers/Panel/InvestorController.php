@@ -524,7 +524,12 @@ class InvestorController extends Controller
                 'movements as deposit_confirmed' => fn($q) => $q->where('type', 'deposit')->where('confirm_status', 'confirmed'),
                 'movements as deposit_pending_approval' => fn($q) => $q->where('type', 'deposit')->where('confirm_status', 'pending')->whereNull('aprobacion_1')->whereNull('aprobacion_2'),
                 'movements as deposit_approval' => fn($q) => $q->where('type', 'deposit')->where('confirm_status', 'confirmed')->whereRaw('aprobacion_2 < DATE_ADD(NOW(), INTERVAL 1 DAY)'),
-                'movements as deposit_rejected' => fn($q) => $q->where('type', 'deposit')->where('status', 'rejected')
+                'movements as deposit_rejected' => fn($q) => $q->where('type', 'deposit')->where('status', 'rejected'),
+                
+                'movements as withdraws_confirmed' => fn($q) => $q->where('type', 'withdraw')->where('confirm_status', 'confirmed'),
+                'movements as withdraws_pending_approval' => fn($q) => $q->where('type', 'withdraw')->where('confirm_status', 'pending')->whereNull('aprobacion_1')->whereNull('aprobacion_2'),
+                'movements as withdraws_approval' => fn($q) => $q->where('type', 'withdraw')->where('confirm_status', 'confirmed')->whereRaw('aprobacion_2 < DATE_ADD(NOW(), INTERVAL 1 DAY)'),
+                'movements as withdraws_rejected' => fn($q) => $q->where('type', 'withdraw')->where('status', 'rejected')
             ]);
             $investor->load('notificaciones');
             $investor->load('investments.invoice');
