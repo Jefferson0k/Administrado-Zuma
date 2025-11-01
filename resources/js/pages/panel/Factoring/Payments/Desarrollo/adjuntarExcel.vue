@@ -743,8 +743,6 @@ function formatCurrency(amount, currency) {
   return `${symbol} ${Number(amount).toLocaleString('es-PE', { minimumFractionDigits: 2 })}`;
 }
 
-// Función para realizar pago
-// Función para realizar pago
 function realizarPago(record) {
   console.log('Iniciando proceso de pago para:', record);
   
@@ -768,7 +766,7 @@ function realizarPago(record) {
     return;
   }
 
-  // Preparar los datos para el pago
+  // Preparar los datos para el pago - AÑADIR MONTO PAGADO
   selectedPaymentData.value = {
     id_pago: record.id_pago,
     invoice_number: record['NRO FACTURA'],
@@ -776,10 +774,11 @@ function realizarPago(record) {
     document: record.document || 'Proveedor',
     ruc_proveedor: record['RUC ACEPTANTE'],
     amount: record['MONTO DOCUMENTO'],
-    saldo: record['MONTO PAGADO'],
+    saldo: record['MONTO PAGADO'], // ← AÑADIR ESTA LÍNEA
+    amount_to_pay: record['MONTO PAGADO'], // ← AÑADIR ESTA LÍNEA (nombre que usa el backend)
     currency: record['MONEDA'],
     estimated_pay_date: record['FECHA PAGO'],
-    tipo_pago: record.tipo_pago // ← AÑADIR ESTA LÍNEA
+    tipo_pago: record.tipo_pago
   };
 
   console.log('Datos preparados para pago:', selectedPaymentData.value);
@@ -790,7 +789,7 @@ function realizarPago(record) {
   toast.add({
     severity: 'info',
     summary: 'Procesar Pago',
-    detail: `Preparando pago para factura ${record['NRO FACTURA']}`,
+    detail: `Preparando pago para factura ${record['NRO FACTURA']} - Monto: ${formatCurrency(record['MONTO PAGADO'], record['MONEDA'])}`,
     life: 3000
   });
 }
